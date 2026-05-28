@@ -1,0 +1,57 @@
+import { describe, it, expect } from 'vitest'
+import { assessFeasibility } from './feasibility'
+import type { ParcelInfo } from '../../../src/types/parcel'
+import type { AnalysisInput } from '../../../src/types/analysis'
+
+const parcel = (over: Partial<ParcelInfo['zoning']> = {}, lotSize: number | null = 10000): ParcelInfo => ({
+  address: '1 Test St', parcelId: 'p1', coordinates: [-71.06, 42.36],
+  zoning: { districtCode: 'B-2-65', subdistrict: null, article: null, maxHeightFt: null, maxFAR: null, allowedUses: null, ...over },
+  lot: { sizeSqFt: lotSize, lotType: null },
+  overlays: { historicDistrict: null, floodZone: null },
+  sources: {}, fetchedAt: '2026-05-28T00:00:00Z',
+})
+const project = (over: Partial<AnalysisInput> = {}): AnalysisInput =>
+  ({ parcelId: 'p1', lat: 42.36, lng: -71.06, use: 'commercial', gfa: 15000, heightFt: 50, ...over })
+
+describe('assessFeasibility', () => {
+  it('is as-of-right when use allowed, FAR and height within limits', () => {
+    // B-2-65 -> maxFAR 2.0, maxHeight 65, uses include commercial. 15000/10000 = FAR 1.5, 50ft.
+    const r = assessFeasibility(parcel(), project())
+    expect(r.overall).toBe('AS_OF_RIGHT')
+    expect(r.path).toBe('as_of_right')
+  })
+
+  it('needs relief when FAR exceeds the district limit', () => {
+    const r = assessFeasibility(parcel(), project({ gfa: 30000 })) // FAR 3.0 > 2.0
+    expect(r.overall).toBe('NEEDS_RELIEF')
+    expect(r.path).toBe('variance')
+    expect(r.checks.find((c) => c.dimension === 'far')?.status).toBe('NEEDS_RELIEF')
+  })
+
+  it('needs relief when height exceeds the district limit', () => {
+    const r = assessFeasibility(parcel(), project({ heightFt: 90 })) // > 65
+    expect(r.checks.find((c) => c.dimension === 'height')?.status).toBe('NEEDS_RELIEF')
+    expect(r.overall).toBe('NEEDS_RELIEF')
+  })
+
+  it('flags use needing relief when not in the allowed list', () => {
+    const r = assessFeasibility(parcel({ districtCode: 'R-1' }), project({ use: 'commercial', gfa: 5000, heightFt: 30 }))
+    expect(r.checks.find((c) => c.dimension === 'use')?.status).toBe('NEEDS_RELIEF')
+  })
+
+  it('is indeterminate when district is unknown', () => {
+    const r = assessFeasibility(parcel({ districtCode: 'Unknown' }), project())
+    expect(r.overall).toBe('INDETERMINATE')
+    expect(r.path).toBe('as_of_right')
+  })
+
+  it('derives height from stories when heightFt is absent', () => {
+    const r = assessFeasibility(parcel(), project({ heightFt: undefined, stories: 7 })) // 7*11=77 > 65
+    expect(r.checks.find((c) => c.dimension === 'height')?.status).toBe('NEEDS_RELIEF')
+  })
+
+  it('is indeterminate on FAR when lot size is missing', () => {
+    const r = assessFeasibility(parcel({}, null), project())
+    expect(r.checks.find((c) => c.dimension === 'far')?.status).toBe('INDETERMINATE')
+  })
+})
