@@ -40,9 +40,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      <main className="flex-1">
-        <div className="max-w-6xl mx-auto px-6 py-12">{children}</div>
-      </main>
+      <main className="flex-1">{children}</main>
 
       <footer className="border-t border-piranha-charcoal/10 bg-piranha-charcoal text-piranha-bone">
         <div className="max-w-6xl mx-auto px-6 py-8 space-y-3">
