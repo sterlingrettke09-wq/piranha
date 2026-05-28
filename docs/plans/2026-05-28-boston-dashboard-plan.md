@@ -33,8 +33,9 @@
 Run:
 ```bash
 npm install mapbox-gl @mapbox/search-js-react
-npm install --save-dev @types/mapbox-gl
 ```
+
+Note: `mapbox-gl@3+` ships its own TypeScript types, so no `@types/mapbox-gl` install is needed (the DefinitelyTyped stub is deprecated).
 
 Expected: packages added without peer-dep errors.
 
