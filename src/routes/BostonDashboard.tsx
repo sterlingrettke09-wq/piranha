@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Map } from '../components/boston/Map'
 import { SearchBar } from '../components/boston/SearchBar'
+import { ParcelPanel } from '../components/boston/ParcelPanel'
 
 interface Selection {
   lat: number
@@ -22,13 +23,9 @@ export default function BostonDashboard() {
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[28rem] max-w-[calc(100%-2rem)]">
         <SearchBar onSelect={handleSelect} />
       </div>
-      {selected && (
-        <div className="absolute right-4 top-4 bottom-4 z-10 w-[420px] max-w-[calc(100%-2rem)]">
-          <div className="bg-piranha-bone border border-piranha-charcoal/10 h-full p-4 text-sm">
-            Panel placeholder — Task 18 wires data. lat={selected.lat} lng={selected.lng}
-          </div>
-        </div>
-      )}
+      <div className="absolute right-4 top-4 bottom-4 z-10 w-[420px] max-w-[calc(100%-2rem)]">
+        <ParcelPanel selected={selected} />
+      </div>
     </div>
   )
 }
