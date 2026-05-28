@@ -1,6 +1,7 @@
 export interface ParcelInfo {
   address: string
   parcelId: string
+  /** GeoJSON-style [lng, lat]. Matches Mapbox + ArcGIS conventions. */
   coordinates: [number, number]
   zoning: {
     districtCode: string
