@@ -34,6 +34,4 @@ export const BRAND_OVERRIDES: PaintOverride[] = [
 // Subdistricts, GCOD) publishes vector FeatureServer + CSV/Shapefile/GeoJSON/KML only.
 // Map will render brand-styled basemap only; client-side feature rendering of the
 // FeatureServer (FeatureServer/93 verified in Task 6) is a possible future enhancement.
-export const ZONING_RASTER_URL =
-  // Verified in Task 6 — Boston BPDA Zoning Subdistricts as ArcGIS exportTiles or MapServer.
-  '<verified URL here>'
+export const ZONING_RASTER_URL = '<verified URL here>'
