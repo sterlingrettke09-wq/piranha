@@ -1,3 +1,9 @@
+import { PageContainer } from '../components/PageContainer'
+
 export default function Home() {
-  return <h1 className="font-serif text-5xl tracking-tight">Home</h1>
+  return (
+    <PageContainer>
+      <h1 className="font-serif text-5xl tracking-tight">Home</h1>
+    </PageContainer>
+  )
 }
