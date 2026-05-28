@@ -23,7 +23,11 @@ export default function BostonDashboard() {
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[28rem] max-w-[calc(100%-2rem)]">
         <SearchBar onSelect={handleSelect} />
       </div>
-      <div className="absolute right-4 top-4 bottom-4 z-10 w-[420px] max-w-[calc(100%-2rem)]">
+      <div
+        className={`absolute z-10 md:right-4 md:top-4 md:bottom-4 md:left-auto md:w-[420px] md:max-h-none left-0 right-0 bottom-0 max-h-[60vh] ${
+          selected ? 'block' : 'hidden md:block'
+        }`}
+      >
         <ParcelPanel selected={selected} />
       </div>
     </div>
