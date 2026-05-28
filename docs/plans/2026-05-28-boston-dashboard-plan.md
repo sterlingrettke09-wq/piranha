@@ -641,7 +641,7 @@ it('returns 404 when parcels dataset has no feature at point', async () => {
     if (u.includes('Zoning')) {
       return new Response(JSON.stringify({ features: [{ attributes: { Name: 'OS' } }] }))
     }
-    if (u.includes('Parcels')) {
+    if (u.includes('BPDA_Parcels')) {
       return new Response(JSON.stringify({ features: [] }))
     }
     return new Response(JSON.stringify({ features: [] }))

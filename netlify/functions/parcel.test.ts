@@ -146,4 +146,21 @@ describe('parcel handler — resilience', () => {
     expect(res.statusCode).toBe(502)
     expect(JSON.parse(res.body).code).toBe('UPSTREAM_ERROR')
   })
+
+  it('returns 404 when parcels dataset has no feature at point', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes('Zoning')) {
+        return new Response(JSON.stringify({ features: [{ attributes: { Name: 'OS' } }] }))
+      }
+      if (u.includes('BPDA_Parcels')) {
+        return new Response(JSON.stringify({ features: [] }))
+      }
+      return new Response(JSON.stringify({ features: [] }))
+    })
+
+    const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).toBe(404)
+    expect(JSON.parse(res.body).code).toBe('NO_PARCEL')
+  })
 })
