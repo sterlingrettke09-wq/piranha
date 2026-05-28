@@ -25,4 +25,9 @@ describe('parcel handler — input validation', () => {
     expect(res.statusCode).toBe(400)
     expect(JSON.parse(res.body).code).toBe('OUT_OF_BBOX')
   })
+
+  it('accepts in-bbox coords (Boston City Hall) without 400', async () => {
+    const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).not.toBe(400)
+  })
 })
