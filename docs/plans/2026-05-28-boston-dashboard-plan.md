@@ -560,7 +560,7 @@ describe('parcel handler — resilience', () => {
       if (u.includes('Zoning')) {
         return new Response(JSON.stringify({ features: [{ attributes: { Name: 'R-1' } }] }))
       }
-      if (u.includes('Parcels')) {
+      if (u.includes('BPDA_Parcels')) {
         return new Response(JSON.stringify({ features: [{ attributes: { pid: '99', full_addre: '99 Main' } }] }))
       }
       throw new Error('upstream offline')

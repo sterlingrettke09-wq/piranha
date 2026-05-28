@@ -109,3 +109,26 @@ describe('parcel handler — normalization', () => {
     expect(calls.some((u) => u.includes('NFHL'))).toBe(true)
   })
 })
+
+describe('parcel handler — resilience', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('returns 200 with null overlays when historic + flood reject', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes('Zoning')) {
+        return new Response(JSON.stringify({ features: [{ attributes: { Name: 'R-1' } }] }))
+      }
+      if (u.includes('BPDA_Parcels')) {
+        return new Response(JSON.stringify({ features: [{ attributes: { pid: '99', full_addre: '99 Main' } }] }))
+      }
+      throw new Error('upstream offline')
+    })
+
+    const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).toBe(200)
+    const body = JSON.parse(res.body)
+    expect(body.overlays.historicDistrict).toBeNull()
+    expect(body.overlays.floodZone).toBeNull()
+  })
+})
