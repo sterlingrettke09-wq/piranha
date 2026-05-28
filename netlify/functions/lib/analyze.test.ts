@@ -34,6 +34,11 @@ describe('analyze handler', () => {
       expect(res.statusCode).toBe(400)
       expect(JSON.parse(res.body).code).toBe('BAD_INPUT')
     })
+    it('rejects a non-positive gfa with 400 BAD_INPUT', async () => {
+      const res = await call({ ...baseParams, gfa: '0' })
+      expect(res.statusCode).toBe(400)
+      expect(JSON.parse(res.body).code).toBe('BAD_INPUT')
+    })
   })
 
   describe('success', () => {

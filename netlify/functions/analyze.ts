@@ -22,7 +22,7 @@ const fail = (code: AnalysisError['code'], message: string, status: number) => (
 })
 
 const num = (v: string | undefined): number | undefined => {
-  if (v == null) return undefined
+  if (v == null || v === '') return undefined
   const n = Number(v)
   return Number.isFinite(n) ? n : undefined
 }
