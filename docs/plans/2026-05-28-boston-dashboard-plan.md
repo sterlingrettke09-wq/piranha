@@ -406,6 +406,19 @@ Expected: FAIL — current handler returns the `todo` stub.
 **Files:**
 - Modify: `netlify/functions/parcel.ts`
 
+### Live-schema caveats (verified Task 6)
+
+Read these before touching the normalization code. URLs + field lists live in `netlify/functions/_endpoints.ts`.
+
+- **Zoning subdistrict code lives in `Name`**, not `SUBDISTRICT`. The broader category is in `District`. Example at City Hall: `Name: "OS-UP"`, `District: "Government Center/Markets"`. The user-facing `districtCode` field is the subdistrict code (`Name`); `subdistrict` in the normalized output should carry the broader `District` label.
+- **Parcels schema is lowercase + truncated**: `pid`, `full_addre`, `lot_size` (plus `owner`, `zoning_sub`, `neighborho`, `gross_area`, `living_are` if needed later). No `PID_LONG` / `FULL_ADDRES` / `LAND_SF`.
+- **`gross_area` and `living_are` use `1` as a sentinel** for missing / non-building parcels (City Hall returned `1` for both). Treat `<= 1` as null when normalizing either field.
+- **`lot_size` is integer square feet** — usable directly as a number, no parsing needed.
+- **Historic districts**: empty result is the common case (most points are NOT in a historic district). Treat empty as `historicDistrict: null`, never as an error. The field is `HIST_NAME` (not `NAME`); `PLACE_NAME` carries the neighborhood label if needed.
+- **FEMA flood**: `STATIC_BFE = -9999` is the "not applicable" sentinel (Zone X — no base flood elevation). Treat `-9999` as null. Zone code field is `FLD_ZONE`.
+- **Spatial references differ across providers**: BPDA uses `wkid: 102686` (MA State Plane); FEMA uses `wkid: 4269` (NAD83). Every `/query` endpoint accepts `inSR=4326` (WGS84) and projects server-side, so all four calls use the same WGS84 lat/lng — no client-side reprojection.
+- **FEMA's NFHL is a MapServer (not FeatureServer)** but its `/query` endpoint accepts the same parameter shape, so one `fetchFeatures` helper covers all four upstreams.
+
 **Step 1: Replace handler body**
 
 ```ts
@@ -474,23 +487,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 
   const info: ParcelInfo = {
-    address: String(parcel.FULL_ADDRES ?? 'Unknown address'),
-    parcelId: String(parcel.PID_LONG ?? ''),
+    address: String(parcel.full_addre ?? 'Unknown address'),
+    parcelId: String(parcel.pid ?? ''),
     coordinates: [lng, lat],
     zoning: {
-      districtCode: String(zoning?.DISTRICT ?? 'Unknown'),
-      subdistrict: zoning?.SUBDISTRICT ? String(zoning.SUBDISTRICT) : null,
-      article: zoning?.ARTICLE ? String(zoning.ARTICLE) : null,
+      districtCode: String(zoning?.Name ?? 'Unknown'),
+      subdistrict: zoning?.District ? String(zoning.District) : null,
+      article: zoning?.Article ? String(zoning.Article) : null,
       maxHeightFt: null,   // not in current attribute set; surfaced in wizard
       maxFAR: null,        // same
       allowedUses: null,   // open question in design doc
     },
     lot: {
-      sizeSqFt: typeof parcel.LAND_SF === 'number' ? parcel.LAND_SF : null,
+      sizeSqFt: typeof parcel.lot_size === 'number' ? parcel.lot_size : null,
       lotType: null,
     },
     overlays: {
-      historicDistrict: historic?.NAME ? String(historic.NAME) : null,
+      historicDistrict: historic?.HIST_NAME ? String(historic.HIST_NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
     sources: ENDPOINTS,
