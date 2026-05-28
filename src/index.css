@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-piranha-burgundy: #7A1B2E;
+  --color-piranha-charcoal: #1A1A1A;
+  --color-piranha-bone: #F5F1EA;
+  --color-piranha-gold: #C9A55C;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader", ui-serif, Georgia, serif;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-piranha-bone);
+  color: var(--color-piranha-charcoal);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
