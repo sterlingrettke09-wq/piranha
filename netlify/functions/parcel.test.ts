@@ -134,4 +134,16 @@ describe('parcel handler — resilience', () => {
     expect(body.overlays.historicDistrict).toBeNull()
     expect(body.overlays.floodZone).toBeNull()
   })
+
+  it('returns 502 when zoning upstream rejects', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes('Zoning')) throw new Error('zoning down')
+      return new Response(JSON.stringify({ features: [{ attributes: { pid: '1', full_addre: 'x' } }] }))
+    })
+
+    const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).toBe(502)
+    expect(JSON.parse(res.body).code).toBe('UPSTREAM_ERROR')
+  })
 })
