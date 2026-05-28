@@ -7,6 +7,32 @@ const callHandler = (qs: Record<string, string> = {}) =>
   } as unknown as Parameters<typeof handler>[0])
 
 describe('parcel handler — input validation', () => {
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes('Zoning')) {
+        return new Response(JSON.stringify({
+          features: [{ attributes: { Name: 'B-2-65' } }]
+        }))
+      }
+      if (u.includes('BPDA_Parcels')) {
+        return new Response(JSON.stringify({
+          features: [{ attributes: { pid: '0304567000', full_addre: '1 City Hall Sq' } }]
+        }))
+      }
+      if (u.includes('Historic')) {
+        return new Response(JSON.stringify({ features: [] }))
+      }
+      if (u.includes('NFHL')) {
+        return new Response(JSON.stringify({
+          features: [{ attributes: { FLD_ZONE: 'X' } }]
+        }))
+      }
+      throw new Error('Unexpected fetch URL: ' + u)
+    })
+  })
+  afterEach(() => vi.restoreAllMocks())
+
   it('rejects missing lat/lng with 400 OUT_OF_BBOX', async () => {
     const res = await callHandler({})
     expect(res.statusCode).toBe(400)
