@@ -223,7 +223,7 @@ describe('parcel handler — input validation', () => {
 **Step 2: Run, expect failure**
 
 Run: `npm test`
-Expected: FAIL — `handler` not exported yet (the stub exports `handler` but returns `{statusCode: 200, body: "stub"}`).
+Expected: FAIL — Vitest cannot resolve `./parcel` (the module doesn't exist yet). The suite fails to collect, which is the RED state.
 
 ---
 

@@ -14,13 +14,13 @@ describe('parcel handler — input validation', () => {
     expect(body.code).toBe('OUT_OF_BBOX')
   })
 
-  it('rejects non-numeric lat with 400', async () => {
+  it('rejects non-numeric lat with 400 OUT_OF_BBOX', async () => {
     const res = await callHandler({ lat: 'banana', lng: '-71.06' })
     expect(res.statusCode).toBe(400)
     expect(JSON.parse(res.body).code).toBe('OUT_OF_BBOX')
   })
 
-  it('rejects out-of-bbox coords (DC) with 400', async () => {
+  it('rejects out-of-bbox coords (DC) with 400 OUT_OF_BBOX', async () => {
     const res = await callHandler({ lat: '38.89', lng: '-77.03' })
     expect(res.statusCode).toBe(400)
     expect(JSON.parse(res.body).code).toBe('OUT_OF_BBOX')
