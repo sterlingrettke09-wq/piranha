@@ -357,12 +357,12 @@ describe('parcel handler — normalization', () => {
       // Use ENDPOINTS constants in real code; literal substrings here.
       if (u.includes('Zoning')) {
         return new Response(JSON.stringify({
-          features: [{ attributes: { DISTRICT: 'B-2-65', SUBDISTRICT: 'Downtown', ARTICLE: 'Article 8' } }]
+          features: [{ attributes: { Name: 'B-2-65', District: 'Downtown', Article: 'Article 8' } }]
         }))
       }
       if (u.includes('Parcels')) {
         return new Response(JSON.stringify({
-          features: [{ attributes: { PID_LONG: '0304567000', FULL_ADDRES: '1 City Hall Sq', LAND_SF: 12450 } }]
+          features: [{ attributes: { pid: '0304567000', full_addre: '1 City Hall Sq', lot_size: 12450 } }]
         }))
       }
       if (u.includes('Historic')) {
@@ -411,7 +411,7 @@ Expected: FAIL — current handler returns the `todo` stub.
 Read these before touching the normalization code. URLs + field lists live in `netlify/functions/_endpoints.ts`.
 
 - **Zoning subdistrict code lives in `Name`**, not `SUBDISTRICT`. The broader category is in `District`. Example at City Hall: `Name: "OS-UP"`, `District: "Government Center/Markets"`. The user-facing `districtCode` field is the subdistrict code (`Name`); `subdistrict` in the normalized output should carry the broader `District` label.
-- **Parcels schema is lowercase + truncated**: `pid`, `full_addre`, `lot_size` (plus `owner`, `zoning_sub`, `neighborho`, `gross_area`, `living_are` if needed later). No `PID_LONG` / `FULL_ADDRES` / `LAND_SF`.
+- **Parcels schema is lowercase + truncated**: `pid`, `full_addre`, `lot_size` (plus `zoning_sub`, `neighborho`, `gross_area`, `living_are` if needed later). `owner` is available but is PII — do NOT request or log it. No `PID_LONG` / `FULL_ADDRES` / `LAND_SF`.
 - **`gross_area` and `living_are` use `1` as a sentinel** for missing / non-building parcels (City Hall returned `1` for both). Treat `<= 1` as null when normalizing either field.
 - **`lot_size` is integer square feet** — usable directly as a number, no parsing needed.
 - **Historic districts**: empty result is the common case (most points are NOT in a historic district). Treat empty as `historicDistrict: null`, never as an error. The field is `HIST_NAME` (not `NAME`); `PLACE_NAME` carries the neighborhood label if needed.
@@ -550,10 +550,10 @@ describe('parcel handler — resilience', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
       const u = String(url)
       if (u.includes('Zoning')) {
-        return new Response(JSON.stringify({ features: [{ attributes: { DISTRICT: 'R-1' } }] }))
+        return new Response(JSON.stringify({ features: [{ attributes: { Name: 'R-1' } }] }))
       }
       if (u.includes('Parcels')) {
-        return new Response(JSON.stringify({ features: [{ attributes: { PID_LONG: '99', FULL_ADDRES: '99 Main' } }] }))
+        return new Response(JSON.stringify({ features: [{ attributes: { pid: '99', full_addre: '99 Main' } }] }))
       }
       throw new Error('upstream offline')
     })
@@ -593,7 +593,7 @@ it('returns 502 when zoning upstream rejects', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
     const u = String(url)
     if (u.includes('Zoning')) throw new Error('zoning down')
-    return new Response(JSON.stringify({ features: [{ attributes: { PID_LONG: '1', FULL_ADDRES: 'x' } }] }))
+    return new Response(JSON.stringify({ features: [{ attributes: { pid: '1', full_addre: 'x' } }] }))
   })
 
   const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
@@ -628,7 +628,7 @@ it('returns 404 when parcels dataset has no feature at point', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
     const u = String(url)
     if (u.includes('Zoning')) {
-      return new Response(JSON.stringify({ features: [{ attributes: { DISTRICT: 'OS' } }] }))
+      return new Response(JSON.stringify({ features: [{ attributes: { Name: 'OS' } }] }))
     }
     if (u.includes('Parcels')) {
       return new Response(JSON.stringify({ features: [] }))

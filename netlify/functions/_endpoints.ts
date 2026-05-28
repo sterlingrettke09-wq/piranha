@@ -33,6 +33,7 @@
 //   - FEMA flood data is NOT hosted by BPDA; use upstream FEMA NFHL
 //     (hazards.fema.gov). Layer 28 = "Flood Hazard Zones" (polygon).
 export const ENDPOINTS = {
+  // BRITTLE: URL contains date stamp '_20240719'. Re-verify after each BPDA zoning re-publish.
   zoning:
     'https://services.arcgis.com/sFnw0xNflSi8J0uh/ArcGIS/rest/services/Zoning_Subdistricts_Urban_20240719/FeatureServer/93',
   parcels:
@@ -47,6 +48,7 @@ export const ENDPOINTS = {
 // normalization layer should read these and translate to user-facing labels.
 export const FIELDS = {
   zoning: ['Name', 'District', 'Article'],
+  // owner: intentionally NOT requested — PII, do not log.
   parcels: ['pid', 'full_addre', 'lot_size'],
   historic: ['HIST_NAME'],
   flood: ['FLD_ZONE'],
