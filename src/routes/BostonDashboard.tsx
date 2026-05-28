@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import { Map } from '../components/boston/Map'
 
 interface Selection {
   lat: number
@@ -7,13 +8,15 @@ interface Selection {
 
 export default function BostonDashboard() {
   const [selected, setSelected] = useState<Selection | null>(null)
-  void setSelected
+  const handleSelect = useCallback((lat: number, lng: number) => {
+    setSelected({ lat, lng })
+  }, [])
 
   return (
     <div className="relative h-[calc(100vh-4rem-8.5rem)]">
       {/* 4rem header + ~8.5rem footer. Adjust if footer height changes. */}
-      <div className="absolute inset-0 bg-piranha-charcoal/5 grid place-items-center">
-        <p className="text-sm uppercase tracking-wider">Map placeholder — Task 15 wires Mapbox.</p>
+      <div className="absolute inset-0">
+        <Map onPointSelect={handleSelect} focusedPoint={selected} />
       </div>
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[28rem] max-w-[calc(100%-2rem)]">
         <div className="bg-piranha-bone border border-piranha-charcoal/10 p-3 text-sm">
