@@ -360,7 +360,7 @@ describe('parcel handler — normalization', () => {
           features: [{ attributes: { Name: 'B-2-65', District: 'Downtown', Article: 'Article 8' } }]
         }))
       }
-      if (u.includes('Parcels')) {
+      if (u.includes('BPDA_Parcels')) {
         return new Response(JSON.stringify({
           features: [{ attributes: { pid: '0304567000', full_addre: '1 City Hall Sq', lot_size: 12450 } }]
         }))
@@ -368,7 +368,7 @@ describe('parcel handler — normalization', () => {
       if (u.includes('Historic')) {
         return new Response(JSON.stringify({ features: [] }))
       }
-      if (u.includes('Flood')) {
+      if (u.includes('NFHL')) {
         return new Response(JSON.stringify({
           features: [{ attributes: { FLD_ZONE: 'X' } }]
         }))
@@ -389,7 +389,15 @@ describe('parcel handler — normalization', () => {
     expect(body.overlays.historicDistrict).toBeNull()
     expect(body.overlays.floodZone).toBe('X')
     expect(body.lot.sizeSqFt).toBe(12450)
-    expect(body.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(body.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/)
+
+    const fetchMock = vi.mocked(globalThis.fetch)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    const calls = fetchMock.mock.calls.map((c) => String(c[0]))
+    expect(calls.some((u) => u.includes('Zoning'))).toBe(true)
+    expect(calls.some((u) => u.includes('BPDA_Parcels'))).toBe(true)
+    expect(calls.some((u) => u.includes('Historic'))).toBe(true)
+    expect(calls.some((u) => u.includes('NFHL'))).toBe(true)
   })
 })
 ```
