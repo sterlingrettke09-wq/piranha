@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { handler } from './parcel'
+import { handler } from '../parcel'
 
 const callHandler = (qs: Record<string, string> = {}) =>
   handler({
