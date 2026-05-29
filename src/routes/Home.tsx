@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { Button } from '../components/ui/Button'
@@ -23,22 +22,11 @@ const STEPS = [
 ]
 
 export default function Home() {
-  const [logoFailed, setLogoFailed] = useState(false)
-
   return (
     <>
       <PiranhaIntro />
       <PageContainer>
-      <section className="mx-auto max-w-3xl py-8 text-center">
-        {!logoFailed && (
-          <img
-            src="/logo/the-piranha-project-stacked.png"
-            alt="The Piranha Project"
-            className="mx-auto mb-10 w-full max-w-md mix-blend-multiply"
-            onError={() => setLogoFailed(true)}
-          />
-        )}
-
+      <section className="mx-auto max-w-3xl py-16 text-center">
         <h1 className="font-serif text-4xl leading-tight tracking-tight text-piranha-charcoal sm:text-5xl">
           Ever wonder why it’s nearly impossible to build in America’s big cities?
         </h1>
