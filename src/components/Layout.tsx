@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Wordmark } from './Wordmark'
+import { CitiesNav } from './CitiesNav'
 
 interface LayoutProps {
   children: ReactNode
@@ -8,10 +9,14 @@ interface LayoutProps {
 
 const navItems = [
   { to: '/', label: 'Home', end: true },
-  { to: '/boston', label: 'Cities' },
   { to: '/ask', label: 'Ask' },
   { to: '/about', label: 'About' },
 ]
+
+const linkClass = ({ isActive }: { isActive: boolean }) =>
+  `text-sm font-semibold uppercase tracking-wider transition-colors ${
+    isActive ? 'text-piranha-burgundy' : 'text-piranha-charcoal hover:text-piranha-burgundy'
+  }`
 
 export function Layout({ children }: LayoutProps) {
   return (
@@ -20,22 +25,17 @@ export function Layout({ children }: LayoutProps) {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Wordmark />
           <nav className="flex items-center gap-8">
-            {navItems.map(({ to, label, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  `text-sm font-semibold uppercase tracking-wider transition-colors ${
-                    isActive
-                      ? 'text-piranha-burgundy'
-                      : 'text-piranha-charcoal hover:text-piranha-burgundy'
-                  }`
-                }
-              >
-                {label}
-              </NavLink>
-            ))}
+            <NavLink to="/" end className={linkClass}>
+              Home
+            </NavLink>
+            <CitiesNav />
+            {navItems
+              .filter((i) => i.to !== '/')
+              .map(({ to, label }) => (
+                <NavLink key={to} to={to} className={linkClass}>
+                  {label}
+                </NavLink>
+              ))}
           </nav>
         </div>
       </header>
