@@ -22,10 +22,32 @@ export interface FeasibilityCheck {
   note: string | null
 }
 
+export type HurdleStatus = 'required' | 'likely' | 'info'
+
+// A non-zoning regulatory hurdle — historic review, affordability mandates,
+// environmental review, fees, private governance, etc.
+export interface Hurdle {
+  category:
+    | 'historic'
+    | 'affordability'
+    | 'review'
+    | 'environmental'
+    | 'fees'
+    | 'private'
+    | 'flood'
+    | 'labor'
+  label: string
+  status: HurdleStatus
+  note: string
+  /** Estimated months this hurdle adds to approval, if any. */
+  addsMonths?: number
+}
+
 export interface AnalysisResult {
   parcel: { address: string; parcelId: string; districtCode: string }
   project: AnalysisInput
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[] }
+  hurdles: Hurdle[]
   costs: { hard: number; soft: number; permit: number; total: number; currency: 'USD' }
   timeline: { months: number; path: ApprovalPath }
   narrative: string

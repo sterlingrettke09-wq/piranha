@@ -3,6 +3,7 @@ import type { AnalysisError, AnalysisInput, AnalysisResult, Use } from '../../sr
 import { USES } from '../../src/types/analysis'
 import { getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
+import { assessHurdles } from './lib/hurdles'
 import { estimateCost } from './lib/cost'
 import { buildNarrative } from './lib/narrative'
 import { assumptionsSummary } from './lib/assumptions'
@@ -59,14 +60,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const feasibility = assessFeasibility(parcel, project)
   const estimate = estimateCost(project, feasibility)
+  const hurdles = assessHurdles(city, parcel, project)
   const narrative = buildNarrative(parcel, project, feasibility, estimate)
+
+  // Non-zoning hurdles add to the approval timeline.
+  const hurdleMonths = hurdles.reduce((sum, h) => sum + (h.addsMonths ?? 0), 0)
+  const timeline = {
+    ...estimate.timeline,
+    months: estimate.timeline.months > 0 ? estimate.timeline.months + hurdleMonths : estimate.timeline.months,
+  }
 
   const result: AnalysisResult = {
     parcel: { address: parcel.address, parcelId: parcel.parcelId, districtCode: parcel.zoning.districtCode },
     project,
     feasibility: { overall: feasibility.overall, checks: feasibility.checks },
+    hurdles,
     costs: estimate.costs,
-    timeline: estimate.timeline,
+    timeline,
     narrative,
     assumptions: assumptionsSummary(),
     disclaimers: DISCLAIMERS,

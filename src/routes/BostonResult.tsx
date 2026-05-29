@@ -5,6 +5,7 @@ import { useAnalysis } from '../hooks/useAnalysis'
 import { USES, type AnalysisInput, type Use } from '../types/analysis'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
 import { FeasibilityChecklist } from '../components/boston/result/FeasibilityChecklist'
+import { HurdlesSection } from '../components/boston/result/HurdlesSection'
 import { CostBreakdown } from '../components/boston/result/CostBreakdown'
 import { Timeline } from '../components/boston/result/Timeline'
 import { NarrativeSection } from '../components/boston/result/NarrativeSection'
@@ -114,6 +115,7 @@ export default function BostonResult() {
             <VerdictBanner overall={state.data.feasibility.overall} />
             <NarrativeSection narrative={state.data.narrative} />
             <FeasibilityChecklist checks={state.data.feasibility.checks} />
+            <HurdlesSection hurdles={state.data.hurdles} />
             <CostBreakdown costs={state.data.costs} />
             <Timeline timeline={state.data.timeline} />
             <AssumptionsDisclosure assumptions={state.data.assumptions} />
