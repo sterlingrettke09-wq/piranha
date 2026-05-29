@@ -1,4 +1,5 @@
 import type { Use } from '../../../types/analysis'
+import { SliderInput } from './SliderInput'
 
 interface Props {
   use: Use | null
@@ -8,23 +9,32 @@ interface Props {
   onUnits: (v: string) => void
 }
 
-const inputClass =
-  'w-full rounded-md border border-piranha-charcoal/20 bg-white px-3 py-2 text-piranha-charcoal focus:border-piranha-burgundy focus:outline-none'
-
 export function StepSize({ use, gfa, units, onGfa, onUnits }: Props) {
   const showUnits = use === 'residential' || use === 'mixed'
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <h2 className="font-serif text-2xl tracking-tight">How big?</h2>
-      <label className="block space-y-1">
-        <span className="text-sm font-medium text-piranha-charcoal">Gross floor area (sq ft)</span>
-        <input type="number" inputMode="numeric" min={1} value={gfa} onChange={(e) => onGfa(e.target.value)} className={inputClass} placeholder="e.g. 15000" />
-      </label>
+      <SliderInput
+        label="Gross floor area"
+        value={gfa}
+        onChange={onGfa}
+        min={0}
+        max={250000}
+        step={1000}
+        unit="sq ft"
+        help="Total built area across all floors."
+      />
       {showUnits && (
-        <label className="block space-y-1">
-          <span className="text-sm font-medium text-piranha-charcoal">Number of units (optional)</span>
-          <input type="number" inputMode="numeric" min={0} value={units} onChange={(e) => onUnits(e.target.value)} className={inputClass} placeholder="e.g. 12" />
-        </label>
+        <SliderInput
+          label="Number of units"
+          value={units}
+          onChange={onUnits}
+          min={0}
+          max={300}
+          step={1}
+          unit="units"
+          help="Optional — dwelling units in the project."
+        />
       )}
     </div>
   )

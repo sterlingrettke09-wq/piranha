@@ -69,10 +69,11 @@ export default function About() {
 
         <Section title="Data sources">
           <p>
-            Live today: Boston — the city’s zoning subdistricts and parcels, FEMA
-            flood-hazard zones, and Boston Landmarks historic districts. New York City,
-            Chicago, San Francisco, and Seattle are next, each wired from that city’s
-            own public data.
+            Live today across five cities — Boston, New York, Chicago, San Francisco,
+            and Seattle — each wired from that city’s own public data: zoning districts,
+            parcels, and FEMA flood-hazard zones, plus local historic districts where
+            available. Coverage depth varies by city, and we’re adding more rule types
+            (affordability mandates, review processes, fees) as we go.
           </p>
         </Section>
 
