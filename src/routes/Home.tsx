@@ -31,7 +31,7 @@ export default function Home() {
           <img
             src="/logo/the-piranha-project-stacked.png"
             alt="The Piranha Project"
-            className="mx-auto mb-10 w-full max-w-md"
+            className="mx-auto mb-10 w-full max-w-md mix-blend-multiply"
             onError={() => setLogoFailed(true)}
           />
         )}

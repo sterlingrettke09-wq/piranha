@@ -16,7 +16,7 @@ export function Wordmark() {
         <img
           src={WORDMARK_SRC}
           alt="The Piranha Project"
-          className="h-7 sm:h-9 w-auto"
+          className="h-9 sm:h-11 w-auto mix-blend-multiply"
           onError={() => setImgFailed(true)}
         />
       )}
