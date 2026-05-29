@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 
-const SEEN_KEY = 'tpp_intro_seen'
-
 type Phase = 'intro' | 'exiting' | 'done'
 
 interface Fish {
@@ -17,11 +15,7 @@ const PALETTE = ['#7a2630', '#9a2f3a', '#b0454e']
 
 function initialPhase(): Phase {
   if (typeof window === 'undefined') return 'done'
-  try {
-    if (localStorage.getItem(SEEN_KEY)) return 'done'
-  } catch {
-    /* localStorage unavailable — show the intro */
-  }
+  // Plays on every visit. Honor reduced-motion by skipping straight to the site.
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'done'
   return 'intro'
 }
@@ -217,14 +211,7 @@ export function PiranhaIntro() {
   // After the exit transition, remove the intro and remember it.
   useEffect(() => {
     if (phase !== 'exiting') return
-    const id = setTimeout(() => {
-      try {
-        localStorage.setItem(SEEN_KEY, '1')
-      } catch {
-        /* ignore */
-      }
-      setPhase('done')
-    }, 1100)
+    const id = setTimeout(() => setPhase('done'), 1100)
     return () => clearTimeout(id)
   }, [phase])
 
