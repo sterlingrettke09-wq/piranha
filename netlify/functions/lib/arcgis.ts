@@ -14,6 +14,7 @@ export const buildQuery = (
   lng: number,
   fields: readonly string[],
   returnGeometry = false,
+  outSR?: number,
 ) => {
   const base = url.endsWith('/') ? url.slice(0, -1) : url
   const u = new URL(base + '/query')
@@ -23,6 +24,7 @@ export const buildQuery = (
   u.searchParams.set('spatialRel', 'esriSpatialRelIntersects')
   u.searchParams.set('outFields', fields.join(','))
   u.searchParams.set('returnGeometry', returnGeometry ? 'true' : 'false')
+  if (outSR != null) u.searchParams.set('outSR', String(outSR))
   u.searchParams.set('f', 'json')
   return u.toString()
 }
@@ -35,11 +37,12 @@ export const fetchFeatures = async (
   lng: number,
   fields: readonly string[],
   returnGeometry = false,
+  outSR?: number,
 ): Promise<FeatureSet> => {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 6000)
   try {
-    const res = await fetch(buildQuery(url, lat, lng, fields, returnGeometry), { signal: ctrl.signal })
+    const res = await fetch(buildQuery(url, lat, lng, fields, returnGeometry, outSR), { signal: ctrl.signal })
     if (!res.ok) throw new Error(`Upstream ${url} returned ${res.status}`)
     return (await res.json()) as FeatureSet
   } finally {

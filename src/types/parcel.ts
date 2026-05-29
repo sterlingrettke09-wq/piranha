@@ -71,6 +71,13 @@ export const CHICAGO_BBOX: Bbox = {
   east: -87.52,
 }
 
+export const SF_BBOX: Bbox = {
+  south: 37.70,
+  west: -122.52,
+  north: 37.84,
+  east: -122.35,
+}
+
 export function isInBbox(bbox: Bbox, lat: number, lng: number): boolean {
   return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east
 }

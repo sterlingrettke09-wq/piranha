@@ -3,6 +3,7 @@ import {
   BOSTON_BBOX,
   NYC_BBOX,
   CHICAGO_BBOX,
+  SF_BBOX,
   type Bbox,
   type ParcelInfo,
 } from '../../../src/types/parcel'
@@ -11,6 +12,7 @@ import { mapZoningUse } from './zoningUse'
 import { fetchFeatures, firstAttrs, type ParcelResult } from './arcgis'
 import { getNycParcelInfo } from './providers/nyc'
 import { getChicagoParcelInfo } from './providers/chicago'
+import { getSfParcelInfo } from './providers/sf'
 
 export type { ParcelResult }
 
@@ -83,6 +85,7 @@ const CITIES: Record<string, CityConfig> = {
   boston: { bbox: BOSTON_BBOX, label: 'Boston', provider: getBostonParcelInfo },
   nyc: { bbox: NYC_BBOX, label: 'New York City', provider: getNycParcelInfo },
   chicago: { bbox: CHICAGO_BBOX, label: 'Chicago', provider: getChicagoParcelInfo },
+  sf: { bbox: SF_BBOX, label: 'San Francisco', provider: getSfParcelInfo },
 }
 
 export const LIVE_CITIES = Object.keys(CITIES)
