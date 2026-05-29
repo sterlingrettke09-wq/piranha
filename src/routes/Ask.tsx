@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
+import { AskAssistant } from '../components/AskAssistant'
 
 interface QA {
   q: string
@@ -73,6 +74,12 @@ export default function Ask() {
             .
           </p>
         </header>
+
+        <AskAssistant />
+
+        <h2 className="font-serif text-2xl tracking-tight text-piranha-charcoal">
+          Common questions
+        </h2>
 
         <div className="divide-y divide-piranha-charcoal/10 rounded-lg border border-piranha-charcoal/10">
           {FAQ.map((item) => (
