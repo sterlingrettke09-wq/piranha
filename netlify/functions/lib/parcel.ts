@@ -62,9 +62,14 @@ export async function getParcelInfo(lat: number, lng: number): Promise<ParcelRes
   const historic = historicR.status === 'fulfilled' ? firstAttrs(historicR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 
+  const stNum = parcel.ST_NUM != null ? String(parcel.ST_NUM).trim() : ''
+  const stName = parcel.ST_NAME != null ? String(parcel.ST_NAME).trim() : ''
+  const address = [stNum, stName].filter(Boolean).join(' ') || 'Unknown address'
+  const landSf = Number(parcel.LAND_SF)
+
   const info: ParcelInfo = {
-    address: String(parcel.full_addre ?? 'Unknown address'),
-    parcelId: String(parcel.pid ?? ''),
+    address,
+    parcelId: String(parcel.PID ?? ''),
     coordinates: [lng, lat],
     zoning: {
       districtCode: String(zoning?.Name ?? 'Unknown'),
@@ -75,7 +80,7 @@ export async function getParcelInfo(lat: number, lng: number): Promise<ParcelRes
       allowedUses: mapZoningUse(typeof zoning?.Use_ === 'string' ? zoning.Use_ : null),
     },
     lot: {
-      sizeSqFt: typeof parcel.lot_size === 'number' ? parcel.lot_size : null,
+      sizeSqFt: Number.isFinite(landSf) && landSf > 0 ? landSf : null,
       lotType: null,
     },
     overlays: {

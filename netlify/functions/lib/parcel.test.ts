@@ -15,9 +15,9 @@ describe('parcel handler — input validation', () => {
           features: [{ attributes: { Name: 'B-2-65' } }]
         }))
       }
-      if (u.includes('BPDA_Parcels')) {
+      if (u.includes('Parcels_24_detailed')) {
         return new Response(JSON.stringify({
-          features: [{ attributes: { pid: '0304567000', full_addre: '1 City Hall Sq' } }]
+          features: [{ attributes: { PID: '0304567000', ST_NUM: '1', ST_NAME: 'City Hall Sq' } }]
         }))
       }
       if (u.includes('Historic')) {
@@ -69,9 +69,9 @@ describe('parcel handler — normalization', () => {
           features: [{ attributes: { Name: 'B-2-65', District: 'Downtown', Article: 'Article 8' } }]
         }))
       }
-      if (u.includes('BPDA_Parcels')) {
+      if (u.includes('Parcels_24_detailed')) {
         return new Response(JSON.stringify({
-          features: [{ attributes: { pid: '0304567000', full_addre: '1 City Hall Sq', lot_size: 12450 } }]
+          features: [{ attributes: { PID: '0304567000', ST_NUM: '1', ST_NAME: 'City Hall Sq', LAND_SF: 12450 } }]
         }))
       }
       if (u.includes('Historic')) {
@@ -104,7 +104,7 @@ describe('parcel handler — normalization', () => {
     expect(fetchMock).toHaveBeenCalledTimes(4)
     const calls = fetchMock.mock.calls.map((c) => String(c[0]))
     expect(calls.some((u) => u.includes('Zoning'))).toBe(true)
-    expect(calls.some((u) => u.includes('BPDA_Parcels'))).toBe(true)
+    expect(calls.some((u) => u.includes('Parcels_24_detailed'))).toBe(true)
     expect(calls.some((u) => u.includes('Historic'))).toBe(true)
     expect(calls.some((u) => u.includes('NFHL'))).toBe(true)
   })
@@ -121,8 +121,8 @@ describe('parcel handler — zoning dimensional limits', () => {
           features: [{ attributes: { Name: '1', District: 'Stuart Street District', Article: 'Article 43', HeightMax: 155, FARMax: 10, Use_: 'Mixed-Use' } }]
         }))
       }
-      if (u.includes('BPDA_Parcels')) {
-        return new Response(JSON.stringify({ features: [{ attributes: { pid: '1', full_addre: '1 Stuart St', lot_size: 5000 } }] }))
+      if (u.includes('Parcels_24_detailed')) {
+        return new Response(JSON.stringify({ features: [{ attributes: { PID: '1', ST_NUM: '1', ST_NAME: 'Stuart St', LAND_SF: 5000 } }] }))
       }
       return new Response(JSON.stringify({ features: [] }))
     })
@@ -143,8 +143,8 @@ describe('parcel handler — zoning dimensional limits', () => {
           features: [{ attributes: { Name: 'OS-UP', District: 'Open Space', HeightMax: null, FARMax: null, Use_: 'Open Space' } }]
         }))
       }
-      if (u.includes('BPDA_Parcels')) {
-        return new Response(JSON.stringify({ features: [{ attributes: { pid: '2', full_addre: '0 Cambridge St', lot_size: 1000 } }] }))
+      if (u.includes('Parcels_24_detailed')) {
+        return new Response(JSON.stringify({ features: [{ attributes: { PID: '2', ST_NUM: '0', ST_NAME: 'Cambridge St', LAND_SF: 1000 } }] }))
       }
       return new Response(JSON.stringify({ features: [] }))
     })
@@ -168,8 +168,8 @@ describe('parcel handler — resilience', () => {
       if (u.includes('Zoning')) {
         return new Response(JSON.stringify({ features: [{ attributes: { Name: 'R-1' } }] }))
       }
-      if (u.includes('BPDA_Parcels')) {
-        return new Response(JSON.stringify({ features: [{ attributes: { pid: '99', full_addre: '99 Main' } }] }))
+      if (u.includes('Parcels_24_detailed')) {
+        return new Response(JSON.stringify({ features: [{ attributes: { PID: '99', ST_NUM: '99', ST_NAME: 'Main' } }] }))
       }
       throw new Error('upstream offline')
     })
@@ -188,7 +188,7 @@ describe('parcel handler — resilience', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
       const u = String(url)
       if (u.includes('Zoning')) throw new Error('zoning down')
-      return new Response(JSON.stringify({ features: [{ attributes: { pid: '1', full_addre: 'x' } }] }))
+      return new Response(JSON.stringify({ features: [{ attributes: { PID: '1', ST_NUM: '1', ST_NAME: 'x' } }] }))
     })
 
     const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
@@ -202,7 +202,7 @@ describe('parcel handler — resilience', () => {
       if (u.includes('Zoning')) {
         return new Response(JSON.stringify({ features: [{ attributes: { Name: 'OS' } }] }))
       }
-      if (u.includes('BPDA_Parcels')) {
+      if (u.includes('Parcels_24_detailed')) {
         return new Response(JSON.stringify({ features: [] }))
       }
       return new Response(JSON.stringify({ features: [] }))

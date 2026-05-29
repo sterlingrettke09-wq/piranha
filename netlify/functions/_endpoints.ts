@@ -36,8 +36,12 @@ export const ENDPOINTS = {
   // BRITTLE: URL contains date stamp '_20240719'. Re-verify after each BPDA zoning re-publish.
   zoning:
     'https://services.arcgis.com/sFnw0xNflSi8J0uh/ArcGIS/rest/services/Zoning_Subdistricts_Urban_20240719/FeatureServer/93',
+  // Citywide assessing parcels (~182k features) WITH address + land area.
+  // Verified 2026-05-29: BPDA_Parcels was a 324-feature curated subset and
+  // missed almost every real building — DO NOT use it. Parcels_24_detailed is
+  // layer index 112 on the BPDA hosting server.
   parcels:
-    'https://services.arcgis.com/sFnw0xNflSi8J0uh/ArcGIS/rest/services/BPDA_Parcels/FeatureServer/0',
+    'https://gis.bostonplans.org/hosting/rest/services/Parcels_24_detailed/FeatureServer/112',
   historic:
     'https://services.arcgis.com/sFnw0xNflSi8J0uh/ArcGIS/rest/services/Historic_Districts_BLC/FeatureServer/0',
   flood:
@@ -51,8 +55,9 @@ export const FIELDS = {
   // (verified 2026-05-29): e.g. Stuart St => HeightMax 155, FARMax 10,
   // Use_ "Mixed-Use"; Open Space subdistricts return null limits.
   zoning: ['Name', 'District', 'Article', 'HeightMax', 'FARMax', 'Use_'],
-  // owner: intentionally NOT requested — PII, do not log.
-  parcels: ['pid', 'full_addre', 'lot_size'],
+  // address = ST_NUM + ST_NAME; PID = parcel id; LAND_SF = lot size (sq ft).
+  // OWNER / MAIL_* exist on this layer but are intentionally NOT requested — PII.
+  parcels: ['PID', 'ST_NUM', 'ST_NAME', 'LAND_SF'],
   historic: ['HIST_NAME'],
   flood: ['FLD_ZONE'],
 } as const

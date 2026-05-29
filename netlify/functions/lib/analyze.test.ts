@@ -10,7 +10,7 @@ const mockParcel = () =>
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
     const u = String(url)
     if (u.includes('Zoning')) return new Response(JSON.stringify({ features: [{ attributes: { Name: 'B-2-65' } }] }))
-    if (u.includes('BPDA_Parcels')) return new Response(JSON.stringify({ features: [{ attributes: { pid: '99', full_addre: '1 Test St', lot_size: 10000 } }] }))
+    if (u.includes('Parcels_24_detailed')) return new Response(JSON.stringify({ features: [{ attributes: { PID: '99', ST_NUM: '1', ST_NAME: 'Test St', LAND_SF: 10000 } }] }))
     return new Response(JSON.stringify({ features: [] }))
   })
 
@@ -63,7 +63,7 @@ describe('analyze handler', () => {
     it('returns 502 when zoning upstream rejects', async () => {
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
         if (String(url).includes('Zoning')) throw new Error('down')
-        return new Response(JSON.stringify({ features: [{ attributes: { pid: '1', full_addre: 'x' } }] }))
+        return new Response(JSON.stringify({ features: [{ attributes: { PID: '1', ST_NUM: '1', ST_NAME: 'x' } }] }))
       })
       const res = await call(baseParams)
       expect(res.statusCode).toBe(502)
