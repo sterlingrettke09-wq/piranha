@@ -2,6 +2,7 @@ import {
   isInBbox,
   BOSTON_BBOX,
   NYC_BBOX,
+  CHICAGO_BBOX,
   type Bbox,
   type ParcelInfo,
 } from '../../../src/types/parcel'
@@ -9,6 +10,7 @@ import { ENDPOINTS, FIELDS } from '../_endpoints'
 import { mapZoningUse } from './zoningUse'
 import { fetchFeatures, firstAttrs, type ParcelResult } from './arcgis'
 import { getNycParcelInfo } from './providers/nyc'
+import { getChicagoParcelInfo } from './providers/chicago'
 
 export type { ParcelResult }
 
@@ -80,6 +82,7 @@ interface CityConfig {
 const CITIES: Record<string, CityConfig> = {
   boston: { bbox: BOSTON_BBOX, label: 'Boston', provider: getBostonParcelInfo },
   nyc: { bbox: NYC_BBOX, label: 'New York City', provider: getNycParcelInfo },
+  chicago: { bbox: CHICAGO_BBOX, label: 'Chicago', provider: getChicagoParcelInfo },
 }
 
 export const LIVE_CITIES = Object.keys(CITIES)
