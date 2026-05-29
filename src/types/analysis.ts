@@ -44,7 +44,17 @@ export interface Hurdle {
 }
 
 export interface AnalysisResult {
-  parcel: { address: string; parcelId: string; districtCode: string }
+  parcel: {
+    address: string
+    parcelId: string
+    districtCode: string
+    lotSqFt: number | null
+    allowedUses: string[] | null
+    maxFAR: number | null
+    maxHeightFt: number | null
+    floodZone: string | null
+    historicDistrict: string | null
+  }
   project: AnalysisInput
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[] }
   hurdles: Hurdle[]
@@ -52,6 +62,7 @@ export interface AnalysisResult {
   timeline: { months: number; path: ApprovalPath }
   narrative: string
   assumptions: Record<string, string>
+  sources: Record<string, string>
   disclaimers: string[]
   generatedAt: string
 }

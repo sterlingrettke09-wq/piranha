@@ -4,12 +4,16 @@ import { PageContainer } from '../components/PageContainer'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { USES, type AnalysisInput, type Use } from '../types/analysis'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
+import { MiniMap } from '../components/boston/result/MiniMap'
+import { SiteFacts } from '../components/boston/result/SiteFacts'
 import { FeasibilityChecklist } from '../components/boston/result/FeasibilityChecklist'
 import { HurdlesSection } from '../components/boston/result/HurdlesSection'
 import { CostBreakdown } from '../components/boston/result/CostBreakdown'
 import { Timeline } from '../components/boston/result/Timeline'
 import { NarrativeSection } from '../components/boston/result/NarrativeSection'
 import { AssumptionsDisclosure } from '../components/boston/result/AssumptionsDisclosure'
+import { NextSteps } from '../components/boston/result/NextSteps'
+import { SourceLinks } from '../components/boston/result/SourceLinks'
 
 function parseInput(params: URLSearchParams): AnalysisInput | null {
   const city = params.get('city') ?? 'boston'
@@ -112,13 +116,17 @@ export default function BostonResult() {
                 Parcel {state.data.parcel.parcelId} · district {state.data.parcel.districtCode}
               </p>
             </header>
+            <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
             <VerdictBanner overall={state.data.feasibility.overall} />
             <NarrativeSection narrative={state.data.narrative} />
+            <SiteFacts parcel={state.data.parcel} />
             <FeasibilityChecklist checks={state.data.feasibility.checks} />
             <HurdlesSection hurdles={state.data.hurdles} />
-            <CostBreakdown costs={state.data.costs} />
+            <CostBreakdown costs={state.data.costs} gfa={state.data.project.gfa} units={state.data.project.units} />
             <Timeline timeline={state.data.timeline} />
+            <NextSteps city={state.data.project.city} />
             <AssumptionsDisclosure assumptions={state.data.assumptions} />
+            <SourceLinks sources={state.data.sources} />
             {state.data.disclaimers.length > 0 && (
               <footer className="space-y-1 border-t border-piranha-charcoal/10 pt-4 text-xs text-piranha-charcoal/55">
                 {state.data.disclaimers.map((d, i) => (

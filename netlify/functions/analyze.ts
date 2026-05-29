@@ -71,7 +71,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   const result: AnalysisResult = {
-    parcel: { address: parcel.address, parcelId: parcel.parcelId, districtCode: parcel.zoning.districtCode },
+    parcel: {
+      address: parcel.address,
+      parcelId: parcel.parcelId,
+      districtCode: parcel.zoning.districtCode,
+      lotSqFt: parcel.lot.sizeSqFt,
+      allowedUses: parcel.zoning.allowedUses,
+      maxFAR: parcel.zoning.maxFAR,
+      maxHeightFt: parcel.zoning.maxHeightFt,
+      floodZone: parcel.overlays.floodZone,
+      historicDistrict: parcel.overlays.historicDistrict,
+    },
     project,
     feasibility: { overall: feasibility.overall, checks: feasibility.checks },
     hurdles,
@@ -79,6 +89,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     timeline,
     narrative,
     assumptions: assumptionsSummary(),
+    sources: parcel.sources,
     disclaimers: DISCLAIMERS,
     generatedAt: new Date().toISOString(),
   }

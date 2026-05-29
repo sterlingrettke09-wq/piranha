@@ -4,12 +4,20 @@ function usd(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 }
 
-export function CostBreakdown({ costs }: { costs: AnalysisResult['costs'] }) {
+interface Props {
+  costs: AnalysisResult['costs']
+  gfa: number
+  units?: number
+}
+
+export function CostBreakdown({ costs, gfa, units }: Props) {
   const rows: { label: string; value: number }[] = [
     { label: 'Construction (hard)', value: costs.hard },
     { label: 'Soft costs', value: costs.soft },
     { label: 'Permitting & approvals', value: costs.permit },
   ]
+  const perSqft = gfa > 0 ? costs.total / gfa : null
+  const perUnit = units && units > 0 ? costs.total / units : null
   return (
     <section className="space-y-3">
       <h3 className="font-serif text-xl tracking-tight">Estimated cost</h3>
@@ -25,6 +33,20 @@ export function CostBreakdown({ costs }: { costs: AnalysisResult['costs'] }) {
           <dd className="font-semibold text-piranha-charcoal tabular-nums">{usd(costs.total)}</dd>
         </div>
       </dl>
+      {(perSqft || perUnit) && (
+        <div className="flex flex-wrap gap-6 px-1 text-sm text-piranha-charcoal/70">
+          {perSqft && (
+            <span>
+              <span className="font-semibold text-piranha-charcoal tabular-nums">{usd(perSqft)}</span> / sq ft
+            </span>
+          )}
+          {perUnit && (
+            <span>
+              <span className="font-semibold text-piranha-charcoal tabular-nums">{usd(perUnit)}</span> / unit
+            </span>
+          )}
+        </div>
+      )}
     </section>
   )
 }
