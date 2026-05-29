@@ -27,6 +27,12 @@ export default function Home() {
       <PiranhaIntro />
       <PageContainer>
       <section className="mx-auto max-w-3xl py-16 text-center">
+        <img
+          src="/logo/piranha-fish.png"
+          alt=""
+          aria-hidden="true"
+          className="mx-auto mb-8 w-32 mix-blend-multiply saturate-[.9] sm:w-40"
+        />
         <h1 className="font-serif text-4xl leading-tight tracking-tight text-piranha-charcoal sm:text-5xl">
           Ever wonder why it’s nearly impossible to build in America’s big cities?
         </h1>
@@ -36,7 +42,7 @@ export default function Home() {
           between you and a finished building — what it costs to clear, how long it
           takes, and where the rules have gone too far.{' '}
           <span className="font-semibold text-piranha-charcoal">
-            We help you cut through the red tape — and figure out how to reform it.
+            We help you bite through the red tape — and figure out how to reform it.
           </span>
         </p>
 

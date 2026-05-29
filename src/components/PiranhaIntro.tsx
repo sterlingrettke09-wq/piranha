@@ -88,7 +88,7 @@ export function PiranhaIntro() {
     resize()
     window.addEventListener('resize', resize)
 
-    const count = Math.max(18, Math.min(46, Math.round((w * h) / 26000)))
+    const count = Math.max(30, Math.min(80, Math.round((w * h) / 15000)))
     const fish: Fish[] = Array.from({ length: count }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
@@ -154,8 +154,11 @@ export function PiranhaIntro() {
           ax += (alx / k - f.vx) * 0.05
           ay += (aly / k - f.vy) * 0.05
         }
-        ax += (target.x - f.x) * 0.0006
-        ay += (target.y - f.y) * 0.0006
+        // Pull toward the cursor (stronger once the pointer is active) so the
+        // school visibly chases the mouse.
+        const pull = usingPointer ? 0.0016 : 0.0006
+        ax += (target.x - f.x) * pull
+        ay += (target.y - f.y) * pull
 
         f.vx += ax
         f.vy += ay
@@ -228,7 +231,7 @@ export function PiranhaIntro() {
         <h1 className="font-serif text-4xl tracking-tight text-piranha-bone drop-shadow-lg sm:text-6xl">
           The Piranha Project
         </h1>
-        <p className="mt-4 text-piranha-bone/70">Cut through the red tape.</p>
+        <p className="mt-4 text-piranha-bone/70">Bite through the Red Tape.</p>
         <button
           type="button"
           onClick={() => setPhase('exiting')}
