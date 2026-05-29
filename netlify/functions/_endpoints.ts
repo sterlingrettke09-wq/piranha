@@ -47,7 +47,10 @@ export const ENDPOINTS = {
 // Field names match the live attribute schemas verified above. Task 8's
 // normalization layer should read these and translate to user-facing labels.
 export const FIELDS = {
-  zoning: ['Name', 'District', 'Article'],
+  // HeightMax/FARMax/Use_ are real dimensional fields on the zoning layer
+  // (verified 2026-05-29): e.g. Stuart St => HeightMax 155, FARMax 10,
+  // Use_ "Mixed-Use"; Open Space subdistricts return null limits.
+  zoning: ['Name', 'District', 'Article', 'HeightMax', 'FARMax', 'Use_'],
   // owner: intentionally NOT requested — PII, do not log.
   parcels: ['pid', 'full_addre', 'lot_size'],
   historic: ['HIST_NAME'],

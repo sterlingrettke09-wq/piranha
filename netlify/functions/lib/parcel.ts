@@ -1,5 +1,6 @@
 import { isInBostonBbox, type ParcelError, type ParcelInfo } from '../../../src/types/parcel'
 import { ENDPOINTS, FIELDS } from '../_endpoints'
+import { mapZoningUse } from './zoningUse'
 
 export type ParcelResult =
   | { ok: true; info: ParcelInfo }
@@ -69,9 +70,9 @@ export async function getParcelInfo(lat: number, lng: number): Promise<ParcelRes
       districtCode: String(zoning?.Name ?? 'Unknown'),
       subdistrict: zoning?.District ? String(zoning.District) : null,
       article: zoning?.Article ? String(zoning.Article) : null,
-      maxHeightFt: null,
-      maxFAR: null,
-      allowedUses: null,
+      maxHeightFt: typeof zoning?.HeightMax === 'number' ? zoning.HeightMax : null,
+      maxFAR: typeof zoning?.FARMax === 'number' ? zoning.FARMax : null,
+      allowedUses: mapZoningUse(typeof zoning?.Use_ === 'string' ? zoning.Use_ : null),
     },
     lot: {
       sizeSqFt: typeof parcel.lot_size === 'number' ? parcel.lot_size : null,

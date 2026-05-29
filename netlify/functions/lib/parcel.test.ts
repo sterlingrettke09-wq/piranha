@@ -110,6 +110,55 @@ describe('parcel handler — normalization', () => {
   })
 })
 
+describe('parcel handler — zoning dimensional limits', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('populates maxHeightFt/maxFAR/allowedUses from real zoning fields', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes('Zoning')) {
+        return new Response(JSON.stringify({
+          features: [{ attributes: { Name: '1', District: 'Stuart Street District', Article: 'Article 43', HeightMax: 155, FARMax: 10, Use_: 'Mixed-Use' } }]
+        }))
+      }
+      if (u.includes('BPDA_Parcels')) {
+        return new Response(JSON.stringify({ features: [{ attributes: { pid: '1', full_addre: '1 Stuart St', lot_size: 5000 } }] }))
+      }
+      return new Response(JSON.stringify({ features: [] }))
+    })
+
+    const res = await callHandler({ lat: '42.3493', lng: '-71.0712' })
+    expect(res.statusCode).toBe(200)
+    const body = JSON.parse(res.body)
+    expect(body.zoning.maxHeightFt).toBe(155)
+    expect(body.zoning.maxFAR).toBe(10)
+    expect(body.zoning.allowedUses).toEqual(['mixed', 'residential', 'commercial'])
+  })
+
+  it('leaves limits null when the zoning service omits them (e.g. Open Space)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes('Zoning')) {
+        return new Response(JSON.stringify({
+          features: [{ attributes: { Name: 'OS-UP', District: 'Open Space', HeightMax: null, FARMax: null, Use_: 'Open Space' } }]
+        }))
+      }
+      if (u.includes('BPDA_Parcels')) {
+        return new Response(JSON.stringify({ features: [{ attributes: { pid: '2', full_addre: '0 Cambridge St', lot_size: 1000 } }] }))
+      }
+      return new Response(JSON.stringify({ features: [] }))
+    })
+
+    const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).toBe(200)
+    const body = JSON.parse(res.body)
+    expect(body.zoning.maxHeightFt).toBeNull()
+    expect(body.zoning.maxFAR).toBeNull()
+    // Use_ "Open Space" still maps to a use list even when dimensions are null.
+    expect(body.zoning.allowedUses).toEqual(['institutional'])
+  })
+})
+
 describe('parcel handler — resilience', () => {
   afterEach(() => vi.restoreAllMocks())
 
