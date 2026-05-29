@@ -1,11 +1,12 @@
 import type { Handler } from '@netlify/functions'
-import Anthropic from '@anthropic-ai/sdk'
 
-// Swap to 'claude-haiku-4-5' (cheapest) or 'claude-sonnet-4-6' (mid) to cut
-// cost on a public box. claude-opus-4-8 is the most capable (and priciest).
-const MODEL = 'claude-opus-4-8'
+// Google Gemini (cheapest credible option). Set GEMINI_API_KEY in Netlify to
+// switch the assistant on. Swap MODEL for another Gemini model if you like —
+// gemini-2.5-flash-lite is the cheapest current Flash-Lite tier.
+const MODEL = 'gemini-2.5-flash-lite'
 const MAX_TOKENS = 800
 const MAX_QUESTION_CHARS = 1000
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
 
 const SYSTEM_PROMPT = `You are the assistant for The Piranha Project, a tool that helps real-estate builders and investors understand the regulatory hurdles to building in U.S. cities — zoning, land use, permitting, development feasibility, cost, and timeline.
 
@@ -38,12 +39,17 @@ const json = (statusCode: number, body: unknown) => ({
   body: JSON.stringify(body),
 })
 
+type GeminiResponse = {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return json(405, { code: 'METHOD_NOT_ALLOWED', message: 'Use POST.' })
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
     return json(503, {
       code: 'NOT_CONFIGURED',
       message: 'The assistant is not available yet.',
@@ -78,21 +84,31 @@ export const handler: Handler = async (event) => {
     })
   }
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 25_000)
   try {
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: [
-        { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-      ],
-      messages: [{ role: 'user', content: question.trim() }],
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: question.trim() }] }],
+        generationConfig: { maxOutputTokens: MAX_TOKENS, temperature: 0.4 },
+      }),
     })
 
-    const answer = message.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
+    if (!res.ok) {
+      if (res.status === 429) {
+        return json(429, { code: 'RATE_LIMITED', message: 'The assistant is busy — try again shortly.' })
+      }
+      console.log({ event: 'ask.upstream_error', status: res.status })
+      return json(502, { code: 'UPSTREAM_ERROR', message: 'The assistant is temporarily unavailable.' })
+    }
+
+    const data = (await res.json()) as GeminiResponse
+    const answer = (data.candidates?.[0]?.content?.parts ?? [])
+      .map((p) => p.text ?? '')
       .join('')
       .trim()
 
@@ -105,14 +121,12 @@ export const handler: Handler = async (event) => {
 
     return json(200, { answer })
   } catch (err) {
-    if (err instanceof Anthropic.RateLimitError) {
-      return json(429, { code: 'RATE_LIMITED', message: 'The assistant is busy — try again shortly.' })
-    }
-    if (err instanceof Anthropic.APIError) {
-      console.log({ event: 'ask.upstream_error', status: err.status, type: err.type })
-      return json(502, { code: 'UPSTREAM_ERROR', message: 'The assistant is temporarily unavailable.' })
+    if (err instanceof Error && err.name === 'AbortError') {
+      return json(504, { code: 'TIMEOUT', message: 'The assistant took too long. Please try again.' })
     }
     console.log({ event: 'ask.error', message: err instanceof Error ? err.message : 'unknown' })
     return json(500, { code: 'INTERNAL', message: 'Something went wrong. Please try again.' })
+  } finally {
+    clearTimeout(timer)
   }
 }

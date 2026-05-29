@@ -28,10 +28,10 @@ export default function Home() {
       <PageContainer>
       <section className="mx-auto max-w-3xl py-16 text-center">
         <img
-          src="/logo/piranha-fish.png"
+          src="/logo/piranha-fish-burgundy.png"
           alt=""
           aria-hidden="true"
-          className="mx-auto mb-8 w-32 mix-blend-multiply saturate-[.9] sm:w-40"
+          className="mx-auto mb-8 w-32 sm:w-40"
         />
         <h1 className="font-serif text-4xl leading-tight tracking-tight text-piranha-charcoal sm:text-5xl">
           Ever wonder why it’s nearly impossible to build in America’s big cities?
