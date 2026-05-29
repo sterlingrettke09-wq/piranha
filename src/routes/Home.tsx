@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { Button } from '../components/ui/Button'
+import { PiranhaIntro } from '../components/PiranhaIntro'
 
 const STEPS = [
   {
@@ -25,7 +26,9 @@ export default function Home() {
   const [logoFailed, setLogoFailed] = useState(false)
 
   return (
-    <PageContainer>
+    <>
+      <PiranhaIntro />
+      <PageContainer>
       <section className="mx-auto max-w-3xl py-8 text-center">
         {!logoFailed && (
           <img
@@ -76,6 +79,7 @@ export default function Home() {
       <p className="mx-auto mt-16 max-w-2xl text-center text-sm text-piranha-charcoal/55">
         Estimates built from public data — not legal advice.
       </p>
-    </PageContainer>
+      </PageContainer>
+    </>
   )
 }
