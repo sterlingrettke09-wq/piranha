@@ -19,23 +19,22 @@ export default function About() {
             Built to bite through red tape.
           </h1>
           <p className="text-lg leading-relaxed text-piranha-charcoal/80">
-            The Piranha Project is a regulatory-intelligence tool for builders and
-            investors. It answers a deceptively hard question —{' '}
+            The Piranha Project is a tool for real-estate builders and investors. It
+            answers one deceptively hard question —{' '}
             <span className="font-semibold text-piranha-charcoal">
               “Can I build this here, and what will it take?”
             </span>{' '}
-            — using public zoning and parcel data, so you can see every hurdle before
-            you commit a dollar.
+            — using each city’s own public data, so you can see every hurdle before you
+            spend a dollar.
           </p>
         </header>
 
         <Section title="Why “Piranha”">
           <p>
-            Small, fast, and relentless. Building in America’s big cities has become a
+            Small, fast, and relentless. Building in many American cities has become a
             maze of overlapping rules, fees, and waiting periods that stall good
-            projects and inflate the cost of everything we build. We expose that maze,
-            put a number on it, and push toward reforming the rules that no longer make
-            sense.
+            projects and drive up the cost of everything we build. We expose that maze,
+            put a number on it, and push to reform the rules that no longer make sense.
           </p>
         </Section>
 
@@ -44,9 +43,9 @@ export default function About() {
           <ul className="list-disc space-y-2 pl-5">
             <li>
               <span className="font-semibold text-piranha-charcoal">Feasibility</span> —
-              your project’s use, floor-area ratio, and height are compared against the
-              parcel’s zoning limits, producing a verdict: as-of-right, needs relief,
-              prohibited, or indeterminate where the data runs out.
+              we check your project’s use, size, and height against the property’s
+              zoning limits and tell you whether you can build as-of-right, need a
+              variance, can’t build it, or whether the data wasn’t clear enough to say.
             </li>
             <li>
               <span className="font-semibold text-piranha-charcoal">Cost</span> —
@@ -70,9 +69,10 @@ export default function About() {
 
         <Section title="Data sources">
           <p>
-            Live today: Boston — BPDA zoning subdistricts and parcels, FEMA flood-hazard
-            zones, and Boston Landmarks historic districts. We’re expanding to more
-            cities and more rule types as we go.
+            Live today: Boston — the city’s zoning subdistricts and parcels, FEMA
+            flood-hazard zones, and Boston Landmarks historic districts. New York City,
+            Chicago, San Francisco, and Seattle are next, each wired from that city’s
+            own public data.
           </p>
         </Section>
 
@@ -86,7 +86,7 @@ export default function About() {
         </Section>
 
         <Section title="Made by">
-          <p>Louisburg Strategies. v0.1.</p>
+          <p>Louisburg Strategies. v0.2.</p>
         </Section>
       </div>
     </PageContainer>
