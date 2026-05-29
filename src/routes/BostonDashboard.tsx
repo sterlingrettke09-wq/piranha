@@ -3,7 +3,7 @@ import { Map } from '../components/boston/Map'
 import { SearchBar } from '../components/boston/SearchBar'
 import { ParcelPanel } from '../components/boston/ParcelPanel'
 import { CitySelector } from '../components/boston/CitySelector'
-import { CITIES, DEFAULT_CITY } from '../config/cities'
+import { DEFAULT_CITY, getCity } from '../config/cities'
 import { Button } from '../components/ui/Button'
 
 interface Selection {
@@ -23,24 +23,31 @@ export default function BostonDashboard() {
     setSelected(null)
   }
 
-  const current = CITIES.find((c) => c.slug === city)
-  const live = current?.live ?? false
+  const current = getCity(city)
+  const live = current.live
 
   return (
     <div className="relative h-[calc(100vh-4rem-8.5rem)]">
       {/* 4rem header + ~8.5rem footer. Adjust if footer height changes. */}
       <div className="absolute inset-0">
         {live ? (
-          <Map onPointSelect={handleSelect} focusedPoint={selected} />
+          <Map
+            key={city}
+            center={current.center}
+            zoom={current.zoom}
+            showZoningRaster={city === 'boston'}
+            onPointSelect={handleSelect}
+            focusedPoint={selected}
+          />
         ) : (
           <div className="flex h-full items-center justify-center bg-piranha-charcoal/5 px-6">
             <div className="max-w-md text-center">
               <h2 className="font-serif text-3xl tracking-tight text-piranha-charcoal">
-                {current?.name} is coming soon
+                {current.name} is coming soon
               </h2>
               <p className="mt-3 text-piranha-charcoal/70">
-                We’re wiring up {current?.name}’s zoning and parcel data. Boston is live
-                today — switch back to explore it.
+                We’re wiring up {current.name}’s zoning and parcel data. Boston and New
+                York are live today — switch to explore them.
               </p>
               <div className="mt-6">
                 <Button size="sm" onClick={() => changeCity('boston')}>
@@ -66,7 +73,7 @@ export default function BostonDashboard() {
               selected ? 'block' : 'hidden md:block'
             }`}
           >
-            <ParcelPanel selected={selected} />
+            <ParcelPanel selected={selected} city={city} />
           </div>
         </>
       )}

@@ -11,11 +11,21 @@ import {
 interface MapProps {
   onPointSelect: (lat: number, lng: number) => void
   focusedPoint: { lat: number; lng: number } | null
+  center?: [number, number]
+  zoom?: number
+  /** Boston-only zoning raster overlay. */
+  showZoningRaster?: boolean
 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
-export function Map({ onPointSelect, focusedPoint }: MapProps) {
+export function Map({
+  onPointSelect,
+  focusedPoint,
+  center = BOSTON_CENTER,
+  zoom = BOSTON_ZOOM,
+  showZoningRaster = true,
+}: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markerRef = useRef<mapboxgl.Marker | null>(null)
@@ -28,8 +38,8 @@ export function Map({ onPointSelect, focusedPoint }: MapProps) {
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: BOSTON_CENTER,
-      zoom: BOSTON_ZOOM,
+      center,
+      zoom,
       attributionControl: true,
     })
     mapRef.current = map
@@ -40,7 +50,7 @@ export function Map({ onPointSelect, focusedPoint }: MapProps) {
           map.setPaintProperty(layerId, property as never, value as never)
         }
       })
-      if (ZONING_RASTER_URL && !ZONING_RASTER_URL.startsWith('<')) {
+      if (showZoningRaster && ZONING_RASTER_URL && !ZONING_RASTER_URL.startsWith('<')) {
         map.addSource('boston-zoning', {
           type: 'raster',
           tiles: [ZONING_RASTER_URL],
@@ -63,7 +73,7 @@ export function Map({ onPointSelect, focusedPoint }: MapProps) {
       map.remove()
       mapRef.current = null
     }
-  }, [onPointSelect])
+  }, [onPointSelect, center, zoom, showZoningRaster])
 
   useEffect(() => {
     const map = mapRef.current

@@ -10,6 +10,14 @@ export interface ParcelInfo {
     maxHeightFt: number | null
     maxFAR: number | null
     allowedUses: string[] | null
+    /** Max FAR that varies by use (e.g. NYC Resid/Comm/Facil FAR). When set, the
+     *  feasibility check prefers the entry matching the proposed use. */
+    farByUse?: {
+      residential?: number
+      commercial?: number
+      mixed?: number
+      institutional?: number
+    }
   }
   lot: {
     sizeSqFt: number | null
@@ -34,18 +42,32 @@ export interface ParcelError {
   message: string
 }
 
-export const BOSTON_BBOX = {
+export interface Bbox {
+  south: number
+  west: number
+  north: number
+  east: number
+}
+
+export const BOSTON_BBOX: Bbox = {
   south: 42.227,
   west: -71.191,
   north: 42.395,
   east: -70.986,
-} as const
+}
+
+// Five boroughs (generous envelope).
+export const NYC_BBOX: Bbox = {
+  south: 40.49,
+  west: -74.27,
+  north: 40.92,
+  east: -73.68,
+}
+
+export function isInBbox(bbox: Bbox, lat: number, lng: number): boolean {
+  return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east
+}
 
 export function isInBostonBbox(lat: number, lng: number): boolean {
-  return (
-    lat >= BOSTON_BBOX.south &&
-    lat <= BOSTON_BBOX.north &&
-    lng >= BOSTON_BBOX.west &&
-    lng <= BOSTON_BBOX.east
-  )
+  return isInBbox(BOSTON_BBOX, lat, lng)
 }

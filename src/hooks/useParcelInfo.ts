@@ -10,6 +10,7 @@ type State = { status: 'idle' } | { status: 'loading' } | Resolved
 interface Args {
   lat: number
   lng: number
+  city?: string
 }
 
 export function useParcelInfo(args: Args | null): State & { retry: () => void } {
@@ -18,12 +19,13 @@ export function useParcelInfo(args: Args | null): State & { retry: () => void } 
 
   const lat = args?.lat
   const lng = args?.lng
-  const key = lat !== undefined && lng !== undefined ? `${lat},${lng},${retryCount}` : null
+  const city = args?.city ?? 'boston'
+  const key = lat !== undefined && lng !== undefined ? `${city},${lat},${lng},${retryCount}` : null
 
   useEffect(() => {
     if (key === null || lat === undefined || lng === undefined) return
     let cancelled = false
-    fetch(`/api/parcel?lat=${lat}&lng=${lng}`)
+    fetch(`/api/parcel?city=${encodeURIComponent(city)}&lat=${lat}&lng=${lng}`)
       .then(async (res) => {
         const body = await res.json()
         if (cancelled) return
@@ -47,7 +49,7 @@ export function useParcelInfo(args: Args | null): State & { retry: () => void } 
     return () => {
       cancelled = true
     }
-  }, [key, lat, lng])
+  }, [key, lat, lng, city])
 
   let state: State
   if (key === null) state = { status: 'idle' }

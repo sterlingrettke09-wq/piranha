@@ -1,45 +1,19 @@
-import { isInBostonBbox, type ParcelError, type ParcelInfo } from '../../../src/types/parcel'
+import {
+  isInBbox,
+  BOSTON_BBOX,
+  NYC_BBOX,
+  type Bbox,
+  type ParcelInfo,
+} from '../../../src/types/parcel'
 import { ENDPOINTS, FIELDS } from '../_endpoints'
 import { mapZoningUse } from './zoningUse'
+import { fetchFeatures, firstAttrs, type ParcelResult } from './arcgis'
+import { getNycParcelInfo } from './providers/nyc'
 
-export type ParcelResult =
-  | { ok: true; info: ParcelInfo }
-  | { ok: false; code: ParcelError['code']; message: string; status: number }
+export type { ParcelResult }
 
-const buildQuery = (url: string, lat: number, lng: number, fields: readonly string[]) => {
-  const base = url.endsWith('/') ? url.slice(0, -1) : url
-  const u = new URL(base + '/query')
-  u.searchParams.set('geometry', JSON.stringify({ x: lng, y: lat, spatialReference: { wkid: 4326 } }))
-  u.searchParams.set('geometryType', 'esriGeometryPoint')
-  u.searchParams.set('inSR', '4326')
-  u.searchParams.set('spatialRel', 'esriSpatialRelIntersects')
-  u.searchParams.set('outFields', fields.join(','))
-  u.searchParams.set('returnGeometry', 'false')
-  u.searchParams.set('f', 'json')
-  return u.toString()
-}
-
-type FeatureSet = { features?: Array<{ attributes: Record<string, unknown> }> }
-
-const fetchFeatures = async (url: string, lat: number, lng: number, fields: readonly string[]): Promise<FeatureSet> => {
-  const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), 5000)
-  try {
-    const res = await fetch(buildQuery(url, lat, lng, fields), { signal: ctrl.signal })
-    if (!res.ok) throw new Error(`Upstream ${url} returned ${res.status}`)
-    return await res.json() as FeatureSet
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
-const firstAttrs = (fs: FeatureSet) => fs.features?.[0]?.attributes ?? null
-
-export async function getParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !isInBostonBbox(lat, lng)) {
-    return { ok: false, code: 'OUT_OF_BBOX', message: 'lat/lng missing, invalid, or outside Boston bbox.', status: 400 }
-  }
-
+// ---- Boston provider (BPDA zoning + assessing parcels + historic + FEMA flood) ----
+async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [zoningR, parcelR, historicR, floodR] = await Promise.allSettled([
     fetchFeatures(ENDPOINTS.zoning, lat, lng, FIELDS.zoning),
@@ -49,7 +23,7 @@ export async function getParcelInfo(lat: number, lng: number): Promise<ParcelRes
   ])
 
   if (zoningR.status === 'rejected' || parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', durationMs: Date.now() - t0, zoning: zoningR.status, parcel: parcelR.status })
+    console.log({ event: 'parcel.upstream_fail', city: 'boston', durationMs: Date.now() - t0, zoning: zoningR.status, parcel: parcelR.status })
     return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
   }
 
@@ -91,6 +65,34 @@ export async function getParcelInfo(lat: number, lng: number): Promise<ParcelRes
     fetchedAt: new Date().toISOString(),
   }
 
-  console.log({ event: 'parcel.ok', durationMs: Date.now() - t0, parcelId: info.parcelId })
+  console.log({ event: 'parcel.ok', city: 'boston', durationMs: Date.now() - t0, parcelId: info.parcelId })
   return { ok: true, info }
+}
+
+// ---- City registry + dispatcher ----
+type Provider = (lat: number, lng: number) => Promise<ParcelResult>
+interface CityConfig {
+  bbox: Bbox
+  label: string
+  provider: Provider
+}
+
+const CITIES: Record<string, CityConfig> = {
+  boston: { bbox: BOSTON_BBOX, label: 'Boston', provider: getBostonParcelInfo },
+  nyc: { bbox: NYC_BBOX, label: 'New York City', provider: getNycParcelInfo },
+}
+
+export const LIVE_CITIES = Object.keys(CITIES)
+
+export async function getParcelInfo(city: string, lat: number, lng: number): Promise<ParcelResult> {
+  const cfg = CITIES[city] ?? CITIES.boston
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !isInBbox(cfg.bbox, lat, lng)) {
+    return {
+      ok: false,
+      code: 'OUT_OF_BBOX',
+      message: `lat/lng missing, invalid, or outside ${cfg.label}.`,
+      status: 400,
+    }
+  }
+  return cfg.provider(lat, lng)
 }

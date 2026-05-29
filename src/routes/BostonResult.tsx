@@ -11,6 +11,7 @@ import { NarrativeSection } from '../components/boston/result/NarrativeSection'
 import { AssumptionsDisclosure } from '../components/boston/result/AssumptionsDisclosure'
 
 function parseInput(params: URLSearchParams): AnalysisInput | null {
+  const city = params.get('city') ?? 'boston'
   const parcelId = params.get('parcelId') ?? ''
   const lat = Number(params.get('lat'))
   const lng = Number(params.get('lng'))
@@ -26,7 +27,7 @@ function parseInput(params: URLSearchParams): AnalysisInput | null {
     const n = Number(raw)
     return Number.isFinite(n) ? n : undefined
   }
-  return { parcelId, lat, lng, use, gfa, units: num('units'), stories: num('stories'), heightFt: num('heightFt') }
+  return { city, parcelId, lat, lng, use, gfa, units: num('units'), stories: num('stories'), heightFt: num('heightFt') }
 }
 
 export default function BostonResult() {

@@ -6,7 +6,7 @@ import type { ParcelInfo, ParcelError } from '../../types/parcel'
 type Props =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; data: ParcelInfo }
+  | { status: 'loaded'; data: ParcelInfo; city: string }
   | { status: 'error'; error: ParcelError; onRetry: () => void }
 
 export function ParcelPanelContent(props: Props) {
@@ -97,7 +97,7 @@ export function ParcelPanelContent(props: Props) {
       </section>
 
       <Link
-        to={`/boston/start?parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
+        to={`/boston/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
         className="block"
       >
         <Button size="lg" className="w-full">Start full analysis</Button>

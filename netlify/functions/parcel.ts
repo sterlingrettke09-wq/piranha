@@ -11,9 +11,10 @@ const fail = (code: ParcelError['code'], message: string, status: number) => ({
 })
 
 export const handler: Handler = async (event: HandlerEvent) => {
+  const city = event.queryStringParameters?.city ?? 'boston'
   const lat = Number(event.queryStringParameters?.lat)
   const lng = Number(event.queryStringParameters?.lng)
-  const r = await getParcelInfo(lat, lng)
+  const r = await getParcelInfo(city, lat, lng)
   if (!r.ok) return fail(r.code, r.message, r.status)
   return {
     statusCode: 200,

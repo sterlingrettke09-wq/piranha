@@ -1,5 +1,4 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
-import { isInBostonBbox } from '../../src/types/parcel'
 import type { AnalysisError, AnalysisInput, AnalysisResult, Use } from '../../src/types/analysis'
 import { USES } from '../../src/types/analysis'
 import { getParcelInfo } from './lib/parcel'
@@ -12,7 +11,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 
 const DISCLAIMERS = [
   'Estimates only — not legal, engineering, or financial advice.',
-  'Verify zoning, fees, and permitting with the City of Boston before relying on these figures.',
+  'Verify zoning, fees, and permitting with the city before relying on these figures.',
 ]
 
 const fail = (code: AnalysisError['code'], message: string, status: number) => ({
@@ -29,19 +28,18 @@ const num = (v: string | undefined): number | undefined => {
 
 export const handler: Handler = async (event: HandlerEvent) => {
   const q = event.queryStringParameters ?? {}
+  const city = q.city ?? 'boston'
   const lat = Number(q.lat)
   const lng = Number(q.lng)
   const use = q.use as Use
   const gfa = Number(q.gfa)
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !isInBostonBbox(lat, lng)) {
-    return fail('OUT_OF_BBOX', 'lat/lng missing, invalid, or outside Boston bbox.', 400)
-  }
   if (!USES.includes(use) || !Number.isFinite(gfa) || gfa <= 0) {
     return fail('BAD_INPUT', 'Missing or invalid project inputs (use, gfa).', 400)
   }
 
-  const parcelResult = await getParcelInfo(lat, lng)
+  // getParcelInfo validates the per-city bounding box (returns OUT_OF_BBOX).
+  const parcelResult = await getParcelInfo(city, lat, lng)
   if (!parcelResult.ok) {
     return fail(parcelResult.code, parcelResult.message, parcelResult.status)
   }
@@ -49,6 +47,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const project: AnalysisInput = {
     parcelId: parcel.parcelId,
+    city,
     lat,
     lng,
     use,

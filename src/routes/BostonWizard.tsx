@@ -15,14 +15,15 @@ export default function BostonWizard() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
 
+  const city = params.get('city') ?? 'boston'
   const parcelId = params.get('parcelId') ?? ''
   const lat = Number(params.get('lat'))
   const lng = Number(params.get('lng'))
   const hasLocation = parcelId !== '' && Number.isFinite(lat) && Number.isFinite(lng)
 
   const parcelArgs = useMemo(
-    () => (hasLocation ? { lat, lng } : null),
-    [hasLocation, lat, lng],
+    () => (hasLocation ? { lat, lng, city } : null),
+    [hasLocation, lat, lng, city],
   )
   const parcelState = useParcelInfo(parcelArgs)
 
@@ -59,6 +60,7 @@ export default function BostonWizard() {
 
   function goResult() {
     const p = new URLSearchParams()
+    p.set('city', city)
     p.set('parcelId', parcelId)
     p.set('lat', String(lat))
     p.set('lng', String(lng))

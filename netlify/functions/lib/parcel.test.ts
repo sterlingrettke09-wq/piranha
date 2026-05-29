@@ -159,6 +159,42 @@ describe('parcel handler — zoning dimensional limits', () => {
   })
 })
 
+describe('parcel handler — NYC (MapPLUTO)', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('normalizes a MapPLUTO lot into ParcelInfo with per-use FAR', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes('MAPPLUTO')) {
+        return new Response(JSON.stringify({
+          features: [{ attributes: { BBL: '1009950005', Address: '1472 BROADWAY', ZoneDist1: 'C6-7', ResidFAR: 10, CommFAR: 15, FacilFAR: 15, LotArea: 45800 } }],
+        }))
+      }
+      if (u.includes('NFHL')) return new Response(JSON.stringify({ features: [{ attributes: { FLD_ZONE: 'X' } }] }))
+      return new Response(JSON.stringify({ features: [] }))
+    })
+
+    const res = await callHandler({ city: 'nyc', lat: '40.7549', lng: '-73.9857' })
+    expect(res.statusCode).toBe(200)
+    const body = JSON.parse(res.body)
+    expect(body.address).toBe('1472 BROADWAY')
+    expect(body.parcelId).toBe('1009950005')
+    expect(body.zoning.districtCode).toBe('C6-7')
+    expect(body.zoning.maxHeightFt).toBeNull()
+    expect(body.zoning.maxFAR).toBe(15)
+    expect(body.zoning.farByUse).toEqual({ residential: 10, commercial: 15, institutional: 15, mixed: 15 })
+    expect(body.zoning.allowedUses).toContain('commercial')
+    expect(body.lot.sizeSqFt).toBe(45800)
+    expect(body.overlays.floodZone).toBe('X')
+  })
+
+  it('rejects NYC coords outside the NYC bbox with 400', async () => {
+    const res = await callHandler({ city: 'nyc', lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).toBe(400)
+    expect(JSON.parse(res.body).code).toBe('OUT_OF_BBOX')
+  })
+})
+
 describe('parcel handler — resilience', () => {
   afterEach(() => vi.restoreAllMocks())
 

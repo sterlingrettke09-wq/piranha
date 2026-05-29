@@ -29,13 +29,14 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
     checks.push({ dimension: 'use', status: 'NEEDS_RELIEF', proposed: project.use, allowed: limits.allowedUses.join(', '), note: 'Proposed use is not listed for this district; a use variance would be required.' })
   }
 
-  // FAR
-  if (limits.maxFAR == null || parcel.lot.sizeSqFt == null) {
+  // FAR — prefer a use-specific limit (e.g. NYC Resid/Comm/Facil FAR) when present.
+  const farForUse = parcel.zoning.farByUse?.[project.use] ?? limits.maxFAR
+  if (farForUse == null || parcel.lot.sizeSqFt == null) {
     checks.push({ dimension: 'far', status: 'INDETERMINATE', proposed: `${project.gfa.toLocaleString()} sf`, allowed: 'not derivable', note: 'FAR cannot be evaluated without lot size and a district FAR limit.' })
   } else {
     const proposedFAR = project.gfa / parcel.lot.sizeSqFt
-    const status: CheckStatus = proposedFAR <= limits.maxFAR ? 'AS_OF_RIGHT' : 'NEEDS_RELIEF'
-    checks.push({ dimension: 'far', status, proposed: `FAR ${proposedFAR.toFixed(2)}`, allowed: `max FAR ${limits.maxFAR.toFixed(2)}`, note: status === 'NEEDS_RELIEF' ? 'Proposed floor area exceeds the district FAR; dimensional relief would be required.' : null })
+    const status: CheckStatus = proposedFAR <= farForUse ? 'AS_OF_RIGHT' : 'NEEDS_RELIEF'
+    checks.push({ dimension: 'far', status, proposed: `FAR ${proposedFAR.toFixed(2)}`, allowed: `max FAR ${farForUse.toFixed(2)}`, note: status === 'NEEDS_RELIEF' ? 'Proposed floor area exceeds the district FAR; dimensional relief would be required.' : null })
   }
 
   // HEIGHT
@@ -47,10 +48,18 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
     checks.push({ dimension: 'height', status, proposed: `${effHeight} ft`, allowed: `max ${limits.maxHeightFt} ft`, note: status === 'NEEDS_RELIEF' ? 'Proposed height exceeds the district limit; dimensional relief would be required.' : null })
   }
 
-  const overall = checks.reduce<CheckStatus>(
-    (worst, c) => (SEVERITY[c.status] > SEVERITY[worst] ? c.status : worst),
-    'AS_OF_RIGHT',
-  )
+  // Overall reflects the worst DECISIVE check. A single indeterminate dimension
+  // (e.g. NYC height, which public data doesn't carry) shouldn't drag an
+  // otherwise-clear verdict to "indeterminate" — it still shows in the checklist.
+  // Only when no dimension is decisive does the verdict become indeterminate.
+  const decisive = checks.filter((c) => c.status !== 'INDETERMINATE')
+  const overall: CheckStatus =
+    decisive.length === 0
+      ? 'INDETERMINATE'
+      : decisive.reduce<CheckStatus>(
+          (worst, c) => (SEVERITY[c.status] > SEVERITY[worst] ? c.status : worst),
+          'AS_OF_RIGHT',
+        )
   const path: ApprovalPath = overall === 'PROHIBITED' ? 'prohibited' : overall === 'NEEDS_RELIEF' ? 'variance' : 'as_of_right'
   return { overall, checks, path }
 }

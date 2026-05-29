@@ -4,6 +4,7 @@ export type ApprovalPath = 'as_of_right' | 'variance' | 'prohibited'
 
 export interface AnalysisInput {
   parcelId: string
+  city: string
   lat: number
   lng: number
   use: Use
