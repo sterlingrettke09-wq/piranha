@@ -34,15 +34,16 @@ export default function Home() {
           className="mx-auto mb-8 w-32 sm:w-40"
         />
         <h1 className="font-serif text-4xl leading-tight tracking-tight text-piranha-charcoal sm:text-5xl">
-          Ever wonder why it’s nearly impossible to build in America’s big cities?
+          Ever wonder why it’s nearly impossible to build in many American cities?
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-piranha-charcoal/80">
           The wondering is over. The Piranha Project shows you every regulatory hurdle
           between you and a finished building — what it costs to clear, how long it
-          takes, and where the rules have gone too far.{' '}
+          takes to get permitted, and what rules are in place.{' '}
           <span className="font-semibold text-piranha-charcoal">
-            We help you bite through the red tape — and figure out how to reform it.
+            We help you bite through the red tape — while also trying to figure out how
+            to reform it.
           </span>
         </p>
 

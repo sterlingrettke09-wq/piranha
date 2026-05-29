@@ -44,6 +44,7 @@ export function AskAssistant() {
         A question about zoning, permitting, or what it takes to build? Ask in plain
         English.
       </p>
+      <p className="mt-1 text-xs text-piranha-charcoal/40">Powered by Google Gemini.</p>
 
       <div className="mt-4 space-y-3">
         <textarea

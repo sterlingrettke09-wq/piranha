@@ -9,51 +9,51 @@ interface QA {
 
 const FAQ: QA[] = [
   {
-    q: 'What does The Piranha Project tell me?',
-    a: 'For a given parcel, it tells you whether your project is buildable under current zoning, what approvals it would need, a ballpark of what it will cost, and how long approval typically takes.',
+    q: 'What does this tool do?',
+    a: 'Pick any property and we tell you four things: whether you can build what you have in mind, what approvals you’d need, roughly what it would cost, and how long it would take to get permitted.',
   },
   {
-    q: 'What do the verdicts mean?',
+    q: 'What do the results mean?',
     a: (
       <ul className="list-disc space-y-1.5 pl-5">
-        <li><span className="font-semibold">As-of-right</span> — fits the zoning envelope; no discretionary relief needed.</li>
-        <li><span className="font-semibold">Buildable with relief</span> — exceeds at least one limit; a variance or other approval would be required.</li>
-        <li><span className="font-semibold">Not permitted</span> — conflicts with the district in a way relief is unlikely to cure.</li>
-        <li><span className="font-semibold">Indeterminate</span> — the public data didn’t provide a limit we needed, so we don’t guess.</li>
+        <li><span className="font-semibold">As-of-right</span> — you can build it without special permission. Go straight to permits.</li>
+        <li><span className="font-semibold">Buildable with relief</span> — you can probably build it, but first you’ll have to ask the city for an exception (a variance).</li>
+        <li><span className="font-semibold">Not permitted</span> — the rules don’t allow this here, and an exception is unlikely to help.</li>
+        <li><span className="font-semibold">Can’t tell</span> — the public data was missing something we needed, so we don’t guess.</li>
       </ul>
     ),
   },
   {
-    q: 'What’s the difference between as-of-right and a variance?',
-    a: 'As-of-right means the zoning code already allows what you’re proposing — you go straight to permitting. A variance is a discretionary exception you have to apply and argue for when a project exceeds a limit (height, floor-area ratio, use). Variances add cost, time, and uncertainty, which is why the timeline and permitting estimates change when one is required.',
+    q: 'What’s a variance?',
+    a: 'It’s permission to bend one of the zoning rules — like building taller or larger than the rules normally allow. You have to apply for it and make your case to the city, which adds time, cost, and some uncertainty. That’s why the estimate changes when one is needed.',
   },
   {
-    q: 'Where does the data come from?',
-    a: 'Public sources. In Boston today: BPDA zoning subdistricts and parcels, FEMA flood-hazard zones, and Boston Landmarks historic districts. Sources are linked on every result.',
+    q: 'Where do the numbers come from?',
+    a: 'Public city and government data. For Boston, that’s the city’s official zoning and property maps, plus federal flood maps and historic-district records. We link to our sources on every result.',
   },
   {
     q: 'How accurate are the cost estimates?',
-    a: 'They’re labeled estimates, not bids. Hard costs use per-square-foot figures by use type, soft costs are a share of hard costs, and permitting uses published fee formulas. Treat them as a starting point for diligence — every assumption is shown on the result so you can sanity-check it.',
+    a: 'They’re ballpark figures, not quotes. We use standard construction costs per square foot, typical soft costs, and the city’s published permit fees. Treat them as a starting point — we show every assumption so you can check our math.',
   },
   {
-    q: 'Why does it sometimes say “indeterminate” or “not derivable”?',
-    a: 'Because the public data doesn’t always carry the limit we need. Open Space parcels, for example, have no height or floor-area ratio in the zoning layer. Rather than invent a number, we mark that dimension indeterminate and treat it conservatively.',
+    q: 'Why does it sometimes say it can’t tell?',
+    a: 'Because the public data doesn’t always include the number we need — a park, for example, has no height limit on file. Rather than make one up, we flag it and stay cautious.',
   },
   {
-    q: 'Can I share or edit an analysis?',
-    a: 'Yes. Every result has its own URL — copy it to share, or use “Edit inputs” to change the project and re-run. The inputs live in the link, so a shared analysis reproduces exactly.',
+    q: 'Can I share or change an analysis?',
+    a: 'Yes. Every result has its own link you can copy and send to anyone, and “Edit inputs” lets you tweak the project and run it again.',
   },
   {
-    q: 'What cities are covered?',
-    a: 'Boston is live. We’re adding more cities — and more rule types beyond zoning — before broad launch.',
+    q: 'Which cities are covered?',
+    a: 'Boston is live now, and more cities are on the way.',
+  },
+  {
+    q: 'Is the assistant always right?',
+    a: 'No. The assistant above is an AI (Google Gemini) giving general guidance, and it can be wrong. It’s a starting point — double-check anything important with the city.',
   },
   {
     q: 'Is this legal advice?',
-    a: 'No. The Piranha Project provides general regulatory information built from public data. It is not legal, engineering, or financial advice. Verify with the relevant city department before relying on any figure.',
-  },
-  {
-    q: 'Is there an AI assistant?',
-    a: 'A natural-language assistant — ask a question, get an answer with sources — is coming. For now, this page covers the common questions.',
+    a: 'No. It’s general information built from public data — not legal, engineering, or financial advice. Always confirm with the city before relying on it.',
   },
 ]
 
