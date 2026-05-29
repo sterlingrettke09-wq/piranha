@@ -4,6 +4,7 @@ import {
   NYC_BBOX,
   CHICAGO_BBOX,
   SF_BBOX,
+  SEATTLE_BBOX,
   type Bbox,
   type ParcelInfo,
 } from '../../../src/types/parcel'
@@ -13,6 +14,7 @@ import { fetchFeatures, firstAttrs, type ParcelResult } from './arcgis'
 import { getNycParcelInfo } from './providers/nyc'
 import { getChicagoParcelInfo } from './providers/chicago'
 import { getSfParcelInfo } from './providers/sf'
+import { getSeattleParcelInfo } from './providers/seattle'
 
 export type { ParcelResult }
 
@@ -86,6 +88,7 @@ const CITIES: Record<string, CityConfig> = {
   nyc: { bbox: NYC_BBOX, label: 'New York City', provider: getNycParcelInfo },
   chicago: { bbox: CHICAGO_BBOX, label: 'Chicago', provider: getChicagoParcelInfo },
   sf: { bbox: SF_BBOX, label: 'San Francisco', provider: getSfParcelInfo },
+  seattle: { bbox: SEATTLE_BBOX, label: 'Seattle', provider: getSeattleParcelInfo },
 }
 
 export const LIVE_CITIES = Object.keys(CITIES)

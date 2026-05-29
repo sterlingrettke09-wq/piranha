@@ -14,7 +14,7 @@ export const CITIES: City[] = [
   { slug: 'nyc', name: 'New York City', live: true, center: [-73.9857, 40.7549], zoom: 11 },
   { slug: 'chicago', name: 'Chicago', live: true, center: [-87.6298, 41.8781], zoom: 11 },
   { slug: 'sf', name: 'San Francisco', live: true, center: [-122.4194, 37.7749], zoom: 12 },
-  { slug: 'seattle', name: 'Seattle', live: false, center: [-122.3321, 47.6062], zoom: 11 },
+  { slug: 'seattle', name: 'Seattle', live: true, center: [-122.3321, 47.6062], zoom: 12 },
 ]
 
 export const DEFAULT_CITY = 'boston'

@@ -78,6 +78,13 @@ export const SF_BBOX: Bbox = {
   east: -122.35,
 }
 
+export const SEATTLE_BBOX: Bbox = {
+  south: 47.49,
+  west: -122.44,
+  north: 47.74,
+  east: -122.22,
+}
+
 export function isInBbox(bbox: Bbox, lat: number, lng: number): boolean {
   return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east
 }
