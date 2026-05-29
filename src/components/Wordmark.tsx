@@ -1,22 +1,22 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-const WORDMARK_SRC = '/logo/piranha-wordmark.png'
+const WORDMARK_SRC = '/logo/the-piranha-project-horizontal.png'
 
 export function Wordmark() {
   const [imgFailed, setImgFailed] = useState(false)
 
   return (
-    <Link to="/" className="inline-flex items-center" aria-label="Piranha home">
+    <Link to="/" className="inline-flex items-center" aria-label="The Piranha Project home">
       {imgFailed ? (
-        <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-piranha-burgundy">
-          PIRANHA
+        <span className="font-serif font-bold text-lg sm:text-xl tracking-tight text-piranha-burgundy">
+          THE PIRANHA PROJECT
         </span>
       ) : (
         <img
           src={WORDMARK_SRC}
-          alt="Piranha"
-          className="h-6 sm:h-8 w-auto"
+          alt="The Piranha Project"
+          className="h-7 sm:h-9 w-auto"
           onError={() => setImgFailed(true)}
         />
       )}

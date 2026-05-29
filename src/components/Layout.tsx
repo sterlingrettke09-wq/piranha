@@ -45,8 +45,9 @@ export function Layout({ children }: LayoutProps) {
       <footer className="border-t border-piranha-charcoal/10 bg-piranha-charcoal text-piranha-bone">
         <div className="max-w-6xl mx-auto px-6 py-8 space-y-3">
           <p className="text-sm leading-relaxed max-w-3xl">
-            Piranha provides general regulatory information, not legal advice.
-            Always verify with the relevant city department.
+            The Piranha Project provides general regulatory information, not legal
+            advice. Estimates are built from public data — always verify with the
+            relevant city department.
           </p>
           <p className="text-xs text-piranha-bone/60">
             v0.1 — built by Louisburg Strategies
