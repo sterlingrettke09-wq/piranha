@@ -38,9 +38,10 @@ export const fetchFeatures = async (
   fields: readonly string[],
   returnGeometry = false,
   outSR?: number,
+  timeoutMs = 6000,
 ): Promise<FeatureSet> => {
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), 6000)
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
     const res = await fetch(buildQuery(url, lat, lng, fields, returnGeometry, outSR), { signal: ctrl.signal })
     if (!res.ok) throw new Error(`Upstream ${url} returned ${res.status}`)

@@ -24,7 +24,7 @@ function usesForZone(zone: string | null): string[] | null {
 export async function getChicagoParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [zoningR, parcelR, floodR, addrR] = await Promise.allSettled([
-    fetchFeatures(ZONING, lat, lng, ['ZONE_CLASS']),
+    fetchFeatures(ZONING, lat, lng, ['ZONE_CLASS'], false, undefined, 9000),
     fetchFeatures(PARCELS, lat, lng, ['PIN10'], true),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     reverseGeocode(lat, lng),
