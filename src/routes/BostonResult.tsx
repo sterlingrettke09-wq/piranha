@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { useAnalysis } from '../hooks/useAnalysis'
@@ -33,6 +33,17 @@ export default function BostonResult() {
   const [params] = useSearchParams()
   const input = useMemo(() => parseInput(params), [params])
   const state = useAnalysis(input)
+  const [copied, setCopied] = useState(false)
+
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href).then(
+      () => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      },
+      () => setCopied(false),
+    )
+  }
 
   if (input === null) {
     return (
@@ -75,6 +86,24 @@ export default function BostonResult() {
 
         {state.status === 'loaded' && (
           <>
+            <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <Link to="/boston" className="text-piranha-burgundy hover:underline">
+                ← Back to map
+              </Link>
+              <Link
+                to={`/boston/start?${params.toString()}`}
+                className="text-piranha-burgundy hover:underline"
+              >
+                Edit inputs
+              </Link>
+              <button
+                type="button"
+                onClick={copyLink}
+                className="ml-auto rounded-md border border-piranha-charcoal/20 px-3 py-1.5 font-medium text-piranha-charcoal hover:border-piranha-charcoal/40"
+              >
+                {copied ? 'Link copied' : 'Copy link'}
+              </button>
+            </nav>
             <header className="space-y-1">
               <h1 className="font-serif text-3xl tracking-tight">{state.data.parcel.address}</h1>
               <p className="text-sm text-piranha-charcoal/60">
