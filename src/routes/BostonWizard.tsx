@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { useParcelInfo } from '../hooks/useParcelInfo'
-import type { Use } from '../types/analysis'
+import { USES, type Use } from '../types/analysis'
 import { WizardProgress } from '../components/boston/wizard/WizardProgress'
 import { ParcelContextHeader } from '../components/boston/wizard/ParcelContextHeader'
 import { StepUse } from '../components/boston/wizard/StepUse'
@@ -26,12 +26,16 @@ export default function BostonWizard() {
   )
   const parcelState = useParcelInfo(parcelArgs)
 
+  // Pre-fill from the URL so the result page's "Edit inputs" link round-trips.
   const [step, setStep] = useState(1)
-  const [use, setUse] = useState<Use | null>(null)
-  const [gfa, setGfa] = useState('')
-  const [units, setUnits] = useState('')
-  const [stories, setStories] = useState('')
-  const [heightFt, setHeightFt] = useState('')
+  const [use, setUse] = useState<Use | null>(() => {
+    const u = params.get('use')
+    return u && (USES as string[]).includes(u) ? (u as Use) : null
+  })
+  const [gfa, setGfa] = useState(() => params.get('gfa') ?? '')
+  const [units, setUnits] = useState(() => params.get('units') ?? '')
+  const [stories, setStories] = useState(() => params.get('stories') ?? '')
+  const [heightFt, setHeightFt] = useState(() => params.get('heightFt') ?? '')
 
   if (!hasLocation) {
     return (
