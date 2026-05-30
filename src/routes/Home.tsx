@@ -31,20 +31,21 @@ export default function Home() {
           src="/logo/piranha-fish-burgundy.png"
           alt=""
           aria-hidden="true"
-          className="mx-auto mb-8 w-32 sm:w-40"
+          className="mx-auto mb-6 w-20 sm:w-24"
         />
-        <h1 className="font-serif text-4xl leading-tight tracking-tight text-piranha-charcoal sm:text-5xl">
+        <h1 className="font-serif text-4xl leading-[1.08] tracking-tight text-piranha-charcoal sm:text-5xl">
           Ever wonder why it’s nearly impossible to build in many American cities?
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-piranha-charcoal/80">
           The wondering is over. The Piranha Project shows you every regulatory hurdle
-          between you and a finished building — what it costs to clear, how long it
-          takes to get permitted, and what rules are in place.{' '}
+          between you and a finished building: what it costs to clear, how long it takes
+          to get permitted, and what rules are in place.{' '}
           <span className="font-semibold text-piranha-charcoal">
-            We help you bite through the red tape — while also trying to figure out how
-            to reform it.
-          </span>
+            This project shows you the red tape and helps you bite through it
+          </span>{' '}
+          — all while trying to figure out how to reform these NIMBY-based, anti-growth
+          laws.
         </p>
 
         <div className="mt-9">

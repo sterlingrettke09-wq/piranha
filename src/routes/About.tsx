@@ -19,13 +19,15 @@ export default function About() {
             Built to bite through red tape.
           </h1>
           <p className="text-lg leading-relaxed text-piranha-charcoal/80">
-            The Piranha Project is a tool for real-estate builders and investors. It
-            answers one deceptively hard question —{' '}
+            The Piranha Project is a tool for everyone — from real-estate builders and
+            investors to the annoyed people who don’t understand why housing hasn’t been
+            built in their zip code in half a decade. It answers one deceptively hard
+            question:{' '}
             <span className="font-semibold text-piranha-charcoal">
               “Can I build this here, and what will it take?”
             </span>{' '}
-            — using each city’s own public data, so you can see every hurdle before you
-            spend a dollar.
+            — using each city’s own public data, so you can transparently see every
+            hurdle there is.
           </p>
         </header>
 

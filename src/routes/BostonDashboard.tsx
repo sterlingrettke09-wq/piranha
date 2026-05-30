@@ -40,7 +40,7 @@ export default function BostonDashboard() {
       </div>
 
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[26rem] max-w-[calc(100%-2rem)]">
-        <SearchBar onSelect={handleSelect} />
+        <SearchBar key={city} city={city} onSelect={handleSelect} />
       </div>
       <div
         className={`absolute z-10 md:right-4 md:top-4 md:bottom-4 md:left-auto md:w-[420px] md:max-h-none left-0 right-0 bottom-0 max-h-[60vh] ${

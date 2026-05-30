@@ -29,7 +29,7 @@ const FAQ: QA[] = [
   },
   {
     q: 'Where do the numbers come from?',
-    a: 'Public city and government data. For Boston, that’s the city’s official zoning and property maps, plus federal flood maps and historic-district records. We link to our sources on every result.',
+    a: 'Public city and government data — each city’s official zoning and property maps, plus federal flood maps and local historic-district records. We link to our sources on every result.',
   },
   {
     q: 'How accurate are the cost estimates?',
@@ -45,7 +45,7 @@ const FAQ: QA[] = [
   },
   {
     q: 'Which cities are covered?',
-    a: 'Boston is live now, and more cities are on the way.',
+    a: 'Five cities to start — Boston, New York City, Chicago, San Francisco, and Seattle — and expanding as we grow.',
   },
   {
     q: 'Is the assistant always right?',
