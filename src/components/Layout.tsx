@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Wordmark } from './Wordmark'
 import { CitiesNav } from './CitiesNav'
+import { DisclaimerNotice } from './DisclaimerNotice'
 
 interface LayoutProps {
   children: ReactNode
@@ -50,10 +51,12 @@ export function Layout({ children }: LayoutProps) {
             relevant city department.
           </p>
           <p className="text-xs text-piranha-bone/60">
-            v0.1 — built by Louisburg Strategies
+            v1 — built by Louisburg Strategies
           </p>
         </div>
       </footer>
+
+      <DisclaimerNotice />
     </div>
   )
 }

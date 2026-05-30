@@ -20,7 +20,12 @@ export function CostBreakdown({ costs, gfa, units }: Props) {
   const perUnit = units && units > 0 ? costs.total / units : null
   return (
     <section className="space-y-3">
-      <h3 className="font-serif text-xl tracking-tight">Estimated cost</h3>
+      <div>
+        <h3 className="font-serif text-xl tracking-tight">Estimated cost</h3>
+        <p className="text-xs text-piranha-charcoal/50">
+          Rough order-of-magnitude from public assumptions (shown below) — not a bid.
+        </p>
+      </div>
       <dl className="rounded-lg border border-piranha-charcoal/10">
         {rows.map((r) => (
           <div key={r.label} className="flex justify-between border-b border-piranha-charcoal/10 px-4 py-3 last:border-0">
