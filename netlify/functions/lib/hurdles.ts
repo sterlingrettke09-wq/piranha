@@ -47,7 +47,8 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     })
   }
 
-  // Boston-specific policy.
+  // ---- Per-city policy. Programs are publicly documented; applicability often
+  // depends on the specific area/funding, so area-dependent rules are "likely". ----
   if (city === 'boston') {
     if (isResidential && units >= 10) {
       hurdles.push({
@@ -80,6 +81,89 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         label: 'Development impact (linkage) fees',
         status: 'required',
         note: 'Large commercial projects (100,000+ sq ft) pay linkage fees into Boston’s Neighborhood Housing and Jobs Trusts.',
+      })
+    }
+  } else if (city === 'nyc') {
+    if (isResidential && units >= 10) {
+      hurdles.push({
+        category: 'affordability',
+        label: 'Mandatory Inclusionary Housing (MIH)',
+        status: 'likely',
+        note: 'In MIH areas, new residential of 10+ units must include permanently affordable units (~25–30%) or pay in lieu. Confirm whether the site sits in an MIH area.',
+      })
+    }
+    if (project.gfa >= 50000) {
+      hurdles.push({
+        category: 'review',
+        label: 'ULURP — Uniform Land Use Review Procedure',
+        status: 'likely',
+        note: 'Rezonings, special permits, and large projects run the City’s ~7-month public ULURP (community board → borough president → City Planning → City Council).',
+        addsMonths: 7,
+      })
+      hurdles.push({
+        category: 'environmental',
+        label: 'CEQR environmental review',
+        status: 'likely',
+        note: 'Discretionary approvals trigger City Environmental Quality Review, often running in parallel with ULURP.',
+      })
+    }
+  } else if (city === 'sf') {
+    if (isResidential && units >= 10) {
+      hurdles.push({
+        category: 'affordability',
+        label: 'Inclusionary affordable housing',
+        status: 'required',
+        note: 'San Francisco requires roughly 12–26% of units be affordable (or a fee) for residential projects of 10+ units.',
+      })
+    }
+    hurdles.push({
+      category: 'environmental',
+      label: 'CEQA environmental review',
+      status: 'likely',
+      note: 'The California Environmental Quality Act applies to most discretionary approvals and is a frequent source of delay and litigation.',
+      addsMonths: 6,
+    })
+    hurdles.push({
+      category: 'review',
+      label: 'Planning Commission / Discretionary Review',
+      status: 'likely',
+      note: 'SF projects routinely face discretionary review and Planning Commission hearings even when code-compliant.',
+      addsMonths: 6,
+    })
+  } else if (city === 'chicago') {
+    if (isResidential && units >= 10) {
+      hurdles.push({
+        category: 'affordability',
+        label: 'Affordable Requirements Ordinance (ARO)',
+        status: 'likely',
+        note: 'Chicago’s ARO requires ~20% affordable units (or in-lieu fees) for residential projects of 10+ units that need a zoning change, city land, or city financing.',
+      })
+    }
+    if (project.gfa >= 50000) {
+      hurdles.push({
+        category: 'review',
+        label: 'Planned Development / City Council review',
+        status: 'likely',
+        note: 'Large projects often require a Planned Development and aldermanic / City Council approval.',
+        addsMonths: 6,
+      })
+    }
+  } else if (city === 'seattle') {
+    if (isResidential || isCommercial) {
+      hurdles.push({
+        category: 'affordability',
+        label: 'Mandatory Housing Affordability (MHA)',
+        status: 'likely',
+        note: 'In MHA zones, new development contributes affordable units or pays a fee. Confirm the site is in an MHA zone.',
+      })
+    }
+    if (units >= 20 || project.gfa >= 12000) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'SEPA environmental review',
+        status: 'likely',
+        note: 'Washington’s State Environmental Policy Act applies above local thresholds (roughly 20+ units or larger commercial), adding review time.',
+        addsMonths: 4,
       })
     }
   }

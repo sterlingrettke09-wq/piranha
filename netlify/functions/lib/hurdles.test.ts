@@ -67,3 +67,30 @@ describe('assessHurdles — Boston', () => {
     expect(cats(hs)).not.toContain('flood')
   })
 })
+
+describe('assessHurdles — other cities', () => {
+  it('NYC: MIH for 10+ units, ULURP + CEQR for large projects', () => {
+    const hs = assessHurdles('nyc', parcel({}), project({ city: 'nyc', units: 40, gfa: 60000 }))
+    const labels = hs.map((h) => h.label).join(' | ')
+    expect(labels).toMatch(/Mandatory Inclusionary/)
+    expect(labels).toMatch(/ULURP/)
+    expect(cats(hs)).toContain('environmental')
+  })
+
+  it('SF: inclusionary + CEQA always flagged', () => {
+    const hs = assessHurdles('sf', parcel({}), project({ city: 'sf', units: 20 }))
+    expect(cats(hs)).toContain('affordability')
+    expect(hs.some((h) => /CEQA/.test(h.label))).toBe(true)
+  })
+
+  it('Chicago: ARO for 10+ residential units', () => {
+    const hs = assessHurdles('chicago', parcel({}), project({ city: 'chicago', units: 30 }))
+    expect(hs.some((h) => /ARO/.test(h.label))).toBe(true)
+  })
+
+  it('Seattle: MHA + SEPA over threshold', () => {
+    const hs = assessHurdles('seattle', parcel({}), project({ city: 'seattle', units: 30, gfa: 40000 }))
+    expect(hs.some((h) => /MHA/.test(h.label))).toBe(true)
+    expect(hs.some((h) => /SEPA/.test(h.label))).toBe(true)
+  })
+})
