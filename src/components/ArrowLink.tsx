@@ -1,25 +1,25 @@
 import { Link } from 'react-router-dom'
 
-/** Understated text-with-arrow CTA (Orchestra-style). */
+/** Orchestra-style arrow pill. `tone="light"` for dark backgrounds. */
 export function ArrowLink({
   to,
   children,
-  size = 'md',
+  tone = 'dark',
 }: {
   to: string
   children: React.ReactNode
-  size?: 'md' | 'lg'
+  tone?: 'dark' | 'light'
 }) {
+  const styles =
+    tone === 'light'
+      ? 'border-piranha-bone/40 text-piranha-bone hover:bg-piranha-bone hover:text-piranha-charcoal'
+      : 'border-piranha-charcoal/25 text-piranha-charcoal hover:bg-piranha-charcoal hover:text-piranha-bone'
   return (
     <Link
       to={to}
-      className={`group inline-flex items-center gap-3 font-medium text-piranha-burgundy ${
-        size === 'lg' ? 'text-lg' : 'text-base'
-      }`}
+      className={`group inline-flex items-center gap-3 rounded-full border px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.12em] transition-colors ${styles}`}
     >
-      <span className="border-b border-piranha-burgundy/30 pb-1 transition-colors group-hover:border-piranha-burgundy">
-        {children}
-      </span>
+      <span>{children}</span>
       <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1.5">
         →
       </span>

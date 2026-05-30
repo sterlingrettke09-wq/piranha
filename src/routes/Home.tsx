@@ -4,6 +4,8 @@ import { Reveal } from '../components/Reveal'
 import { ArrowLink } from '../components/ArrowLink'
 import { CITIES } from '../config/cities'
 
+const DARK = 'bg-[#1a1412]'
+
 const FEATURES = [
   {
     n: '01',
@@ -39,55 +41,57 @@ export default function Home() {
     <>
       <CinematicIntro />
 
-      {/* ── Thesis cascade — escalating centered statements ──────── */}
-      <section className="mx-auto max-w-3xl px-6 py-28 text-center sm:py-36">
-        <Reveal>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-piranha-burgundy">
-            Regulatory intelligence for builders
-          </p>
-        </Reveal>
-        <Reveal delay={120}>
-          <h1 className="mt-8 font-serif text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] tracking-tight text-piranha-charcoal">
-            Building in America’s great cities has become almost impossible.
-          </h1>
-        </Reveal>
-        <Reveal delay={120}>
-          <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-charcoal/70">
-            Zoning is only the start. Historic boards, affordability mandates, environmental
-            review, parking rules, fees, and private covenants each pile on cost, time, and
-            doubt — most of it invisible until you’re already committed.
-          </p>
-        </Reveal>
-        <Reveal delay={120}>
-          <p className="mx-auto mt-14 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-charcoal">
-            The Piranha Project maps the entire gauntlet — for any parcel, in language anyone
-            can read.
-          </p>
-        </Reveal>
-        <Reveal delay={160}>
-          <div className="mt-12 flex justify-center">
-            <ArrowLink to="/boston" size="lg">
-              Start an analysis
-            </ArrowLink>
-          </div>
-        </Reveal>
+      {/* ── Manifesto (dark) — escalating statements ─────────────── */}
+      <section className={`${DARK} px-6 py-32 text-center sm:py-40`}>
+        <div className="mx-auto max-w-3xl">
+          <Reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-gold">
+              Regulatory intelligence for builders
+            </p>
+          </Reveal>
+          <Reveal delay={120}>
+            <h1 className="mt-9 font-serif text-[clamp(2.4rem,5.5vw,4.6rem)] leading-[1.04] tracking-tight text-piranha-bone">
+              Building in America’s great cities has become almost impossible.
+            </h1>
+          </Reveal>
+          <Reveal delay={120}>
+            <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-bone/65">
+              Zoning is only the start. Historic boards, affordability mandates, environmental
+              review, parking rules, fees, and private covenants each pile on cost, time, and
+              doubt — most of it invisible until you’re already committed.
+            </p>
+          </Reveal>
+          <Reveal delay={120}>
+            <p className="mx-auto mt-14 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-bone">
+              The Piranha Project maps the entire gauntlet — for any parcel, in language anyone
+              can read.
+            </p>
+          </Reveal>
+          <Reveal delay={160}>
+            <div className="mt-12 flex justify-center">
+              <ArrowLink to="/boston" tone="light">
+                Start an analysis
+              </ArrowLink>
+            </div>
+          </Reveal>
+        </div>
       </section>
 
-      {/* ── What you get — three feature blocks ──────────────────── */}
-      <section className="border-t border-piranha-charcoal/10 px-6 py-28">
-        <div className="mx-auto max-w-5xl">
+      {/* ── Feature cards (white on dark) ────────────────────────── */}
+      <section className={`${DARK} px-6 pb-32`}>
+        <div className="mx-auto max-w-6xl">
           <Reveal>
-            <h2 className="text-center font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
+            <h2 className="text-center font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
               See it. Price it. Time it.
             </h2>
           </Reveal>
-          <div className="mt-16 grid gap-px overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-piranha-charcoal/10 md:grid-cols-3">
+          <div className="mt-16 grid gap-6 md:grid-cols-3">
             {FEATURES.map((c, i) => (
-              <Reveal key={c.title} delay={i * 120}>
-                <div className="h-full bg-piranha-bone p-8">
+              <Reveal key={c.title} variant="float" delay={i * 120}>
+                <div className="flex h-full flex-col rounded-2xl bg-white p-9">
                   <span className="font-serif text-2xl text-piranha-gold">{c.n}</span>
-                  <h3 className="mt-4 font-serif text-2xl tracking-tight text-piranha-charcoal">{c.title}</h3>
-                  <p className="mt-3 leading-relaxed text-piranha-charcoal/70">{c.body}</p>
+                  <h3 className="mt-5 text-2xl font-semibold tracking-tight text-piranha-charcoal">{c.title}</h3>
+                  <p className="mt-3 leading-relaxed text-piranha-charcoal/65">{c.body}</p>
                 </div>
               </Reveal>
             ))}
@@ -95,11 +99,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── How it works ─────────────────────────────────────────── */}
-      <section className="border-t border-piranha-charcoal/10 px-6 py-28">
+      {/* ── How it works (light) ─────────────────────────────────── */}
+      <section className="bg-piranha-bone px-6 py-28">
         <div className="mx-auto max-w-5xl">
           <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-piranha-burgundy">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
               How it works
             </p>
             <h2 className="mt-4 max-w-2xl font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
@@ -120,20 +124,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Stats ────────────────────────────────────────────────── */}
-      <section className="border-t border-piranha-charcoal/10 px-6 py-28">
+      {/* ── Stats (dark) ─────────────────────────────────────────── */}
+      <section className={`${DARK} px-6 py-28`}>
         <div className="mx-auto max-w-5xl">
           <Reveal>
-            <h2 className="max-w-2xl font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
+            <h2 className="max-w-2xl font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
               A full picture, from public record.
             </h2>
           </Reveal>
           <div className="mt-16 grid gap-12 sm:grid-cols-3">
             {STATS.map((s, i) => (
               <Reveal key={s.label} delay={i * 120}>
-                <div className="border-t border-piranha-charcoal/15 pt-5">
-                  <p className="font-serif text-6xl tracking-tight text-piranha-charcoal sm:text-7xl">{s.figure}</p>
-                  <p className="mt-3 text-sm uppercase tracking-[0.14em] text-piranha-charcoal/55">{s.label}</p>
+                <div className="border-t border-piranha-bone/20 pt-5">
+                  <p className="font-serif text-6xl tracking-tight text-piranha-bone sm:text-7xl">{s.figure}</p>
+                  <p className="mt-3 text-sm uppercase tracking-[0.14em] text-piranha-bone/55">{s.label}</p>
                 </div>
               </Reveal>
             ))}
@@ -141,14 +145,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Cities ───────────────────────────────────────────────── */}
-      <section className="border-t border-piranha-charcoal/10 px-6 py-28">
+      {/* ── Cities (dark) ────────────────────────────────────────── */}
+      <section className={`${DARK} border-t border-piranha-bone/10 px-6 py-28`}>
         <div className="mx-auto max-w-5xl">
           <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-piranha-burgundy">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-gold">
               Where we’re live
             </p>
-            <h2 className="mt-4 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
+            <h2 className="mt-4 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
               Five cities, each on its own public data.
             </h2>
           </Reveal>
@@ -158,7 +162,7 @@ export default function Home() {
                 <Link
                   key={c.slug}
                   to={`/boston?city=${c.slug}`}
-                  className="font-serif text-3xl tracking-tight text-piranha-charcoal/80 transition-colors hover:text-piranha-burgundy sm:text-4xl"
+                  className="font-serif text-3xl tracking-tight text-piranha-bone/75 transition-colors hover:text-piranha-gold sm:text-4xl"
                 >
                   {c.name}
                 </Link>
@@ -168,8 +172,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Closing CTA ──────────────────────────────────────────── */}
-      <section className="border-t border-piranha-charcoal/10 px-6 py-32">
+      {/* ── Closing CTA (light) ──────────────────────────────────── */}
+      <section className="bg-piranha-bone px-6 py-32">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <span className="mx-auto block h-px w-16 bg-piranha-gold/70" />
@@ -177,7 +181,7 @@ export default function Home() {
               Find out what it really takes to build.
             </h2>
             <div className="mt-12 flex justify-center">
-              <ArrowLink to="/boston" size="lg">
+              <ArrowLink to="/boston" tone="dark">
                 Start an analysis
               </ArrowLink>
             </div>
