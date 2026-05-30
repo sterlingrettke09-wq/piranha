@@ -10,6 +10,7 @@ import BostonResult from './routes/BostonResult'
 import Ask from './routes/Ask'
 import About from './routes/About'
 import News from './routes/News'
+import NotFound from './routes/NotFound'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -23,6 +24,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/ask" element={<Ask />} />
           <Route path="/news" element={<News />} />
           <Route path="/about" element={<About />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
     </BrowserRouter>
