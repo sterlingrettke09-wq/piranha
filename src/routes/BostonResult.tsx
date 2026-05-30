@@ -217,8 +217,8 @@ export default function BostonResult() {
 
             <ReportSection
               n="04"
-              title="Time to approval"
-              kicker="Months to a permit on the path this project lands on."
+              title="From design to move-in"
+              kicker="The full life-cycle: architectural design, permits, site prep, and construction."
             >
               <Timeline timeline={state.data.timeline} />
             </ReportSection>

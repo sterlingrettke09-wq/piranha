@@ -31,12 +31,13 @@ describe('buildNarrative', () => {
     expect(text).toContain('far')
   })
 
-  it('reflects the hurdle-adjusted timeline, not the base path', () => {
+  it('reports the full life-cycle timeline, not the base permit time', () => {
     const f: Feasibility = { overall: 'AS_OF_RIGHT', checks: [], path: 'as_of_right' }
-    const text = buildNarrative(parcel, project, f, cost, { timelineMonths: 13, addedApprovals: 2 })
-    expect(text).toContain('13 months')
+    const text = buildNarrative(parcel, project, f, cost, { timelineMonths: 26, includesDemolition: true })
+    expect(text).toContain('26 months')
     expect(text).not.toContain('4 months')
-    expect(text).toMatch(/added approvals/i)
+    expect(text).toMatch(/design to move-in/i)
+    expect(text).toMatch(/demolish/i)
   })
 
   it('calls out indeterminate dimensions', () => {

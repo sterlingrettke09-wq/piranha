@@ -34,7 +34,7 @@ export function KeyMetrics({ costs, timeline, hurdles }: Props) {
     {
       figure: timeline.months > 0 ? `${timeline.months}` : 'N/A',
       suffix: timeline.months > 0 ? (timeline.months === 1 ? ' mo' : ' mos') : '',
-      label: 'To a permit in hand',
+      label: 'From design to move-in',
     },
     {
       figure: hurdleFigure,

@@ -13,10 +13,10 @@ const VERDICT_LEAD: Record<CheckStatus, string> = {
 }
 
 interface NarrativeOpts {
-  /** Final approval timeline including non-zoning hurdles. Falls back to the cost estimate. */
+  /** Full life-cycle months (design → move-in). Falls back to the cost estimate. */
   timelineMonths?: number
-  /** How many of the surfaced approvals add time on top of the base path. */
-  addedApprovals?: number
+  /** Whether the life-cycle includes demolishing an existing building first. */
+  includesDemolition?: boolean
 }
 
 export function buildNarrative(
@@ -42,13 +42,10 @@ export function buildNarrative(
 
   const months = opts.timelineMonths ?? c.timeline.months
   const path = c.timeline.path.replace(/_/g, '-')
-  const added = opts.addedApprovals ?? 0
   let timeline = ''
   if (months > 0) {
-    timeline =
-      added > 0
-        ? ` Plan on roughly ${months} months to a permit, once the added approvals above are cleared, starting from the ${path} path.`
-        : ` Plan on roughly ${months} months to a permit on the ${path} path.`
+    const demo = opts.includesDemolition ? ', including demolishing the existing building first' : ''
+    timeline = ` Plan on roughly ${months} months from design to move-in on the ${path} path${demo}.`
   }
 
   return lead + reason + caveat + cost + timeline

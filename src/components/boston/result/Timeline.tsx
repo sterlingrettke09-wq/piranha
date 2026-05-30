@@ -1,8 +1,8 @@
 import type { AnalysisResult } from '../../../types/analysis'
 
 const PATH_LABEL: Record<AnalysisResult['timeline']['path'], string> = {
-  as_of_right: 'As-of-right permitting',
-  variance: 'Variance / discretionary approval',
+  as_of_right: 'On the as-of-right path',
+  variance: 'Through discretionary review',
   prohibited: 'No viable approval path',
 }
 
@@ -23,6 +23,12 @@ export function Timeline({ timeline }: { timeline: AnalysisResult['timeline'] })
       <p className="mt-3 text-xs uppercase tracking-[0.14em] text-piranha-charcoal/55">
         {PATH_LABEL[timeline.path]}
       </p>
+      {hasMonths && (
+        <p className="mt-4 border-t border-piranha-charcoal/10 pt-4 text-sm leading-relaxed text-piranha-charcoal/60">
+          Estimated from design through construction, not just the permit. Coastal and
+          discretionary cities run longer than this on complex projects.
+        </p>
+      )}
     </div>
   )
 }

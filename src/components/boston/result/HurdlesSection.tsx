@@ -49,11 +49,6 @@ export function HurdlesSection({ hurdles }: { hurdles: Hurdle[] }) {
                     <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
                     {s.label}
                   </span>
-                  {h.addsMonths ? (
-                    <span className="text-sm text-piranha-charcoal/55 tabular-nums">
-                      +{h.addsMonths} mo
-                    </span>
-                  ) : null}
                 </div>
                 <p className="mt-2 leading-relaxed text-piranha-charcoal/70">{h.note}</p>
               </div>

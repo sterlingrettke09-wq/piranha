@@ -32,8 +32,7 @@ export function assumptionsSummary(): Record<string, string> {
     softCost: `${Math.round(softCostPct * 100)}% of hard cost`,
     permitFee: `$${PERMIT_BASE_FEE} + $${PERMIT_RATE_PER_1000} per $1,000 of construction value`,
     varianceFiling: `$${VARIANCE_FILING_FEE} when relief required`,
-    asOfRightTimeline: `${timelineMonthsByPath.as_of_right} months`,
-    varianceTimeline: `${timelineMonthsByPath.variance} months`,
+    timeline: 'Full life-cycle (design to move-in), estimated by city and building type',
     feetPerStory: `${FT_PER_STORY} ft`,
   }
 }

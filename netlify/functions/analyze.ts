@@ -5,6 +5,7 @@ import { getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
 import { assessHurdles } from './lib/hurdles'
 import { estimateCost } from './lib/cost'
+import { resolveTimeline } from './lib/timeline'
 import { buildNarrative } from './lib/narrative'
 import { assumptionsSummary } from './lib/assumptions'
 
@@ -68,17 +69,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const estimate = estimateCost(project, feasibility)
   const hurdles = assessHurdles(city, parcel, project)
 
-  // Non-zoning hurdles add to the approval timeline.
-  const hurdleMonths = hurdles.reduce((sum, h) => sum + (h.addsMonths ?? 0), 0)
-  const addedApprovals = hurdles.filter((h) => (h.addsMonths ?? 0) > 0).length
-  const timeline = {
-    ...estimate.timeline,
-    months: estimate.timeline.months > 0 ? estimate.timeline.months + hurdleMonths : estimate.timeline.months,
-  }
+  // Full life-cycle timeline (design → permits → site prep → construction → move-in),
+  // by city and building type. A demolition hurdle means there's a building to clear,
+  // which the new-construction baseline already accounts for.
+  const hasExistingBuilding = hurdles.some((h) => h.category === 'demolition')
+  const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding)
+  const timeline = { months: timelineInfo.months, path: timelineInfo.path }
 
   const narrative = buildNarrative(parcel, project, feasibility, estimate, {
     timelineMonths: timeline.months,
-    addedApprovals,
+    includesDemolition: timelineInfo.includesDemolition,
   })
 
   const result: AnalysisResult = {
