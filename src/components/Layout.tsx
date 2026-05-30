@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { Wordmark } from './Wordmark'
 import { CitiesNav } from './CitiesNav'
 import { DisclaimerNotice } from './DisclaimerNotice'
@@ -15,22 +15,36 @@ const navItems = [
   { to: '/about', label: 'About' },
 ]
 
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `text-sm font-semibold uppercase tracking-wider transition-colors ${
-    isActive ? 'text-piranha-burgundy' : 'text-piranha-charcoal hover:text-piranha-burgundy'
-  }`
+// On the dark Home header, links go bone/gold; everywhere else charcoal/burgundy.
+const makeLinkClass = (dark: boolean) =>
+  ({ isActive }: { isActive: boolean }) =>
+    `text-sm font-semibold uppercase tracking-wider transition-colors ${
+      isActive
+        ? dark
+          ? 'text-piranha-gold'
+          : 'text-piranha-burgundy'
+        : dark
+          ? 'text-piranha-bone/80 hover:text-piranha-bone'
+          : 'text-piranha-charcoal hover:text-piranha-burgundy'
+    }`
 
 export function Layout({ children }: LayoutProps) {
+  const dark = useLocation().pathname === '/'
+  const linkClass = makeLinkClass(dark)
   return (
     <div className="min-h-screen flex flex-col bg-piranha-bone text-piranha-charcoal">
-      <header className="border-b border-piranha-charcoal/10 bg-piranha-bone">
+      <header
+        className={`border-b ${
+          dark ? 'border-piranha-bone/10 bg-[#1a1412]' : 'border-piranha-charcoal/10 bg-piranha-bone'
+        }`}
+      >
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Wordmark />
+          <Wordmark light={dark} />
           <nav className="flex items-center gap-8">
             <NavLink to="/" end className={linkClass}>
               Home
             </NavLink>
-            <CitiesNav />
+            <CitiesNav light={dark} />
             {navItems
               .filter((i) => i.to !== '/')
               .map(({ to, label }) => (

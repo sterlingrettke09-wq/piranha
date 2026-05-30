@@ -4,7 +4,7 @@ import { CITIES } from '../config/cities'
 
 // Header "Cities" dropdown — selecting a city navigates to its dashboard
 // (?city=slug), which the dashboard reads from the URL.
-export function CitiesNav() {
+export function CitiesNav({ light = false }: { light?: boolean }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -26,7 +26,13 @@ export function CitiesNav() {
         aria-haspopup="menu"
         aria-expanded={open}
         className={`text-sm font-semibold uppercase tracking-wider transition-colors ${
-          onCities ? 'text-piranha-burgundy' : 'text-piranha-charcoal hover:text-piranha-burgundy'
+          onCities
+            ? light
+              ? 'text-piranha-gold'
+              : 'text-piranha-burgundy'
+            : light
+              ? 'text-piranha-bone/80 hover:text-piranha-bone'
+              : 'text-piranha-charcoal hover:text-piranha-burgundy'
         }`}
       >
         Cities <span aria-hidden="true">▾</span>
