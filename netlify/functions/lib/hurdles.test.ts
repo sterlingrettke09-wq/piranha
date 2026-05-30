@@ -95,6 +95,37 @@ describe('assessHurdles — other cities', () => {
   })
 })
 
+describe('assessHurdles — parking', () => {
+  it('always includes a parking note with city-specific guidance', () => {
+    for (const city of ['boston', 'nyc', 'sf', 'chicago', 'seattle']) {
+      const hs = assessHurdles(city, parcel({}), project({ city }))
+      const p = hs.find((h) => h.category === 'parking')
+      expect(p, `expected a parking hurdle for ${city}`).toBeTruthy()
+    }
+  })
+
+  it('notes NYC and SF have eliminated parking minimums', () => {
+    const nyc = assessHurdles('nyc', parcel({}), project({ city: 'nyc' }))
+    expect(nyc.find((h) => h.category === 'parking')?.note).toMatch(/eliminat|no longer|removed/i)
+    const sf = assessHurdles('sf', parcel({}), project({ city: 'sf' }))
+    expect(sf.find((h) => h.category === 'parking')?.note).toMatch(/eliminat|no longer|removed/i)
+  })
+})
+
+describe('assessHurdles — labor / DEI', () => {
+  it('flags prevailing wage + MWBE goals for large projects', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ gfa: 80000 }))
+    const labor = hs.find((h) => h.category === 'labor')
+    expect(labor).toBeTruthy()
+    expect(labor?.note).toMatch(/prevailing wage|MWBE|minority/i)
+  })
+
+  it('does NOT flag labor/DEI for a small project', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ gfa: 6000, units: 2 }))
+    expect(cats(hs)).not.toContain('labor')
+  })
+})
+
 describe('assessHurdles — project type', () => {
   it('ADU adds ADU-specific rules', () => {
     const hs = assessHurdles('boston', parcel({}), project({ projectType: 'adu' }))

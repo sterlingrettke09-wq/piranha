@@ -17,6 +17,24 @@ function inBox(lng: number, lat: number, b: [number, number, number, number]): b
 
 const FLOOD_OK = new Set(['', 'X', 'AREA OF MINIMAL FLOOD HAZARD', 'AREA NOT INCLUDED'])
 
+// Parking minimums are a flagship Abundance-era reform target. Where a city has
+// abolished them that's a tailwind; where they remain they drive cost/feasibility.
+const PARKING_NOTE: Record<string, string> = {
+  boston:
+    'Boston has dropped parking minimums for income-restricted housing and cut them broadly near transit; many districts still set a ratio. Confirm the requirement for your zone — every space adds significant cost.',
+  nyc:
+    'NYC’s “City of Yes for Housing Opportunity” (2024) eliminated mandatory parking minimums citywide. You can still build parking, but you’re no longer forced to — a major cost saver.',
+  sf:
+    'San Francisco removed off-street parking minimums citywide in 2018. None are required; parking is optional and demand-driven.',
+  chicago:
+    'Chicago sets parking minimums by zone, with sharp reductions (often to zero) for transit-served (TOD) sites near rail and frequent bus. Confirm your site’s transit-proximity reduction.',
+  seattle:
+    'Seattle requires no parking minimums inside urban villages and frequent-transit areas, which cover much of the buildable city. Confirm whether your parcel falls inside one.',
+}
+
+const LABOR_NOTE =
+  'Public funding, tax abatements, tax-increment financing, or city land typically trigger prevailing-wage requirements and minority/women-owned business (MWBE/DEI) participation goals — raising labor cost and adding compliance reporting. Large projects also commonly negotiate Community Benefit Agreements. These are the “everything-bagel” mandates that stack on top of the build itself.'
+
 // Assess non-zoning regulatory hurdles for a project. Boston is fully modeled;
 // other cities get the shared overlay + private-governance hurdles for now.
 export function assessHurdles(city: string, parcel: ParcelInfo, project: AnalysisInput): Hurdle[] {
@@ -184,6 +202,26 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       })
     }
   }
+
+  // Labor / DEI — the "everything-bagel" mandates that attach when a project
+  // taps public money or land. Surface on projects large enough to plausibly
+  // seek subsidy/abatement (smaller as-of-right builds rarely trigger these).
+  if (project.gfa >= 50000 || units >= 25) {
+    hurdles.push({
+      category: 'labor',
+      label: 'Prevailing wage & MWBE/DEI goals',
+      status: 'info',
+      note: LABOR_NOTE,
+    })
+  }
+
+  // Parking — flagship Abundance reform target; always worth surfacing.
+  hurdles.push({
+    category: 'parking',
+    label: 'Parking requirements',
+    status: 'info',
+    note: PARKING_NOTE[city] ?? 'Check the local parking-minimum requirement for your zone — required spaces add significant cost and can constrain the building envelope.',
+  })
 
   // Private governance — curated sites escalate; otherwise a standing disclaimer.
   const [lng, lat] = parcel.coordinates
