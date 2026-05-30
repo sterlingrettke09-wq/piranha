@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import type { City } from '../../config/cities'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
@@ -7,9 +9,9 @@ const prefersReduced = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
- * Cinematic city entry — flies over a dark map of the actual city, then
- * dissolves into the dashboard. Plays once per city per browser session.
- * Self-contained: give it `key={city.slug}` so it re-runs when the city changes.
+ * Cinematic city entry — a live satellite map that dives from a high sky view
+ * down into the city with a 3D tilt + terrain, then dissolves into the
+ * dashboard. Plays once per city per browser session. Give it `key={city.slug}`.
  */
 export function CityIntro({ city }: { city: City }) {
   const [done, setDone] = useState(() => {
@@ -21,6 +23,8 @@ export function CityIntro({ city }: { city: City }) {
     }
   })
   const [exiting, setExiting] = useState(false)
+  const mapEl = useRef<HTMLDivElement | null>(null)
+  const mapRef = useRef<mapboxgl.Map | null>(null)
 
   useEffect(() => {
     if (done) return
@@ -29,22 +33,63 @@ export function CityIntro({ city }: { city: City }) {
     } catch {
       // ignore
     }
+
     const reduce = prefersReduced()
-    const tExit = setTimeout(() => setExiting(true), reduce ? 80 : 2100)
-    const tDone = setTimeout(() => setDone(true), reduce ? 200 : 3000)
+    const [lng, lat] = city.center
+    const canDive = !!TOKEN && !reduce && !!mapEl.current && !mapRef.current
+
+    if (canDive) {
+      mapboxgl.accessToken = TOKEN as string
+      const map = new mapboxgl.Map({
+        container: mapEl.current as HTMLDivElement,
+        style: 'mapbox://styles/mapbox/satellite-v9',
+        center: [lng, lat],
+        zoom: Math.max(3, city.zoom - 4.4),
+        pitch: 0,
+        bearing: -18,
+        interactive: false,
+        attributionControl: false,
+      })
+      mapRef.current = map
+      map.on('load', () => {
+        try {
+          map.addSource('tpp-dem', {
+            type: 'raster-dem',
+            url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+            tileSize: 512,
+            maxzoom: 14,
+          })
+          map.setTerrain({ source: 'tpp-dem', exaggeration: 1.35 })
+        } catch {
+          // terrain optional
+        }
+        // The dive: swoop down and tilt into the city.
+        map.flyTo({
+          center: [lng, lat],
+          zoom: city.zoom + 1.6,
+          pitch: 62,
+          bearing: 0,
+          duration: 3800,
+          curve: 1.5,
+          essential: true,
+        })
+      })
+    }
+
+    const fast = reduce || !TOKEN
+    const tExit = setTimeout(() => setExiting(true), fast ? 80 : 4000)
+    const tDone = setTimeout(() => setDone(true), fast ? 220 : 4800)
     return () => {
       clearTimeout(tExit)
       clearTimeout(tDone)
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+      }
     }
-  }, [done, city.slug])
+  }, [done, city.slug, city.center, city.zoom])
 
   if (done) return null
-
-  const [lng, lat] = city.center
-  // Real satellite imagery of the actual city — a true aerial view.
-  const mapUrl = TOKEN
-    ? `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${city.zoom},0/1280x720@2x?access_token=${TOKEN}`
-    : null
 
   const dismiss = () => {
     setExiting(true)
@@ -58,19 +103,15 @@ export function CityIntro({ city }: { city: City }) {
         exiting ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      {mapUrl && (
-        <img src={mapUrl} alt="" aria-hidden className="tpp-kenburns h-full w-full object-cover" />
-      )}
-      {/* Keep the real city visible; just enough darkening for the title to read. */}
-      <div className="absolute inset-0 bg-black/15" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_center,rgba(0,0,0,0.62),rgba(0,0,0,0.15)_55%,transparent_75%)]" />
-
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+      <div ref={mapEl} className="absolute inset-0 h-full w-full" />
+      {/* Legibility vignette behind the title; keeps the city visible. */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_center,rgba(0,0,0,0.55),rgba(0,0,0,0.12)_55%,transparent_78%)]" />
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
         <div className="tpp-intro-rise flex flex-col items-center">
           <span className="mb-5 text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-piranha-gold">
             Now entering
           </span>
-          <h1 className="font-serif text-6xl leading-[0.95] tracking-tight text-piranha-bone drop-shadow-[0_2px_24px_rgba(0,0,0,0.7)] sm:text-8xl">
+          <h1 className="font-serif text-6xl leading-[0.95] tracking-tight text-piranha-bone drop-shadow-[0_2px_24px_rgba(0,0,0,0.8)] sm:text-8xl">
             {city.name}
           </h1>
         </div>
