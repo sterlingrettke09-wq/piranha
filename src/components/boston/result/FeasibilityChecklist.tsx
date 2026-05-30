@@ -11,6 +11,7 @@ const DIMENSION_LABEL: Record<FeasibilityCheck['dimension'], string> = {
   use: 'Use',
   far: 'Floor-area ratio',
   height: 'Height',
+  housing: 'Existing housing',
 }
 
 export function FeasibilityChecklist({ checks }: { checks: FeasibilityCheck[] }) {

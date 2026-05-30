@@ -11,6 +11,17 @@ export const costPerSqFtByUse: Record<Use, number> = {
   institutional: 450,
 }
 
+// Relative hard-construction cost by metro (Boston = reference 1.0). Estimated
+// from published regional cost indices: NYC and SF run hot, Chicago cheaper.
+// This is hard cost only; it does not include land, which diverges far more.
+export const cityCostIndex: Record<string, number> = {
+  boston: 1.0,
+  nyc: 1.18,
+  sf: 1.13,
+  seattle: 1.0,
+  chicago: 0.92,
+}
+
 export const softCostPct = 0.25 // soft costs as a share of hard cost
 
 export const PERMIT_BASE_FEE = 100 // flat building-permit filing fee (USD)
@@ -23,12 +34,15 @@ export const timelineMonthsByPath = {
   prohibited: 0,
 } as const
 
-export function assumptionsSummary(): Record<string, string> {
+export function assumptionsSummary(city = 'boston'): Record<string, string> {
+  const idx = cityCostIndex[city] ?? 1.0
+  const rate = (n: number) => `$${Math.round(n * idx)}/sf`
   return {
-    hardCostResidential: `$${costPerSqFtByUse.residential}/sf`,
-    hardCostCommercial: `$${costPerSqFtByUse.commercial}/sf`,
-    hardCostMixed: `$${costPerSqFtByUse.mixed}/sf`,
-    hardCostInstitutional: `$${costPerSqFtByUse.institutional}/sf`,
+    cityCostIndex: `${idx.toFixed(2)}× vs. Boston base`,
+    hardCostResidential: rate(costPerSqFtByUse.residential),
+    hardCostCommercial: rate(costPerSqFtByUse.commercial),
+    hardCostMixed: rate(costPerSqFtByUse.mixed),
+    hardCostInstitutional: rate(costPerSqFtByUse.institutional),
     softCost: `${Math.round(softCostPct * 100)}% of hard cost`,
     permitFee: `$${PERMIT_BASE_FEE} + $${PERMIT_RATE_PER_1000} per $1,000 of construction value`,
     varianceFiling: `$${VARIANCE_FILING_FEE} when relief required`,

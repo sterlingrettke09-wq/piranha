@@ -74,6 +74,39 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
     checks.push({ dimension: 'height', status, proposed: `${effHeight} ft`, allowed: `max ${limits.maxHeightFt} ft`, note })
   }
 
+  // HOUSING — demolishing existing homes to build fewer is not an as-of-right
+  // teardown. No-net-loss rules, rent regulation, and tenant protections make
+  // shrinking the housing on a lot a major discretionary action, and often a
+  // non-starter when an established multifamily building is involved.
+  const ex = parcel.existing
+  const exUnits = ex?.units ?? 0
+  const exLu = ex?.landUse ?? ''
+  const multifamilyExisting =
+    exUnits >= 3 || /apartment|condo|multi|triplex|fourplex|elevator|tenement|flats|housing/i.test(exLu)
+  const proposedResUnits =
+    project.use === 'residential' || project.use === 'mixed' ? (project.units ?? 1) : 0
+  if (
+    project.projectType === 'new' &&
+    multifamilyExisting &&
+    exUnits > 0 &&
+    proposedResUnits < exUnits
+  ) {
+    // Severe: tearing down an apartment-scale building, or collapsing a sizable
+    // building down to a single home. Smaller reductions are "needs relief".
+    const severe = exUnits >= 10 || (exUnits >= 5 && proposedResUnits <= 1)
+    const status: CheckStatus = severe ? 'PROHIBITED' : 'NEEDS_RELIEF'
+    const note = severe
+      ? `This parcel holds roughly ${exUnits} homes. Tearing down established multifamily housing to build ${proposedResUnits || 'no'} ${proposedResUnits === 1 ? 'unit' : 'units'} is a large net loss of housing. No-net-loss rules, rent regulation, and tenant protections generally bar this outright, so it is not buildable as proposed.`
+      : `Replacing ${exUnits} existing homes with ${proposedResUnits} reduces the housing on this lot. Cities with no-net-loss rules require discretionary approval for this, and it may not be granted.`
+    checks.push({
+      dimension: 'housing',
+      status,
+      proposed: `${proposedResUnits} ${proposedResUnits === 1 ? 'unit' : 'units'}`,
+      allowed: `${exUnits} existing`,
+      note,
+    })
+  }
+
   // Overall reflects the worst DECISIVE check. A single indeterminate dimension
   // (e.g. NYC height, which public data doesn't carry) shouldn't drag an
   // otherwise-clear verdict to "indeterminate" — it still shows in the checklist.

@@ -2,6 +2,7 @@ import type { AnalysisInput } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
 import {
   costPerSqFtByUse,
+  cityCostIndex,
   softCostPct,
   PERMIT_BASE_FEE,
   PERMIT_RATE_PER_1000,
@@ -15,7 +16,8 @@ export interface CostEstimate {
 }
 
 export function estimateCost(project: AnalysisInput, feasibility: Feasibility): CostEstimate {
-  const hard = Math.round(project.gfa * costPerSqFtByUse[project.use])
+  const cityIdx = cityCostIndex[project.city] ?? 1.0
+  const hard = Math.round(project.gfa * costPerSqFtByUse[project.use] * cityIdx)
   const soft = Math.round(hard * softCostPct)
   const constructionValue = hard
   let permit = Math.round(PERMIT_BASE_FEE + (constructionValue / 1000) * PERMIT_RATE_PER_1000)

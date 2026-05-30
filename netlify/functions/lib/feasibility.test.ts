@@ -21,6 +21,27 @@ describe('assessFeasibility', () => {
     expect(r.path).toBe('as_of_right')
   })
 
+  it('prohibits demolishing an established multifamily building for fewer units', () => {
+    const p: ParcelInfo = {
+      ...parcel(),
+      existing: { landUse: 'Multi-family elevator buildings', units: 49 },
+    }
+    const r = assessFeasibility(
+      p,
+      project({ use: 'residential', gfa: 4000, units: 1, projectType: 'new', heightFt: 30 }),
+    )
+    expect(r.checks.find((c) => c.dimension === 'housing')?.status).toBe('PROHIBITED')
+    expect(r.overall).toBe('PROHIBITED')
+  })
+
+  it('does not flag housing loss on a vacant lot', () => {
+    const r = assessFeasibility(
+      parcel(),
+      project({ use: 'residential', gfa: 4000, units: 1, projectType: 'new', heightFt: 30 }),
+    )
+    expect(r.checks.find((c) => c.dimension === 'housing')).toBeUndefined()
+  })
+
   it('needs relief when FAR exceeds the district limit', () => {
     const r = assessFeasibility(parcel(), project({ gfa: 30000 })) // FAR 3.0 > 2.0
     expect(r.overall).toBe('NEEDS_RELIEF')

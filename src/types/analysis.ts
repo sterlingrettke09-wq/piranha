@@ -22,7 +22,7 @@ export interface AnalysisInput {
 }
 
 export interface FeasibilityCheck {
-  dimension: 'use' | 'far' | 'height'
+  dimension: 'use' | 'far' | 'height' | 'housing'
   status: CheckStatus
   proposed: string
   allowed: string

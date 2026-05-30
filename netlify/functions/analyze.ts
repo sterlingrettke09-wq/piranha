@@ -101,7 +101,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     costs: estimate.costs,
     timeline,
     narrative,
-    assumptions: assumptionsSummary(),
+    assumptions: assumptionsSummary(city),
     sources: parcel.sources,
     disclaimers: DISCLAIMERS,
     generatedAt: new Date().toISOString(),

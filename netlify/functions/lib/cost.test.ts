@@ -13,6 +13,15 @@ describe('estimateCost', () => {
     expect(estimateCost(project, asOfRight).costs.hard).toBe(3_500_000)
   })
 
+  it('scales hard cost by the city construction index', () => {
+    const bos = estimateCost({ ...project, city: 'boston' }, asOfRight).costs.hard
+    const nyc = estimateCost({ ...project, city: 'nyc' }, asOfRight).costs.hard
+    const chi = estimateCost({ ...project, city: 'chicago' }, asOfRight).costs.hard
+    expect(nyc).toBeGreaterThan(bos)
+    expect(bos).toBeGreaterThan(chi)
+    expect(nyc).toBe(Math.round(10000 * 350 * 1.18))
+  })
+
   it('computes soft cost as a fraction of hard', () => {
     const c = estimateCost(project, asOfRight).costs
     expect(c.soft).toBe(Math.round(c.hard * 0.25))
