@@ -22,3 +22,66 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Branded range slider — filled track (driven by --pct) + burgundy thumb. */
+.tpp-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--color-piranha-burgundy) 0%,
+    var(--color-piranha-burgundy) var(--pct, 0%),
+    rgba(26, 26, 26, 0.12) var(--pct, 0%),
+    rgba(26, 26, 26, 0.12) 100%
+  );
+  outline: none;
+}
+.tpp-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: var(--color-piranha-burgundy);
+  border: 3px solid var(--color-piranha-bone);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.tpp-range::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+.tpp-range::-moz-range-thumb {
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: var(--color-piranha-burgundy);
+  border: 3px solid var(--color-piranha-bone);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.tpp-range:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--color-piranha-gold);
+  outline-offset: 2px;
+}
+
+@keyframes tpp-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tpp-fade-in {
+  animation: tpp-fade-in 0.28s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpp-fade-in {
+    animation: none;
+  }
+}

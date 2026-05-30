@@ -88,18 +88,20 @@ export default function BostonWizard() {
         />
         <WizardProgress step={step} total={TOTAL_STEPS} />
 
-        {step === 1 && <StepUse value={use} onChange={(u) => setUse(u)} />}
-        {step === 2 && (
-          <StepSize use={use} gfa={gfa} units={units} onGfa={setGfa} onUnits={setUnits} />
-        )}
-        {step === 3 && (
-          <StepHeight
-            stories={stories}
-            heightFt={heightFt}
-            onStories={setStories}
-            onHeight={setHeightFt}
-          />
-        )}
+        <div key={step} className="tpp-fade-in">
+          {step === 1 && <StepUse value={use} onChange={(u) => setUse(u)} />}
+          {step === 2 && (
+            <StepSize use={use} gfa={gfa} units={units} onGfa={setGfa} onUnits={setUnits} />
+          )}
+          {step === 3 && (
+            <StepHeight
+              stories={stories}
+              heightFt={heightFt}
+              onStories={setStories}
+              onHeight={setHeightFt}
+            />
+          )}
+        </div>
 
         <div className="flex items-center justify-between pt-2">
           <button

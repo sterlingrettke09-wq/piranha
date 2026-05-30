@@ -15,6 +15,7 @@ export function SliderInput({ label, value, onChange, min, max, step, unit, help
   const has = Number.isFinite(n)
   const display = has ? n.toLocaleString() : '—'
   const sliderVal = has ? Math.min(max, Math.max(min, n)) : min
+  const pct = max > min ? ((sliderVal - min) / (max - min)) * 100 : 0
 
   return (
     <div className="rounded-xl border border-piranha-charcoal/10 bg-white/60 p-5">
@@ -36,7 +37,8 @@ export function SliderInput({ label, value, onChange, min, max, step, unit, help
         value={sliderVal}
         onChange={(e) => onChange(e.target.value)}
         aria-label={label}
-        className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full bg-piranha-charcoal/10 accent-piranha-burgundy"
+        style={{ '--pct': `${pct}%` } as React.CSSProperties}
+        className="tpp-range mt-4 w-full"
       />
 
       <div className="mt-3 flex items-center gap-2">
