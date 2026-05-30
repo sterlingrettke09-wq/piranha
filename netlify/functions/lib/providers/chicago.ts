@@ -12,6 +12,30 @@ const PARCELS =
 const HISTORIC =
   'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/6' // Historic Districts (NAME).
 
+// Cook County assessor class → existing use (1xx vacant, 2xx residential,
+// 3xx apartments, 4xx institutional, 5xx+ commercial/industrial).
+function chicagoExistingUse(cls: unknown): string | null {
+  const c = String(cls ?? '').trim()
+  if (!c) return null
+  switch (c[0]) {
+    case '1':
+      return 'Vacant land'
+    case '2':
+      return 'Residential building'
+    case '3':
+      return 'Apartment building'
+    case '4':
+      return 'Institutional building'
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+      return 'Commercial / industrial building'
+    default:
+      return null
+  }
+}
+
 // Chicago zoning class prefix → use vocabulary.
 function usesForZone(zone: string | null): string[] | null {
   if (!zone) return null
@@ -27,7 +51,7 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
   const t0 = Date.now()
   const [zoningR, parcelR, floodR, addrR, histR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['ZONE_CLASS'], false, undefined, 9000),
-    fetchFeatures(PARCELS, lat, lng, ['PIN10'], true),
+    fetchFeatures(PARCELS, lat, lng, ['PIN10', 'AssessorBLDGclass'], true),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     reverseGeocode(lat, lng),
     fetchFeatures(HISTORIC, lat, lng, ['NAME'], false, undefined, 9000),
@@ -69,6 +93,7 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
       historicDistrict: hist?.NAME ? String(hist.NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
+    existing: { landUse: chicagoExistingUse(pf.attributes.AssessorBLDGclass) },
     sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),
   }

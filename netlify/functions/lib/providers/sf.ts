@@ -9,7 +9,23 @@ const BASE = 'https://sfplanninggis.org/arcgiswa/rest/services/PlanningData/MapS
 const ZONING = `${BASE}/3`
 const PARCELS = `${BASE}/23`
 const HISTORIC = `${BASE}/17` // Article 10 Historic Districts (name_1).
+const LANDUSE = `${BASE}/35` // Land use (landuse_landuse + landuse_resunits).
 const CA_ZONE3_FT = 2227 // EPSG:2227 NAD83 California zone 3 (US ft) — for lot area.
+
+// SF land-use code → plain-English existing use.
+const SF_LANDUSE: Record<string, string> = {
+  RESIDENT: 'Residential building',
+  MIXRES: 'Mixed-use building (residential)',
+  MIXED: 'Mixed-use building',
+  'RETAIL/ENT': 'Retail / commercial building',
+  CIE: 'Institutional building',
+  MED: 'Medical building',
+  MIPS: 'Office building',
+  PDR: 'Industrial building (PDR)',
+  VISITOR: 'Hotel / visitor building',
+  VACANT: 'Vacant land',
+  OPENSPACE: 'Open space',
+}
 
 // SF zoning "gen" (general use category) → use vocabulary.
 function usesForGen(gen: string | null): string[] | null {
@@ -27,11 +43,12 @@ function usesForGen(gen: string | null): string[] | null {
 
 export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [zoningR, parcelR, floodR, histR] = await Promise.allSettled([
+  const [zoningR, parcelR, floodR, histR, landR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['zoning', 'gen', 'districtname']),
     fetchFeatures(PARCELS, lat, lng, ['blklot', 'from_st', 'street', 'st_type'], true, CA_ZONE3_FT),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     fetchFeatures(HISTORIC, lat, lng, ['name_1']),
+    fetchFeatures(LANDUSE, lat, lng, ['landuse_landuse', 'landuse_resunits']),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -47,6 +64,11 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
+  const land = landR.status === 'fulfilled' ? firstAttrs(landR.value) : null
+
+  const luCode = land?.landuse_landuse ? String(land.landuse_landuse).trim().toUpperCase() : ''
+  const luUnits = land?.landuse_resunits != null ? Number(land.landuse_resunits) : 0
+  const existingUse = luCode ? (SF_LANDUSE[luCode] ?? null) : null
 
   const a = pf.attributes
   const stNum = a.from_st != null ? String(a.from_st).trim() : ''
@@ -76,6 +98,10 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
     overlays: {
       historicDistrict: hist?.name_1 ? String(hist.name_1) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+    },
+    existing: {
+      landUse: existingUse,
+      ...(Number.isFinite(luUnits) && luUnits > 0 ? { units: luUnits } : {}),
     },
     sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),
