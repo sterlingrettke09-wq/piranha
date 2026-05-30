@@ -258,6 +258,15 @@ export function PiranhaIntro() {
           }`}
         />
       )}
+      {/* Scrim over the opening photo so the title stays legible, then fades
+          out with it to reveal the school. */}
+      {!photoFailed && (
+        <div
+          className={`pointer-events-none absolute inset-0 z-[15] bg-gradient-to-b from-black/55 via-black/25 to-black/65 transition-opacity duration-[1600ms] ease-in-out ${
+            imageGone ? 'opacity-0' : 'opacity-100'
+          }`}
+        />
+      )}
       <div
         className={`relative z-20 flex h-full flex-col items-center justify-center px-6 text-center transition-opacity duration-1000 ease-in-out ${
           imageGone ? 'opacity-100' : 'opacity-0'
