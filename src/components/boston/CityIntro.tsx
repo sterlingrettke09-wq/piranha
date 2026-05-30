@@ -73,10 +73,6 @@ export function CityIntro({ city }: { city: City }) {
           <h1 className="font-serif text-6xl leading-[0.95] tracking-tight text-piranha-bone drop-shadow-[0_2px_24px_rgba(0,0,0,0.7)] sm:text-8xl">
             {city.name}
           </h1>
-          <span className="mt-7 h-px w-16 bg-piranha-gold/70" />
-          <p className="mt-6 max-w-md text-sm uppercase tracking-[0.22em] text-piranha-bone/70">
-            {city.tagline}
-          </p>
         </div>
       </div>
     </div>
