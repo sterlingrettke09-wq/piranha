@@ -85,6 +85,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       maxHeightFt: parcel.zoning.maxHeightFt,
       floodZone: parcel.overlays.floodZone,
       historicDistrict: parcel.overlays.historicDistrict,
+      existing: parcel.existing,
     },
     project,
     feasibility: { overall: feasibility.overall, checks: feasibility.checks },

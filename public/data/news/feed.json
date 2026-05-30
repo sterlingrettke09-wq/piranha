@@ -1,5 +1,53 @@
 [
   {
+    "id": "states-2026-sessions",
+    "date": "2026-02-18",
+    "jurisdiction": "state",
+    "category": "zoning",
+    "headline": "Zoning takes center stage in 2026 statehouse sessions",
+    "summary": "With most legislatures mid-session, states are again leading on housing — bills to legalize more housing types, curb parking mandates, and speed permitting are moving in capitals across the country. The focus is shifting from merely allowing density to actually making projects feasible.",
+    "why_it_matters": "State preemption can override restrictive local rules in one stroke, changing what's buildable on ordinary lots faster than city-by-city fights.",
+    "source_name": "Smart Growth America",
+    "source_url": "https://www.smartgrowthamerica.org/knowledge-hub/news/on-zoning-and-housing-states-continue-to-take-charge/",
+    "published_date": "2026-05-28"
+  },
+  {
+    "id": "seattle-comp-plan-2025",
+    "date": "2025-09-15",
+    "jurisdiction": "seattle",
+    "category": "zoning",
+    "headline": "Seattle adopts its “One Seattle” Comprehensive Plan update",
+    "summary": "Seattle's major Comprehensive Plan update adds new neighborhood centers and broadens where middle housing — duplexes through sixplexes — is allowed, building on Washington's statewide middle-housing mandate. Cities are now translating the plan into zoning code.",
+    "why_it_matters": "It expands by-right housing capacity across far more of the city, reducing the rezoning and discretionary steps a project would otherwise need.",
+    "source_name": "Seattle Office of Planning & Community Development",
+    "source_url": "https://www.seattle.gov/opcd/ongoing-initiatives/seattle-comprehensive-plan",
+    "published_date": "2026-05-28"
+  },
+  {
+    "id": "chicago-cut-the-tape-parking",
+    "date": "2025-07-22",
+    "jurisdiction": "chicago",
+    "category": "permitting",
+    "headline": "Chicago’s “Cut the Tape” pushes parking and permitting reform",
+    "summary": "The city's Cut the Tape initiative targets the process costs that slow housing — including parking-minimum reductions and faster, more predictable permit review — as a complement to its transit-oriented development rules.",
+    "why_it_matters": "Process delay and parking mandates are two of the biggest hidden costs in a project; trimming them directly improves feasibility.",
+    "source_name": "City of Chicago — Cut the Tape",
+    "source_url": "https://www.chicago.gov/city/en/sites/cut-the-tape/home/PolicyInitiatives/ParkingReform.html",
+    "published_date": "2026-05-28"
+  },
+  {
+    "id": "nyc-far-cap-lifted-2024",
+    "date": "2024-04-20",
+    "jurisdiction": "nyc",
+    "category": "zoning",
+    "headline": "New York lifts the 12.0 residential FAR cap",
+    "summary": "A change in state law removed the long-standing 12.0 floor-area-ratio ceiling on residential buildings in New York City, letting the city map higher-density housing districts. It set the stage for the denser zoning enabled later under City of Yes.",
+    "why_it_matters": "FAR is the master dial on how much housing a lot can hold; lifting the cap raises the ceiling on what's even legally possible in the densest areas.",
+    "source_name": "NYC Department of City Planning",
+    "source_url": "https://www.nyc.gov/site/planning/plans/city-of-yes/city-of-yes-housing-opportunity.page",
+    "published_date": "2026-05-28"
+  },
+  {
     "id": "nyc-city-of-yes-2024",
     "date": "2024-12-05",
     "jurisdiction": "nyc",

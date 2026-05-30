@@ -47,6 +47,22 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
   const address = [stNum, stName].filter(Boolean).join(' ') || 'Unknown address'
   const landSf = Number(parcel.LAND_SF)
 
+  const posInt = (v: unknown): number | null => {
+    const n = Number(v)
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : null
+  }
+  const resU = posInt(parcel.RES_UNITS) ?? 0
+  const comU = posInt(parcel.COM_UNITS) ?? 0
+  const totalUnits = resU + comU
+  const luDesc = parcel.LU_DESC != null ? String(parcel.LU_DESC).trim() : ''
+  const existing = {
+    landUse: luDesc || null,
+    yearBuilt: posInt(parcel.YR_BUILT),
+    buildingAreaSqFt: posInt(parcel.GROSS_AREA),
+    units: totalUnits > 0 ? totalUnits : null,
+    numBuildings: posInt(parcel.NUM_BLDGS),
+  }
+
   const info: ParcelInfo = {
     address,
     parcelId: String(parcel.PID ?? ''),
@@ -67,6 +83,7 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
       historicDistrict: historic?.HIST_NAME ? String(historic.HIST_NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
+    existing,
     sources: ENDPOINTS,
     fetchedAt: new Date().toISOString(),
   }

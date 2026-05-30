@@ -6,6 +6,7 @@ import { USES, PROJECT_TYPES, type AnalysisInput, type Use, type ProjectType } f
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
 import { MiniMap } from '../components/boston/result/MiniMap'
 import { SiteFacts } from '../components/boston/result/SiteFacts'
+import { ExistingStructure } from '../components/boston/result/ExistingStructure'
 import { FeasibilityChecklist } from '../components/boston/result/FeasibilityChecklist'
 import { HurdlesSection } from '../components/boston/result/HurdlesSection'
 import { CostBreakdown } from '../components/boston/result/CostBreakdown'
@@ -134,6 +135,7 @@ export default function BostonResult() {
             <VerdictBanner overall={state.data.feasibility.overall} />
             <NarrativeSection narrative={state.data.narrative} />
             <SiteFacts parcel={state.data.parcel} />
+            <ExistingStructure existing={state.data.parcel.existing} />
             <FeasibilityChecklist checks={state.data.feasibility.checks} />
             <HurdlesSection hurdles={state.data.hurdles} />
             <CostBreakdown costs={state.data.costs} gfa={state.data.project.gfa} units={state.data.project.units} />

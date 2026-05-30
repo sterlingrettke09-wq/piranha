@@ -7,7 +7,22 @@ import { fetchFeatures, firstAttrs, type ParcelResult } from '../arcgis'
 
 const MAPPLUTO =
   'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0'
-const FIELDS = ['BBL', 'Address', 'ZoneDist1', 'ResidFAR', 'CommFAR', 'FacilFAR', 'LotArea']
+const FIELDS = ['BBL', 'Address', 'ZoneDist1', 'ResidFAR', 'CommFAR', 'FacilFAR', 'LotArea', 'LandUse', 'YearBuilt', 'BldgArea', 'UnitsTotal', 'NumFloors', 'NumBldgs']
+
+// NYC PLUTO LandUse code → plain-English label.
+const NYC_LAND_USE: Record<string, string> = {
+  '01': 'One & two-family buildings',
+  '02': 'Multi-family walk-up buildings',
+  '03': 'Multi-family elevator buildings',
+  '04': 'Mixed residential & commercial',
+  '05': 'Commercial & office buildings',
+  '06': 'Industrial & manufacturing',
+  '07': 'Transportation & utility',
+  '08': 'Public facilities & institutions',
+  '09': 'Open space & outdoor recreation',
+  '10': 'Parking facilities',
+  '11': 'Vacant land',
+}
 // LPC-designated historic districts (locally landmarked — these trigger LPC review).
 const HISTORIC =
   'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/v_GFT_Historic_Districts/FeatureServer/0'
@@ -94,6 +109,14 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
     overlays: {
       historicDistrict: histR.status === 'fulfilled' ? lpcDistrictName(histR.value.features) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+    },
+    existing: {
+      landUse: NYC_LAND_USE[String(lot.LandUse ?? '').padStart(2, '0')] ?? null,
+      yearBuilt: num(lot.YearBuilt),
+      buildingAreaSqFt: num(lot.BldgArea),
+      units: num(lot.UnitsTotal),
+      stories: num(lot.NumFloors),
+      numBuildings: num(lot.NumBldgs),
     },
     sources: { zoning: MAPPLUTO, parcels: MAPPLUTO, flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),

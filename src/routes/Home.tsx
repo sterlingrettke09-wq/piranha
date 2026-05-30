@@ -26,29 +26,32 @@ export default function Home() {
     <>
       <PiranhaIntro />
       <PageContainer>
-      <section className="mx-auto max-w-3xl py-16 text-center">
+      <section className="mx-auto max-w-3xl py-20 text-center">
         <img
           src="/logo/piranha-fish-burgundy.png"
           alt=""
           aria-hidden="true"
-          className="mx-auto mb-6 w-20 sm:w-24"
+          className="mx-auto mb-7 w-16 sm:w-20"
         />
-        <h1 className="font-serif text-4xl leading-[1.08] tracking-tight text-piranha-charcoal sm:text-5xl">
+        <p className="mb-5 text-xs font-semibold uppercase tracking-[0.22em] text-piranha-burgundy">
+          Regulatory intelligence for builders
+        </p>
+        <h1 className="font-serif text-[2.6rem] leading-[1.06] tracking-tight text-piranha-charcoal sm:text-6xl">
           Ever wonder why it’s nearly impossible to build in many American cities?
         </h1>
 
-        <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-piranha-charcoal/80">
+        <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-piranha-charcoal/75">
           The wondering is over. The Piranha Project shows you every regulatory hurdle
-          between you and a finished building: what it costs to clear, how long it takes
-          to get permitted, and what rules are in place.{' '}
-          <span className="font-semibold text-piranha-charcoal">
-            This project shows you the red tape and helps you bite through it
-          </span>{' '}
-          — all while trying to figure out how to reform these NIMBY-based, anti-growth
-          laws.
+          between you and a finished building — what it costs to clear, how long it takes
+          to permit, and the rules standing in the way.
+        </p>
+        <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-piranha-charcoal">
+          <span className="font-semibold">We show you the red tape and help you bite
+          through it</span> — while figuring out how to reform the NIMBY-driven,
+          anti-growth laws behind it.
         </p>
 
-        <div className="mt-9">
+        <div className="mt-10">
           <Link to="/boston">
             <Button size="lg">Start an analysis →</Button>
           </Link>

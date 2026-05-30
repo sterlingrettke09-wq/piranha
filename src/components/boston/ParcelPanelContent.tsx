@@ -85,6 +85,23 @@ export function ParcelPanelContent(props: Props) {
         {data.lot.sizeSqFt ? <p>{data.lot.sizeSqFt.toLocaleString()} sq ft</p> : <p className="text-piranha-charcoal/60">Size unavailable</p>}
       </section>
 
+      {data.existing && (data.existing.landUse || data.existing.yearBuilt || data.existing.buildingAreaSqFt || data.existing.units) && (
+        <section>
+          <h3 className="font-semibold uppercase tracking-wider text-xs mb-2">What’s here today</h3>
+          {data.existing.landUse && <p className="text-piranha-charcoal">{data.existing.landUse}</p>}
+          <p className="text-piranha-charcoal/70 text-xs mt-1">
+            {[
+              data.existing.yearBuilt ? `Built ${data.existing.yearBuilt}` : null,
+              data.existing.stories ? `${data.existing.stories} floors` : null,
+              data.existing.units ? `${data.existing.units.toLocaleString()} units` : null,
+              data.existing.buildingAreaSqFt ? `${data.existing.buildingAreaSqFt.toLocaleString()} sq ft` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </section>
+      )}
+
       <section>
         <h3 className="font-semibold uppercase tracking-wider text-xs mb-2">Overlays</h3>
         <div className="flex flex-wrap gap-2">

@@ -7,14 +7,21 @@
   --color-piranha-gold: #C9A55C;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  /* Libre Caslon Display for large headings; Text cut covers bold/italic runs. */
+  --font-serif: "Libre Caslon Display", "Libre Caslon Text", ui-serif, Georgia, serif;
 }
 
-/* Fraunces display: tighten leading and lean into its high-contrast optical
-   sizing on large headings for an editorial, crafted feel. */
+/* Caslon Display is a 400-only high-contrast cut — gorgeous at large sizes.
+   Where serif text needs weight (bold runs), fall back to the Text cut so we
+   don't synthesize an ugly faux-bold from the Display face. */
 .font-serif {
-  font-optical-sizing: auto;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
+}
+.font-serif.font-semibold,
+.font-serif.font-bold,
+.font-serif b,
+.font-serif strong {
+  font-family: "Libre Caslon Text", ui-serif, Georgia, serif;
 }
 
 html, body {

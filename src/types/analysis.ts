@@ -58,6 +58,14 @@ export interface AnalysisResult {
     maxHeightFt: number | null
     floodZone: string | null
     historicDistrict: string | null
+    existing?: {
+      landUse?: string | null
+      yearBuilt?: number | null
+      buildingAreaSqFt?: number | null
+      units?: number | null
+      stories?: number | null
+      numBuildings?: number | null
+    }
   }
   project: AnalysisInput
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[] }

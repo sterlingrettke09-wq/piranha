@@ -27,6 +27,16 @@ export interface ParcelInfo {
     historicDistrict: string | null
     floodZone: string | null
   }
+  /** What currently stands on the parcel, where the city's data carries it.
+   *  Every field is optional — the UI shows only what's present. */
+  existing?: {
+    landUse?: string | null
+    yearBuilt?: number | null
+    buildingAreaSqFt?: number | null
+    units?: number | null
+    stories?: number | null
+    numBuildings?: number | null
+  }
   sources: Record<string, string>
   fetchedAt: string
 }
