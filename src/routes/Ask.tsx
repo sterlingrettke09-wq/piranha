@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { AskAssistant } from '../components/AskAssistant'
 
@@ -25,19 +24,19 @@ const FAQ: QA[] = [
   },
   {
     q: 'What’s a variance?',
-    a: 'It’s permission to bend one of the zoning rules — like building taller or larger than the rules normally allow. You have to apply for it and make your case to the city, which adds time, cost, and some uncertainty. That’s why the estimate changes when one is needed.',
+    a: 'It’s permission to bend one of the zoning rules, such as building taller or larger than the rules normally allow. You have to apply for it and make your case to the city, which adds time and can add cost and some uncertainty. That’s why the estimate changes when one is needed.',
   },
   {
     q: 'Where do the numbers come from?',
-    a: 'Public city and government data — each city’s official zoning and property maps, plus federal flood maps and local historic-district records. We link to our sources on every result.',
+    a: 'Public city and government data. Each city’s official zoning and property maps, plus federal flood maps and local historic-district records. We link to our sources on every result.',
   },
   {
     q: 'How accurate are the cost estimates?',
-    a: 'They’re ballpark figures, not quotes. We use standard construction costs per square foot, typical soft costs, and the city’s published permit fees. Treat them as a starting point — we show every assumption so you can check our math.',
+    a: 'They’re ballpark figures, not quotes. We use standard construction costs per square foot, typical soft costs, and the city’s published permit fees. Treat them as a starting point. We show every assumption so you can check our math.',
   },
   {
     q: 'Why does it sometimes say it can’t tell?',
-    a: 'Because the public data doesn’t always include the number we need — a park, for example, has no height limit on file. Rather than make one up, we flag it and stay cautious.',
+    a: 'Because the public data doesn’t always include the number we need. A park, for example, has no height limit on file. Rather than make one up, we flag it for you.',
   },
   {
     q: 'Can I share or change an analysis?',
@@ -49,11 +48,11 @@ const FAQ: QA[] = [
   },
   {
     q: 'Is the assistant always right?',
-    a: 'No. The assistant above is an AI (Google Gemini) giving general guidance, and it can be wrong. It’s a starting point — double-check anything important with the city.',
+    a: 'No. The assistant above is an AI (Google Gemini) giving general guidance, and it can be wrong. It’s a starting point. Double-check anything important with the city.',
   },
   {
     q: 'Is this legal advice?',
-    a: 'No. It’s general information built from public data — not legal, engineering, or financial advice. Always confirm with the city before relying on it.',
+    a: 'No. It’s general information built from public data. Not legal, engineering, or financial advice. Always confirm with the city before relying on it.',
   },
 ]
 
@@ -67,11 +66,8 @@ export default function Ask() {
           </h1>
           <p className="text-piranha-charcoal/70">
             How the analysis works, what the verdicts mean, and where the numbers come
-            from. Have something not covered here?{' '}
-            <Link className="text-piranha-burgundy underline" to="/about">
-              Read more about the project
-            </Link>
-            .
+            from. Have something not covered here? Refer to the Q&amp;A below, or ask our
+            assistant — powered by Google Gemini.
           </p>
         </header>
 

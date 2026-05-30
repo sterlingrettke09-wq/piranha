@@ -9,30 +9,30 @@ const DARK = 'bg-[#1a1412]'
 const FEATURES = [
   {
     n: '01',
-    title: 'See every hurdle',
+    title: 'Every hurdle',
     body: 'Beyond zoning — historic review, affordability mandates, environmental review, parking rules, prevailing-wage rules, and private covenants — surfaced for your exact parcel.',
   },
   {
     n: '02',
-    title: 'Price the red tape',
-    body: 'Hard costs, soft costs, permit fees, and the cost of clearing each approval your project triggers. A rough order of magnitude, with every assumption shown.',
+    title: 'What it costs',
+    body: 'Hard costs, soft costs, permit fees, and the cost of clearing each approval your project triggers — a rough order of magnitude, with every assumption shown.',
   },
   {
     n: '03',
-    title: 'Time the approvals',
-    body: 'How long to a permit on the path your project actually lands on — as-of-right, or the longer road through variances and public review.',
+    title: 'How long it takes',
+    body: 'The months to a permit on the path your project actually lands on — as-of-right, or the longer road through variances and public review.',
   },
 ]
 
 const STEPS = [
-  { n: '01', title: 'Search an address', body: 'Drop a pin on any parcel, or search by address, to pull its zoning and parcel record.' },
-  { n: '02', title: 'Describe your project', body: 'Type, funding, use, size, and height — a few quick steps. No account, no consultant.' },
-  { n: '03', title: 'Get the verdict', body: 'What the rules allow, the approvals you’ll need, what it costs to clear them, and how long it takes.' },
+  { n: '01', title: 'Pick your parcel', body: 'Drop a pin or search any address — we pull its zoning and property record.' },
+  { n: '02', title: 'Tell us the plan', body: 'What you want to build: use, size, height, and how it’s funded. A minute, tops — no account, no consultant.' },
+  { n: '03', title: 'See where you stand', body: 'What you’re allowed to build, the approvals it triggers, what they’ll cost, and how long they’ll take.' },
 ]
 
 const STATS = [
-  { figure: '5', label: 'Cities live, and expanding' },
-  { figure: '9', label: 'Kinds of red tape we surface, and counting' },
+  { figure: '5', label: 'Cities live, and counting' },
+  { figure: '9', label: 'Kinds of red tape we surface, with more coming' },
   { figure: '100%', label: 'Built from public records' },
 ]
 
@@ -51,26 +51,27 @@ export default function Home() {
           </Reveal>
           <Reveal delay={120}>
             <h1 className="mt-9 font-serif text-[clamp(2.4rem,5.5vw,4.6rem)] leading-[1.04] tracking-tight text-piranha-bone">
-              Building in America’s great cities has become almost impossible.
+              Building in most of America’s greatest cities has become almost impossible.
             </h1>
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-bone/65">
-              Zoning is only the start. Historic boards, affordability mandates, environmental
-              review, parking rules, fees, and private covenants each pile on cost, time, and
-              doubt — most of it invisible until you’re already committed.
+              Most of the talk is about zoning — but zoning is only the start. Historic boards,
+              affordability mandates, environmental review, parking rules, fees, and private
+              covenants each pile on cost, time, and doubt, and most of it stays invisible until
+              you’re already committed.
             </p>
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-14 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-bone">
-              The Piranha Project maps the entire gauntlet — for any parcel, in language anyone
-              can read.
+              The Piranha Project maps the whole thing — in plain English, through a nonpartisan
+              lens, so you can see what building here really takes.
             </p>
           </Reveal>
           <Reveal delay={160}>
             <div className="mt-12 flex justify-center">
               <ArrowLink to="/boston" tone="light">
-                Start an analysis
+                Try it out
               </ArrowLink>
             </div>
           </Reveal>
@@ -82,7 +83,7 @@ export default function Home() {
         <div className="mx-auto max-w-6xl">
           <Reveal>
             <h2 className="text-center font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
-              See it. Price it. Time it.
+              Everything between you and a finished building.
             </h2>
           </Reveal>
           <div className="mt-16 grid gap-6 md:grid-cols-3">
@@ -107,7 +108,7 @@ export default function Home() {
               How it works
             </p>
             <h2 className="mt-4 max-w-2xl font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
-              Three steps to a verdict.
+              From an address to an answer.
             </h2>
           </Reveal>
           <div className="mt-16 grid gap-12 sm:grid-cols-3">
@@ -155,6 +156,7 @@ export default function Home() {
             <h2 className="mt-4 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
               Five cities, each on its own public data.
             </h2>
+            <p className="mt-4 text-piranha-bone/55">We’ll add more as we expand.</p>
           </Reveal>
           <Reveal delay={120}>
             <div className="mt-12 flex flex-wrap gap-x-10 gap-y-4">
@@ -182,7 +184,7 @@ export default function Home() {
             </h2>
             <div className="mt-12 flex justify-center">
               <ArrowLink to="/boston" tone="dark">
-                Start an analysis
+                Try it out
               </ArrowLink>
             </div>
             <p className="mt-12 text-xs text-piranha-charcoal/45">

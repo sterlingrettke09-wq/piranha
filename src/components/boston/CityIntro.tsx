@@ -35,7 +35,7 @@ export function CityIntro({ city }: { city: City }) {
     }
 
     const reduce = prefersReduced()
-    const [lng, lat] = city.center
+    const [lng, lat] = city.landmark ?? city.center
     const canDive = !!TOKEN && !reduce && !!mapEl.current && !mapRef.current
 
     if (canDive) {
@@ -63,22 +63,23 @@ export function CityIntro({ city }: { city: City }) {
         } catch {
           // terrain optional
         }
-        // The dive: swoop down and tilt into the city.
+        // The dive: swoop down and tilt onto the landmark, easing to a calmer
+        // angle near the end so the hand-off to the flat dashboard feels smooth.
         map.flyTo({
           center: [lng, lat],
-          zoom: city.zoom + 1.6,
-          pitch: 62,
+          zoom: city.zoom + 1.4,
+          pitch: 52,
           bearing: 0,
-          duration: 3800,
-          curve: 1.5,
+          duration: 4200,
+          curve: 1.42,
           essential: true,
         })
       })
     }
 
     const fast = reduce || !TOKEN
-    const tExit = setTimeout(() => setExiting(true), fast ? 80 : 4000)
-    const tDone = setTimeout(() => setDone(true), fast ? 220 : 4800)
+    const tExit = setTimeout(() => setExiting(true), fast ? 80 : 4300)
+    const tDone = setTimeout(() => setDone(true), fast ? 220 : 5300)
     return () => {
       clearTimeout(tExit)
       clearTimeout(tDone)
@@ -87,7 +88,7 @@ export function CityIntro({ city }: { city: City }) {
         mapRef.current = null
       }
     }
-  }, [done, city.slug, city.center, city.zoom])
+  }, [done, city.slug, city.center, city.landmark, city.zoom])
 
   if (done) return null
 
@@ -99,7 +100,7 @@ export function CityIntro({ city }: { city: City }) {
   return (
     <div
       onClick={dismiss}
-      className={`fixed inset-0 z-[60] cursor-pointer overflow-hidden bg-[#10100f] transition-opacity duration-700 ease-in-out ${
+      className={`fixed inset-0 z-[60] cursor-pointer overflow-hidden bg-[#10100f] transition-opacity duration-1000 ease-in-out ${
         exiting ? 'opacity-0' : 'opacity-100'
       }`}
     >

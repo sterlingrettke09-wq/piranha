@@ -78,15 +78,15 @@ export default function News() {
         <header className="space-y-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h1 className="font-serif text-4xl tracking-tight text-piranha-charcoal sm:text-5xl">
-              Policy feed
+              Housing in the news
             </h1>
             {!empty && (
-              <span className="text-xs uppercase tracking-wider text-piranha-charcoal/40">Updated regularly</span>
+              <span className="text-xs uppercase tracking-wider text-piranha-charcoal/40">Updated periodically</span>
             )}
           </div>
           <p className="text-piranha-charcoal/70">
-            Zoning, permitting, and housing-policy moves across our cities and the states
-            above them — in plain English, always linked to the source.
+            Interesting stories on housing in the cities on our site and beyond — updates,
+            reforms, and the fights that shape what gets built. Updated periodically.
           </p>
         </header>
 
@@ -120,9 +120,7 @@ export default function News() {
             />
             <h2 className="font-serif text-3xl tracking-tight text-piranha-charcoal">Coming soon</h2>
             <p className="mx-auto mt-3 max-w-md leading-relaxed text-piranha-charcoal/70">
-              We’re building a hand-picked feed of the housing, zoning, and permitting
-              news that actually changes what you can build — every item in plain English
-              and linked to its source. Check back shortly.
+              Hand-picked housing stories are on the way. Check back shortly.
             </p>
             <Link
               to="/boston"
