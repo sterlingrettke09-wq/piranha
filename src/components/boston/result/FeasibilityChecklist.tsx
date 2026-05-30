@@ -9,9 +9,13 @@ const STATUS: Record<CheckStatus, { word: string; dot: string; accent: string }>
 
 const DIMENSION_LABEL: Record<FeasibilityCheck['dimension'], string> = {
   use: 'Use',
-  far: 'Floor-area ratio',
+  far: 'Floor-area ratio (FAR)',
   height: 'Height',
   housing: 'Existing housing',
+}
+
+const DIMENSION_HINT: Partial<Record<FeasibilityCheck['dimension'], string>> = {
+  far: 'How much total floor area you can build per square foot of land.',
 }
 
 export function FeasibilityChecklist({ checks }: { checks: FeasibilityCheck[] }) {
@@ -43,6 +47,11 @@ export function FeasibilityChecklist({ checks }: { checks: FeasibilityCheck[] })
                 <span className="font-medium text-piranha-charcoal/80">{c.allowed}</span>
               </span>
             </div>
+            {DIMENSION_HINT[c.dimension] && (
+              <p className="mt-1.5 text-xs italic text-piranha-charcoal/45">
+                {DIMENSION_HINT[c.dimension]}
+              </p>
+            )}
             {c.note && <p className="mt-2 text-sm leading-relaxed text-piranha-charcoal/65">{c.note}</p>}
           </div>
         )

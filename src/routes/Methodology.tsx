@@ -93,8 +93,10 @@ export default function Methodology() {
                 allowed in the district? If not, it needs a use variance.
               </li>
               <li>
-                <span className="font-semibold text-piranha-charcoal">Floor-area ratio.</span> Your
-                gross floor area divided by lot size, against the district&rsquo;s FAR limit.
+                <span className="font-semibold text-piranha-charcoal">Floor-area ratio (FAR).</span>{' '}
+                How much total floor area you can build per square foot of land. We divide your gross
+                floor area by the lot size and compare it to the district&rsquo;s limit. A FAR of 2.0
+                on a 5,000 sq ft lot allows 10,000 sq ft of building.
               </li>
               <li>
                 <span className="font-semibold text-piranha-charcoal">Height.</span> Your proposed
