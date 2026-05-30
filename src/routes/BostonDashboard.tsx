@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Map } from '../components/boston/Map'
 import { SearchBar } from '../components/boston/SearchBar'
 import { ParcelPanel } from '../components/boston/ParcelPanel'
+import { CityIntro } from '../components/boston/CityIntro'
 import { getCity } from '../config/cities'
 
 interface Selection {
@@ -27,6 +28,7 @@ export default function BostonDashboard() {
 
   return (
     <div className="relative h-[calc(100vh-4rem-8.5rem)]">
+      <CityIntro key={city} city={current} />
       {/* 4rem header + ~8.5rem footer. Adjust if footer height changes. */}
       <div className="absolute inset-0">
         <Map
