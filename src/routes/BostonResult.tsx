@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { useAnalysis } from '../hooks/useAnalysis'
-import { USES, PROJECT_TYPES, type AnalysisInput, type Use, type ProjectType } from '../types/analysis'
+import { USES, PROJECT_TYPES, FUNDING_TYPES, type AnalysisInput, type Use, type ProjectType, type Funding } from '../types/analysis'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
 import { MiniMap } from '../components/boston/result/MiniMap'
 import { SiteFacts } from '../components/boston/result/SiteFacts'
@@ -27,6 +27,8 @@ function parseInput(params: URLSearchParams): AnalysisInput | null {
   const city = params.get('city') ?? 'boston'
   const ptRaw = params.get('projectType')
   const projectType: ProjectType = ptRaw && (PROJECT_TYPES as string[]).includes(ptRaw) ? (ptRaw as ProjectType) : 'new'
+  const fRaw = params.get('funding')
+  const funding: Funding = fRaw && (FUNDING_TYPES as string[]).includes(fRaw) ? (fRaw as Funding) : 'private'
   const parcelId = params.get('parcelId') ?? ''
   const lat = Number(params.get('lat'))
   const lng = Number(params.get('lng'))
@@ -42,7 +44,7 @@ function parseInput(params: URLSearchParams): AnalysisInput | null {
     const n = Number(raw)
     return Number.isFinite(n) ? n : undefined
   }
-  return { city, projectType, parcelId, lat, lng, use, gfa, units: num('units'), stories: num('stories'), heightFt: num('heightFt') }
+  return { city, projectType, funding, parcelId, lat, lng, use, gfa, units: num('units'), stories: num('stories'), heightFt: num('heightFt') }
 }
 
 export default function BostonResult() {
@@ -129,6 +131,7 @@ export default function BostonResult() {
                 {PROJECT_TYPE_LABEL[state.data.project.projectType]} ·{' '}
                 {state.data.project.use} · {state.data.project.gfa.toLocaleString()} sq ft
                 {state.data.project.units ? ` · ${state.data.project.units} units` : ''}
+                {state.data.project.funding === 'public' ? ' · publicly funded' : ''}
               </p>
             </header>
             <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />

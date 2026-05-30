@@ -1,6 +1,8 @@
 export type Use = 'residential' | 'commercial' | 'mixed' | 'institutional'
 export type ProjectType = 'new' | 'addition' | 'adu' | 'change_of_use'
 export const PROJECT_TYPES: ProjectType[] = ['new', 'addition', 'adu', 'change_of_use']
+export type Funding = 'private' | 'public'
+export const FUNDING_TYPES: Funding[] = ['private', 'public']
 export type CheckStatus = 'AS_OF_RIGHT' | 'NEEDS_RELIEF' | 'PROHIBITED' | 'INDETERMINATE'
 export type ApprovalPath = 'as_of_right' | 'variance' | 'prohibited'
 
@@ -8,6 +10,8 @@ export interface AnalysisInput {
   parcelId: string
   city: string
   projectType: ProjectType
+  /** Whether the project taps public money/land (triggers procurement, prevailing wage, etc.). */
+  funding: Funding
   lat: number
   lng: number
   use: Use

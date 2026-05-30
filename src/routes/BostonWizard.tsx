@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { useParcelInfo } from '../hooks/useParcelInfo'
-import { USES, PROJECT_TYPES, type Use, type ProjectType } from '../types/analysis'
+import { USES, PROJECT_TYPES, FUNDING_TYPES, type Use, type ProjectType, type Funding } from '../types/analysis'
 import { WizardProgress } from '../components/boston/wizard/WizardProgress'
 import { ParcelContextHeader } from '../components/boston/wizard/ParcelContextHeader'
 import { StepType } from '../components/boston/wizard/StepType'
@@ -33,6 +33,10 @@ export default function BostonWizard() {
   const [projectType, setProjectType] = useState<ProjectType | null>(() => {
     const t = params.get('projectType')
     return t && (PROJECT_TYPES as string[]).includes(t) ? (t as ProjectType) : null
+  })
+  const [funding, setFunding] = useState<Funding>(() => {
+    const f = params.get('funding')
+    return f && (FUNDING_TYPES as string[]).includes(f) ? (f as Funding) : 'private'
   })
   const [use, setUse] = useState<Use | null>(() => {
     const u = params.get('use')
@@ -69,6 +73,7 @@ export default function BostonWizard() {
     p.set('city', city)
     p.set('parcelId', parcelId)
     p.set('projectType', projectType as ProjectType)
+    p.set('funding', funding)
     p.set('lat', String(lat))
     p.set('lng', String(lng))
     p.set('use', use as Use)
@@ -96,7 +101,14 @@ export default function BostonWizard() {
         <WizardProgress step={step} total={TOTAL_STEPS} />
 
         <div key={step} className="tpp-fade-in">
-          {step === 1 && <StepType value={projectType} onChange={(t) => setProjectType(t)} />}
+          {step === 1 && (
+            <StepType
+              value={projectType}
+              onChange={(t) => setProjectType(t)}
+              funding={funding}
+              onFunding={(f) => setFunding(f)}
+            />
+          )}
           {step === 2 && <StepUse value={use} onChange={(u) => setUse(u)} />}
           {step === 3 && (
             <StepSize use={use} gfa={gfa} units={units} onGfa={setGfa} onUnits={setUnits} />

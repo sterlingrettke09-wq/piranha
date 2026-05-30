@@ -7,7 +7,7 @@ import { CITIES } from '../config/cities'
 const WHAT_WE_DO = [
   {
     title: 'See every hurdle',
-    body: 'Beyond zoning — historic review, affordability mandates, environmental review, parking rules, labor and DEI requirements, and private covenants — surfaced for your exact parcel.',
+    body: 'Beyond zoning — historic review, affordability mandates, environmental review, parking rules, prevailing-wage rules, and private covenants — surfaced for your exact parcel.',
   },
   {
     title: 'Price the red tape',
@@ -28,7 +28,7 @@ const STEPS = [
 const STATS = [
   { figure: '5', label: 'Cities live, and expanding' },
   { figure: '100%', label: 'Sourced from public data' },
-  { figure: '9', label: 'Kinds of red tape we surface' },
+  { figure: '9', label: 'Kinds of red tape we surface — and counting' },
 ]
 
 export default function Home() {

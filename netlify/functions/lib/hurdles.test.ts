@@ -18,7 +18,7 @@ function parcel(over: Partial<ParcelInfo>): ParcelInfo {
 }
 
 function project(over: Partial<AnalysisInput>): AnalysisInput {
-  return { parcelId: '1', city: 'boston', projectType: 'new', lat: 42.358, lng: -71.07, use: 'residential', gfa: 8000, ...over }
+  return { parcelId: '1', city: 'boston', projectType: 'new', funding: 'private', lat: 42.358, lng: -71.07, use: 'residential', gfa: 8000, ...over }
 }
 
 const cats = (hs: ReturnType<typeof assessHurdles>) => hs.map((h) => h.category)
@@ -138,9 +138,16 @@ describe('assessHurdles — labor / DEI', () => {
     expect(labor?.note).toMatch(/prevailing wage|MWBE|minority/i)
   })
 
-  it('does NOT flag labor/DEI for a small project', () => {
-    const hs = assessHurdles('boston', parcel({}), project({ gfa: 6000, units: 2 }))
+  it('does NOT flag labor for a small private project', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ gfa: 6000, units: 2, funding: 'private' }))
     expect(cats(hs)).not.toContain('labor')
+  })
+
+  it('flags the public-funding process (required) for any publicly funded project', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ gfa: 6000, units: 2, funding: 'public' }))
+    const labor = hs.find((h) => h.category === 'labor')
+    expect(labor?.status).toBe('required')
+    expect(labor?.note).toMatch(/procurement|prevailing-wage|Davis-Bacon/i)
   })
 })
 

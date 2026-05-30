@@ -11,6 +11,7 @@ function toQuery(input: AnalysisInput): string {
   const p = new URLSearchParams()
   p.set('city', input.city)
   p.set('projectType', input.projectType)
+  p.set('funding', input.funding)
   p.set('lat', String(input.lat))
   p.set('lng', String(input.lng))
   p.set('parcelId', input.parcelId)

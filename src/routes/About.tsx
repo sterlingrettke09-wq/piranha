@@ -88,8 +88,33 @@ export default function About() {
           </p>
         </Section>
 
-        <Section title="Made by">
-          <p>Louisburg Strategies. v0.2.</p>
+        <Section title="Author’s note">
+          <p>
+            Sterling Rettke is the principal consultant at Louisburg Strategies. He built
+            The Piranha Project after reading <em>Abundance</em> by Ezra Klein and Derek
+            Thompson — and being genuinely radicalized by how hard it has become to build
+            housing in our biggest cities. A lot of it is fixable; it just takes the will
+            to actually fix it. There are many moving players and decades-old rules that
+            need to be seriously reconsidered.
+          </p>
+          <p>
+            He made this to put it all in the open, in plain language anyone can
+            understand — a small push, he hopes, toward getting our cities back on track
+            and making the second third of this century a time of booming infrastructure
+            and housing.
+          </p>
+          <p>
+            Read more of his writing at{' '}
+            <a
+              className="text-piranha-burgundy underline"
+              href="https://sterlingrettke.com/writing"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              sterlingrettke.com/writing
+            </a>
+            .
+          </p>
         </Section>
       </div>
     </PageContainer>

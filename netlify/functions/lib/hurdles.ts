@@ -46,8 +46,13 @@ const HISTORIC_BODY: Record<string, string> = {
     'Exterior work and new construction need a Certificate of Approval from the district’s review board (under the Seattle Landmarks Preservation Board / special-review-district process) before permits issue.',
 }
 
-const LABOR_NOTE =
-  'Public funding, tax abatements, tax-increment financing, or city land typically trigger prevailing-wage requirements and minority/women-owned business (MWBE/DEI) participation goals — raising labor cost and adding compliance reporting. Large projects also commonly negotiate Community Benefit Agreements. These are the “everything-bagel” mandates that stack on top of the build itself.'
+// Private projects that are large enough to plausibly seek a subsidy/abatement.
+const SUBSIDY_NOTE =
+  'If you pursue tax abatements, tax-increment financing, or city land, expect added strings: prevailing-wage requirements, minority- and women-owned business (MWBE) participation goals, and extra reporting. Large projects also commonly negotiate Community Benefit Agreements.'
+
+// Projects that actually tap public money/land — the process is mandatory.
+const PUBLIC_FUNDING_NOTE =
+  'Public funding, tax credits, bonds, or city land bring a defined process: competitive public procurement and bidding, prevailing-wage requirements (federal Davis-Bacon or the state equivalent), minority- and women-owned business (MWBE) participation goals, and ongoing reporting and audits. Expect public-board approvals and a longer pre-construction timeline.'
 
 // Assess non-zoning regulatory hurdles for a project. Boston is fully modeled;
 // other cities get the shared overlay + private-governance hurdles for now.
@@ -217,15 +222,23 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     }
   }
 
-  // Labor / DEI — the "everything-bagel" mandates that attach when a project
-  // taps public money or land. Surface on projects large enough to plausibly
-  // seek subsidy/abatement (smaller as-of-right builds rarely trigger these).
-  if (project.gfa >= 50000 || units >= 25) {
+  // Public funding triggers a mandatory procurement + labor process. Privately
+  // funded projects only see this as a heads-up, and only when large enough to
+  // plausibly chase a subsidy.
+  if (project.funding === 'public') {
     hurdles.push({
       category: 'labor',
-      label: 'Prevailing wage & MWBE/DEI goals',
+      label: 'Public-funding process (procurement & prevailing wage)',
+      status: 'required',
+      note: PUBLIC_FUNDING_NOTE,
+      addsMonths: 4,
+    })
+  } else if (project.gfa >= 50000 || units >= 25) {
+    hurdles.push({
+      category: 'labor',
+      label: 'Subsidy strings (if you seek public funds)',
       status: 'info',
-      note: LABOR_NOTE,
+      note: SUBSIDY_NOTE,
     })
   }
 

@@ -38,25 +38,25 @@ export function CinematicIntro() {
       const p = clamp01(-rect.top / Math.max(1, total))
 
       if (photoRef.current) {
-        const f = smooth(0, 0.3, p)
+        const f = smooth(0, 0.26, p)
         if (f >= 0.999) photoGone.current = true
         const gone = photoGone.current
         photoRef.current.style.opacity = gone ? '0' : String(1 - f)
-        photoRef.current.style.transform = `scale(${1 - 0.14 * (gone ? 1 : f)})`
+        photoRef.current.style.transform = `scale(${1 - 0.16 * (gone ? 1 : f)})`
       }
       if (titleRef.current) {
-        const inO = smooth(0.2, 0.42, p)
-        const out = smooth(0.55, 0.85, p)
+        const inO = smooth(0.26, 0.46, p)
+        const out = smooth(0.62, 0.9, p)
         titleRef.current.style.opacity = String(inO * (1 - out))
         // Expand away (fly through), matching the school.
-        titleRef.current.style.transform = `scale(${1 + 0.5 * out})`
+        titleRef.current.style.transform = `scale(${1 + 0.55 * out})`
       }
       if (schoolRef.current) {
-        // The school expands as you scroll into it — Orchestra-style fly-through —
-        // then fades as the first page arrives.
-        const e = smooth(0.4, 1, p)
-        schoolRef.current.style.transform = `scale(${1 + 0.9 * e})`
-        schoolRef.current.style.opacity = String(1 - smooth(0.82, 1, p))
+        // The school zooms continuously from the moment you start scrolling — an
+        // Orchestra-style fly-in — then fades as the first page arrives.
+        const e = smooth(0.18, 1, p)
+        schoolRef.current.style.transform = `scale(${1 + 1.1 * e})`
+        schoolRef.current.style.opacity = String(1 - smooth(0.86, 1, p))
       }
       if (cueRef.current) {
         cueRef.current.style.opacity = String(1 - smooth(0.02, 0.12, p))
@@ -111,7 +111,7 @@ export function CinematicIntro() {
   }
 
   return (
-    <section ref={sectionRef} className="relative h-[260vh] bg-[#16110f]">
+    <section ref={sectionRef} className="relative h-[300vh] bg-[#16110f]">
       <div className="sticky top-0 h-screen overflow-hidden">
         {/* School (behind), collapses inward at the end */}
         <div ref={schoolRef} className="absolute inset-0 z-10 will-change-transform">

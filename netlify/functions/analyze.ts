@@ -1,6 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
-import type { AnalysisError, AnalysisInput, AnalysisResult, Use, ProjectType } from '../../src/types/analysis'
-import { USES, PROJECT_TYPES } from '../../src/types/analysis'
+import type { AnalysisError, AnalysisInput, AnalysisResult, Use, ProjectType, Funding } from '../../src/types/analysis'
+import { USES, PROJECT_TYPES, FUNDING_TYPES } from '../../src/types/analysis'
 import { getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
 import { assessHurdles } from './lib/hurdles'
@@ -33,6 +33,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const projectType: ProjectType = PROJECT_TYPES.includes(q.projectType as ProjectType)
     ? (q.projectType as ProjectType)
     : 'new'
+  const funding: Funding = FUNDING_TYPES.includes(q.funding as Funding) ? (q.funding as Funding) : 'private'
   const lat = Number(q.lat)
   const lng = Number(q.lng)
   const use = q.use as Use
@@ -53,6 +54,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     parcelId: parcel.parcelId,
     city,
     projectType,
+    funding,
     lat,
     lng,
     use,
