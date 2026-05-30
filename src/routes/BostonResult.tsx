@@ -244,6 +244,13 @@ export default function BostonResult() {
 
           <div className="mt-8 space-y-6">
             <AssumptionsDisclosure assumptions={state.data.assumptions} />
+            <p className="text-sm text-piranha-charcoal/60">
+              Want to see how every number is calculated? Read about our methodologies{' '}
+              <Link className="text-piranha-burgundy underline underline-offset-2" to="/math">
+                here
+              </Link>
+              .
+            </p>
             <SourceLinks sources={state.data.sources} />
             {state.data.disclaimers.length > 0 && (
               <footer className="space-y-1 border-t border-piranha-charcoal/10 pt-5 text-xs leading-relaxed text-piranha-charcoal/50">

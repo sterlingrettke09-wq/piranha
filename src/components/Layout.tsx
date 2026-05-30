@@ -66,6 +66,10 @@ export function Layout({ children }: LayoutProps) {
             relevant city department.
           </p>
           <p className="text-xs text-piranha-bone/60">
+            <NavLink to="/math" className="underline underline-offset-2 hover:text-piranha-bone">
+              Methodology
+            </NavLink>
+            <span className="mx-2">·</span>
             v1 · built by Louisburg Strategies
           </p>
         </div>
