@@ -10,6 +10,7 @@ interface LayoutProps {
 
 const navItems = [
   { to: '/', label: 'Home', end: true },
+  { to: '/news', label: 'News' },
   { to: '/ask', label: 'Ask' },
   { to: '/about', label: 'About' },
 ]
