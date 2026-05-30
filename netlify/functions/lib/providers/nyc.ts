@@ -8,6 +8,18 @@ import { fetchFeatures, firstAttrs, type ParcelResult } from '../arcgis'
 const MAPPLUTO =
   'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0'
 const FIELDS = ['BBL', 'Address', 'ZoneDist1', 'ResidFAR', 'CommFAR', 'FacilFAR', 'LotArea']
+// LPC-designated historic districts (locally landmarked — these trigger LPC review).
+const HISTORIC =
+  'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/v_GFT_Historic_Districts/FeatureServer/0'
+
+// Pull the LPC district name from a "LP-00489-Greenwich Village Historic District" id.
+function lpcDistrictName(features: Array<{ attributes: Record<string, unknown> }> | undefined): string | null {
+  const f = features?.find((x) => x.attributes.variable_type === 'nyc_historic_districts')
+  if (!f) return null
+  const id = String(f.attributes.variable_id ?? '').trim()
+  const name = id.replace(/^LP-?\d+\s*-\s*/i, '').trim()
+  return name || null
+}
 
 const num = (v: unknown): number | null => {
   const n = Number(v)
@@ -26,9 +38,10 @@ function usesForDistrict(zone: string | null): string[] | null {
 
 export async function getNycParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [plutoR, floodR] = await Promise.allSettled([
+  const [plutoR, floodR, histR] = await Promise.allSettled([
     fetchFeatures(MAPPLUTO, lat, lng, FIELDS),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    fetchFeatures(HISTORIC, lat, lng, ['variable_id', 'variable_type']),
   ])
 
   if (plutoR.status === 'rejected') {
@@ -79,10 +92,10 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
       lotType: null,
     },
     overlays: {
-      historicDistrict: null,
+      historicDistrict: histR.status === 'fulfilled' ? lpcDistrictName(histR.value.features) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
-    sources: { zoning: MAPPLUTO, parcels: MAPPLUTO, flood: ENDPOINTS.flood },
+    sources: { zoning: MAPPLUTO, parcels: MAPPLUTO, flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),
   }
 

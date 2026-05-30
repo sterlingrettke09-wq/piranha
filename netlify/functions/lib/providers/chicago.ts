@@ -9,6 +9,8 @@ const ZONING =
   'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/15'
 const PARCELS =
   'https://gis.cookcountyil.gov/traditional/rest/services/parcelHistorical/MapServer/2025'
+const HISTORIC =
+  'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/6' // Historic Districts (NAME).
 
 // Chicago zoning class prefix → use vocabulary.
 function usesForZone(zone: string | null): string[] | null {
@@ -23,11 +25,12 @@ function usesForZone(zone: string | null): string[] | null {
 
 export async function getChicagoParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [zoningR, parcelR, floodR, addrR] = await Promise.allSettled([
+  const [zoningR, parcelR, floodR, addrR, histR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['ZONE_CLASS'], false, undefined, 9000),
     fetchFeatures(PARCELS, lat, lng, ['PIN10'], true),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     reverseGeocode(lat, lng),
+    fetchFeatures(HISTORIC, lat, lng, ['NAME'], false, undefined, 9000),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -44,6 +47,7 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const address = addrR.status === 'fulfilled' && addrR.value ? addrR.value : 'Selected location'
   const zone = zoning?.ZONE_CLASS ? String(zoning.ZONE_CLASS) : null
+  const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
 
   const info: ParcelInfo = {
     address,
@@ -62,10 +66,10 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
       lotType: null,
     },
     overlays: {
-      historicDistrict: null,
+      historicDistrict: hist?.NAME ? String(hist.NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
-    sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood },
+    sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),
   }
 

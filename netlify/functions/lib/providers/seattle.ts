@@ -7,6 +7,15 @@ import { fetchFeatures, firstAttrs, type ParcelResult } from '../arcgis'
 const ORG = 'https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services'
 const ZONING = `${ORG}/Current_Land_Use_Zoning_Detail_2/FeatureServer/0`
 const PARCELS = `${ORG}/Parcel_Boundary/FeatureServer/0`
+// All zoning overlays; we keep only TYPE=HISTORIC (e.g. Pioneer Square, Pike Place).
+const HISTORIC = `${ORG}/Zoning_Overlays-Historic-Special_Review_Districts/FeatureServer/23`
+
+function seattleHistoricName(features: Array<{ attributes: Record<string, unknown> }> | undefined): string | null {
+  const f = features?.find((x) => String(x.attributes.TYPE ?? '').toUpperCase() === 'HISTORIC')
+  if (!f) return null
+  const name = String(f.attributes.DESCRIPTION ?? '').trim()
+  return name || null
+}
 
 const DOWNTOWN = ['DOC', 'DMC', 'DRC', 'DMR', 'DH', 'PMM', 'IDM', 'IDR', 'PSM']
 const INDUSTRIAL = ['IB', 'IG', 'IC']
@@ -27,10 +36,11 @@ function usesForZone(zone: string | null): string[] | null {
 
 export async function getSeattleParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [zoningR, parcelR, floodR] = await Promise.allSettled([
+  const [zoningR, parcelR, floodR, histR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['ZONING']),
     fetchFeatures(PARCELS, lat, lng, ['PIN', 'ADDRESS', 'SQFTLOT']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    fetchFeatures(HISTORIC, lat, lng, ['OVERLAY', 'DESCRIPTION', 'TYPE']),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -67,10 +77,10 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
       lotType: null,
     },
     overlays: {
-      historicDistrict: null,
+      historicDistrict: histR.status === 'fulfilled' ? seattleHistoricName(histR.value.features) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
-    sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood },
+    sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),
   }
 
