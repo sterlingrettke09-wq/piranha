@@ -28,6 +28,10 @@ export default function App() {
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/map" element={<BostonDashboard />} />
+            <Route path="/start" element={<BostonWizard />} />
+            <Route path="/result" element={<BostonResult />} />
+            {/* Legacy aliases so older shared links still resolve. */}
             <Route path="/boston" element={<BostonDashboard />} />
             <Route path="/boston/start" element={<BostonWizard />} />
             <Route path="/boston/result" element={<BostonResult />} />

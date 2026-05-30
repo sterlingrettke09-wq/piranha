@@ -53,10 +53,10 @@ export default function BostonWizard() {
         <h1 className="font-serif text-4xl tracking-tight">Start an analysis</h1>
         <p className="mt-4 text-piranha-charcoal/70">
           Pick a parcel from the{' '}
-          <a className="text-piranha-burgundy underline" href="/boston">
-            Boston map
+          <a className="text-piranha-burgundy underline" href="/map">
+            map
           </a>{' '}
-          to begin — we need a location to analyze.
+          to begin. We need a location to analyze.
         </p>
       </PageContainer>
     )
@@ -81,7 +81,7 @@ export default function BostonWizard() {
     if (units !== '') p.set('units', String(Number(units)))
     if (stories !== '') p.set('stories', String(Number(stories)))
     if (heightFt !== '') p.set('heightFt', String(Number(heightFt)))
-    navigate(`/boston/result?${p.toString()}`)
+    navigate(`/result?${p.toString()}`)
   }
 
   const parcelStatus =

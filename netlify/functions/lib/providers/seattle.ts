@@ -38,7 +38,7 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
   const t0 = Date.now()
   const [zoningR, parcelR, floodR, histR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['ZONING']),
-    fetchFeatures(PARCELS, lat, lng, ['PIN', 'ADDRESS', 'SQFTLOT']),
+    fetchFeatures(PARCELS, lat, lng, ['PIN', 'ADDRESS', 'SQFTLOT', 'PRES_USE_DESC']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     fetchFeatures(HISTORIC, lat, lng, ['OVERLAY', 'DESCRIPTION', 'TYPE']),
   ])
@@ -79,6 +79,9 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
     overlays: {
       historicDistrict: histR.status === 'fulfilled' ? seattleHistoricName(histR.value.features) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+    },
+    existing: {
+      landUse: parcel.PRES_USE_DESC ? String(parcel.PRES_USE_DESC).trim() : null,
     },
     sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),

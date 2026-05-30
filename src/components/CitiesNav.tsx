@@ -10,12 +10,12 @@ export function CitiesNav({ light = false }: { light?: boolean }) {
   const [params] = useSearchParams()
   const location = useLocation()
 
-  const onCities = location.pathname.startsWith('/boston')
+  const onCities = location.pathname.startsWith('/map')
   const current = params.get('city') ?? 'boston'
 
   function go(slug: string) {
     setOpen(false)
-    navigate(`/boston?city=${slug}`)
+    navigate(`/map?city=${slug}`)
   }
 
   return (

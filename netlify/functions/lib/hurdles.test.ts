@@ -151,6 +151,31 @@ describe('assessHurdles — labor / DEI', () => {
   })
 })
 
+describe('assessHurdles — demolition / existing structure', () => {
+  it('flags demolition + replacing-housing for a SFH replacing an apartment building', () => {
+    const hs = assessHurdles(
+      'seattle',
+      parcel({ existing: { landUse: 'Apartment' } }),
+      project({ city: 'seattle', projectType: 'new', use: 'residential', units: 1 }),
+    )
+    expect(cats(hs)).toContain('demolition')
+    const labels = hs.filter((h) => h.category === 'demolition').map((h) => h.label).join(' | ')
+    expect(labels).toMatch(/Demolition/)
+    expect(labels).toMatch(/Replacing existing housing/)
+    expect(hs.filter((h) => h.category === 'demolition').reduce((s, h) => s + (h.addsMonths ?? 0), 0)).toBeGreaterThanOrEqual(9)
+  })
+
+  it('does NOT flag demolition on a vacant lot', () => {
+    const hs = assessHurdles('seattle', parcel({ existing: { landUse: 'Vacant(Single-family)' } }), project({ city: 'seattle', projectType: 'new' }))
+    expect(cats(hs)).not.toContain('demolition')
+  })
+
+  it('does NOT flag demolition for an addition (not new construction)', () => {
+    const hs = assessHurdles('boston', parcel({ existing: { landUse: 'Apartment', units: 12 } }), project({ projectType: 'addition' }))
+    expect(cats(hs)).not.toContain('demolition')
+  })
+})
+
 describe('assessHurdles — project type', () => {
   it('ADU adds ADU-specific rules', () => {
     const hs = assessHurdles('boston', parcel({}), project({ projectType: 'adu' }))

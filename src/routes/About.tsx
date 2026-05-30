@@ -98,8 +98,9 @@ export default function About() {
             </p>
             <p>
               He made this to put it all in the open, in plain language anyone can understand. A
-              small push, he hopes, toward getting our cities back on track and making the second
-              third of this century a time of booming infrastructure and housing.
+              small push, he hopes, toward getting our cities back on track and making the next
+              25 years of this century a time of booming infrastructure and housing, much more so
+              than the first 25.
             </p>
             <p>
               Read more of his writing at{' '}

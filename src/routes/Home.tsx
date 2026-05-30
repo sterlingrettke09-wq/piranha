@@ -68,7 +68,7 @@ export default function Home() {
           </Reveal>
           <Reveal delay={160}>
             <div className="mt-12 flex justify-center">
-              <ArrowLink to="/boston" tone="light">
+              <ArrowLink to="/map" tone="light">
                 Try it out
               </ArrowLink>
             </div>
@@ -161,7 +161,7 @@ export default function Home() {
               {CITIES.map((c) => (
                 <Link
                   key={c.slug}
-                  to={`/boston?city=${c.slug}`}
+                  to={`/map?city=${c.slug}`}
                   className="font-serif text-3xl tracking-tight text-piranha-bone/75 transition-colors hover:text-piranha-gold sm:text-4xl"
                 >
                   {c.name}
@@ -181,7 +181,7 @@ export default function Home() {
               Find out what it really takes to build.
             </h2>
             <div className="mt-12 flex justify-center">
-              <ArrowLink to="/boston" tone="dark">
+              <ArrowLink to="/map" tone="dark">
                 Try it out
               </ArrowLink>
             </div>

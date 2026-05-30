@@ -222,6 +222,39 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     }
   }
 
+  // Demolition + loss of existing structure. New construction on a developed
+  // parcel means tearing down what's there first, which adds time and cost, and
+  // replacing existing homes with fewer is restricted in most cities.
+  if (project.projectType === 'new') {
+    const ex = parcel.existing
+    const exUnits = ex?.units ?? 0
+    const lu = ex?.landUse ?? ''
+    const vacantOrUnbuilt = /vacant|parking|open space|outdoor|undevelop/i.test(lu)
+    const hasBuilding =
+      !!ex && ((ex.buildingAreaSqFt ?? 0) > 0 || exUnits > 0 || (ex.numBuildings ?? 0) > 0 || (!!lu && !vacantOrUnbuilt))
+    const multifamilyExisting = !!ex && (exUnits >= 3 || /apartment|condo|multi|townhouse|triplex|fourplex|housing/i.test(lu))
+
+    if (hasBuilding) {
+      hurdles.push({
+        category: 'demolition',
+        label: 'Demolition of the existing building',
+        status: 'required',
+        note: `${lu ? `This parcel currently holds ${lu.toLowerCase()}. ` : 'There is already a building on this parcel. '}Building new means demolishing it first: a demolition permit, utility disconnects, and hazardous-material abatement, all of which add cost and time.`,
+        addsMonths: 3,
+      })
+      const proposedUnits = project.units ?? (isResidential ? 1 : 0)
+      if (multifamilyExisting && (exUnits === 0 || proposedUnits < exUnits)) {
+        hurdles.push({
+          category: 'demolition',
+          label: 'Replacing existing housing',
+          status: 'required',
+          note: 'This parcel already holds multiple homes. Tearing down occupied housing triggers tenant-relocation requirements and demolition review, and replacing it with fewer units runs into "no net loss of housing" rules in many cities. Expect significant added time, and in some places it may not be permitted at all.',
+          addsMonths: 6,
+        })
+      }
+    }
+  }
+
   // Public funding triggers a mandatory procurement + labor process. Privately
   // funded projects only see this as a heads-up, and only when large enough to
   // plausibly chase a subsidy.

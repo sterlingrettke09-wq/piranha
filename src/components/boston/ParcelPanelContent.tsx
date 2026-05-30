@@ -114,7 +114,7 @@ export function ParcelPanelContent(props: Props) {
       </section>
 
       <Link
-        to={`/boston/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
+        to={`/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
         className="block"
       >
         <Button size="lg" className="w-full">Start full analysis</Button>

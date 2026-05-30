@@ -18,7 +18,7 @@ export default function NotFound() {
             Go home
           </Link>
           <Link
-            to="/boston"
+            to="/map"
             className="rounded-md border border-piranha-charcoal/20 px-5 py-2.5 text-sm font-medium text-piranha-charcoal hover:border-piranha-charcoal/40"
           >
             Analyze a parcel

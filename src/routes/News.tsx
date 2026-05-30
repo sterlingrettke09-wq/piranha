@@ -77,7 +77,7 @@ export default function News() {
     <PageContainer>
       <div className="mx-auto max-w-3xl space-y-10 py-10 sm:py-16">
         <PageHeading eyebrow="Housing in the news" title="What’s moving in housing.">
-          Interesting stories on housing in the cities on our site and beyond — updates,
+          Interesting stories on housing in the cities on our site and beyond: updates,
           reforms, and the fights that shape what gets built. Updated periodically.
         </PageHeading>
 
@@ -114,7 +114,7 @@ export default function News() {
               Hand-picked housing stories are on the way. Check back shortly.
             </p>
             <Link
-              to="/boston"
+              to="/map"
               className="mt-7 inline-block rounded-md bg-piranha-burgundy px-5 py-2.5 text-sm font-medium text-piranha-bone hover:bg-piranha-burgundy/90"
             >
               Run an analysis in the meantime →

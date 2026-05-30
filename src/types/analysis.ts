@@ -44,6 +44,7 @@ export interface Hurdle {
     | 'flood'
     | 'labor'
     | 'parking'
+    | 'demolition'
   label: string
   status: HurdleStatus
   note: string

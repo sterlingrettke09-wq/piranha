@@ -69,7 +69,7 @@ export default function BostonResult() {
         <h1 className="font-serif text-4xl tracking-tight">Analysis</h1>
         <p className="mt-4 text-piranha-charcoal/70">
           This link is missing the project details.{' '}
-          <Link className="text-piranha-burgundy underline" to="/boston">
+          <Link className="text-piranha-burgundy underline" to="/map">
             Start from the map
           </Link>
           .
@@ -105,11 +105,11 @@ export default function BostonResult() {
         {state.status === 'loaded' && (
           <>
             <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <Link to="/boston" className="text-piranha-burgundy hover:underline">
+              <Link to={`/map?city=${state.data.project.city}`} className="text-piranha-burgundy hover:underline">
                 ← Back to map
               </Link>
               <Link
-                to={`/boston/start?${params.toString()}`}
+                to={`/start?${params.toString()}`}
                 className="text-piranha-burgundy hover:underline"
               >
                 Edit inputs
