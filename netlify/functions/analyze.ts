@@ -74,7 +74,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // which the new-construction baseline already accounts for.
   const hasExistingBuilding = hurdles.some((h) => h.category === 'demolition')
   const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding)
-  const timeline = { months: timelineInfo.months, path: timelineInfo.path }
+  const timeline = { months: timelineInfo.months, path: timelineInfo.path, tier: timelineInfo.tier }
 
   const narrative = buildNarrative(parcel, project, feasibility, estimate, {
     timelineMonths: timeline.months,

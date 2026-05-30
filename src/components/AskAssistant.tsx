@@ -31,7 +31,7 @@ export function AskAssistant() {
         })
       }
     } catch {
-      setState({ status: 'error', message: 'Network error — please try again.' })
+      setState({ status: 'error', message: 'Network error. Please try again.' })
     }
   }
 

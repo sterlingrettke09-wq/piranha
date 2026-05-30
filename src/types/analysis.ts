@@ -76,7 +76,7 @@ export interface AnalysisResult {
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[] }
   hurdles: Hurdle[]
   costs: { hard: number; soft: number; permit: number; total: number; currency: 'USD' }
-  timeline: { months: number; path: ApprovalPath }
+  timeline: { months: number; path: ApprovalPath; tier?: 'single' | 'multi' | 'apartment' }
   narrative: string
   assumptions: Record<string, string>
   sources: Record<string, string>

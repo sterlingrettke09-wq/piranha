@@ -33,7 +33,7 @@ export function StepSize({ use, gfa, units, onGfa, onUnits }: Props) {
           max={300}
           step={1}
           unit="units"
-          help="Optional — dwelling units in the project."
+          help="Optional. Dwelling units in the project."
         />
       )}
     </div>

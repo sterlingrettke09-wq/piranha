@@ -6,6 +6,12 @@ const PATH_LABEL: Record<AnalysisResult['timeline']['path'], string> = {
   prohibited: 'No viable approval path',
 }
 
+const TIER_LABEL: Record<NonNullable<AnalysisResult['timeline']['tier']>, string> = {
+  single: 'a single-family home',
+  multi: 'a multi-family building',
+  apartment: 'an apartment-scale building',
+}
+
 export function Timeline({ timeline }: { timeline: AnalysisResult['timeline'] }) {
   const hasMonths = timeline.months > 0
   return (
@@ -25,8 +31,9 @@ export function Timeline({ timeline }: { timeline: AnalysisResult['timeline'] })
       </p>
       {hasMonths && (
         <p className="mt-4 border-t border-piranha-charcoal/10 pt-4 text-sm leading-relaxed text-piranha-charcoal/60">
-          Estimated from design through construction, not just the permit. Coastal and
-          discretionary cities run longer than this on complex projects.
+          {timeline.tier ? `Estimated as ${TIER_LABEL[timeline.tier]}, ` : 'Estimated '}
+          covering the whole arc: design, permits, site work, and construction. Coastal and
+          discretionary cities run longer on complex projects.
         </p>
       )}
     </div>
