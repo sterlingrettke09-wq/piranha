@@ -56,6 +56,7 @@ function drawFish(ctx: CanvasRenderingContext2D, f: Fish) {
 export function PiranhaIntro() {
   const [phase, setPhase] = useState<Phase>(initialPhase)
   const [imageGone, setImageGone] = useState(false)
+  const [photoFailed, setPhotoFailed] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   // Open on the piranha mark, then dissolve it into the live school + title.
@@ -235,15 +236,28 @@ export function PiranhaIntro() {
       }`}
     >
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-      {/* Opening still: the piranha mark, dissolving into the live school. */}
-      <img
-        src="/logo/piranha-fish-burgundy.png"
-        alt=""
-        aria-hidden="true"
-        className={`pointer-events-none absolute left-1/2 top-1/2 z-10 w-[min(64vw,460px)] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-[1400ms] ease-in-out ${
-          imageGone ? 'opacity-0' : 'opacity-100'
-        }`}
-      />
+      {/* Opening still — a real piranha photo, dissolving into the live school.
+          Falls back to the brand mark if the photo asset isn't present. */}
+      {!photoFailed ? (
+        <img
+          src="/images/piranha-hero.jpg"
+          alt=""
+          aria-hidden="true"
+          onError={() => setPhotoFailed(true)}
+          className={`pointer-events-none absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-[1600ms] ease-in-out ${
+            imageGone ? 'opacity-0' : 'opacity-100'
+          }`}
+        />
+      ) : (
+        <img
+          src="/logo/piranha-fish-burgundy.png"
+          alt=""
+          aria-hidden="true"
+          className={`pointer-events-none absolute left-1/2 top-1/2 z-10 w-[min(64vw,460px)] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-[1400ms] ease-in-out ${
+            imageGone ? 'opacity-0' : 'opacity-100'
+          }`}
+        />
+      )}
       <div
         className={`relative z-20 flex h-full flex-col items-center justify-center px-6 text-center transition-opacity duration-1000 ease-in-out ${
           imageGone ? 'opacity-100' : 'opacity-0'

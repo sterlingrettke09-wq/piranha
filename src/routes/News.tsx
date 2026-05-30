@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import type { NewsItem, Jurisdiction, NewsCategory } from '../types/news'
 
@@ -64,6 +65,7 @@ export default function News() {
   }, [])
 
   const all = items ?? []
+  const empty = items !== null && all.length === 0
   const jurisdictions = Array.from(new Set(all.map((i) => i.jurisdiction)))
   const categories = Array.from(new Set(all.map((i) => i.category)))
   const filtered = all.filter(
@@ -78,11 +80,13 @@ export default function News() {
             <h1 className="font-serif text-4xl tracking-tight text-piranha-charcoal sm:text-5xl">
               Policy feed
             </h1>
-            <span className="text-xs uppercase tracking-wider text-piranha-charcoal/40">Updated biweekly</span>
+            {!empty && (
+              <span className="text-xs uppercase tracking-wider text-piranha-charcoal/40">Updated regularly</span>
+            )}
           </div>
           <p className="text-piranha-charcoal/70">
-            Recent zoning, permitting, and housing-policy moves across our cities and the
-            states above them — in plain English, always linked to the source.
+            Zoning, permitting, and housing-policy moves across our cities and the states
+            above them — in plain English, always linked to the source.
           </p>
         </header>
 
@@ -105,7 +109,31 @@ export default function News() {
 
         {err && <p className="text-piranha-charcoal/60">Couldn’t load the feed right now.</p>}
         {!err && items === null && <div className="h-40 animate-pulse rounded-xl bg-piranha-charcoal/5" />}
-        {items !== null && filtered.length === 0 && (
+
+        {empty && (
+          <div className="rounded-2xl border border-piranha-charcoal/10 bg-white/50 px-8 py-16 text-center">
+            <img
+              src="/logo/piranha-fish-burgundy.png"
+              alt=""
+              aria-hidden="true"
+              className="mx-auto mb-6 w-14 opacity-90"
+            />
+            <h2 className="font-serif text-3xl tracking-tight text-piranha-charcoal">Coming soon</h2>
+            <p className="mx-auto mt-3 max-w-md leading-relaxed text-piranha-charcoal/70">
+              We’re building a hand-picked feed of the housing, zoning, and permitting
+              news that actually changes what you can build — every item in plain English
+              and linked to its source. Check back shortly.
+            </p>
+            <Link
+              to="/boston"
+              className="mt-7 inline-block rounded-md bg-piranha-burgundy px-5 py-2.5 text-sm font-medium text-piranha-bone hover:bg-piranha-burgundy/90"
+            >
+              Run an analysis in the meantime →
+            </Link>
+          </div>
+        )}
+
+        {items !== null && !empty && filtered.length === 0 && (
           <p className="text-piranha-charcoal/60">Nothing matches that filter yet.</p>
         )}
 
