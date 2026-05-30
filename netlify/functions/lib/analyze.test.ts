@@ -53,9 +53,15 @@ describe('analyze handler', () => {
       expect(body.parcel.districtCode).toBe('B-2-65')
       expect(body.disclaimers.length).toBeGreaterThan(0)
     })
-    it('returns NEEDS_RELIEF when the project exceeds FAR', async () => {
-      const res = await call({ ...baseParams, gfa: '40000' })
+    it('returns NEEDS_RELIEF when the project modestly exceeds FAR', async () => {
+      // lot 10000, maxFAR 2.0 → 20000 max. 28000 = FAR 2.8 = 1.4× (within variance range).
+      const res = await call({ ...baseParams, gfa: '28000' })
       expect(JSON.parse(res.body).feasibility.overall).toBe('NEEDS_RELIEF')
+    })
+
+    it('returns PROHIBITED when the project grossly exceeds FAR', async () => {
+      const res = await call({ ...baseParams, gfa: '60000' }) // FAR 6.0 = 3× the limit
+      expect(JSON.parse(res.body).feasibility.overall).toBe('PROHIBITED')
     })
   })
 

@@ -24,6 +24,7 @@ export function CinematicIntro() {
   const titleRef = useRef<HTMLDivElement | null>(null)
   const schoolRef = useRef<HTMLDivElement | null>(null)
   const cueRef = useRef<HTMLDivElement | null>(null)
+  const photoGone = useRef(false)
 
   useEffect(() => {
     if (reduce) return
@@ -38,19 +39,24 @@ export function CinematicIntro() {
 
       if (photoRef.current) {
         const f = smooth(0, 0.3, p)
-        photoRef.current.style.opacity = String(1 - f)
-        photoRef.current.style.transform = `scale(${1 - 0.14 * f})`
+        if (f >= 0.999) photoGone.current = true
+        const gone = photoGone.current
+        photoRef.current.style.opacity = gone ? '0' : String(1 - f)
+        photoRef.current.style.transform = `scale(${1 - 0.14 * (gone ? 1 : f)})`
       }
       if (titleRef.current) {
         const inO = smooth(0.2, 0.42, p)
-        const outO = smooth(0.66, 0.92, p)
-        titleRef.current.style.opacity = String(inO * (1 - outO))
-        titleRef.current.style.transform = `scale(${1 - 0.24 * outO})`
+        const out = smooth(0.55, 0.85, p)
+        titleRef.current.style.opacity = String(inO * (1 - out))
+        // Expand away (fly through), matching the school.
+        titleRef.current.style.transform = `scale(${1 + 0.5 * out})`
       }
       if (schoolRef.current) {
-        const c = smooth(0.7, 1, p)
-        schoolRef.current.style.opacity = String(1 - c)
-        schoolRef.current.style.transform = `scale(${1 - 0.4 * c})`
+        // The school expands as you scroll into it — Orchestra-style fly-through —
+        // then fades as the first page arrives.
+        const e = smooth(0.4, 1, p)
+        schoolRef.current.style.transform = `scale(${1 + 0.9 * e})`
+        schoolRef.current.style.opacity = String(1 - smooth(0.82, 1, p))
       }
       if (cueRef.current) {
         cueRef.current.style.opacity = String(1 - smooth(0.02, 0.12, p))

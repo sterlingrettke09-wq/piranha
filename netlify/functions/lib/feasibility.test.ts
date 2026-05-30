@@ -34,6 +34,26 @@ describe('assessFeasibility', () => {
     expect(r.overall).toBe('NEEDS_RELIEF')
   })
 
+  it('is PROHIBITED when FAR grossly exceeds the limit (beyond a variance)', () => {
+    // lot 10000, maxFAR 2.0 → max ~20000 sf. 100000 sf = FAR 10 = 5× the limit.
+    const r = assessFeasibility(parcel(), project({ gfa: 100000 }))
+    const far = r.checks.find((c) => c.dimension === 'far')
+    expect(far?.status).toBe('PROHIBITED')
+    expect(r.overall).toBe('PROHIBITED')
+    expect(r.path).toBe('prohibited')
+  })
+
+  it('is PROHIBITED when height grossly exceeds the limit', () => {
+    const r = assessFeasibility(parcel(), project({ heightFt: 200 })) // 200 vs 65 = ~3×
+    expect(r.checks.find((c) => c.dimension === 'height')?.status).toBe('PROHIBITED')
+    expect(r.overall).toBe('PROHIBITED')
+  })
+
+  it('still only needs relief at a modest overage (≤1.5×)', () => {
+    const r = assessFeasibility(parcel(), project({ gfa: 28000 })) // FAR 2.8 = 1.4× of 2.0
+    expect(r.checks.find((c) => c.dimension === 'far')?.status).toBe('NEEDS_RELIEF')
+  })
+
   it('flags use needing relief when not in the allowed list', () => {
     const r = assessFeasibility(parcel({ districtCode: 'R-1' }), project({ use: 'commercial', gfa: 5000, heightFt: 30 }))
     expect(r.checks.find((c) => c.dimension === 'use')?.status).toBe('NEEDS_RELIEF')

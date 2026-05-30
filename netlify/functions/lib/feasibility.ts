@@ -10,6 +10,20 @@ const SEVERITY: Record<CheckStatus, number> = {
   PROHIBITED: 3,
 }
 
+// A dimensional variance can bridge a modest overage of a zoning limit. Beyond
+// this multiple it's not realistically grantable as relief — it would take a
+// rezoning or special district — so we call it prohibited rather than feed a
+// false "buildable with relief" verdict.
+const RELIEF_FACTOR = 1.5
+
+// Classify a proposed value against a limit: within → as-of-right, modestly over
+// → relief, grossly over → prohibited.
+function classifyOverage(proposed: number, limit: number): CheckStatus {
+  if (proposed <= limit) return 'AS_OF_RIGHT'
+  if (proposed <= limit * RELIEF_FACTOR) return 'NEEDS_RELIEF'
+  return 'PROHIBITED'
+}
+
 export interface Feasibility {
   overall: CheckStatus
   checks: FeasibilityCheck[]
@@ -35,8 +49,14 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
     checks.push({ dimension: 'far', status: 'INDETERMINATE', proposed: `${project.gfa.toLocaleString()} sf`, allowed: 'not derivable', note: 'FAR cannot be evaluated without lot size and a district FAR limit.' })
   } else {
     const proposedFAR = project.gfa / parcel.lot.sizeSqFt
-    const status: CheckStatus = proposedFAR <= farForUse ? 'AS_OF_RIGHT' : 'NEEDS_RELIEF'
-    checks.push({ dimension: 'far', status, proposed: `FAR ${proposedFAR.toFixed(2)}`, allowed: `max FAR ${farForUse.toFixed(2)}`, note: status === 'NEEDS_RELIEF' ? 'Proposed floor area exceeds the district FAR; dimensional relief would be required.' : null })
+    const status = classifyOverage(proposedFAR, farForUse)
+    const note =
+      status === 'NEEDS_RELIEF'
+        ? 'Proposed floor area exceeds the district FAR; dimensional relief (a variance) would be required.'
+        : status === 'PROHIBITED'
+          ? `Proposed floor area is ${(proposedFAR / farForUse).toFixed(1)}× the district FAR — far beyond what a variance can grant. On this lot it would require a rezoning or special district, so it isn't buildable as proposed.`
+          : null
+    checks.push({ dimension: 'far', status, proposed: `FAR ${proposedFAR.toFixed(2)}`, allowed: `max FAR ${farForUse.toFixed(2)}`, note })
   }
 
   // HEIGHT
@@ -44,8 +64,14 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   if (limits.maxHeightFt == null || effHeight == null) {
     checks.push({ dimension: 'height', status: 'INDETERMINATE', proposed: effHeight != null ? `${effHeight} ft` : 'unspecified', allowed: limits.maxHeightFt != null ? `max ${limits.maxHeightFt} ft` : 'not derivable', note: 'Height cannot be evaluated without both a proposed height and a district height limit.' })
   } else {
-    const status: CheckStatus = effHeight <= limits.maxHeightFt ? 'AS_OF_RIGHT' : 'NEEDS_RELIEF'
-    checks.push({ dimension: 'height', status, proposed: `${effHeight} ft`, allowed: `max ${limits.maxHeightFt} ft`, note: status === 'NEEDS_RELIEF' ? 'Proposed height exceeds the district limit; dimensional relief would be required.' : null })
+    const status = classifyOverage(effHeight, limits.maxHeightFt)
+    const note =
+      status === 'NEEDS_RELIEF'
+        ? 'Proposed height exceeds the district limit; dimensional relief (a variance) would be required.'
+        : status === 'PROHIBITED'
+          ? `Proposed height is ${(effHeight / limits.maxHeightFt).toFixed(1)}× the district limit — well past what a variance grants; it would require a rezoning, so it isn't buildable as proposed.`
+          : null
+    checks.push({ dimension: 'height', status, proposed: `${effHeight} ft`, allowed: `max ${limits.maxHeightFt} ft`, note })
   }
 
   // Overall reflects the worst DECISIVE check. A single indeterminate dimension

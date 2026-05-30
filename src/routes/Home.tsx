@@ -28,7 +28,7 @@ const STEPS = [
 const STATS = [
   { figure: '5', label: 'Cities live, and expanding' },
   { figure: '100%', label: 'Sourced from public data' },
-  { figure: '0', label: 'Consultants required' },
+  { figure: '9', label: 'Kinds of red tape we surface' },
 ]
 
 export default function Home() {
@@ -134,7 +134,7 @@ export default function Home() {
               Where we’re live
             </p>
             <h2 className="mt-3 font-serif text-4xl tracking-tight text-piranha-charcoal sm:text-5xl">
-              Five cities, on their own public data.
+              Five cities, each running on its own public data.
             </h2>
           </Reveal>
           <div className="mt-12 flex flex-wrap gap-4">
