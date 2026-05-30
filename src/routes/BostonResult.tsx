@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { useAnalysis } from '../hooks/useAnalysis'
-import { USES, type AnalysisInput, type Use } from '../types/analysis'
+import { USES, PROJECT_TYPES, type AnalysisInput, type Use, type ProjectType } from '../types/analysis'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
 import { MiniMap } from '../components/boston/result/MiniMap'
 import { SiteFacts } from '../components/boston/result/SiteFacts'
@@ -15,8 +15,17 @@ import { AssumptionsDisclosure } from '../components/boston/result/AssumptionsDi
 import { NextSteps } from '../components/boston/result/NextSteps'
 import { SourceLinks } from '../components/boston/result/SourceLinks'
 
+const PROJECT_TYPE_LABEL: Record<ProjectType, string> = {
+  new: 'New construction',
+  addition: 'Addition / renovation',
+  adu: 'Accessory dwelling unit',
+  change_of_use: 'Change of use',
+}
+
 function parseInput(params: URLSearchParams): AnalysisInput | null {
   const city = params.get('city') ?? 'boston'
+  const ptRaw = params.get('projectType')
+  const projectType: ProjectType = ptRaw && (PROJECT_TYPES as string[]).includes(ptRaw) ? (ptRaw as ProjectType) : 'new'
   const parcelId = params.get('parcelId') ?? ''
   const lat = Number(params.get('lat'))
   const lng = Number(params.get('lng'))
@@ -32,7 +41,7 @@ function parseInput(params: URLSearchParams): AnalysisInput | null {
     const n = Number(raw)
     return Number.isFinite(n) ? n : undefined
   }
-  return { city, parcelId, lat, lng, use, gfa, units: num('units'), stories: num('stories'), heightFt: num('heightFt') }
+  return { city, projectType, parcelId, lat, lng, use, gfa, units: num('units'), stories: num('stories'), heightFt: num('heightFt') }
 }
 
 export default function BostonResult() {
@@ -114,6 +123,11 @@ export default function BostonResult() {
               <h1 className="font-serif text-3xl tracking-tight">{state.data.parcel.address}</h1>
               <p className="text-sm text-piranha-charcoal/60">
                 Parcel {state.data.parcel.parcelId} · district {state.data.parcel.districtCode}
+              </p>
+              <p className="text-sm font-medium text-piranha-charcoal/80">
+                {PROJECT_TYPE_LABEL[state.data.project.projectType]} ·{' '}
+                {state.data.project.use} · {state.data.project.gfa.toLocaleString()} sq ft
+                {state.data.project.units ? ` · ${state.data.project.units} units` : ''}
               </p>
             </header>
             <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />

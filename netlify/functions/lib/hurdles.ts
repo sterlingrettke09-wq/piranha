@@ -47,6 +47,23 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     })
   }
 
+  // ---- Project-type-specific requirements (apply in every city). ----
+  if (project.projectType === 'adu') {
+    hurdles.push({
+      category: 'review',
+      label: 'ADU-specific rules',
+      status: 'likely',
+      note: 'Accessory dwelling units have their own size caps, owner-occupancy, and parking rules that vary by city — confirm the local ADU ordinance.',
+    })
+  } else if (project.projectType === 'change_of_use') {
+    hurdles.push({
+      category: 'review',
+      label: 'Change-of-use code upgrades',
+      status: 'likely',
+      note: 'Converting to a new use commonly triggers building-code, accessibility (ADA), and fire upgrades, plus a use review — even without exterior changes.',
+    })
+  }
+
   // ---- Per-city policy. Programs are publicly documented; applicability often
   // depends on the specific area/funding, so area-dependent rules are "likely". ----
   if (city === 'boston') {

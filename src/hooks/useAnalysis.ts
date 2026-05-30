@@ -10,6 +10,7 @@ type State = { status: 'idle' } | { status: 'loading' } | Resolved
 function toQuery(input: AnalysisInput): string {
   const p = new URLSearchParams()
   p.set('city', input.city)
+  p.set('projectType', input.projectType)
   p.set('lat', String(input.lat))
   p.set('lng', String(input.lng))
   p.set('parcelId', input.parcelId)

@@ -18,7 +18,7 @@ function parcel(over: Partial<ParcelInfo>): ParcelInfo {
 }
 
 function project(over: Partial<AnalysisInput>): AnalysisInput {
-  return { parcelId: '1', city: 'boston', lat: 42.358, lng: -71.07, use: 'residential', gfa: 8000, ...over }
+  return { parcelId: '1', city: 'boston', projectType: 'new', lat: 42.358, lng: -71.07, use: 'residential', gfa: 8000, ...over }
 }
 
 const cats = (hs: ReturnType<typeof assessHurdles>) => hs.map((h) => h.category)
@@ -92,5 +92,16 @@ describe('assessHurdles — other cities', () => {
     const hs = assessHurdles('seattle', parcel({}), project({ city: 'seattle', units: 30, gfa: 40000 }))
     expect(hs.some((h) => /MHA/.test(h.label))).toBe(true)
     expect(hs.some((h) => /SEPA/.test(h.label))).toBe(true)
+  })
+})
+
+describe('assessHurdles — project type', () => {
+  it('ADU adds ADU-specific rules', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ projectType: 'adu' }))
+    expect(hs.some((h) => /ADU/.test(h.label))).toBe(true)
+  })
+  it('change of use adds code-upgrade hurdle', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ projectType: 'change_of_use' }))
+    expect(hs.some((h) => /Change-of-use/.test(h.label))).toBe(true)
   })
 })

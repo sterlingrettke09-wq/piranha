@@ -2,14 +2,15 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { useParcelInfo } from '../hooks/useParcelInfo'
-import { USES, type Use } from '../types/analysis'
+import { USES, PROJECT_TYPES, type Use, type ProjectType } from '../types/analysis'
 import { WizardProgress } from '../components/boston/wizard/WizardProgress'
 import { ParcelContextHeader } from '../components/boston/wizard/ParcelContextHeader'
+import { StepType } from '../components/boston/wizard/StepType'
 import { StepUse } from '../components/boston/wizard/StepUse'
 import { StepSize } from '../components/boston/wizard/StepSize'
 import { StepHeight } from '../components/boston/wizard/StepHeight'
 
-const TOTAL_STEPS = 3
+const TOTAL_STEPS = 4
 
 export default function BostonWizard() {
   const [params] = useSearchParams()
@@ -29,6 +30,10 @@ export default function BostonWizard() {
 
   // Pre-fill from the URL so the result page's "Edit inputs" link round-trips.
   const [step, setStep] = useState(1)
+  const [projectType, setProjectType] = useState<ProjectType | null>(() => {
+    const t = params.get('projectType')
+    return t && (PROJECT_TYPES as string[]).includes(t) ? (t as ProjectType) : null
+  })
   const [use, setUse] = useState<Use | null>(() => {
     const u = params.get('use')
     return u && (USES as string[]).includes(u) ? (u as Use) : null
@@ -54,14 +59,16 @@ export default function BostonWizard() {
   }
 
   const gfaNum = Number(gfa)
-  const canAdvanceUse = use !== null
   const canAdvanceSize = gfa !== '' && Number.isFinite(gfaNum) && gfaNum > 0
   const canSubmit = heightFt !== '' || stories !== ''
+  const canAdvance =
+    step === 1 ? projectType !== null : step === 2 ? use !== null : step === 3 ? canAdvanceSize : true
 
   function goResult() {
     const p = new URLSearchParams()
     p.set('city', city)
     p.set('parcelId', parcelId)
+    p.set('projectType', projectType as ProjectType)
     p.set('lat', String(lat))
     p.set('lng', String(lng))
     p.set('use', use as Use)
@@ -89,11 +96,12 @@ export default function BostonWizard() {
         <WizardProgress step={step} total={TOTAL_STEPS} />
 
         <div key={step} className="tpp-fade-in">
-          {step === 1 && <StepUse value={use} onChange={(u) => setUse(u)} />}
-          {step === 2 && (
+          {step === 1 && <StepType value={projectType} onChange={(t) => setProjectType(t)} />}
+          {step === 2 && <StepUse value={use} onChange={(u) => setUse(u)} />}
+          {step === 3 && (
             <StepSize use={use} gfa={gfa} units={units} onGfa={setGfa} onUnits={setUnits} />
           )}
-          {step === 3 && (
+          {step === 4 && (
             <StepHeight
               stories={stories}
               heightFt={heightFt}
@@ -116,7 +124,7 @@ export default function BostonWizard() {
             <button
               type="button"
               onClick={() => setStep((s) => s + 1)}
-              disabled={step === 1 ? !canAdvanceUse : !canAdvanceSize}
+              disabled={!canAdvance}
               className="rounded-md bg-piranha-burgundy px-5 py-2 font-medium text-piranha-bone disabled:opacity-40"
             >
               Next
