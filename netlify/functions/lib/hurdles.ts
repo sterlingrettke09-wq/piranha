@@ -32,6 +32,20 @@ const PARKING_NOTE: Record<string, string> = {
     'Seattle requires no parking minimums inside urban villages and frequent-transit areas, which cover much of the buildable city. Confirm whether your parcel falls inside one.',
 }
 
+// The body that reviews exterior changes / new construction in a designated district.
+const HISTORIC_BODY: Record<string, string> = {
+  boston:
+    'Exterior work and new construction need a Certificate of Design Approval from the Boston Landmarks Commission (or the relevant local historic district commission) before permits issue.',
+  nyc:
+    'Exterior work and new construction need a Certificate of Appropriateness (or permit) from the NYC Landmarks Preservation Commission before the Department of Buildings will issue permits.',
+  chicago:
+    'Exterior work and new construction are reviewed by the Commission on Chicago Landmarks (Historic Preservation Division) before a building permit can issue.',
+  sf:
+    'Exterior work and new construction need a Certificate of Appropriateness from the San Francisco Historic Preservation Commission under Planning Code Article 10.',
+  seattle:
+    'Exterior work and new construction need a Certificate of Approval from the district’s review board (under the Seattle Landmarks Preservation Board / special-review-district process) before permits issue.',
+}
+
 const LABOR_NOTE =
   'Public funding, tax abatements, tax-increment financing, or city land typically trigger prevailing-wage requirements and minority/women-owned business (MWBE/DEI) participation goals — raising labor cost and adding compliance reporting. Large projects also commonly negotiate Community Benefit Agreements. These are the “everything-bagel” mandates that stack on top of the build itself.'
 
@@ -49,7 +63,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       category: 'historic',
       label: 'Historic district design review',
       status: 'required',
-      note: `This parcel is in the ${parcel.overlays.historicDistrict}. Exterior changes and new construction require design approval from the local historic/architectural commission.`,
+      note: `This parcel is in the ${parcel.overlays.historicDistrict}. ${HISTORIC_BODY[city] ?? 'Exterior changes and new construction require design approval from the local historic-district commission before permits issue.'}`,
       addsMonths: 3,
     })
   }

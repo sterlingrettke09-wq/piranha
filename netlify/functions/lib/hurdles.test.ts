@@ -95,6 +95,24 @@ describe('assessHurdles — other cities', () => {
   })
 })
 
+describe('assessHurdles — historic review body', () => {
+  const BODIES: Record<string, RegExp> = {
+    boston: /Boston Landmarks/i,
+    nyc: /Landmarks Preservation Commission|Certificate of Appropriateness/i,
+    chicago: /Commission on Chicago Landmarks/i,
+    sf: /Historic Preservation Commission/i,
+    seattle: /Landmarks Preservation Board|review board/i,
+  }
+  for (const [city, re] of Object.entries(BODIES)) {
+    it(`${city} names its historic review body`, () => {
+      const hs = assessHurdles(city, parcel({ overlays: { historicDistrict: 'Some Historic District', floodZone: null } }), project({ city }))
+      const h = hs.find((x) => x.category === 'historic')
+      expect(h, `expected a historic hurdle for ${city}`).toBeTruthy()
+      expect(h?.note).toMatch(re)
+    })
+  }
+})
+
 describe('assessHurdles — parking', () => {
   it('always includes a parking note with city-specific guidance', () => {
     for (const city of ['boston', 'nyc', 'sf', 'chicago', 'seattle']) {
