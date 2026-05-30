@@ -17,7 +17,24 @@ export function CinematicIntro() {
   const [reduce] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
+  // Play only on the first load of a browser session; skip on later navigations.
+  const [show] = useState(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      return !window.sessionStorage.getItem('tpp_intro_seen')
+    } catch {
+      return true
+    }
+  })
   const [photoFailed, setPhotoFailed] = useState(false)
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem('tpp_intro_seen', '1')
+    } catch {
+      // ignore (private mode / storage disabled)
+    }
+  }, [])
 
   const sectionRef = useRef<HTMLDivElement | null>(null)
   const photoRef = useRef<HTMLDivElement | null>(null)
@@ -92,6 +109,9 @@ export function CinematicIntro() {
       <img src="/logo/piranha-fish-burgundy.png" alt="" aria-hidden="true" className="w-[min(64vw,460px)]" />
     </div>
   )
+
+  // Already seen this session — skip the intro entirely; the page starts at the hero.
+  if (!show) return null
 
   // Reduced motion: a calm, static title over the school. No scroll choreography.
   if (reduce) {
