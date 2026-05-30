@@ -11,6 +11,7 @@ const BostonResult = lazy(() => import('./routes/BostonResult'))
 const Ask = lazy(() => import('./routes/Ask'))
 const About = lazy(() => import('./routes/About'))
 const News = lazy(() => import('./routes/News'))
+const Admin = lazy(() => import('./routes/Admin'))
 const NotFound = lazy(() => import('./routes/NotFound'))
 
 function RouteFallback() {
@@ -38,6 +39,8 @@ export default function App() {
             <Route path="/ask" element={<Ask />} />
             <Route path="/news" element={<News />} />
             <Route path="/about" element={<About />} />
+            {/* Hidden owner-only search log. Not linked from nav or sitemap. */}
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

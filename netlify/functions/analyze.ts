@@ -8,6 +8,7 @@ import { estimateCost } from './lib/cost'
 import { resolveTimeline } from './lib/timeline'
 import { buildNarrative } from './lib/narrative'
 import { assumptionsSummary } from './lib/assumptions'
+import { logSearch } from './lib/searchLog'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 
@@ -105,6 +106,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
     disclaimers: DISCLAIMERS,
     generatedAt: new Date().toISOString(),
   }
+
+  // Private intent log (owner-only, via /admin). Never blocks the response.
+  await logSearch({
+    ts: result.generatedAt,
+    city,
+    address: parcel.address,
+    use: project.use,
+    projectType: project.projectType,
+    gfa: project.gfa,
+    units: project.units,
+    verdict: feasibility.overall,
+    months: timeline.months,
+  })
 
   return {
     statusCode: 200,
