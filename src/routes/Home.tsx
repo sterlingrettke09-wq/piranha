@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
-import { PiranhaIntro } from '../components/PiranhaIntro'
+import { CinematicIntro } from '../components/CinematicIntro'
 import { Reveal } from '../components/Reveal'
 import { CITIES } from '../config/cities'
 
@@ -34,7 +34,7 @@ const STATS = [
 export default function Home() {
   return (
     <>
-      <PiranhaIntro />
+      <CinematicIntro />
 
       {/* ── Hero ──────────────────────────────────────────────── */}
       <section className="mx-auto flex min-h-[78vh] max-w-4xl flex-col items-center justify-center px-6 py-24 text-center">
