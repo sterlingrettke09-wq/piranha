@@ -80,6 +80,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const narrative = buildNarrative(parcel, project, feasibility, estimate, {
     timelineMonths: timeline.months,
     includesDemolition: timelineInfo.includesDemolition,
+    envelopeKnown: feasibility.envelopeKnown,
   })
 
   const result: AnalysisResult = {
@@ -96,12 +97,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
       existing: parcel.existing,
     },
     project,
-    feasibility: { overall: feasibility.overall, checks: feasibility.checks },
+    feasibility: { overall: feasibility.overall, checks: feasibility.checks, envelopeKnown: feasibility.envelopeKnown },
     hurdles,
     costs: estimate.costs,
     timeline,
     narrative,
-    assumptions: assumptionsSummary(city),
+    assumptions: assumptionsSummary(city, project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / 11) : null)),
     sources: parcel.sources,
     disclaimers: DISCLAIMERS,
     generatedAt: new Date().toISOString(),

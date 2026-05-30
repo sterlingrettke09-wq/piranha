@@ -42,6 +42,16 @@ describe('assessFeasibility', () => {
     expect(r.checks.find((c) => c.dimension === 'housing')).toBeUndefined()
   })
 
+  it('marks the envelope unknown when FAR and height cannot be evaluated', () => {
+    const r = assessFeasibility(parcel({ districtCode: 'Unknown' }), project())
+    expect(r.envelopeKnown).toBe(false)
+  })
+
+  it('marks the envelope known when FAR or height is decisive', () => {
+    const r = assessFeasibility(parcel(), project())
+    expect(r.envelopeKnown).toBe(true)
+  })
+
   it('needs relief when FAR exceeds the district limit', () => {
     const r = assessFeasibility(parcel(), project({ gfa: 30000 })) // FAR 3.0 > 2.0
     expect(r.overall).toBe('NEEDS_RELIEF')

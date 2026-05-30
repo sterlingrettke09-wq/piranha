@@ -51,19 +51,18 @@ export default function Home() {
           </Reveal>
           <Reveal delay={120}>
             <h1 className="mt-9 font-serif text-[clamp(2.4rem,5.5vw,4.6rem)] leading-[1.04] tracking-tight text-piranha-bone">
-              Building in most of America’s greatest cities has become almost impossible.
+              Building in America’s greatest cities has become almost impossible.
             </h1>
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-bone/65">
-              Zoning gets the attention, but it’s only the start. Historic boards, affordability
-              rules, environmental review, parking, fees, and private covenants each add cost,
-              time, and doubt. Most of it stays invisible until you’re committed.
+              Zoning is only the start. A dozen more rules pile on cost, time, and doubt before you
+              break ground.
             </p>
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-14 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-bone">
-              The Piranha Project maps all of it, in plain English and through a nonpartisan lens.
+              We map all of it, in plain English.
             </p>
           </Reveal>
           <Reveal delay={160}>

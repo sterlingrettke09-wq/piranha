@@ -73,7 +73,7 @@ export interface AnalysisResult {
     }
   }
   project: AnalysisInput
-  feasibility: { overall: CheckStatus; checks: FeasibilityCheck[] }
+  feasibility: { overall: CheckStatus; checks: FeasibilityCheck[]; envelopeKnown?: boolean }
   hurdles: Hurdle[]
   costs: { hard: number; soft: number; permit: number; total: number; currency: 'USD' }
   timeline: { months: number; path: ApprovalPath; tier?: 'single' | 'multi' | 'apartment' }

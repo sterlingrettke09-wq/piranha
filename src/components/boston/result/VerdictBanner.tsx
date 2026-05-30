@@ -45,8 +45,28 @@ const STATUS_WORD: Record<CheckStatus, string> = {
   INDETERMINATE: 'Indeterminate',
 }
 
-export function VerdictBanner({ overall }: { overall: CheckStatus }) {
-  const c = COPY[overall]
+// When the verdict is "as-of-right" but neither FAR nor height could be
+// evaluated, we only know the use fits. Say exactly that, without the
+// confident green pass.
+const LIMITED = {
+  word: 'No blocker found',
+  label: 'No zoning blocker found in the public data.',
+  sub: 'The use fits this district. FAR and height limits aren’t published for this parcel, so the size and bulk still need to be confirmed with the city.',
+  dot: 'bg-piranha-gold',
+  accent: 'text-piranha-charcoal/70',
+  tint: 'from-piranha-gold/10',
+}
+
+export function VerdictBanner({
+  overall,
+  envelopeKnown = true,
+}: {
+  overall: CheckStatus
+  envelopeKnown?: boolean
+}) {
+  const limited = overall === 'AS_OF_RIGHT' && !envelopeKnown
+  const c = limited ? LIMITED : COPY[overall]
+  const word = limited ? LIMITED.word : STATUS_WORD[overall]
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-gradient-to-br ${c.tint} to-transparent p-8 sm:p-10`}
@@ -54,7 +74,7 @@ export function VerdictBanner({ overall }: { overall: CheckStatus }) {
       <div className="flex items-center gap-2.5">
         <span className={`h-2.5 w-2.5 rounded-full ${c.dot}`} />
         <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${c.accent}`}>
-          {STATUS_WORD[overall]}
+          {word}
         </span>
       </div>
       <h2 className="mt-5 max-w-2xl font-serif text-[clamp(1.9rem,4vw,3rem)] leading-[1.08] tracking-tight text-piranha-charcoal">

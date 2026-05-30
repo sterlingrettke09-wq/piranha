@@ -177,7 +177,10 @@ export default function BostonResult() {
           </Reveal>
 
           <Reveal className="mt-8">
-            <VerdictBanner overall={state.data.feasibility.overall} />
+            <VerdictBanner
+              overall={state.data.feasibility.overall}
+              envelopeKnown={state.data.feasibility.envelopeKnown}
+            />
           </Reveal>
 
           {state.data.narrative && (
@@ -206,7 +209,7 @@ export default function BostonResult() {
             <ReportSection
               n="03"
               title="What it costs"
-              kicker="A rough order of magnitude from public assumptions, not a bid."
+              kicker="Construction, soft costs, and permits. A rough order of magnitude, and it does not include land."
             >
               <CostBreakdown
                 costs={state.data.costs}

@@ -17,6 +17,8 @@ interface NarrativeOpts {
   timelineMonths?: number
   /** Whether the life-cycle includes demolishing an existing building first. */
   includesDemolition?: boolean
+  /** Whether FAR/height could be evaluated. When false, an as-of-right read is hedged. */
+  envelopeKnown?: boolean
 }
 
 export function buildNarrative(
@@ -26,7 +28,11 @@ export function buildNarrative(
   c: CostEstimate,
   opts: NarrativeOpts = {},
 ): string {
-  const lead = `A ${project.gfa.toLocaleString()} sf ${project.use} project at ${parcel.address} (district ${parcel.zoning.districtCode}) ${VERDICT_LEAD[f.overall]}.`
+  const hedged = f.overall === 'AS_OF_RIGHT' && opts.envelopeKnown === false
+  const verdictLead = hedged
+    ? 'fits the district’s allowed use, though public data has no FAR or height limit to check the size against'
+    : VERDICT_LEAD[f.overall]
+  const lead = `A ${project.gfa.toLocaleString()} sf ${project.use} project at ${parcel.address} (district ${parcel.zoning.districtCode}) ${verdictLead}.`
 
   const blockers = f.checks.filter((ch) => ch.status === 'NEEDS_RELIEF' || ch.status === 'PROHIBITED')
   const reason = blockers.length

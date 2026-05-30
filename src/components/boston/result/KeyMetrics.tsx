@@ -29,7 +29,7 @@ export function KeyMetrics({ costs, timeline, hurdles }: Props) {
   const metrics = [
     {
       figure: usdCompact(costs.total),
-      label: 'All-in cost, order of magnitude',
+      label: 'Construction cost, excludes land',
     },
     {
       figure: timeline.months > 0 ? `${timeline.months}` : 'N/A',

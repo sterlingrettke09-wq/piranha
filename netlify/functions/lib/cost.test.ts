@@ -22,6 +22,13 @@ describe('estimateCost', () => {
     expect(nyc).toBe(Math.round(10000 * 350 * 1.18))
   })
 
+  it('applies a height premium to taller buildings', () => {
+    const low = estimateCost({ ...project, stories: 3 }, asOfRight).costs.hard
+    const high = estimateCost({ ...project, stories: 15 }, asOfRight).costs.hard
+    expect(high).toBeGreaterThan(low)
+    expect(high).toBe(Math.round(10000 * 350 * 1.35))
+  })
+
   it('computes soft cost as a fraction of hard', () => {
     const c = estimateCost(project, asOfRight).costs
     expect(c.soft).toBe(Math.round(c.hard * 0.25))

@@ -129,10 +129,14 @@ export default function Methodology() {
               filing fee plus a rate on construction value.
             </p>
             <p className="rounded-xl bg-piranha-charcoal/[0.04] px-5 py-3 font-mono text-sm text-piranha-charcoal/80">
-              hard = area &times; rate(use) &times; city index<br />
+              hard = area &times; rate(use) &times; city index &times; height factor<br />
               soft = 25% of hard<br />
               permit = $100 + $10 per $1,000 of hard cost (+$600 if relief is required)<br />
               total = hard + soft + permit
+            </p>
+            <p className="rounded-xl border border-piranha-burgundy/20 bg-piranha-burgundy/[0.04] px-5 py-3 text-sm text-piranha-charcoal/80">
+              This is construction cost. It does not include land or acquisition, which in the
+              priciest markets often costs more than the building itself.
             </p>
             <p className="pt-2 font-semibold text-piranha-charcoal">Base rate by use (Boston, 2025)</p>
             <Table
@@ -158,6 +162,20 @@ export default function Methodology() {
                 ['Boston', '1.00'],
                 ['Seattle', '1.00'],
                 ['Chicago', '0.92'],
+              ]}
+            />
+            <p className="pt-2 font-semibold text-piranha-charcoal">Height premium</p>
+            <p>
+              Taller buildings cost more per square foot (structure, elevators, fire and life
+              safety). We apply a factor by height.
+            </p>
+            <Table
+              head={['Building height', 'Factor']}
+              rows={[
+                ['Up to 4 stories', '1.00'],
+                ['5 to 8 stories', '1.15'],
+                ['9 to 20 stories', '1.35'],
+                ['Over 20 stories', '1.60'],
               ]}
             />
           </Section>

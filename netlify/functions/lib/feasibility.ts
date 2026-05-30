@@ -28,6 +28,10 @@ export interface Feasibility {
   overall: CheckStatus
   checks: FeasibilityCheck[]
   path: ApprovalPath
+  // True when at least one of FAR/height was decidable. When false, an
+  // "as-of-right" verdict reflects use only and shouldn't be stated with full
+  // confidence (the size/bulk envelope is unknown for this city's data).
+  envelopeKnown?: boolean
 }
 
 export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): Feasibility {
@@ -120,5 +124,8 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
           'AS_OF_RIGHT',
         )
   const path: ApprovalPath = overall === 'PROHIBITED' ? 'prohibited' : overall === 'NEEDS_RELIEF' ? 'variance' : 'as_of_right'
-  return { overall, checks, path }
+  const envelopeKnown = checks.some(
+    (c) => (c.dimension === 'far' || c.dimension === 'height') && c.status !== 'INDETERMINATE',
+  )
+  return { overall, checks, path, envelopeKnown }
 }

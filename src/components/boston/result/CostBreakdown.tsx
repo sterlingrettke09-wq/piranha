@@ -23,7 +23,7 @@ export function CostBreakdown({ costs, gfa, units }: Props) {
     <div className="overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-white/60">
       <div className="border-b border-piranha-charcoal/10 bg-piranha-charcoal/[0.03] px-6 py-6">
         <p className="text-xs uppercase tracking-[0.14em] text-piranha-charcoal/50">
-          Estimated total
+          Estimated total · excludes land
         </p>
         <p className="mt-2 font-serif text-4xl tracking-tight text-piranha-charcoal tabular-nums sm:text-5xl">
           {usd(costs.total)}
