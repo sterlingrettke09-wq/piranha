@@ -138,6 +138,30 @@ body {
   }
 }
 
+/* Cinematic opener: slow Ken-Burns push-in on the hero photo. */
+@keyframes tpp-kenburns {
+  from { transform: scale(1.04); }
+  to { transform: scale(1.13); }
+}
+.tpp-kenburns {
+  animation: tpp-kenburns 16s ease-out forwards;
+  transform-origin: 55% 45%;
+}
+/* Title rises and settles over the photo on first paint. */
+@keyframes tpp-intro-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: none; }
+}
+.tpp-intro-rise {
+  animation: tpp-intro-rise 1.4s cubic-bezier(0.16, 0.84, 0.44, 1) 0.2s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpp-kenburns,
+  .tpp-intro-rise {
+    animation: none;
+  }
+}
+
 /* Slow ambient drift for the closing CTA fish. */
 @keyframes tpp-drift {
   0% { transform: translate(0, 0) rotate(0deg); }

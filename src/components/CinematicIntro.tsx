@@ -62,10 +62,9 @@ export function CinematicIntro() {
         photoRef.current.style.transform = `scale(${1 - 0.16 * (gone ? 1 : f)})`
       }
       if (titleRef.current) {
-        const inO = smooth(0.26, 0.46, p)
+        // Title is set on the photo from the start; it only expands away on exit.
         const out = smooth(0.62, 0.9, p)
-        titleRef.current.style.opacity = String(inO * (1 - out))
-        // Expand away (fly through), matching the school.
+        titleRef.current.style.opacity = String(1 - out)
         titleRef.current.style.transform = `scale(${1 + 0.55 * out})`
       }
       if (schoolRef.current) {
@@ -100,13 +99,16 @@ export function CinematicIntro() {
         alt=""
         aria-hidden="true"
         onError={() => setPhotoFailed(true)}
-        className="h-full w-full object-cover"
+        className="tpp-kenburns h-full w-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/65" />
+      {/* Cinematic grade: bottom-anchored gradient for title legibility + an
+          edge vignette so the frame feels composed, not flat. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/15 to-black/80" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(0,0,0,0.55))]" />
     </>
   ) : (
     <div className="flex h-full w-full items-center justify-center bg-[#16110f]">
-      <img src="/logo/piranha-fish-burgundy.png" alt="" aria-hidden="true" className="w-[min(64vw,460px)]" />
+      <img src="/logo/piranha-fish-burgundy.png" alt="" aria-hidden="true" className="tpp-kenburns w-[min(64vw,460px)]" />
     </div>
   )
 
@@ -138,29 +140,34 @@ export function CinematicIntro() {
           <FishSchool className="absolute inset-0 h-full w-full" />
         </div>
 
-        {/* Title over the school */}
-        <div
-          ref={titleRef}
-          className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 text-center will-change-transform"
-          style={{ opacity: 0 }}
-        >
-          <h1 className="font-serif text-5xl tracking-tight text-piranha-bone drop-shadow-lg sm:text-7xl">
-            The Piranha Project
-          </h1>
-          <p className="mt-5 text-sm uppercase tracking-[0.28em] text-piranha-bone/70">
-            Bite through the red tape
-          </p>
-        </div>
-
-        {/* Opening photo (top), collapses on itself */}
+        {/* Opening photo, collapses on itself (one-way) to reveal the school */}
         <div ref={photoRef} className="absolute inset-0 z-30 will-change-transform">
           {Photo}
+        </div>
+
+        {/* Title — set on the photo from the first frame, then over the school */}
+        <div
+          ref={titleRef}
+          className="absolute inset-0 z-40 flex flex-col items-center justify-center px-6 text-center will-change-transform"
+        >
+          <div className="tpp-intro-rise flex flex-col items-center">
+            <span className="mb-6 text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-piranha-gold">
+              Regulatory intelligence for builders
+            </span>
+            <h1 className="font-serif text-6xl leading-[0.95] tracking-tight text-piranha-bone drop-shadow-[0_2px_24px_rgba(0,0,0,0.6)] sm:text-8xl">
+              The Piranha Project
+            </h1>
+            <span className="mt-7 h-px w-16 bg-piranha-gold/70" />
+            <p className="mt-6 text-sm uppercase tracking-[0.3em] text-piranha-bone/75">
+              Bite through the red tape
+            </p>
+          </div>
         </div>
 
         {/* Scroll cue */}
         <div
           ref={cueRef}
-          className="absolute bottom-10 left-1/2 z-40 -translate-x-1/2 text-xs uppercase tracking-[0.2em] text-piranha-bone/80"
+          className="absolute bottom-10 left-1/2 z-50 -translate-x-1/2 text-xs uppercase tracking-[0.2em] text-piranha-bone/70"
         >
           Scroll ↓
         </div>
