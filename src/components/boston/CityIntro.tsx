@@ -35,18 +35,22 @@ export function CityIntro({ city }: { city: City }) {
     }
 
     const reduce = prefersReduced()
-    const [lng, lat] = city.landmark ?? city.center
+    const [clng, clat] = city.center
+    const [llng, llat] = city.landmark ?? city.center
     const canDive = !!TOKEN && !reduce && !!mapEl.current && !mapRef.current
+
+    let fallbackExit: ReturnType<typeof setTimeout> | null = null
 
     if (canDive) {
       mapboxgl.accessToken = TOKEN as string
       const map = new mapboxgl.Map({
         container: mapEl.current as HTMLDivElement,
         style: 'mapbox://styles/mapbox/satellite-v9',
-        center: [lng, lat],
-        zoom: Math.max(3, city.zoom - 4.4),
-        pitch: 0,
-        bearing: -18,
+        // Start: high and tilted over the landmark.
+        center: [llng, llat],
+        zoom: Math.max(3, city.zoom - 3.6),
+        pitch: 46,
+        bearing: -12,
         interactive: false,
         attributionControl: false,
       })
@@ -59,30 +63,41 @@ export function CityIntro({ city }: { city: City }) {
             tileSize: 512,
             maxzoom: 14,
           })
-          map.setTerrain({ source: 'tpp-dem', exaggeration: 1.35 })
+          map.setTerrain({ source: 'tpp-dem', exaggeration: 1.3 })
         } catch {
           // terrain optional
         }
-        // The dive: swoop down and tilt onto the landmark, easing to a calmer
-        // angle near the end so the hand-off to the flat dashboard feels smooth.
+        // Dive down AND flatten to the dashboard's exact camera, so the
+        // hand-off is just the satellite dissolving into the live map — no jump.
         map.flyTo({
-          center: [lng, lat],
-          zoom: city.zoom + 1.4,
-          pitch: 52,
+          center: [clng, clat],
+          zoom: city.zoom,
+          pitch: 0,
           bearing: 0,
           duration: 4200,
-          curve: 1.42,
+          curve: 1.45,
           essential: true,
         })
+        // Begin the crossfade the moment the camera settles at the dashboard frame.
+        map.once('moveend', () => {
+          setExiting(true)
+          setTimeout(() => setDone(true), 1000)
+        })
       })
+      // Safety net if 'moveend' never fires.
+      fallbackExit = setTimeout(() => {
+        setExiting(true)
+        setTimeout(() => setDone(true), 1000)
+      }, 6000)
     }
 
     const fast = reduce || !TOKEN
-    const tExit = setTimeout(() => setExiting(true), fast ? 80 : 4300)
-    const tDone = setTimeout(() => setDone(true), fast ? 220 : 5300)
+    const tExit = fast ? setTimeout(() => setExiting(true), 80) : null
+    const tDone = fast ? setTimeout(() => setDone(true), 220) : null
     return () => {
-      clearTimeout(tExit)
-      clearTimeout(tDone)
+      if (tExit) clearTimeout(tExit)
+      if (tDone) clearTimeout(tDone)
+      if (fallbackExit) clearTimeout(fallbackExit)
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null

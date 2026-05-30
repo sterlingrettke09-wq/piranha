@@ -56,16 +56,14 @@ export default function Home() {
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-bone/65">
-              Most of the talk is about zoning — but zoning is only the start. Historic boards,
-              affordability mandates, environmental review, parking rules, fees, and private
-              covenants each pile on cost, time, and doubt, and most of it stays invisible until
-              you’re already committed.
+              Zoning gets the attention, but it’s only the start. Historic boards, affordability
+              rules, environmental review, parking, fees, and private covenants each add cost,
+              time, and doubt — most of it invisible until you’re committed.
             </p>
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-14 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-bone">
-              The Piranha Project maps the whole thing — in plain English, through a nonpartisan
-              lens, so you can see what building here really takes.
+              The Piranha Project maps all of it — in plain English, through a nonpartisan lens.
             </p>
           </Reveal>
           <Reveal delay={160}>
