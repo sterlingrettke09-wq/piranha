@@ -99,3 +99,56 @@ body {
     animation: none;
   }
 }
+
+/* ---- Scroll-driven reveals (cinematic landing) ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(34px);
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 0.84, 0.44, 1),
+    transform 0.9s cubic-bezier(0.16, 0.84, 0.44, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+/* "Float to the front" — blocks scale up and sharpen as they arrive. */
+.reveal-float {
+  opacity: 0;
+  transform: translateY(48px) scale(0.93);
+  filter: blur(8px);
+  transition:
+    opacity 1s ease,
+    transform 1.05s cubic-bezier(0.16, 0.84, 0.44, 1),
+    filter 1s ease;
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform, filter;
+}
+.reveal.is-visible,
+.reveal-float.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-float {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+}
+
+/* Slow ambient drift for the closing CTA fish. */
+@keyframes tpp-drift {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(0, -10px) rotate(-2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.tpp-drift {
+  animation: tpp-drift 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpp-drift {
+    animation: none;
+  }
+}

@@ -55,7 +55,15 @@ function drawFish(ctx: CanvasRenderingContext2D, f: Fish) {
 
 export function PiranhaIntro() {
   const [phase, setPhase] = useState<Phase>(initialPhase)
+  const [imageGone, setImageGone] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Open on the piranha mark, then dissolve it into the live school + title.
+  useEffect(() => {
+    if (phase === 'done') return
+    const id = setTimeout(() => setImageGone(true), 1300)
+    return () => clearTimeout(id)
+  }, [phase])
 
   // Lock page scroll while the intro covers the screen.
   useEffect(() => {
@@ -227,15 +235,30 @@ export function PiranhaIntro() {
       }`}
     >
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-      <div className="relative flex h-full flex-col items-center justify-center px-6 text-center">
-        <h1 className="font-serif text-4xl tracking-tight text-piranha-bone drop-shadow-lg sm:text-6xl">
+      {/* Opening still: the piranha mark, dissolving into the live school. */}
+      <img
+        src="/logo/piranha-fish-burgundy.png"
+        alt=""
+        aria-hidden="true"
+        className={`pointer-events-none absolute left-1/2 top-1/2 z-10 w-[min(64vw,460px)] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-[1400ms] ease-in-out ${
+          imageGone ? 'opacity-0' : 'opacity-100'
+        }`}
+      />
+      <div
+        className={`relative z-20 flex h-full flex-col items-center justify-center px-6 text-center transition-opacity duration-1000 ease-in-out ${
+          imageGone ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        <h1 className="font-serif text-5xl tracking-tight text-piranha-bone drop-shadow-lg sm:text-7xl">
           The Piranha Project
         </h1>
-        <p className="mt-4 text-piranha-bone/70">Bite through the Red Tape.</p>
+        <p className="mt-5 text-sm uppercase tracking-[0.28em] text-piranha-bone/70">
+          Bite through the red tape
+        </p>
         <button
           type="button"
           onClick={() => setPhase('exiting')}
-          className="mt-12 animate-pulse text-sm uppercase tracking-[0.2em] text-piranha-bone/80 hover:text-piranha-bone"
+          className="mt-14 animate-pulse text-sm uppercase tracking-[0.2em] text-piranha-bone/80 hover:text-piranha-bone"
         >
           Scroll to enter ↓
         </button>
