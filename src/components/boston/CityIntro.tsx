@@ -41,8 +41,9 @@ export function CityIntro({ city }: { city: City }) {
   if (done) return null
 
   const [lng, lat] = city.center
+  // Real satellite imagery of the actual city — a true aerial view.
   const mapUrl = TOKEN
-    ? `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${lng},${lat},12.4,0/1600x900@2x?access_token=${TOKEN}`
+    ? `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${city.zoom},0/1280x720@2x?access_token=${TOKEN}`
     : null
 
   const dismiss = () => {
@@ -58,10 +59,11 @@ export function CityIntro({ city }: { city: City }) {
       }`}
     >
       {mapUrl && (
-        <img src={mapUrl} alt="" aria-hidden className="tpp-kenburns h-full w-full object-cover opacity-95" />
+        <img src={mapUrl} alt="" aria-hidden className="tpp-kenburns h-full w-full object-cover" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/70" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55))]" />
+      {/* Keep the real city visible; just enough darkening for the title to read. */}
+      <div className="absolute inset-0 bg-black/15" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_center,rgba(0,0,0,0.62),rgba(0,0,0,0.15)_55%,transparent_75%)]" />
 
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
         <div className="tpp-intro-rise flex flex-col items-center">

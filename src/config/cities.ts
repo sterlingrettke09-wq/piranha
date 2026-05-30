@@ -19,11 +19,11 @@ export interface City {
 
 // Deploy set — all five live.
 export const CITIES: City[] = [
-  { slug: 'boston', name: 'Boston', live: true, center: [-71.0589, 42.3601], zoom: 12, bbox: BOSTON_BBOX, permitName: 'Boston Inspectional Services', permitUrl: 'https://www.boston.gov/departments/inspectional-services', tagline: 'Brownstones, the BPDA, and four centuries of rules.' },
-  { slug: 'nyc', name: 'New York City', live: true, center: [-73.9857, 40.7549], zoom: 11, bbox: NYC_BBOX, permitName: 'NYC Department of Buildings', permitUrl: 'https://www.nyc.gov/site/buildings/index.page', tagline: 'Five boroughs, MapPLUTO, and the ULURP gauntlet.' },
-  { slug: 'chicago', name: 'Chicago', live: true, center: [-87.6298, 41.8781], zoom: 11, bbox: CHICAGO_BBOX, permitName: 'Chicago Department of Buildings', permitUrl: 'https://www.chicago.gov/city/en/depts/bldgs.html', tagline: 'The grid, the aldermen, and Connected Communities.' },
-  { slug: 'sf', name: 'San Francisco', live: true, center: [-122.4194, 37.7749], zoom: 12, bbox: SF_BBOX, permitName: 'SF Department of Building Inspection', permitUrl: 'https://www.sf.gov/departments/department-building-inspection', tagline: 'Steep hills, CEQA, and the hardest approvals in America.' },
-  { slug: 'seattle', name: 'Seattle', live: true, center: [-122.3321, 47.6062], zoom: 12, bbox: SEATTLE_BBOX, permitName: 'Seattle Dept. of Construction & Inspections', permitUrl: 'https://www.seattle.gov/sdci', tagline: 'Middle housing, SEPA, and the urban-village map.' },
+  { slug: 'boston', name: 'Boston', live: true, center: [-71.0589, 42.3601], zoom: 13.2, bbox: BOSTON_BBOX, permitName: 'Boston Inspectional Services', permitUrl: 'https://www.boston.gov/departments/inspectional-services', tagline: 'Red brick, deep harbor, four hundred years.' },
+  { slug: 'nyc', name: 'New York City', live: true, center: [-73.9857, 40.7549], zoom: 13.4, bbox: NYC_BBOX, permitName: 'NYC Department of Buildings', permitUrl: 'https://www.nyc.gov/site/buildings/index.page', tagline: 'Eight million lives, stacked to the sky.' },
+  { slug: 'chicago', name: 'Chicago', live: true, center: [-87.6248, 41.8855], zoom: 13.2, bbox: CHICAGO_BBOX, permitName: 'Chicago Department of Buildings', permitUrl: 'https://www.chicago.gov/city/en/depts/bldgs.html', tagline: 'Broad shoulders on a great lake.' },
+  { slug: 'sf', name: 'San Francisco', live: true, center: [-122.4194, 37.7749], zoom: 13, bbox: SF_BBOX, permitName: 'SF Department of Building Inspection', permitUrl: 'https://www.sf.gov/departments/department-building-inspection', tagline: 'Fog, hills, and the Golden Gate.' },
+  { slug: 'seattle', name: 'Seattle', live: true, center: [-122.3331, 47.6080], zoom: 13, bbox: SEATTLE_BBOX, permitName: 'Seattle Dept. of Construction & Inspections', permitUrl: 'https://www.seattle.gov/sdci', tagline: 'Between the mountains and the sound.' },
 ]
 
 export const DEFAULT_CITY = 'boston'
