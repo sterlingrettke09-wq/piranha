@@ -1,34 +1,37 @@
 import { Link } from 'react-router-dom'
-import { Button } from '../components/ui/Button'
 import { CinematicIntro } from '../components/CinematicIntro'
 import { Reveal } from '../components/Reveal'
+import { ArrowLink } from '../components/ArrowLink'
 import { CITIES } from '../config/cities'
 
-const WHAT_WE_DO = [
+const FEATURES = [
   {
+    n: '01',
     title: 'See every hurdle',
     body: 'Beyond zoning — historic review, affordability mandates, environmental review, parking rules, prevailing-wage rules, and private covenants — surfaced for your exact parcel.',
   },
   {
+    n: '02',
     title: 'Price the red tape',
     body: 'Hard costs, soft costs, permit fees, and the cost of clearing each approval your project triggers. A rough order of magnitude, with every assumption shown.',
   },
   {
+    n: '03',
     title: 'Time the approvals',
-    body: 'How many months to a permit on the path your project actually lands on — as-of-right, or the longer road through variances and public review.',
+    body: 'How long to a permit on the path your project actually lands on — as-of-right, or the longer road through variances and public review.',
   },
 ]
 
 const STEPS = [
   { n: '01', title: 'Search an address', body: 'Drop a pin on any parcel, or search by address, to pull its zoning and parcel record.' },
-  { n: '02', title: 'Describe your project', body: 'Type, use, size, and height — a few quick steps. No account, no consultant.' },
+  { n: '02', title: 'Describe your project', body: 'Type, funding, use, size, and height — a few quick steps. No account, no consultant.' },
   { n: '03', title: 'Get the verdict', body: 'What the rules allow, the approvals you’ll need, what it costs to clear them, and how long it takes.' },
 ]
 
 const STATS = [
   { figure: '5', label: 'Cities live, and expanding' },
-  { figure: '100%', label: 'Sourced from public data' },
-  { figure: '9', label: 'Kinds of red tape we surface — and counting' },
+  { figure: '9', label: 'Kinds of red tape we surface, and counting' },
+  { figure: '100%', label: 'Built from public records' },
 ]
 
 export default function Home() {
@@ -36,51 +39,54 @@ export default function Home() {
     <>
       <CinematicIntro />
 
-      {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="mx-auto flex min-h-[78vh] max-w-4xl flex-col items-center justify-center px-6 py-24 text-center">
-        <img
-          src="/logo/piranha-fish-burgundy.png"
-          alt=""
-          aria-hidden="true"
-          className="mb-8 w-16 sm:w-20"
-        />
-        <p className="mb-5 text-xs font-semibold uppercase tracking-[0.24em] text-piranha-burgundy">
-          Regulatory intelligence for builders
-        </p>
-        <h1 className="font-serif text-[2.7rem] leading-[1.04] tracking-tight text-piranha-charcoal sm:text-[4.25rem]">
-          Ever wonder why it’s nearly impossible to build in many American cities?
-        </h1>
-        <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-piranha-charcoal/75">
-          The wondering is over. The Piranha Project shows you every regulatory hurdle
-          between you and a finished building — what it costs to clear, how long it takes
-          to permit, and the rules standing in the way.
-        </p>
-        <div className="mt-10">
-          <Link to="/boston">
-            <Button size="lg">Start an analysis →</Button>
-          </Link>
-        </div>
-        <p className="mt-20 text-xs uppercase tracking-[0.22em] text-piranha-charcoal/35">
-          Scroll ↓
-        </p>
+      {/* ── Thesis cascade — escalating centered statements ──────── */}
+      <section className="mx-auto max-w-3xl px-6 py-28 text-center sm:py-36">
+        <Reveal>
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-piranha-burgundy">
+            Regulatory intelligence for builders
+          </p>
+        </Reveal>
+        <Reveal delay={120}>
+          <h1 className="mt-8 font-serif text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] tracking-tight text-piranha-charcoal">
+            Building in America’s great cities has become almost impossible.
+          </h1>
+        </Reveal>
+        <Reveal delay={120}>
+          <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-charcoal/70">
+            Zoning is only the start. Historic boards, affordability mandates, environmental
+            review, parking rules, fees, and private covenants each pile on cost, time, and
+            doubt — most of it invisible until you’re already committed.
+          </p>
+        </Reveal>
+        <Reveal delay={120}>
+          <p className="mx-auto mt-14 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-charcoal">
+            The Piranha Project maps the entire gauntlet — for any parcel, in language anyone
+            can read.
+          </p>
+        </Reveal>
+        <Reveal delay={160}>
+          <div className="mt-12 flex justify-center">
+            <ArrowLink to="/boston" size="lg">
+              Start an analysis
+            </ArrowLink>
+          </div>
+        </Reveal>
       </section>
 
-      {/* ── What we do (blocks float to the front) ────────────── */}
-      <section className="border-t border-piranha-charcoal/10 bg-piranha-bone px-6 py-28">
+      {/* ── What you get — three feature blocks ──────────────────── */}
+      <section className="border-t border-piranha-charcoal/10 px-6 py-28">
         <div className="mx-auto max-w-5xl">
           <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-piranha-burgundy">
-              What we do
-            </p>
-            <h2 className="mt-3 max-w-2xl font-serif text-4xl leading-tight tracking-tight text-piranha-charcoal sm:text-5xl">
-              The whole maze, mapped for one parcel.
+            <h2 className="text-center font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
+              See it. Price it. Time it.
             </h2>
           </Reveal>
-          <div className="mt-14 grid gap-8 md:grid-cols-3">
-            {WHAT_WE_DO.map((c, i) => (
-              <Reveal key={c.title} variant="float" delay={i * 140}>
-                <div className="h-full rounded-2xl border border-piranha-charcoal/10 bg-white/50 p-8">
-                  <h3 className="font-serif text-2xl tracking-tight text-piranha-charcoal">{c.title}</h3>
+          <div className="mt-16 grid gap-px overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-piranha-charcoal/10 md:grid-cols-3">
+            {FEATURES.map((c, i) => (
+              <Reveal key={c.title} delay={i * 120}>
+                <div className="h-full bg-piranha-bone p-8">
+                  <span className="font-serif text-2xl text-piranha-gold">{c.n}</span>
+                  <h3 className="mt-4 font-serif text-2xl tracking-tight text-piranha-charcoal">{c.title}</h3>
                   <p className="mt-3 leading-relaxed text-piranha-charcoal/70">{c.body}</p>
                 </div>
               </Reveal>
@@ -89,24 +95,24 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── How it works ──────────────────────────────────────── */}
+      {/* ── How it works ─────────────────────────────────────────── */}
       <section className="border-t border-piranha-charcoal/10 px-6 py-28">
         <div className="mx-auto max-w-5xl">
           <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-piranha-burgundy">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-piranha-burgundy">
               How it works
             </p>
-            <h2 className="mt-3 font-serif text-4xl tracking-tight text-piranha-charcoal sm:text-5xl">
+            <h2 className="mt-4 max-w-2xl font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
               Three steps to a verdict.
             </h2>
           </Reveal>
-          <div className="mt-14 grid gap-10 sm:grid-cols-3">
+          <div className="mt-16 grid gap-12 sm:grid-cols-3">
             {STEPS.map((s, i) => (
-              <Reveal key={s.n} delay={i * 140}>
-                <div className="space-y-3">
-                  <span className="font-serif text-3xl text-piranha-burgundy">{s.n}</span>
-                  <h3 className="font-semibold text-piranha-charcoal">{s.title}</h3>
-                  <p className="text-sm leading-relaxed text-piranha-charcoal/70">{s.body}</p>
+              <Reveal key={s.n} delay={i * 120}>
+                <div className="border-t border-piranha-charcoal/15 pt-5">
+                  <span className="font-serif text-xl text-piranha-gold">{s.n}</span>
+                  <h3 className="mt-3 font-semibold text-piranha-charcoal">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-piranha-charcoal/65">{s.body}</p>
                 </div>
               </Reveal>
             ))}
@@ -114,67 +120,72 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Stats moment (dark) ───────────────────────────────── */}
-      <section className="bg-piranha-charcoal px-6 py-28 text-piranha-bone">
-        <div className="mx-auto grid max-w-5xl gap-12 text-center sm:grid-cols-3">
-          {STATS.map((s, i) => (
-            <Reveal key={s.label} delay={i * 140}>
-              <p className="font-serif text-6xl tracking-tight text-piranha-bone sm:text-7xl">{s.figure}</p>
-              <p className="mt-3 text-sm uppercase tracking-[0.18em] text-piranha-bone/60">{s.label}</p>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Cities ────────────────────────────────────────────── */}
+      {/* ── Stats ────────────────────────────────────────────────── */}
       <section className="border-t border-piranha-charcoal/10 px-6 py-28">
         <div className="mx-auto max-w-5xl">
           <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-piranha-burgundy">
-              Where we’re live
-            </p>
-            <h2 className="mt-3 font-serif text-4xl tracking-tight text-piranha-charcoal sm:text-5xl">
-              Five cities, each running on its own public data.
+            <h2 className="max-w-2xl font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
+              A full picture, from public record.
             </h2>
           </Reveal>
-          <div className="mt-12 flex flex-wrap gap-4">
-            {CITIES.map((c, i) => (
-              <Reveal key={c.slug} delay={i * 80}>
-                <Link
-                  to={`/boston?city=${c.slug}`}
-                  className="block rounded-full border border-piranha-charcoal/15 px-6 py-3 font-serif text-xl tracking-tight text-piranha-charcoal transition-colors hover:border-piranha-burgundy hover:text-piranha-burgundy"
-                >
-                  {c.name}
-                </Link>
+          <div className="mt-16 grid gap-12 sm:grid-cols-3">
+            {STATS.map((s, i) => (
+              <Reveal key={s.label} delay={i * 120}>
+                <div className="border-t border-piranha-charcoal/15 pt-5">
+                  <p className="font-serif text-6xl tracking-tight text-piranha-charcoal sm:text-7xl">{s.figure}</p>
+                  <p className="mt-3 text-sm uppercase tracking-[0.14em] text-piranha-charcoal/55">{s.label}</p>
+                </div>
               </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Closing CTA (dark) ────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-piranha-burgundy px-6 py-32 text-center text-piranha-bone">
-        <img
-          src="/logo/piranha-fish-burgundy.png"
-          alt=""
-          aria-hidden="true"
-          className="tpp-drift pointer-events-none absolute -right-10 top-10 w-48 opacity-10 sm:w-72"
-        />
-        <Reveal>
-          <h2 className="mx-auto max-w-2xl font-serif text-4xl leading-tight tracking-tight sm:text-6xl">
-            Find out what it really takes to build.
-          </h2>
-          <div className="mt-10">
-            <Link to="/boston">
-              <span className="inline-block rounded-md bg-piranha-bone px-7 py-3.5 text-sm font-semibold text-piranha-burgundy transition-colors hover:bg-white">
-                Start an analysis →
-              </span>
-            </Link>
-          </div>
-          <p className="mt-10 text-xs text-piranha-bone/55">
-            Estimates built from public data — not legal advice.
-          </p>
-        </Reveal>
+      {/* ── Cities ───────────────────────────────────────────────── */}
+      <section className="border-t border-piranha-charcoal/10 px-6 py-28">
+        <div className="mx-auto max-w-5xl">
+          <Reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-piranha-burgundy">
+              Where we’re live
+            </p>
+            <h2 className="mt-4 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
+              Five cities, each on its own public data.
+            </h2>
+          </Reveal>
+          <Reveal delay={120}>
+            <div className="mt-12 flex flex-wrap gap-x-10 gap-y-4">
+              {CITIES.map((c) => (
+                <Link
+                  key={c.slug}
+                  to={`/boston?city=${c.slug}`}
+                  className="font-serif text-3xl tracking-tight text-piranha-charcoal/80 transition-colors hover:text-piranha-burgundy sm:text-4xl"
+                >
+                  {c.name}
+                </Link>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── Closing CTA ──────────────────────────────────────────── */}
+      <section className="border-t border-piranha-charcoal/10 px-6 py-32">
+        <div className="mx-auto max-w-3xl text-center">
+          <Reveal>
+            <span className="mx-auto block h-px w-16 bg-piranha-gold/70" />
+            <h2 className="mt-10 font-serif text-[clamp(2.2rem,5vw,4rem)] leading-[1.06] tracking-tight text-piranha-charcoal">
+              Find out what it really takes to build.
+            </h2>
+            <div className="mt-12 flex justify-center">
+              <ArrowLink to="/boston" size="lg">
+                Start an analysis
+              </ArrowLink>
+            </div>
+            <p className="mt-12 text-xs text-piranha-charcoal/45">
+              Estimates built from public data — not legal advice.
+            </p>
+          </Reveal>
+        </div>
       </section>
     </>
   )
