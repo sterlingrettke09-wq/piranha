@@ -13,7 +13,7 @@ export function StepSize({ use, gfa, units, onGfa, onUnits }: Props) {
   const showUnits = use === 'residential' || use === 'mixed'
   return (
     <div className="space-y-5">
-      <h2 className="font-serif text-2xl tracking-tight">How big?</h2>
+      <h2 className="font-serif text-2xl tracking-tight text-piranha-charcoal">How big?</h2>
       <SliderInput
         label="Gross floor area"
         value={gfa}

@@ -1,41 +1,66 @@
 import type { Hurdle, HurdleStatus } from '../../../types/analysis'
 
-const DOT: Record<HurdleStatus, string> = {
-  required: 'bg-rose-500',
-  likely: 'bg-amber-500',
-  info: 'bg-piranha-charcoal/30',
-}
-
-const STATUS_LABEL: Record<HurdleStatus, string> = {
-  required: 'Required',
-  likely: 'Likely',
-  info: 'Heads-up',
+const STATUS: Record<HurdleStatus, { label: string; dot: string; chip: string }> = {
+  required: {
+    label: 'Required',
+    dot: 'bg-rose-600',
+    chip: 'bg-rose-600/10 text-rose-700',
+  },
+  likely: {
+    label: 'Likely',
+    dot: 'bg-amber-500',
+    chip: 'bg-amber-500/10 text-amber-700',
+  },
+  info: {
+    label: 'Heads-up',
+    dot: 'bg-piranha-charcoal/30',
+    chip: 'bg-piranha-charcoal/5 text-piranha-charcoal/60',
+  },
 }
 
 export function HurdlesSection({ hurdles }: { hurdles: Hurdle[] }) {
-  if (!hurdles || hurdles.length === 0) return null
+  if (!hurdles || hurdles.length === 0) {
+    return (
+      <p className="rounded-2xl border border-piranha-charcoal/10 bg-white/50 p-6 leading-relaxed text-piranha-charcoal/70">
+        Nothing beyond the zoning review surfaced for this parcel. That is rare, and worth
+        confirming with the city before you rely on it.
+      </p>
+    )
+  }
   return (
-    <section className="space-y-3">
-      <h3 className="font-serif text-xl tracking-tight">Beyond zoning — the red tape</h3>
-      <ul className="divide-y divide-piranha-charcoal/10 rounded-lg border border-piranha-charcoal/10">
-        {hurdles.map((h, i) => (
-          <li key={i} className="flex gap-3 p-4">
-            <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${DOT[h.status]}`} />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-semibold text-piranha-charcoal">{h.label}</span>
-                <span className="text-xs uppercase tracking-wider text-piranha-charcoal/50">
-                  {STATUS_LABEL[h.status]}
-                </span>
-                {h.addsMonths ? (
-                  <span className="text-sm text-piranha-charcoal/60">+{h.addsMonths} mo</span>
-                ) : null}
+    <ol className="space-y-3">
+      {hurdles.map((h, i) => {
+        const s = STATUS[h.status]
+        return (
+          <li
+            key={i}
+            className="rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-5 transition-colors hover:border-piranha-charcoal/20"
+          >
+            <div className="flex items-start gap-4">
+              <span className="mt-1 font-serif text-lg text-piranha-charcoal/30 tabular-nums">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <span className="font-semibold text-piranha-charcoal">{h.label}</span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${s.chip}`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+                    {s.label}
+                  </span>
+                  {h.addsMonths ? (
+                    <span className="text-sm text-piranha-charcoal/55 tabular-nums">
+                      +{h.addsMonths} mo
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-2 leading-relaxed text-piranha-charcoal/70">{h.note}</p>
               </div>
-              <p className="mt-1 text-sm leading-relaxed text-piranha-charcoal/70">{h.note}</p>
             </div>
           </li>
-        ))}
-      </ul>
-    </section>
+        )
+      })}
+    </ol>
   )
 }

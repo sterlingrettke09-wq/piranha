@@ -13,7 +13,7 @@ export function MiniMap({ lat, lng }: { lat: number; lng: number }) {
     <img
       src={url}
       alt="Map of the parcel location"
-      className="h-48 w-full rounded-xl border border-piranha-charcoal/10 object-cover"
+      className="h-56 w-full rounded-2xl border border-piranha-charcoal/10 object-cover sm:h-64"
       loading="lazy"
       onError={() => setFailed(true)}
     />

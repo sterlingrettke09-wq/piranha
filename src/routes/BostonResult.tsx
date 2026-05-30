@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { PageContainer } from '../components/PageContainer'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { USES, PROJECT_TYPES, FUNDING_TYPES, type AnalysisInput, type Use, type ProjectType, type Funding } from '../types/analysis'
+import { Reveal } from '../components/Reveal'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
+import { KeyMetrics } from '../components/boston/result/KeyMetrics'
 import { MiniMap } from '../components/boston/result/MiniMap'
+import { ReportSection } from '../components/boston/result/ReportSection'
 import { SiteFacts } from '../components/boston/result/SiteFacts'
 import { ExistingStructure } from '../components/boston/result/ExistingStructure'
+import { hasExisting } from '../components/boston/result/existing'
 import { FeasibilityChecklist } from '../components/boston/result/FeasibilityChecklist'
 import { HurdlesSection } from '../components/boston/result/HurdlesSection'
 import { CostBreakdown } from '../components/boston/result/CostBreakdown'
@@ -47,6 +50,14 @@ function parseInput(params: URLSearchParams): AnalysisInput | null {
   return { city, projectType, funding, parcelId, lat, lng, use, gfa, units: num('units'), stories: num('stories'), heightFt: num('heightFt') }
 }
 
+function Pill({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full border border-piranha-charcoal/15 bg-white/50 px-3 py-1 text-xs font-medium uppercase tracking-[0.08em] text-piranha-charcoal/70">
+      {children}
+    </span>
+  )
+}
+
 export default function BostonResult() {
   const [params] = useSearchParams()
   const input = useMemo(() => parseInput(params), [params])
@@ -65,97 +76,185 @@ export default function BostonResult() {
 
   if (input === null) {
     return (
-      <PageContainer>
-        <h1 className="font-serif text-4xl tracking-tight">Analysis</h1>
+      <div className="mx-auto max-w-3xl px-6 py-20">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
+          Feasibility report
+        </p>
+        <h1 className="mt-5 font-serif text-4xl tracking-tight">This link is incomplete.</h1>
         <p className="mt-4 text-piranha-charcoal/70">
-          This link is missing the project details.{' '}
+          It is missing the project details.{' '}
           <Link className="text-piranha-burgundy underline" to="/map">
             Start from the map
           </Link>
           .
         </p>
-      </PageContainer>
+      </div>
     )
   }
 
   return (
-    <PageContainer>
-      <div className="mx-auto max-w-2xl space-y-8 pb-16">
-        {state.status === 'loading' && (
-          <div className="space-y-4">
-            <div className="h-24 animate-pulse rounded-xl bg-piranha-charcoal/10" />
-            <div className="h-40 animate-pulse rounded-lg bg-piranha-charcoal/5" />
-          </div>
-        )}
+    <div className="mx-auto max-w-3xl px-6 pb-24 pt-10">
+      {state.status === 'loading' && (
+        <div className="space-y-5">
+          <div className="h-5 w-48 animate-pulse rounded bg-piranha-charcoal/10" />
+          <div className="h-12 w-3/4 animate-pulse rounded bg-piranha-charcoal/10" />
+          <div className="h-64 animate-pulse rounded-2xl bg-piranha-charcoal/5" />
+          <div className="h-28 animate-pulse rounded-2xl bg-piranha-charcoal/5" />
+        </div>
+      )}
 
-        {state.status === 'error' && (
-          <div className="space-y-4 rounded-xl border border-rose-600/30 bg-rose-50 p-5">
-            <h2 className="font-serif text-2xl tracking-tight text-rose-900">Couldn’t run the analysis</h2>
-            <p className="text-sm text-rose-900/80">{state.error.message}</p>
+      {state.status === 'error' && (
+        <div className="space-y-4 rounded-2xl border border-rose-600/20 bg-rose-50/60 p-8">
+          <h2 className="font-serif text-2xl tracking-tight text-rose-900">
+            Couldn’t run the analysis.
+          </h2>
+          <p className="text-sm text-rose-900/80">{state.error.message}</p>
+          <button
+            type="button"
+            onClick={state.retry}
+            className="rounded-full bg-piranha-burgundy px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.1em] text-piranha-bone hover:bg-piranha-charcoal"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {state.status === 'loaded' && (
+        <>
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-[0.12em]">
+            <Link
+              to={`/map?city=${state.data.project.city}`}
+              className="text-piranha-charcoal/60 transition-colors hover:text-piranha-burgundy"
+            >
+              ← Map
+            </Link>
+            <Link
+              to={`/start?${params.toString()}`}
+              className="text-piranha-charcoal/60 transition-colors hover:text-piranha-burgundy"
+            >
+              Edit inputs
+            </Link>
             <button
               type="button"
-              onClick={state.retry}
-              className="rounded-md bg-piranha-burgundy px-4 py-2 text-sm font-medium text-piranha-bone"
+              onClick={copyLink}
+              className="ml-auto rounded-full border border-piranha-charcoal/20 px-4 py-1.5 text-piranha-charcoal/70 transition-colors hover:border-piranha-charcoal/40"
             >
-              Try again
+              {copied ? 'Link copied' : 'Copy link'}
             </button>
-          </div>
-        )}
+          </nav>
 
-        {state.status === 'loaded' && (
-          <>
-            <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <Link to={`/map?city=${state.data.project.city}`} className="text-piranha-burgundy hover:underline">
-                ← Back to map
-              </Link>
-              <Link
-                to={`/start?${params.toString()}`}
-                className="text-piranha-burgundy hover:underline"
-              >
-                Edit inputs
-              </Link>
-              <button
-                type="button"
-                onClick={copyLink}
-                className="ml-auto rounded-md border border-piranha-charcoal/20 px-3 py-1.5 font-medium text-piranha-charcoal hover:border-piranha-charcoal/40"
-              >
-                {copied ? 'Link copied' : 'Copy link'}
-              </button>
-            </nav>
-            <header className="space-y-1">
-              <h1 className="font-serif text-3xl tracking-tight">{state.data.parcel.address}</h1>
-              <p className="text-sm text-piranha-charcoal/60">
-                Parcel {state.data.parcel.parcelId} · district {state.data.parcel.districtCode}
+          <Reveal className="mt-10">
+            <header>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
+                Feasibility report
               </p>
-              <p className="text-sm font-medium text-piranha-charcoal/80">
-                {PROJECT_TYPE_LABEL[state.data.project.projectType]} ·{' '}
-                {state.data.project.use} · {state.data.project.gfa.toLocaleString()} sq ft
-                {state.data.project.units ? ` · ${state.data.project.units} units` : ''}
-                {state.data.project.funding === 'public' ? ' · publicly funded' : ''}
+              <h1 className="mt-5 font-serif text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.05] tracking-tight text-piranha-charcoal">
+                {state.data.parcel.address}
+              </h1>
+              <p className="mt-4 text-sm text-piranha-charcoal/55">
+                Parcel {state.data.parcel.parcelId} · District {state.data.parcel.districtCode}
               </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Pill>{PROJECT_TYPE_LABEL[state.data.project.projectType]}</Pill>
+                <Pill>{state.data.project.use}</Pill>
+                <Pill>{state.data.project.gfa.toLocaleString()} sq ft</Pill>
+                {state.data.project.units ? <Pill>{state.data.project.units} units</Pill> : null}
+                {state.data.project.funding === 'public' ? <Pill>Publicly funded</Pill> : null}
+              </div>
             </header>
+          </Reveal>
+
+          <div className="mt-8">
             <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
+          </div>
+
+          <Reveal className="mt-8">
+            <KeyMetrics
+              costs={state.data.costs}
+              timeline={state.data.timeline}
+              hurdles={state.data.hurdles}
+            />
+          </Reveal>
+
+          <Reveal className="mt-8">
             <VerdictBanner overall={state.data.feasibility.overall} />
-            <NarrativeSection narrative={state.data.narrative} />
-            <SiteFacts parcel={state.data.parcel} />
-            <ExistingStructure existing={state.data.parcel.existing} />
-            <FeasibilityChecklist checks={state.data.feasibility.checks} />
-            <HurdlesSection hurdles={state.data.hurdles} />
-            <CostBreakdown costs={state.data.costs} gfa={state.data.project.gfa} units={state.data.project.units} />
-            <Timeline timeline={state.data.timeline} />
+          </Reveal>
+
+          {state.data.narrative && (
+            <Reveal className="mt-8">
+              <NarrativeSection narrative={state.data.narrative} />
+            </Reveal>
+          )}
+
+          <div className="mt-16 space-y-14">
+            <ReportSection
+              n="01"
+              title="The reasoning"
+              kicker="How the proposal measures against each zoning limit."
+            >
+              <FeasibilityChecklist checks={state.data.feasibility.checks} />
+            </ReportSection>
+
+            <ReportSection
+              n="02"
+              title="Beyond zoning, the red tape"
+              kicker="The approvals your project triggers, and what each one adds."
+            >
+              <HurdlesSection hurdles={state.data.hurdles} />
+            </ReportSection>
+
+            <ReportSection
+              n="03"
+              title="What it costs"
+              kicker="A rough order of magnitude from public assumptions, not a bid."
+            >
+              <CostBreakdown
+                costs={state.data.costs}
+                gfa={state.data.project.gfa}
+                units={state.data.project.units}
+              />
+            </ReportSection>
+
+            <ReportSection
+              n="04"
+              title="Time to approval"
+              kicker="Months to a permit on the path this project lands on."
+            >
+              <Timeline timeline={state.data.timeline} />
+            </ReportSection>
+
+            <ReportSection n="05" title="The site" kicker="What the public record says about the parcel.">
+              <SiteFacts parcel={state.data.parcel} />
+            </ReportSection>
+
+            {hasExisting(state.data.parcel.existing) && (
+              <ReportSection
+                n="06"
+                title="What’s here today"
+                kicker="The existing structure, and what it takes to clear it."
+              >
+                <ExistingStructure existing={state.data.parcel.existing} />
+              </ReportSection>
+            )}
+          </div>
+
+          <div className="mt-16">
             <NextSteps city={state.data.project.city} />
+          </div>
+
+          <div className="mt-8 space-y-6">
             <AssumptionsDisclosure assumptions={state.data.assumptions} />
             <SourceLinks sources={state.data.sources} />
             {state.data.disclaimers.length > 0 && (
-              <footer className="space-y-1 border-t border-piranha-charcoal/10 pt-4 text-xs text-piranha-charcoal/55">
+              <footer className="space-y-1 border-t border-piranha-charcoal/10 pt-5 text-xs leading-relaxed text-piranha-charcoal/50">
                 {state.data.disclaimers.map((d, i) => (
                   <p key={i}>{d}</p>
                 ))}
               </footer>
             )}
-          </>
-        )}
-      </div>
-    </PageContainer>
+          </div>
+        </>
+      )}
+    </div>
   )
 }

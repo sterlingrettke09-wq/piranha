@@ -1,10 +1,10 @@
 import type { FeasibilityCheck, CheckStatus } from '../../../types/analysis'
 
-const DOT: Record<CheckStatus, string> = {
-  AS_OF_RIGHT: 'bg-emerald-500',
-  NEEDS_RELIEF: 'bg-amber-500',
-  PROHIBITED: 'bg-rose-500',
-  INDETERMINATE: 'bg-piranha-charcoal/30',
+const STATUS: Record<CheckStatus, { word: string; dot: string; accent: string }> = {
+  AS_OF_RIGHT: { word: 'Within limits', dot: 'bg-emerald-600', accent: 'text-emerald-700' },
+  NEEDS_RELIEF: { word: 'Over the limit', dot: 'bg-amber-500', accent: 'text-amber-700' },
+  PROHIBITED: { word: 'Conflict', dot: 'bg-rose-600', accent: 'text-rose-700' },
+  INDETERMINATE: { word: 'No data', dot: 'bg-piranha-charcoal/30', accent: 'text-piranha-charcoal/55' },
 }
 
 const DIMENSION_LABEL: Record<FeasibilityCheck['dimension'], string> = {
@@ -15,24 +15,37 @@ const DIMENSION_LABEL: Record<FeasibilityCheck['dimension'], string> = {
 
 export function FeasibilityChecklist({ checks }: { checks: FeasibilityCheck[] }) {
   return (
-    <section className="space-y-3">
-      <h3 className="font-serif text-xl tracking-tight">How we got there</h3>
-      <ul className="divide-y divide-piranha-charcoal/10 rounded-lg border border-piranha-charcoal/10">
-        {checks.map((c) => (
-          <li key={c.dimension} className="flex gap-3 p-4">
-            <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${DOT[c.status]}`} />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-semibold text-piranha-charcoal">{DIMENSION_LABEL[c.dimension]}</span>
-                <span className="text-sm text-piranha-charcoal/60">
-                  proposed {c.proposed} · allowed {c.allowed}
-                </span>
-              </div>
-              {c.note && <p className="mt-1 text-sm text-piranha-charcoal/70">{c.note}</p>}
+    <div className="overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-white/60">
+      {checks.map((c, i) => {
+        const s = STATUS[c.status]
+        return (
+          <div
+            key={c.dimension}
+            className={`p-5 ${i > 0 ? 'border-t border-piranha-charcoal/10' : ''}`}
+          >
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="font-semibold text-piranha-charcoal">
+                {DIMENSION_LABEL[c.dimension]}
+              </span>
+              <span className={`inline-flex items-center gap-2 text-sm font-medium ${s.accent}`}>
+                <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+                {s.word}
+              </span>
             </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-piranha-charcoal/60">
+              <span>
+                Proposed{' '}
+                <span className="font-medium text-piranha-charcoal/80">{c.proposed}</span>
+              </span>
+              <span>
+                Allowed{' '}
+                <span className="font-medium text-piranha-charcoal/80">{c.allowed}</span>
+              </span>
+            </div>
+            {c.note && <p className="mt-2 text-sm leading-relaxed text-piranha-charcoal/65">{c.note}</p>}
+          </div>
+        )
+      })}
+    </div>
   )
 }

@@ -12,7 +12,20 @@ const VERDICT_LEAD: Record<CheckStatus, string> = {
   INDETERMINATE: 'cannot be fully determined from available data',
 }
 
-export function buildNarrative(parcel: ParcelInfo, project: AnalysisInput, f: Feasibility, c: CostEstimate): string {
+interface NarrativeOpts {
+  /** Final approval timeline including non-zoning hurdles. Falls back to the cost estimate. */
+  timelineMonths?: number
+  /** How many of the surfaced approvals add time on top of the base path. */
+  addedApprovals?: number
+}
+
+export function buildNarrative(
+  parcel: ParcelInfo,
+  project: AnalysisInput,
+  f: Feasibility,
+  c: CostEstimate,
+  opts: NarrativeOpts = {},
+): string {
   const lead = `A ${project.gfa.toLocaleString()} sf ${project.use} project at ${parcel.address} (district ${parcel.zoning.districtCode}) ${VERDICT_LEAD[f.overall]}.`
 
   const blockers = f.checks.filter((ch) => ch.status === 'NEEDS_RELIEF' || ch.status === 'PROHIBITED')
@@ -25,7 +38,18 @@ export function buildNarrative(parcel: ParcelInfo, project: AnalysisInput, f: Fe
     ? ` The following could not be evaluated and are treated conservatively: ${unknowns.join(', ')}.`
     : ''
 
-  const cost = ` Estimated cost is ${usd(c.costs.total)} (hard ${usd(c.costs.hard)}, soft ${usd(c.costs.soft)}, permitting ${usd(c.costs.permit)}), with an approval timeline of roughly ${c.timeline.months} months on the ${c.timeline.path.replace(/_/g, '-')} path.`
+  const cost = ` Estimated cost is ${usd(c.costs.total)} (hard ${usd(c.costs.hard)}, soft ${usd(c.costs.soft)}, permitting ${usd(c.costs.permit)}).`
 
-  return lead + reason + caveat + cost
+  const months = opts.timelineMonths ?? c.timeline.months
+  const path = c.timeline.path.replace(/_/g, '-')
+  const added = opts.addedApprovals ?? 0
+  let timeline = ''
+  if (months > 0) {
+    timeline =
+      added > 0
+        ? ` Plan on roughly ${months} months to a permit, once the added approvals above are cleared, starting from the ${path} path.`
+        : ` Plan on roughly ${months} months to a permit on the ${path} path.`
+  }
+
+  return lead + reason + caveat + cost + timeline
 }

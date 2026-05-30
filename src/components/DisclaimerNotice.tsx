@@ -30,7 +30,7 @@ export function DisclaimerNotice() {
       <div className="mx-auto flex max-w-5xl flex-col items-start gap-3 px-6 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="leading-relaxed text-piranha-bone/85">
           The Piranha Project gives general regulatory <span className="font-semibold text-piranha-bone">estimates</span> built from public
-          data — not legal, engineering, or financial advice. Always verify with the
+          data, not legal, engineering, or financial advice. Always verify with the
           relevant city department before relying on anything here.
         </p>
         <button

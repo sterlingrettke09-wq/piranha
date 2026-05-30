@@ -1,4 +1,5 @@
 import type { ProjectType, Funding } from '../../../types/analysis'
+import { OptionCard } from './OptionCard'
 
 interface Props {
   value: ProjectType | null
@@ -10,7 +11,7 @@ interface Props {
 const OPTIONS: { value: ProjectType; label: string; hint: string }[] = [
   { value: 'new', label: 'New construction', hint: 'Build something new on the lot' },
   { value: 'addition', label: 'Addition / renovation', hint: 'Expand or substantially alter an existing building' },
-  { value: 'adu', label: 'Accessory dwelling unit', hint: 'A secondary unit — in-law, backyard cottage, basement' },
+  { value: 'adu', label: 'Accessory dwelling unit', hint: 'A secondary unit: in-law, backyard cottage, basement' },
   { value: 'change_of_use', label: 'Change of use', hint: 'Convert a building to a different use' },
 ]
 
@@ -21,47 +22,37 @@ const FUNDING: { value: Funding; label: string; hint: string }[] = [
 
 export function StepType({ value, onChange, funding, onFunding }: Props) {
   return (
-    <div className="space-y-6">
-      <fieldset className="space-y-3">
-        <legend className="font-serif text-2xl tracking-tight">What are you doing?</legend>
+    <div className="space-y-8">
+      <fieldset className="space-y-4">
+        <legend className="font-serif text-2xl tracking-tight text-piranha-charcoal">
+          What are you doing?
+        </legend>
         <div className="grid gap-3 sm:grid-cols-2">
           {OPTIONS.map((o) => (
-            <button
+            <OptionCard
               key={o.value}
-              type="button"
+              label={o.label}
+              hint={o.hint}
+              selected={value === o.value}
               onClick={() => onChange(o.value)}
-              className={`rounded-lg border p-4 text-left transition-colors ${
-                value === o.value
-                  ? 'border-piranha-burgundy bg-piranha-burgundy/5'
-                  : 'border-piranha-charcoal/15 hover:border-piranha-charcoal/40'
-              }`}
-            >
-              <span className="block font-semibold text-piranha-charcoal">{o.label}</span>
-              <span className="block text-sm text-piranha-charcoal/60">{o.hint}</span>
-            </button>
+            />
           ))}
         </div>
       </fieldset>
 
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold uppercase tracking-wider text-piranha-charcoal/60">
+      <fieldset className="space-y-4">
+        <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-piranha-charcoal/55">
           How is it funded?
         </legend>
         <div className="grid gap-3 sm:grid-cols-2">
           {FUNDING.map((o) => (
-            <button
+            <OptionCard
               key={o.value}
-              type="button"
+              label={o.label}
+              hint={o.hint}
+              selected={funding === o.value}
               onClick={() => onFunding(o.value)}
-              className={`rounded-lg border p-4 text-left transition-colors ${
-                funding === o.value
-                  ? 'border-piranha-burgundy bg-piranha-burgundy/5'
-                  : 'border-piranha-charcoal/15 hover:border-piranha-charcoal/40'
-              }`}
-            >
-              <span className="block font-semibold text-piranha-charcoal">{o.label}</span>
-              <span className="block text-sm text-piranha-charcoal/60">{o.hint}</span>
-            </button>
+            />
           ))}
         </div>
       </fieldset>

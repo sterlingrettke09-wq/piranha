@@ -1,8 +1,8 @@
+/** The plain-English read on the project — sits as the lede under the verdict. */
 export function NarrativeSection({ narrative }: { narrative: string }) {
   return (
-    <section className="space-y-2">
-      <h3 className="font-serif text-xl tracking-tight">Summary</h3>
-      <p className="whitespace-pre-line leading-relaxed text-piranha-charcoal/85">{narrative}</p>
-    </section>
+    <p className="max-w-2xl whitespace-pre-line text-lg leading-relaxed text-piranha-charcoal/80">
+      {narrative}
+    </p>
   )
 }

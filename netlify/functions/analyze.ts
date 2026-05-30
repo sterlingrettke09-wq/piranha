@@ -11,7 +11,7 @@ import { assumptionsSummary } from './lib/assumptions'
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 
 const DISCLAIMERS = [
-  'Estimates only — not legal, engineering, or financial advice.',
+  'Estimates only. Not legal, engineering, or financial advice.',
   'Verify zoning, fees, and permitting with the city before relying on these figures.',
 ]
 
@@ -67,14 +67,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const feasibility = assessFeasibility(parcel, project)
   const estimate = estimateCost(project, feasibility)
   const hurdles = assessHurdles(city, parcel, project)
-  const narrative = buildNarrative(parcel, project, feasibility, estimate)
 
   // Non-zoning hurdles add to the approval timeline.
   const hurdleMonths = hurdles.reduce((sum, h) => sum + (h.addsMonths ?? 0), 0)
+  const addedApprovals = hurdles.filter((h) => (h.addsMonths ?? 0) > 0).length
   const timeline = {
     ...estimate.timeline,
     months: estimate.timeline.months > 0 ? estimate.timeline.months + hurdleMonths : estimate.timeline.months,
   }
+
+  const narrative = buildNarrative(parcel, project, feasibility, estimate, {
+    timelineMonths: timeline.months,
+    addedApprovals,
+  })
 
   const result: AnalysisResult = {
     parcel: {

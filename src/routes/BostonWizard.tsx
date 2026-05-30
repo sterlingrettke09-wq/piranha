@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { PageContainer } from '../components/PageContainer'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useParcelInfo } from '../hooks/useParcelInfo'
 import { USES, PROJECT_TYPES, FUNDING_TYPES, type Use, type ProjectType, type Funding } from '../types/analysis'
 import { WizardProgress } from '../components/boston/wizard/WizardProgress'
@@ -10,7 +9,8 @@ import { StepUse } from '../components/boston/wizard/StepUse'
 import { StepSize } from '../components/boston/wizard/StepSize'
 import { StepHeight } from '../components/boston/wizard/StepHeight'
 
-const TOTAL_STEPS = 4
+const STEP_LABELS = ['Project', 'Use', 'Size', 'Height']
+const TOTAL_STEPS = STEP_LABELS.length
 
 export default function BostonWizard() {
   const [params] = useSearchParams()
@@ -49,16 +49,21 @@ export default function BostonWizard() {
 
   if (!hasLocation) {
     return (
-      <PageContainer>
-        <h1 className="font-serif text-4xl tracking-tight">Start an analysis</h1>
-        <p className="mt-4 text-piranha-charcoal/70">
-          Pick a parcel from the{' '}
-          <a className="text-piranha-burgundy underline" href="/map">
-            map
-          </a>{' '}
-          to begin. We need a location to analyze.
+      <div className="mx-auto max-w-2xl px-6 py-20">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
+          Define your project
         </p>
-      </PageContainer>
+        <h1 className="mt-5 font-serif text-[clamp(2rem,4.5vw,3rem)] leading-[1.06] tracking-tight text-piranha-charcoal">
+          Pick a parcel to begin.
+        </h1>
+        <p className="mt-4 leading-relaxed text-piranha-charcoal/70">
+          An analysis starts from a location.{' '}
+          <Link className="text-piranha-burgundy underline underline-offset-2" to="/map">
+            Open the map
+          </Link>{' '}
+          and choose an address or drop a pin.
+        </p>
+      </div>
     )
   }
 
@@ -92,13 +97,13 @@ export default function BostonWizard() {
         : 'loading'
 
   return (
-    <PageContainer>
-      <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl px-6 py-12 sm:py-16">
+      <div className="space-y-10">
         <ParcelContextHeader
           status={parcelStatus}
           parcel={parcelState.status === 'loaded' ? parcelState.data : undefined}
         />
-        <WizardProgress step={step} total={TOTAL_STEPS} />
+        <WizardProgress step={step} labels={STEP_LABELS} />
 
         <div key={step} className="tpp-fade-in">
           {step === 1 && (
@@ -123,36 +128,42 @@ export default function BostonWizard() {
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between border-t border-piranha-charcoal/10 pt-6">
           <button
             type="button"
             onClick={() => setStep((s) => Math.max(1, s - 1))}
             disabled={step === 1}
-            className="rounded-md px-4 py-2 text-piranha-charcoal/70 disabled:opacity-40"
+            className="text-xs font-semibold uppercase tracking-[0.14em] text-piranha-charcoal/60 transition-colors hover:text-piranha-charcoal disabled:pointer-events-none disabled:opacity-0"
           >
-            Back
+            ← Back
           </button>
           {step < TOTAL_STEPS ? (
             <button
               type="button"
               onClick={() => setStep((s) => s + 1)}
               disabled={!canAdvance}
-              className="rounded-md bg-piranha-burgundy px-5 py-2 font-medium text-piranha-bone disabled:opacity-40"
+              className="group inline-flex items-center gap-3 rounded-full bg-piranha-burgundy px-7 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
+              <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
+                →
+              </span>
             </button>
           ) : (
             <button
               type="button"
               onClick={goResult}
               disabled={!canSubmit}
-              className="rounded-md bg-piranha-burgundy px-5 py-2 font-medium text-piranha-bone disabled:opacity-40"
+              className="group inline-flex items-center gap-3 rounded-full bg-piranha-burgundy px-7 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Analyze
+              See the report
+              <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
+                →
+              </span>
             </button>
           )}
         </div>
       </div>
-    </PageContainer>
+    </div>
   )
 }

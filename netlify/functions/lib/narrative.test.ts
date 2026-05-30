@@ -31,6 +31,14 @@ describe('buildNarrative', () => {
     expect(text).toContain('far')
   })
 
+  it('reflects the hurdle-adjusted timeline, not the base path', () => {
+    const f: Feasibility = { overall: 'AS_OF_RIGHT', checks: [], path: 'as_of_right' }
+    const text = buildNarrative(parcel, project, f, cost, { timelineMonths: 13, addedApprovals: 2 })
+    expect(text).toContain('13 months')
+    expect(text).not.toContain('4 months')
+    expect(text).toMatch(/added approvals/i)
+  })
+
   it('calls out indeterminate dimensions', () => {
     const f: Feasibility = {
       overall: 'INDETERMINATE',

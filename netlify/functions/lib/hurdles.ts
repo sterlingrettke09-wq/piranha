@@ -6,7 +6,7 @@ const PRIVATE_SITES: Array<{ bbox: [number, number, number, number]; label: stri
   {
     // Louisburg Square, Beacon Hill — privately owned/governed by its proprietors since 1844.
     bbox: [-71.0706, 42.3581, -71.0692, 42.3592],
-    label: 'Private square — proprietors’ approval',
+    label: 'Private square: proprietors’ approval',
     note: 'Louisburg Square is privately governed by its proprietors; private approval and easements almost certainly apply, on top of city process.',
   },
 ]
@@ -21,9 +21,9 @@ const FLOOD_OK = new Set(['', 'X', 'AREA OF MINIMAL FLOOD HAZARD', 'AREA NOT INC
 // abolished them that's a tailwind; where they remain they drive cost/feasibility.
 const PARKING_NOTE: Record<string, string> = {
   boston:
-    'Boston has dropped parking minimums for income-restricted housing and cut them broadly near transit; many districts still set a ratio. Confirm the requirement for your zone — every space adds significant cost.',
+    'Boston has dropped parking minimums for income-restricted housing and cut them broadly near transit; many districts still set a ratio. Confirm the requirement for your zone; every space adds significant cost.',
   nyc:
-    'NYC’s “City of Yes for Housing Opportunity” (2024) eliminated mandatory parking minimums citywide. You can still build parking, but you’re no longer forced to — a major cost saver.',
+    'NYC’s “City of Yes for Housing Opportunity” (2024) eliminated mandatory parking minimums citywide. You can still build parking, but you’re no longer forced to, a major cost saver.',
   sf:
     'San Francisco removed off-street parking minimums citywide in 2018. None are required; parking is optional and demand-driven.',
   chicago:
@@ -90,14 +90,14 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       category: 'review',
       label: 'ADU-specific rules',
       status: 'likely',
-      note: 'Accessory dwelling units have their own size caps, owner-occupancy, and parking rules that vary by city — confirm the local ADU ordinance.',
+      note: 'Accessory dwelling units have their own size caps, owner-occupancy, and parking rules that vary by city. Confirm the local ADU ordinance.',
     })
   } else if (project.projectType === 'change_of_use') {
     hurdles.push({
       category: 'review',
       label: 'Change-of-use code upgrades',
       status: 'likely',
-      note: 'Converting to a new use commonly triggers building-code, accessibility (ADA), and fire upgrades, plus a use review — even without exterior changes.',
+      note: 'Converting to a new use commonly triggers building-code, accessibility (ADA), and fire upgrades, plus a use review, even without exterior changes.',
     })
   }
 
@@ -107,7 +107,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     if (isResidential && units >= 10) {
       hurdles.push({
         category: 'affordability',
-        label: 'Inclusionary (IDP) — income-restricted units',
+        label: 'Inclusionary (IDP): income-restricted units',
         status: 'required',
         note: 'Boston’s Inclusionary Development Policy requires roughly 13% of units be income-restricted (or a payment in lieu) for residential developments of 10+ units.',
       })
@@ -149,7 +149,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     if (project.gfa >= 50000) {
       hurdles.push({
         category: 'review',
-        label: 'ULURP — Uniform Land Use Review Procedure',
+        label: 'ULURP: Uniform Land Use Review Procedure',
         status: 'likely',
         note: 'Rezonings, special permits, and large projects run the City’s ~7-month public ULURP (community board → borough president → City Planning → City Council).',
         addsMonths: 7,
@@ -239,7 +239,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         category: 'demolition',
         label: 'Demolition of the existing building',
         status: 'required',
-        note: `${lu ? `This parcel currently holds ${lu.toLowerCase()}. ` : 'There is already a building on this parcel. '}Building new means demolishing it first: a demolition permit, utility disconnects, and hazardous-material abatement, all of which add cost and time.`,
+        note: `${lu ? `The record shows an existing ${lu.toLowerCase()} here. ` : 'There is already a building on this parcel. '}Building new means demolishing it first: a demolition permit, utility disconnects, and hazardous-material abatement, all of which add cost and time.`,
         addsMonths: 3,
       })
       const proposedUnits = project.units ?? (isResidential ? 1 : 0)
@@ -280,7 +280,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     category: 'parking',
     label: 'Parking requirements',
     status: 'info',
-    note: PARKING_NOTE[city] ?? 'Check the local parking-minimum requirement for your zone — required spaces add significant cost and can constrain the building envelope.',
+    note: PARKING_NOTE[city] ?? 'Check the local parking-minimum requirement for your zone. Required spaces add significant cost and can constrain the building envelope.',
   })
 
   // Private governance — curated sites escalate; otherwise a standing disclaimer.
@@ -293,7 +293,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       category: 'private',
       label: 'Private deed / HOA restrictions',
       status: 'info',
-      note: 'Private deed restrictions, condo bylaws, or HOA approvals are not in public data and can independently block a project — verify with the owner and a title search.',
+      note: 'Private deed restrictions, condo bylaws, or HOA approvals are not in public data and can independently block a project. Verify with the owner and a title search.',
     })
   }
 
