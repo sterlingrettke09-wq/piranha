@@ -16,10 +16,10 @@ const FAQ: QA[] = [
     q: 'What do the results mean?',
     a: (
       <ul className="list-disc space-y-1.5 pl-5">
-        <li><span className="font-semibold">As-of-right</span> — you can build it without special permission. Go straight to permits.</li>
-        <li><span className="font-semibold">Buildable with relief</span> — you can probably build it, but first you’ll have to ask the city for an exception (a variance).</li>
-        <li><span className="font-semibold">Not permitted</span> — the rules don’t allow this here, and an exception is unlikely to help.</li>
-        <li><span className="font-semibold">Can’t tell</span> — the public data was missing something we needed, so we don’t guess.</li>
+        <li><span className="font-semibold">As-of-right.</span> You can build it without special permission. Go straight to permits.</li>
+        <li><span className="font-semibold">Buildable with relief.</span> You can probably build it, but first you’ll have to ask the city for an exception (a variance).</li>
+        <li><span className="font-semibold">Not permitted.</span> The rules don’t allow this here, and an exception is unlikely to help.</li>
+        <li><span className="font-semibold">Can’t tell.</span> The public data was missing something we needed, so we don’t guess.</li>
       </ul>
     ),
   },

@@ -10,23 +10,23 @@ const FEATURES = [
   {
     n: '01',
     title: 'Every hurdle',
-    body: 'Beyond zoning — historic review, affordability mandates, environmental review, parking rules, prevailing-wage rules, and private covenants — surfaced for your exact parcel.',
+    body: 'Beyond zoning: historic review, affordability mandates, environmental review, parking rules, prevailing-wage rules, and private covenants, all surfaced for your exact parcel.',
   },
   {
     n: '02',
     title: 'What it costs',
-    body: 'Hard costs, soft costs, permit fees, and the cost of clearing each approval your project triggers — a rough order of magnitude, with every assumption shown.',
+    body: 'Hard costs, soft costs, permit fees, and the cost of clearing each approval your project triggers. A rough order of magnitude, with every assumption shown.',
   },
   {
     n: '03',
     title: 'How long it takes',
-    body: 'The months to a permit on the path your project actually lands on — as-of-right, or the longer road through variances and public review.',
+    body: 'The months to a permit on the path your project actually lands on, whether as-of-right or the longer road through variances and public review.',
   },
 ]
 
 const STEPS = [
-  { n: '01', title: 'Pick your parcel', body: 'Drop a pin or search any address — we pull its zoning and property record.' },
-  { n: '02', title: 'Tell us the plan', body: 'What you want to build: use, size, height, and how it’s funded. A minute, tops — no account, no consultant.' },
+  { n: '01', title: 'Pick your parcel', body: 'Drop a pin or search any address, and we pull its zoning and property record.' },
+  { n: '02', title: 'Tell us the plan', body: 'What you want to build: use, size, height, and how it’s funded. A minute, tops. No account, no consultant.' },
   { n: '03', title: 'See where you stand', body: 'What you’re allowed to build, the approvals it triggers, what they’ll cost, and how long they’ll take.' },
 ]
 
@@ -58,12 +58,12 @@ export default function Home() {
             <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-bone/65">
               Zoning gets the attention, but it’s only the start. Historic boards, affordability
               rules, environmental review, parking, fees, and private covenants each add cost,
-              time, and doubt — most of it invisible until you’re committed.
+              time, and doubt. Most of it stays invisible until you’re committed.
             </p>
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-14 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-bone">
-              The Piranha Project maps all of it — in plain English, through a nonpartisan lens.
+              The Piranha Project maps all of it, in plain English and through a nonpartisan lens.
             </p>
           </Reveal>
           <Reveal delay={160}>
@@ -186,7 +186,7 @@ export default function Home() {
               </ArrowLink>
             </div>
             <p className="mt-12 text-xs text-piranha-charcoal/45">
-              Estimates built from public data — not legal advice.
+              Estimates built from public data, not legal advice.
             </p>
           </Reveal>
         </div>
