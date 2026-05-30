@@ -1,4 +1,5 @@
 import { PageContainer } from '../components/PageContainer'
+import { PageHeading } from '../components/PageHeading'
 import { AskAssistant } from '../components/AskAssistant'
 
 interface QA {
@@ -59,33 +60,30 @@ const FAQ: QA[] = [
 export default function Ask() {
   return (
     <PageContainer>
-      <div className="mx-auto max-w-2xl space-y-8">
-        <header className="space-y-2">
-          <h1 className="font-serif text-4xl tracking-tight text-piranha-charcoal sm:text-5xl">
-            Questions &amp; answers
-          </h1>
-          <p className="text-piranha-charcoal/70">
-            How the analysis works, what the verdicts mean, and where the numbers come
-            from. Have something not covered here? Refer to the Q&amp;A below, or ask our
-            assistant — powered by Google Gemini.
-          </p>
-        </header>
+      <div className="mx-auto max-w-2xl space-y-12 py-10 sm:py-16">
+        <PageHeading eyebrow="Help" title="Questions &amp; answers">
+          How the analysis works, what the verdicts mean, and where the numbers come from.
+          Have something not covered here? Ask the assistant below, or read the common
+          questions.
+        </PageHeading>
 
         <AskAssistant />
 
-        <h2 className="font-serif text-2xl tracking-tight text-piranha-charcoal">
-          Common questions
-        </h2>
-
-        <div className="divide-y divide-piranha-charcoal/10 rounded-lg border border-piranha-charcoal/10">
-          {FAQ.map((item) => (
-            <details key={item.q} className="group p-5">
-              <summary className="cursor-pointer font-semibold text-piranha-charcoal marker:content-['']">
-                {item.q}
-              </summary>
-              <div className="mt-3 leading-relaxed text-piranha-charcoal/80">{item.a}</div>
-            </details>
-          ))}
+        <div className="space-y-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
+            Common questions
+          </p>
+          <div className="overflow-hidden rounded-2xl border border-piranha-charcoal/10 divide-y divide-piranha-charcoal/10">
+            {FAQ.map((item) => (
+              <details key={item.q} className="group p-6 transition-colors open:bg-piranha-charcoal/[0.02]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-lg tracking-tight text-piranha-charcoal marker:content-['']">
+                  {item.q}
+                  <span className="text-piranha-gold transition-transform duration-300 group-open:rotate-45">+</span>
+                </summary>
+                <div className="mt-4 leading-relaxed text-piranha-charcoal/75">{item.a}</div>
+              </details>
+            ))}
+          </div>
         </div>
       </div>
     </PageContainer>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
+import { PageHeading } from '../components/PageHeading'
 import type { NewsItem, Jurisdiction, NewsCategory } from '../types/news'
 
 const JUR_LABEL: Record<Jurisdiction, string> = {
@@ -74,21 +75,11 @@ export default function News() {
 
   return (
     <PageContainer>
-      <div className="mx-auto max-w-3xl space-y-8">
-        <header className="space-y-2">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h1 className="font-serif text-4xl tracking-tight text-piranha-charcoal sm:text-5xl">
-              Housing in the news
-            </h1>
-            {!empty && (
-              <span className="text-xs uppercase tracking-wider text-piranha-charcoal/40">Updated periodically</span>
-            )}
-          </div>
-          <p className="text-piranha-charcoal/70">
-            Interesting stories on housing in the cities on our site and beyond — updates,
-            reforms, and the fights that shape what gets built. Updated periodically.
-          </p>
-        </header>
+      <div className="mx-auto max-w-3xl space-y-10 py-10 sm:py-16">
+        <PageHeading eyebrow="Housing in the news" title="What’s moving in housing.">
+          Interesting stories on housing in the cities on our site and beyond — updates,
+          reforms, and the fights that shape what gets built. Updated periodically.
+        </PageHeading>
 
         {all.length > 0 && (
           <div className="space-y-3">
