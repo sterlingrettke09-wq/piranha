@@ -25,7 +25,7 @@ export function CitiesNav({ light = false }: { light?: boolean }) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`text-sm font-semibold uppercase tracking-wider transition-colors ${
+        className={`whitespace-nowrap text-sm font-semibold uppercase tracking-wider transition-colors ${
           onCities
             ? light
               ? 'text-piranha-gold'
