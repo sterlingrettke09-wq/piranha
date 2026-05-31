@@ -42,7 +42,7 @@ export function CitiesNav({ light = false }: { light?: boolean }) {
           <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
           <div
             role="menu"
-            className="absolute right-0 z-30 mt-2 w-52 overflow-hidden rounded-lg border border-piranha-charcoal/10 bg-piranha-bone py-1 shadow-lg"
+            className="absolute left-0 sm:left-auto sm:right-0 z-30 mt-2 w-52 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-piranha-charcoal/10 bg-piranha-bone py-1 shadow-lg"
           >
             {CITIES.map((c) => (
               <button
