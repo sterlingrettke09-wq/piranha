@@ -30,6 +30,12 @@ const STEPS = [
   { n: '03', title: 'See where you stand', body: 'What you’re allowed to build, the approvals it triggers, what they’ll cost, and how long they’ll take.' },
 ]
 
+// Cities grouped by launch wave, each listed alphabetically.
+const CITY_GROUPS = [
+  { label: 'V1', slugs: ['boston', 'chicago', 'nyc', 'sf', 'seattle'] },
+  { label: 'V2', slugs: ['austin', 'denver', 'la', 'minneapolis', 'dc'] },
+]
+
 const STATS = [
   { figure: '10', label: 'Cities live, and counting' },
   { figure: '9', label: 'Kinds of red tape we surface, with more coming' },
@@ -151,20 +157,32 @@ export default function Home() {
               Where we’re live
             </p>
             <h2 className="mt-4 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
-              Ten cities, each on its own public data.
+              We’ll add more as we expand.
             </h2>
-            <p className="mt-4 text-piranha-bone/55">We’ll add more as we expand.</p>
           </Reveal>
           <Reveal delay={120}>
-            <div className="mt-12 flex flex-wrap gap-x-10 gap-y-4">
-              {CITIES.map((c) => (
-                <Link
-                  key={c.slug}
-                  to={`/map?city=${c.slug}`}
-                  className="font-serif text-3xl tracking-tight text-piranha-bone/75 transition-colors hover:text-piranha-gold sm:text-4xl"
-                >
-                  {c.name}
-                </Link>
+            <div className="mt-12 space-y-10">
+              {CITY_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-piranha-gold/70">
+                    {group.label}
+                  </p>
+                  <div className="flex flex-wrap gap-x-9 gap-y-3">
+                    {group.slugs.map((slug) => {
+                      const c = CITIES.find((x) => x.slug === slug)
+                      if (!c) return null
+                      return (
+                        <Link
+                          key={slug}
+                          to={`/map?city=${slug}`}
+                          className="font-serif text-2xl tracking-tight text-piranha-bone/75 transition-colors hover:text-piranha-gold sm:text-3xl"
+                        >
+                          {c.name}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
               ))}
             </div>
           </Reveal>
