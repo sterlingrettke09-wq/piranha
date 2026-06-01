@@ -44,7 +44,15 @@ export function buildNarrative(
     ? ` The following could not be evaluated and are treated conservatively: ${unknowns.join(', ')}.`
     : ''
 
-  const cost = ` Estimated cost is ${usd(c.costs.total)} (hard ${usd(c.costs.hard)}, soft ${usd(c.costs.soft)}, permitting ${usd(c.costs.permit)}).`
+  const demoPart = c.costs.demolition > 0 ? `, demolition ${usd(c.costs.demolition)}` : ''
+  const cost = ` Estimated cost is ${usd(c.costs.total)} (hard ${usd(c.costs.hard)}, soft ${usd(c.costs.soft)}, permitting ${usd(c.costs.permit)}${demoPart}).`
+
+  // Flag the unusual case of razing a much larger existing building to build less.
+  const existingSf = parcel.existing?.buildingAreaSqFt ?? 0
+  const teardown =
+    c.costs.demolition > 0 && existingSf > project.gfa * 1.5
+      ? ` Note: this means demolishing the existing ${existingSf.toLocaleString()} sf building to build ${project.gfa.toLocaleString()} sf — far less than what stands there now.`
+      : ''
 
   const months = opts.timelineMonths ?? c.timeline.months
   const path = c.timeline.path.replace(/_/g, '-')
@@ -54,5 +62,5 @@ export function buildNarrative(
     timeline = ` Plan on roughly ${months} months from design to move-in on the ${path} path${demo}.`
   }
 
-  return lead + reason + caveat + cost + timeline
+  return lead + reason + caveat + cost + teardown + timeline
 }

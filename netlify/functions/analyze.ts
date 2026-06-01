@@ -72,14 +72,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
     landUse: parcel.existing?.landUse ?? null,
   })
   const feasibility = assessFeasibility(parcel, project)
-  const estimate = estimateCost(project, feasibility)
   const hurdles = assessHurdles(city, parcel, project)
 
   // Full life-cycle timeline (design → permits → site prep → construction → move-in),
   // by city and building type. A demolition hurdle means there's a building to clear,
   // which the new-construction baseline already accounts for.
   const hasExistingBuilding = hurdles.some((h) => h.category === 'demolition')
-  const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding)
+
+  // New construction on a parcel with a building means tearing it down first —
+  // cost that estimate (correctly) for the existing building's area, not $0.
+  const demolitionSqFt =
+    project.projectType === 'new' && hasExistingBuilding ? (parcel.existing?.buildingAreaSqFt ?? null) : null
+  const estimate = estimateCost(project, feasibility, { demolitionSqFt })
+  const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding, demolitionSqFt)
   const timeline = { months: timelineInfo.months, path: timelineInfo.path, tier: timelineInfo.tier }
 
   const narrative = buildNarrative(parcel, project, feasibility, estimate, {

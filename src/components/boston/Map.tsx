@@ -44,6 +44,9 @@ export function Map({
     })
     mapRef.current = map
 
+    // Zoom in / out controls (the "magnifier"). Compass hidden — zoom is the ask.
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left')
+
     map.on('style.load', () => {
       BRAND_OVERRIDES.forEach(({ layerId, property, value }) => {
         if (map.getLayer(layerId)) {

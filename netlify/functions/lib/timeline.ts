@@ -33,6 +33,7 @@ export function resolveTimeline(
   project: AnalysisInput,
   feasibility: Feasibility,
   hasExistingBuilding: boolean,
+  demolitionSqFt: number | null = null,
 ): TimelineResult {
   const tier = buildingTier(project)
   const includesDemolition = project.projectType === 'new' && hasExistingBuilding
@@ -52,6 +53,12 @@ export function resolveTimeline(
   months = Math.round(months * PROJECT_FACTOR[project.projectType])
 
   if (feasibility.path === 'variance') months += RELIEF_ADD_MONTHS
+
+  // Razing a large existing building takes longer than the baseline demo phase
+  // (abatement, phased demolition, hauling). Add scaled months above ~50k sq ft.
+  if (includesDemolition && demolitionSqFt != null && demolitionSqFt > 50000) {
+    months += Math.min(18, Math.round(((demolitionSqFt - 50000) / 100000) * 3))
+  }
 
   return { months: Math.max(1, months), path: feasibility.path, tier, includesDemolition }
 }

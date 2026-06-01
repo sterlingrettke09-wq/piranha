@@ -90,7 +90,7 @@ export interface AnalysisResult {
   developableKind?: 'public' | 'no_coverage' | null
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[]; envelopeKnown?: boolean }
   hurdles: Hurdle[]
-  costs: { hard: number; soft: number; permit: number; total: number; currency: 'USD' }
+  costs: { hard: number; soft: number; permit: number; demolition: number; total: number; currency: 'USD' }
   timeline: { months: number; path: ApprovalPath; tier?: 'single' | 'multi' | 'apartment' }
   narrative: string
   assumptions: Record<string, string>

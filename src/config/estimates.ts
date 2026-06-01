@@ -72,6 +72,11 @@ export const demoMonthsByCity: Record<string, number> = {
 }
 export const demoMonthsFallback = 2
 
+// Demolition cost per sq ft of EXISTING building removed (structural teardown,
+// haul-off, and disposal; abatement on older buildings can push this higher).
+// Estimate; scaled by the city construction index like hard cost.
+export const demoCostPerSqFt = 14
+
 // Scope relative to a full new build (demo + ground-up).
 export const projectFactor: Record<ProjectType, number> = {
   new: 1,

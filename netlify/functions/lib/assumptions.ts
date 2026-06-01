@@ -10,6 +10,7 @@ import {
   PERMIT_RATE_PER_1000,
   VARIANCE_FILING_FEE,
   FT_PER_STORY,
+  demoCostPerSqFt,
 } from '../../../src/config/estimates'
 
 export {
@@ -21,6 +22,7 @@ export {
   PERMIT_RATE_PER_1000,
   VARIANCE_FILING_FEE,
   FT_PER_STORY,
+  demoCostPerSqFt,
 }
 
 export const timelineMonthsByPath = {
