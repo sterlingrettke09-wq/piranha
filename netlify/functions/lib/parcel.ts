@@ -85,6 +85,9 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
     existing,
+    // MA assesses at ~full market value, so this is a usable reference (not a
+    // market appraisal). Fractional/frozen-assessment cities omit it.
+    assessedValue: posInt(parcel.TOTAL_VALUE),
     sources: ENDPOINTS,
     fetchedAt: new Date().toISOString(),
   }

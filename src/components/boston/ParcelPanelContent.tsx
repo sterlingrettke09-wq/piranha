@@ -198,6 +198,20 @@ export function ParcelPanelContent(props: Props) {
           )}
         </section>
 
+        {data.assessedValue != null && (
+          <section className="space-y-1.5">
+            <Eyebrow>Assessed value</Eyebrow>
+            <p className="text-piranha-charcoal">
+              <span className="font-serif text-xl tracking-tight tabular-nums">
+                ${data.assessedValue.toLocaleString()}
+              </span>
+            </p>
+            <p className="text-[11px] italic leading-snug text-piranha-charcoal/45">
+              City tax assessment, not a market appraisal.
+            </p>
+          </section>
+        )}
+
         {hasExisting && (
           <section className="space-y-2.5">
             <Eyebrow>What’s here today</Eyebrow>

@@ -23,6 +23,9 @@ export interface ParcelInfo {
     sizeSqFt: number | null
     lotType: string | null
   }
+  /** City tax-assessment total value, where the assessment reflects market
+   *  (full-market states only, e.g. MA). Public record, not a market appraisal. */
+  assessedValue?: number | null
   /** The maximum by-right envelope this parcel allows, derived from its zoning
    *  limits and lot size. Estimated; shown only where the inputs are known. */
   envelope?: {
