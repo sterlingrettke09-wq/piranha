@@ -3,6 +3,7 @@ import type { AnalysisError, AnalysisInput, AnalysisResult, Use, ProjectType, Fu
 import { USES, PROJECT_TYPES, FUNDING_TYPES } from '../../src/types/analysis'
 import { getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
+import { assessDevelopability } from '../../src/lib/developability'
 import { assessHurdles } from './lib/hurdles'
 import { estimateCost } from './lib/cost'
 import { resolveTimeline } from './lib/timeline'
@@ -66,6 +67,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     heightFt: num(q.heightFt),
   }
 
+  const developability = assessDevelopability({
+    districtCode: parcel.zoning.districtCode,
+    landUse: parcel.existing?.landUse ?? null,
+  })
   const feasibility = assessFeasibility(parcel, project)
   const estimate = estimateCost(project, feasibility)
   const hurdles = assessHurdles(city, parcel, project)
@@ -97,6 +102,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
       existing: parcel.existing,
     },
     project,
+    developable: developability.developable,
+    developableNote: developability.reason,
     feasibility: { overall: feasibility.overall, checks: feasibility.checks, envelopeKnown: feasibility.envelopeKnown },
     hurdles,
     costs: estimate.costs,

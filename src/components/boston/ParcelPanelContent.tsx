@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import type { ParcelInfo, ParcelError } from '../../types/parcel'
+import { assessDevelopability } from '../../lib/developability'
 
 type Props =
   | { status: 'idle' }
@@ -98,7 +99,10 @@ export function ParcelPanelContent(props: Props) {
       data.existing.buildingAreaSqFt ||
       data.existing.units)
   const env = data.envelope
-  const hasEnvelope = !!env && (env.maxFloorAreaSqFt != null || env.maxHeightFt != null || env.maxUnits != null)
+  const dev = assessDevelopability({ districtCode: data.zoning.districtCode, landUse: data.existing?.landUse ?? null })
+  const blocked = !dev.developable
+  const hasEnvelope =
+    !blocked && !!env && (env.maxFloorAreaSqFt != null || env.maxHeightFt != null || env.maxUnits != null)
 
   return (
     <div className="p-7">
@@ -115,6 +119,13 @@ export function ParcelPanelContent(props: Props) {
       </header>
 
       <div className="mt-6 space-y-6 border-t border-piranha-charcoal/10 pt-6">
+        {blocked && (
+          <section className="space-y-1.5 rounded-xl border border-amber-600/30 bg-amber-50/70 p-4">
+            <Eyebrow>Not a developable site</Eyebrow>
+            <p className="text-sm leading-snug text-piranha-charcoal/75">{dev.reason}</p>
+          </section>
+        )}
+
         {hasEnvelope && env && (
           <section className="space-y-2 rounded-xl border border-piranha-burgundy/20 bg-piranha-burgundy/[0.04] p-4">
             <Eyebrow>What you can build</Eyebrow>
@@ -142,8 +153,12 @@ export function ParcelPanelContent(props: Props) {
             {env.allowedUses && env.allowedUses.length > 0 && (
               <p className="text-xs text-piranha-charcoal/55">Allowed: {env.allowedUses.join(', ')}</p>
             )}
+            <p className="text-[11px] leading-snug text-piranha-charcoal/55">
+              <span className="font-semibold">“By right”</span> means what you can build without asking the
+              city for special permission — straight to permits, no variance or rezoning.
+            </p>
             <p className="text-[11px] italic leading-snug text-piranha-charcoal/45">
-              Maximum by-right envelope, estimated from zoning and lot size.
+              Maximum envelope, estimated from zoning and lot size.
             </p>
           </section>
         )}
@@ -248,7 +263,11 @@ export function ParcelPanelContent(props: Props) {
         </section>
       </div>
 
-      {props.status === 'loaded' && props.cmp ? (
+      {blocked ? (
+        <p className="mt-7 rounded-full border border-piranha-charcoal/15 px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/50">
+          Public land — nothing to build
+        </p>
+      ) : props.status === 'loaded' && props.cmp ? (
         <Link
           to={`/compare?a=${encodeURIComponent(props.cmp)}&b=${encodeURIComponent(btoa(JSON.stringify({ lat: data.coordinates[1], lng: data.coordinates[0], parcelId: data.parcelId })))}`}
           className="group mt-7 flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"

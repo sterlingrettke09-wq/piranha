@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Wordmark } from './Wordmark'
 import { CitiesNav } from './CitiesNav'
-import { CITIES } from '../config/cities'
+import { CITIES, PRIMARY_CITY_SLUGS } from '../config/cities'
 import { DisclaimerNotice } from './DisclaimerNotice'
 
 interface LayoutProps {
@@ -11,7 +11,6 @@ interface LayoutProps {
 
 const navItems = [
   { to: '/ask', label: 'Ask' },
-  { to: '/news', label: 'News' },
   { to: '/about', label: 'About' },
 ]
 
@@ -102,7 +101,7 @@ export function Layout({ children }: LayoutProps) {
                 Cities
               </p>
               <div className="mt-1">
-                {CITIES.map((c) => (
+                {CITIES.filter((c) => PRIMARY_CITY_SLUGS.includes(c.slug)).map((c) => (
                   <NavLink
                     key={c.slug}
                     to={`/map?city=${c.slug}`}
@@ -113,11 +112,11 @@ export function Layout({ children }: LayoutProps) {
                   </NavLink>
                 ))}
                 <NavLink
-                  to="/request-city"
+                  to="/cities"
                   onClick={close}
-                  className={`block py-2 text-sm font-medium ${dark ? 'text-piranha-bone/55' : 'text-piranha-charcoal/55'}`}
+                  className={`block py-2 text-sm font-medium ${dark ? 'text-piranha-gold' : 'text-piranha-burgundy'}`}
                 >
-                  Request a city →
+                  See all cities →
                 </NavLink>
               </div>
             </div>

@@ -48,6 +48,10 @@ export const CITIES: City[] = [
 
 export const DEFAULT_CITY = 'boston'
 
+// The first cohort, shown directly in the header dropdown. The rest live on the
+// /cities page (reached via "See all cities") so the menu stays short.
+export const PRIMARY_CITY_SLUGS = ['boston', 'nyc', 'chicago', 'sf', 'seattle']
+
 export function getCity(slug: string): City {
   return CITIES.find((c) => c.slug === slug) ?? CITIES[0]
 }

@@ -186,82 +186,117 @@ export default function BostonResult() {
             <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
           </div>
 
-          <Reveal className="mt-8">
-            <KeyMetrics
-              costs={state.data.costs}
-              timeline={state.data.timeline}
-              hurdles={state.data.hurdles}
-            />
-          </Reveal>
+          {state.data.developable === false ? (
+            <>
+              <Reveal className="mt-8">
+                <div className="rounded-2xl border border-amber-600/30 bg-amber-50/70 p-8">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800">
+                    Not a developable site
+                  </p>
+                  <h2 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-piranha-charcoal">
+                    You can’t build here.
+                  </h2>
+                  <p className="mt-4 leading-relaxed text-piranha-charcoal/75">
+                    {state.data.developableNote}
+                  </p>
+                  <p className="mt-3 text-sm text-piranha-charcoal/55">
+                    We’ve skipped the cost and timeline estimate — they don’t apply to a parcel like this.
+                    Pick a private lot to run a full analysis.
+                  </p>
+                </div>
+              </Reveal>
 
-          <Reveal className="mt-8">
-            <VerdictBanner
-              overall={state.data.feasibility.overall}
-              envelopeKnown={state.data.feasibility.envelopeKnown}
-            />
-          </Reveal>
+              <div className="mt-12 space-y-14">
+                <ReportSection n="01" title="The site" kicker="What the public record says about the parcel.">
+                  <SiteFacts parcel={state.data.parcel} />
+                </ReportSection>
+                {hasExisting(state.data.parcel.existing) && (
+                  <ReportSection n="02" title="What’s here today" kicker="What the record shows on the parcel.">
+                    <ExistingStructure existing={state.data.parcel.existing} />
+                  </ReportSection>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <Reveal className="mt-8">
+                <KeyMetrics
+                  costs={state.data.costs}
+                  timeline={state.data.timeline}
+                  hurdles={state.data.hurdles}
+                />
+              </Reveal>
 
-          {state.data.narrative && (
-            <Reveal className="mt-8">
-              <NarrativeSection narrative={state.data.narrative} />
-            </Reveal>
+              <Reveal className="mt-8">
+                <VerdictBanner
+                  overall={state.data.feasibility.overall}
+                  envelopeKnown={state.data.feasibility.envelopeKnown}
+                />
+              </Reveal>
+
+              {state.data.narrative && (
+                <Reveal className="mt-8">
+                  <NarrativeSection narrative={state.data.narrative} />
+                </Reveal>
+              )}
+
+              <div className="mt-16 space-y-14">
+                <ReportSection
+                  n="01"
+                  title="The reasoning"
+                  kicker="How the proposal measures against each zoning limit."
+                >
+                  <FeasibilityChecklist checks={state.data.feasibility.checks} />
+                </ReportSection>
+
+                <ReportSection
+                  n="02"
+                  title="Beyond zoning, the red tape"
+                  kicker="The approvals your project triggers, and what each one adds."
+                >
+                  <HurdlesSection hurdles={state.data.hurdles} />
+                </ReportSection>
+
+                <ReportSection
+                  n="03"
+                  title="What it costs"
+                  kicker="Construction, soft costs, and permits. A rough order of magnitude, and it does not include land."
+                >
+                  <CostBreakdown
+                    costs={state.data.costs}
+                    gfa={state.data.project.gfa}
+                    units={state.data.project.units}
+                  />
+                </ReportSection>
+
+                <ReportSection
+                  n="04"
+                  title="From design to move-in"
+                  kicker="The full life-cycle: architectural design, permits, site prep, and construction."
+                >
+                  <Timeline timeline={state.data.timeline} />
+                </ReportSection>
+
+                <ReportSection n="05" title="The site" kicker="What the public record says about the parcel.">
+                  <SiteFacts parcel={state.data.parcel} />
+                </ReportSection>
+
+                {hasExisting(state.data.parcel.existing) && (
+                  <ReportSection
+                    n="06"
+                    title="What’s here today"
+                    kicker="The existing structure, and what it takes to clear it."
+                  >
+                    <ExistingStructure existing={state.data.parcel.existing} />
+                  </ReportSection>
+                )}
+              </div>
+
+              <div className="print-hide mt-16">
+                <NextSteps city={state.data.project.city} />
+              </div>
+            </>
           )}
-
-          <div className="mt-16 space-y-14">
-            <ReportSection
-              n="01"
-              title="The reasoning"
-              kicker="How the proposal measures against each zoning limit."
-            >
-              <FeasibilityChecklist checks={state.data.feasibility.checks} />
-            </ReportSection>
-
-            <ReportSection
-              n="02"
-              title="Beyond zoning, the red tape"
-              kicker="The approvals your project triggers, and what each one adds."
-            >
-              <HurdlesSection hurdles={state.data.hurdles} />
-            </ReportSection>
-
-            <ReportSection
-              n="03"
-              title="What it costs"
-              kicker="Construction, soft costs, and permits. A rough order of magnitude, and it does not include land."
-            >
-              <CostBreakdown
-                costs={state.data.costs}
-                gfa={state.data.project.gfa}
-                units={state.data.project.units}
-              />
-            </ReportSection>
-
-            <ReportSection
-              n="04"
-              title="From design to move-in"
-              kicker="The full life-cycle: architectural design, permits, site prep, and construction."
-            >
-              <Timeline timeline={state.data.timeline} />
-            </ReportSection>
-
-            <ReportSection n="05" title="The site" kicker="What the public record says about the parcel.">
-              <SiteFacts parcel={state.data.parcel} />
-            </ReportSection>
-
-            {hasExisting(state.data.parcel.existing) && (
-              <ReportSection
-                n="06"
-                title="What’s here today"
-                kicker="The existing structure, and what it takes to clear it."
-              >
-                <ExistingStructure existing={state.data.parcel.existing} />
-              </ReportSection>
-            )}
-          </div>
-
-          <div className="print-hide mt-16">
-            <NextSteps city={state.data.project.city} />
-          </div>
 
           <div className="mt-8 space-y-6">
             <AssumptionsDisclosure assumptions={state.data.assumptions} />

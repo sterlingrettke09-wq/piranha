@@ -12,10 +12,10 @@ const BostonWizard = lazy(() => import('./routes/BostonWizard'))
 const BostonResult = lazy(() => import('./routes/BostonResult'))
 const Ask = lazy(() => import('./routes/Ask'))
 const About = lazy(() => import('./routes/About'))
-const News = lazy(() => import('./routes/News'))
 const Methodology = lazy(() => import('./routes/Methodology'))
 const Compare = lazy(() => import('./routes/Compare'))
 const RequestCity = lazy(() => import('./routes/RequestCity'))
+const Cities = lazy(() => import('./routes/Cities'))
 const Admin = lazy(() => import('./routes/Admin'))
 const NotFound = lazy(() => import('./routes/NotFound'))
 
@@ -40,10 +40,10 @@ function RouteTitle() {
   else if (pathname === '/result' || pathname === '/boston/result') title = false
   else if (pathname === '/compare') title = false
   else if (pathname === '/ask') title = 'Ask'
-  else if (pathname === '/news') title = 'News'
   else if (pathname === '/about') title = 'About'
   else if (pathname === '/math') title = 'Methodology'
   else if (pathname === '/request-city') title = 'Request a city'
+  else if (pathname === '/cities') title = 'Cities'
   else if (pathname === '/admin') title = 'Search log'
   else title = 'Page not found'
   useDocumentTitle(title)
@@ -66,11 +66,11 @@ export default function App() {
             <Route path="/boston/start" element={<BostonWizard />} />
             <Route path="/boston/result" element={<BostonResult />} />
             <Route path="/ask" element={<Ask />} />
-            <Route path="/news" element={<News />} />
             <Route path="/about" element={<About />} />
             <Route path="/math" element={<Methodology />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/request-city" element={<RequestCity />} />
+            <Route path="/cities" element={<Cities />} />
             {/* Hidden owner-only search log. Not linked from nav or sitemap. */}
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

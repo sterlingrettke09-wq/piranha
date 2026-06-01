@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { CITIES } from '../config/cities'
+import { CITIES, PRIMARY_CITY_SLUGS } from '../config/cities'
 
 // Header "Cities" dropdown — selecting a city navigates to its dashboard
 // (?city=slug), which the dashboard reads from the URL.
@@ -44,7 +44,7 @@ export function CitiesNav({ light = false }: { light?: boolean }) {
             role="menu"
             className="absolute left-0 sm:left-auto sm:right-0 z-30 mt-2 w-52 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-piranha-charcoal/10 bg-piranha-bone py-1 shadow-lg"
           >
-            {CITIES.map((c) => (
+            {CITIES.filter((c) => PRIMARY_CITY_SLUGS.includes(c.slug)).map((c) => (
               <button
                 key={c.slug}
                 type="button"
@@ -64,11 +64,11 @@ export function CitiesNav({ light = false }: { light?: boolean }) {
               role="menuitem"
               onClick={() => {
                 setOpen(false)
-                navigate('/request-city')
+                navigate('/cities')
               }}
-              className="mt-1 block w-full border-t border-piranha-charcoal/10 px-4 py-2 text-left text-sm text-piranha-charcoal/55 transition-colors hover:bg-piranha-charcoal/5 hover:text-piranha-burgundy"
+              className="mt-1 block w-full border-t border-piranha-charcoal/10 px-4 py-2 text-left text-sm font-medium text-piranha-burgundy transition-colors hover:bg-piranha-charcoal/5"
             >
-              Request a city →
+              See all cities →
             </button>
           </div>
         </>

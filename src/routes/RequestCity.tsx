@@ -45,9 +45,8 @@ export default function RequestCity() {
   return (
     <PageContainer>
       <PageHeading eyebrow="Coverage" title="Request a city.">
-        We are live in Boston, New York, Chicago, San Francisco, and Seattle, with
-        Washington, Austin, Los Angeles, Denver, and Minneapolis next. Tell us where
-        you want to build and we will let you know when it opens.
+        We are live in 10 cities and looking to add more. Tell us where you want to
+        build and we will try to add it to our database.
       </PageHeading>
 
       <Reveal className="mt-12 max-w-xl">

@@ -73,6 +73,10 @@ export interface AnalysisResult {
     }
   }
   project: AnalysisInput
+  /** When false, the parcel isn't a developable site (public/government land,
+   *  parks, federal property). The UI shows the reason instead of cost/timeline. */
+  developable?: boolean
+  developableNote?: string | null
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[]; envelopeKnown?: boolean }
   hurdles: Hurdle[]
   costs: { hard: number; soft: number; permit: number; total: number; currency: 'USD' }
