@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<!--
+  Netlify Forms detection file. Netlify's build bot crawls deployed HTML for
+  forms with the `netlify` attribute and registers them. A Vite SPA renders its
+  forms in JS, which the bot can't see, so we declare them statically here. The
+  React form (src/routes/RequestCity.tsx) POSTs to "/" with a matching
+  form-name. Email notifications to piranha@louisburgstrategies.com are
+  configured in the Netlify UI (Forms -> Notifications).
+-->
+<html>
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <form name="request-city" netlify netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="request-city" />
+      <input type="text" name="bot-field" />
+      <input type="email" name="email" />
+      <input type="text" name="city" />
+      <textarea name="notes"></textarea>
+    </form>
+  </body>
+</html>

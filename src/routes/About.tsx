@@ -46,9 +46,9 @@ export default function About() {
             <ul className="space-y-3">
               <li>
                 <span className="font-semibold text-piranha-charcoal">Feasibility.</span> Your
-                project’s use, size, and height against the property’s zoning limits: build
-                as-of-right, need a variance, can’t build it, or the data wasn’t clear enough to
-                say.
+                project’s use, size, and height against the property’s zoning limits: you can
+                build it, you’d need the city’s permission, you can’t build it, or the data
+                wasn’t clear enough to say.
               </li>
               <li>
                 <span className="font-semibold text-piranha-charcoal">Cost.</span> Construction
@@ -72,9 +72,10 @@ export default function About() {
 
           <Section n="03" title="Data sources">
             <p>
-              Live today across five cities (Boston, New York, Chicago, San Francisco, and
-              Seattle), each wired from that city’s own public data: zoning districts, parcels,
-              and FEMA flood-hazard zones, plus local historic districts where available.
+              Live today across ten cities (Boston, New York, Chicago, San Francisco, Seattle,
+              Washington DC, Austin, Los Angeles, Denver, and Minneapolis), each wired from that
+              city’s own public data: zoning districts, parcels, and FEMA flood-hazard zones,
+              plus local historic districts where available.
               Coverage depth varies by city, and we’re adding more rule types as we go.
             </p>
           </Section>

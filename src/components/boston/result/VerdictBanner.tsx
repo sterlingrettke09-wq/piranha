@@ -6,32 +6,32 @@ const COPY: Record<
 > = {
   AS_OF_RIGHT: {
     eyebrow: 'The verdict',
-    label: 'Likely buildable as-of-right.',
-    sub: 'The proposal appears to fit the zoning envelope without discretionary relief.',
+    label: 'You can likely build this.',
+    sub: 'The proposal appears to fit the zoning here without needing special permission from the city.',
     dot: 'bg-emerald-600',
     accent: 'text-emerald-700',
     tint: 'from-emerald-600/10',
   },
   NEEDS_RELIEF: {
     eyebrow: 'The verdict',
-    label: 'Buildable, with zoning relief.',
-    sub: 'The proposal exceeds at least one limit and would need a variance or other approval.',
+    label: 'Buildable, with the city’s permission.',
+    sub: 'The proposal goes past at least one limit, so you’d have to ask the city to approve an exception first.',
     dot: 'bg-amber-500',
     accent: 'text-amber-700',
     tint: 'from-amber-500/10',
   },
   PROHIBITED: {
     eyebrow: 'The verdict',
-    label: 'Not permitted as proposed.',
-    sub: 'The use or scale conflicts with the district in a way relief is unlikely to cure.',
+    label: 'You can’t build this here.',
+    sub: 'The use or scale conflicts with the rules for this area in a way an exception is unlikely to fix.',
     dot: 'bg-rose-600',
     accent: 'text-rose-700',
     tint: 'from-rose-600/10',
   },
   INDETERMINATE: {
     eyebrow: 'The verdict',
-    label: 'Indeterminate from public data.',
-    sub: 'The records did not provide the limits needed to judge one or more dimensions.',
+    label: 'We can’t tell from the public data.',
+    sub: 'The records didn’t include the limits we’d need to judge one or more parts of this.',
     dot: 'bg-piranha-charcoal/40',
     accent: 'text-piranha-charcoal/60',
     tint: 'from-piranha-charcoal/5',
@@ -39,10 +39,10 @@ const COPY: Record<
 }
 
 const STATUS_WORD: Record<CheckStatus, string> = {
-  AS_OF_RIGHT: 'As-of-right',
-  NEEDS_RELIEF: 'Needs relief',
-  PROHIBITED: 'Not permitted',
-  INDETERMINATE: 'Indeterminate',
+  AS_OF_RIGHT: 'You can build it',
+  NEEDS_RELIEF: 'Needs city permission',
+  PROHIBITED: 'Not allowed',
+  INDETERMINATE: 'Can’t tell',
 }
 
 // When the verdict is "as-of-right" but neither FAR nor height could be

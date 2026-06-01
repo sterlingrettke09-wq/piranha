@@ -3,11 +3,13 @@ import type { AnalysisError, AnalysisInput, AnalysisResult, Use, ProjectType, Fu
 import { USES, PROJECT_TYPES, FUNDING_TYPES } from '../../src/types/analysis'
 import { getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
+import { assessDevelopability } from '../../src/lib/developability'
 import { assessHurdles } from './lib/hurdles'
 import { estimateCost } from './lib/cost'
 import { resolveTimeline } from './lib/timeline'
 import { buildNarrative } from './lib/narrative'
 import { assumptionsSummary } from './lib/assumptions'
+import { avgUnitGrossSqFt } from '../../src/config/estimates'
 import { logSearch } from './lib/searchLog'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
@@ -66,15 +68,36 @@ export const handler: Handler = async (event: HandlerEvent) => {
     heightFt: num(q.heightFt),
   }
 
+  const developability = assessDevelopability({
+    districtCode: parcel.zoning.districtCode,
+    landUse: parcel.existing?.landUse ?? null,
+  })
   const feasibility = assessFeasibility(parcel, project)
-  const estimate = estimateCost(project, feasibility)
   const hurdles = assessHurdles(city, parcel, project)
 
   // Full life-cycle timeline (design → permits → site prep → construction → move-in),
   // by city and building type. A demolition hurdle means there's a building to clear,
   // which the new-construction baseline already accounts for.
   const hasExistingBuilding = hurdles.some((h) => h.category === 'demolition')
-  const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding)
+
+  // New construction on a parcel with a building means tearing it down first —
+  // cost that, not $0. Prefer the recorded building area; fall back to an
+  // estimate from unit count. When a teardown is required but we can't size it,
+  // demolitionSqFt stays null and the narrative says it's not included (no
+  // silent $0). Cities that carry no existing-structure data get a different
+  // caveat (see narrative): the estimate assumes a cleared site.
+  const exb = parcel.existing?.buildingAreaSqFt
+  const exu = parcel.existing?.units
+  const demolitionSqFt =
+    project.projectType === 'new' && hasExistingBuilding
+      ? exb && exb > 0
+        ? exb
+        : exu && exu > 0
+          ? exu * avgUnitGrossSqFt
+          : null
+      : null
+  const estimate = estimateCost(project, feasibility, { demolitionSqFt })
+  const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding, demolitionSqFt)
   const timeline = { months: timelineInfo.months, path: timelineInfo.path, tier: timelineInfo.tier }
 
   const narrative = buildNarrative(parcel, project, feasibility, estimate, {
@@ -94,9 +117,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
       maxHeightFt: parcel.zoning.maxHeightFt,
       floodZone: parcel.overlays.floodZone,
       historicDistrict: parcel.overlays.historicDistrict,
+      envelope: parcel.envelope,
       existing: parcel.existing,
     },
     project,
+    developable: developability.developable,
+    developableNote: developability.reason,
+    developableKind: developability.kind,
     feasibility: { overall: feasibility.overall, checks: feasibility.checks, envelopeKnown: feasibility.envelopeKnown },
     hurdles,
     costs: estimate.costs,

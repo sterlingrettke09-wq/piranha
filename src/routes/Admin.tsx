@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 interface SearchEntry {
   ts: string
@@ -15,10 +15,10 @@ interface SearchEntry {
 const KEY_STORE = 'tpp_admin_key'
 
 const VERDICT_LABEL: Record<string, string> = {
-  AS_OF_RIGHT: 'As-of-right',
-  NEEDS_RELIEF: 'Needs relief',
-  PROHIBITED: 'Not permitted',
-  INDETERMINATE: 'Indeterminate',
+  AS_OF_RIGHT: 'Can build',
+  NEEDS_RELIEF: 'Needs permission',
+  PROHIBITED: 'Not allowed',
+  INDETERMINATE: 'Can’t tell',
 }
 
 const CITY_LABEL: Record<string, string> = {
@@ -27,6 +27,11 @@ const CITY_LABEL: Record<string, string> = {
   chicago: 'Chicago',
   sf: 'San Francisco',
   seattle: 'Seattle',
+  dc: 'Washington, DC',
+  austin: 'Austin',
+  la: 'Los Angeles',
+  denver: 'Denver',
+  minneapolis: 'Minneapolis',
 }
 
 function fmt(ts: string): string {
@@ -47,6 +52,7 @@ export default function Admin() {
   const [status, setStatus] = useState<'locked' | 'loading' | 'ready' | 'error'>('locked')
   const [entries, setEntries] = useState<SearchEntry[]>([])
   const [error, setError] = useState('')
+  const [now] = useState(() => Date.now())
 
   const load = useCallback((passphrase: string) => {
     setStatus('loading')
@@ -93,6 +99,43 @@ export default function Admin() {
 
   const unlocked = status === 'ready'
 
+  const stats = useMemo(() => {
+    if (!entries.length) return null
+    const byCity: Record<string, number> = {}
+    const byAddress: Record<string, number> = {}
+    let last7 = 0
+    for (const e of entries) {
+      byCity[e.city] = (byCity[e.city] ?? 0) + 1
+      const k = `${e.address} · ${CITY_LABEL[e.city] ?? e.city}`
+      byAddress[k] = (byAddress[k] ?? 0) + 1
+      const t = new Date(e.ts).getTime()
+      if (!Number.isNaN(t) && now - t < 7 * 86_400_000) last7 += 1
+    }
+    return {
+      cities: Object.entries(byCity).sort((a, b) => b[1] - a[1]),
+      topAddresses: Object.entries(byAddress).sort((a, b) => b[1] - a[1]).slice(0, 5),
+      last7,
+    }
+  }, [entries, now])
+
+  function exportCsv() {
+    const head = ['timestamp', 'city', 'address', 'use', 'projectType', 'gfa', 'units', 'verdict', 'months']
+    const cell = (c: unknown) => `"${String(c ?? '').replace(/"/g, '""')}"`
+    const lines = [
+      head.join(','),
+      ...entries.map((e) =>
+        [e.ts, e.city, e.address, e.use, e.projectType, e.gfa, e.units, e.verdict, e.months].map(cell).join(','),
+      ),
+    ]
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'piranha-searches.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12 sm:py-16">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -108,8 +151,17 @@ export default function Admin() {
           </p>
         </div>
         {unlocked && (
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-3 text-sm">
             <span className="tabular-nums text-piranha-charcoal/55">{entries.length} entries</span>
+            {entries.length > 0 && (
+              <button
+                type="button"
+                onClick={exportCsv}
+                className="rounded-full border border-piranha-charcoal/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/70 hover:border-piranha-charcoal/40"
+              >
+                Export CSV
+              </button>
+            )}
             <button
               type="button"
               onClick={signOut}
@@ -120,6 +172,38 @@ export default function Admin() {
           </div>
         )}
       </header>
+
+      {unlocked && stats && (
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-5">
+            <p className="text-xs uppercase tracking-[0.14em] text-piranha-charcoal/45">Total searches</p>
+            <p className="mt-2 font-serif text-4xl tracking-tight text-piranha-charcoal tabular-nums">{entries.length}</p>
+            <p className="mt-1 text-xs text-piranha-charcoal/55 tabular-nums">{stats.last7} in the last 7 days</p>
+          </div>
+          <div className="rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-5">
+            <p className="text-xs uppercase tracking-[0.14em] text-piranha-charcoal/45">By city</p>
+            <ul className="mt-2 space-y-1 text-sm">
+              {stats.cities.map(([slug, n]) => (
+                <li key={slug} className="flex justify-between">
+                  <span className="text-piranha-charcoal/75">{CITY_LABEL[slug] ?? slug}</span>
+                  <span className="tabular-nums text-piranha-charcoal/55">{n}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-5">
+            <p className="text-xs uppercase tracking-[0.14em] text-piranha-charcoal/45">Most searched</p>
+            <ul className="mt-2 space-y-1 text-sm">
+              {stats.topAddresses.map(([addr, n]) => (
+                <li key={addr} className="flex justify-between gap-2">
+                  <span className="truncate text-piranha-charcoal/75">{addr}</span>
+                  <span className="shrink-0 tabular-nums text-piranha-charcoal/55">{n}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {!unlocked && (
         <form onSubmit={submit} className="mt-12 max-w-sm">

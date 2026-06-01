@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import type { ParcelInfo, ParcelError } from '../../types/parcel'
+import { assessDevelopability } from '../../lib/developability'
 
 type Props =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; data: ParcelInfo; city: string }
+  | { status: 'loaded'; data: ParcelInfo; city: string; cmp?: string | null }
   | { status: 'error'; error: ParcelError; onRetry: () => void }
 
 function Eyebrow({ children }: { children: ReactNode }) {
@@ -97,6 +98,11 @@ export function ParcelPanelContent(props: Props) {
       data.existing.yearBuilt ||
       data.existing.buildingAreaSqFt ||
       data.existing.units)
+  const env = data.envelope
+  const dev = assessDevelopability({ districtCode: data.zoning.districtCode, landUse: data.existing?.landUse ?? null })
+  const blocked = !dev.developable
+  const hasEnvelope =
+    !blocked && !!env && (env.maxFloorAreaSqFt != null || env.maxHeightFt != null || env.maxUnits != null)
 
   return (
     <div className="p-7">
@@ -113,6 +119,50 @@ export function ParcelPanelContent(props: Props) {
       </header>
 
       <div className="mt-6 space-y-6 border-t border-piranha-charcoal/10 pt-6">
+        {blocked && (
+          <section className="space-y-1.5 rounded-xl border border-amber-600/30 bg-amber-50/70 p-4">
+            <Eyebrow>{dev.kind === 'no_coverage' ? 'Outside our coverage' : 'Not a developable site'}</Eyebrow>
+            <p className="text-sm leading-snug text-piranha-charcoal/75">{dev.reason}</p>
+          </section>
+        )}
+
+        {hasEnvelope && env && (
+          <section className="space-y-2 rounded-xl border border-piranha-burgundy/20 bg-piranha-burgundy/[0.04] p-4">
+            <Eyebrow>What you can build</Eyebrow>
+            {env.maxFloorAreaSqFt != null && (
+              <p className="text-piranha-charcoal">
+                <span className="font-serif text-2xl tracking-tight tabular-nums">
+                  {env.maxFloorAreaSqFt.toLocaleString()}
+                </span>
+                <span className="ml-1.5 text-sm text-piranha-charcoal/55">sq ft you can build</span>
+              </p>
+            )}
+            {(() => {
+              const bits = [
+                env.maxStories != null
+                  ? `up to ${env.maxStories} stories`
+                  : env.maxHeightFt != null
+                    ? `up to ${env.maxHeightFt} ft`
+                    : null,
+                env.maxUnits != null ? `about ${env.maxUnits.toLocaleString()} units` : null,
+              ].filter(Boolean)
+              return bits.length > 0 ? (
+                <p className="text-sm text-piranha-charcoal/70">{bits.join(' · ')}</p>
+              ) : null
+            })()}
+            {env.allowedUses && env.allowedUses.length > 0 && (
+              <p className="text-xs text-piranha-charcoal/55">Allowed: {env.allowedUses.join(', ')}</p>
+            )}
+            <p className="text-[11px] leading-snug text-piranha-charcoal/55">
+              The most you can build here without asking the city for special permission — straight
+              to permits, no variance or rezoning.
+            </p>
+            <p className="text-[11px] italic leading-snug text-piranha-charcoal/45">
+              Estimated from zoning and lot size.
+            </p>
+          </section>
+        )}
+
         <section className="space-y-2.5">
           <Eyebrow>Zoning</Eyebrow>
           <div className="flex flex-wrap items-center gap-2">
@@ -163,6 +213,20 @@ export function ParcelPanelContent(props: Props) {
           )}
         </section>
 
+        {data.assessedValue != null && (
+          <section className="space-y-1.5">
+            <Eyebrow>Assessed value</Eyebrow>
+            <p className="text-piranha-charcoal">
+              <span className="font-serif text-xl tracking-tight tabular-nums">
+                ${data.assessedValue.toLocaleString()}
+              </span>
+            </p>
+            <p className="text-[11px] italic leading-snug text-piranha-charcoal/45">
+              City tax assessment, not a market appraisal.
+            </p>
+          </section>
+        )}
+
         {hasExisting && (
           <section className="space-y-2.5">
             <Eyebrow>What’s here today</Eyebrow>
@@ -199,15 +263,36 @@ export function ParcelPanelContent(props: Props) {
         </section>
       </div>
 
-      <Link
-        to={`/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
-        className="group mt-7 flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"
-      >
-        Start full analysis
-        <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
-          →
-        </span>
-      </Link>
+      {blocked ? (
+        <p className="mt-7 rounded-full border border-piranha-charcoal/15 px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/50">
+          {dev.kind === 'no_coverage' ? 'Outside our zoning coverage' : 'Public land — nothing to build'}
+        </p>
+      ) : props.status === 'loaded' && props.cmp ? (
+        <Link
+          to={`/compare?a=${encodeURIComponent(props.cmp)}&b=${encodeURIComponent(btoa(JSON.stringify({ lat: data.coordinates[1], lng: data.coordinates[0], parcelId: data.parcelId })))}`}
+          className="group mt-7 flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"
+        >
+          Compare with this parcel
+          <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
+            →
+          </span>
+        </Link>
+      ) : (
+        <Link
+          to={`/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
+          className="group mt-7 flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"
+        >
+          Start full analysis
+          <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
+            →
+          </span>
+        </Link>
+      )}
+      {props.status === 'loaded' && props.cmp && (
+        <p className="mt-3 text-center text-[11px] text-piranha-charcoal/45">
+          Comparing against your first parcel, same project spec.
+        </p>
+      )}
     </div>
   )
 }

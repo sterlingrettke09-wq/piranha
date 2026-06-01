@@ -12,12 +12,16 @@ interface Props {
 
 export function CostBreakdown({ costs, gfa, units }: Props) {
   const rows: { label: string; value: number }[] = [
+    ...(costs.demolition > 0 ? [{ label: 'Demolish existing building', value: costs.demolition }] : []),
     { label: 'Construction (hard)', value: costs.hard },
     { label: 'Soft costs', value: costs.soft },
     { label: 'Permitting & approvals', value: costs.permit },
   ]
-  const perSqft = gfa > 0 ? costs.total / gfa : null
-  const perUnit = units && units > 0 ? costs.total / units : null
+  // Per-sq-ft / per-unit reflect the building you're putting up — exclude
+  // demolition, which would otherwise inflate the rate on a teardown.
+  const construction = costs.total - costs.demolition
+  const perSqft = gfa > 0 ? construction / gfa : null
+  const perUnit = units && units > 0 ? construction / units : null
 
   return (
     <div className="overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-white/60">

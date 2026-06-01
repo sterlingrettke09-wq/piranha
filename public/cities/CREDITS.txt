@@ -1,0 +1,14 @@
+City hero photos — sourced from Wikimedia Commons, openly licensed.
+Downloaded and resized for web use on the /cities page.
+Format: file | subject | author | license
+
+boston.jpg      | Old State House, Boston            | Marco Almbauer        | Public Domain
+nyc.jpg         | Statue of Liberty / Liberty Island | Don Ramey Logan       | CC-BY-4.0
+chicago.jpg     | Buckingham Fountain + Chicago skyline | Ander107            | CC-BY-SA-3.0
+sf.jpg          | Painted Ladies, Alamo Square       | (Wikimedia Commons)   | CC-BY-SA-4.0
+seattle.jpg     | Space Needle                       | (Wikimedia Commons)   | CC-BY-SA-4.0
+dc.jpg          | The White House                    | (Wikimedia Commons)   | CC-BY-SA-4.0
+austin.jpg      | Texas State Capitol                | (Wikimedia Commons)   | CC-BY-SA-4.0
+la.jpg          | Hollywood Sign                     | Downtowngal           | CC-BY-SA-4.0
+denver.jpg      | Red Rocks Amphitheatre, Colorado   | Sarbjit Bahga         | CC-BY-SA-4.0
+minneapolis.jpg | Stone Arch Bridge + Minneapolis skyline | Tony Webster   | CC-BY-2.0

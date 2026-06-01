@@ -36,7 +36,27 @@ describe('estimateCost', () => {
 
   it('total is hard + soft + permit', () => {
     const c = estimateCost(project, asOfRight).costs
-    expect(c.total).toBe(c.hard + c.soft + c.permit)
+    expect(c.demolition).toBe(0)
+    expect(c.total).toBe(c.hard + c.soft + c.permit + c.demolition)
+  })
+
+  it('adds a demolition cost scaled to the existing building being torn down', () => {
+    const noDemo = estimateCost(project, asOfRight)
+    const withDemo = estimateCost(project, asOfRight, { demolitionSqFt: 20000 })
+    expect(noDemo.costs.demolition).toBe(0)
+    expect(withDemo.costs.demolition).toBeGreaterThan(0)
+    expect(withDemo.costs.total).toBe(
+      withDemo.costs.hard + withDemo.costs.soft + withDemo.costs.permit + withDemo.costs.demolition,
+    )
+    expect(withDemo.costs.total).toBeGreaterThan(noDemo.costs.total)
+  })
+
+  it('prices renovations/ADUs/changes-of-use below an identical ground-up build', () => {
+    const base = estimateCost({ ...project, projectType: 'new' }, asOfRight).costs.hard
+    for (const pt of ['change_of_use', 'adu', 'addition'] as const) {
+      const scoped = estimateCost({ ...project, projectType: pt }, asOfRight).costs.hard
+      expect(scoped).toBeLessThan(base)
+    }
   })
 
   it('adds a variance filing fee and a longer timeline on the variance path', () => {

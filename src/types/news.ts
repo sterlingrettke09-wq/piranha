@@ -6,6 +6,11 @@ export type Jurisdiction =
   | 'sf'
   | 'seattle'
   | 'chicago'
+  | 'dc'
+  | 'austin'
+  | 'la'
+  | 'denver'
+  | 'minneapolis'
 
 export type NewsCategory = 'zoning' | 'permitting' | 'tax' | 'incentive' | 'tenant' | 'other'
 

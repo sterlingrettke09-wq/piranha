@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAnalysis } from '../hooks/useAnalysis'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { USES, PROJECT_TYPES, FUNDING_TYPES, type AnalysisInput, type Use, type ProjectType, type Funding } from '../types/analysis'
 import { Reveal } from '../components/Reveal'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
@@ -18,6 +19,7 @@ import { NarrativeSection } from '../components/boston/result/NarrativeSection'
 import { AssumptionsDisclosure } from '../components/boston/result/AssumptionsDisclosure'
 import { NextSteps } from '../components/boston/result/NextSteps'
 import { SourceLinks } from '../components/boston/result/SourceLinks'
+import { LouisburgMark } from '../components/LouisburgMark'
 
 const PROJECT_TYPE_LABEL: Record<ProjectType, string> = {
   new: 'New construction',
@@ -63,6 +65,7 @@ export default function BostonResult() {
   const input = useMemo(() => parseInput(params), [params])
   const state = useAnalysis(input)
   const [copied, setCopied] = useState(false)
+  useDocumentTitle(state.status === 'loaded' ? state.data.parcel.address : 'Feasibility report')
 
   function copyLink() {
     navigator.clipboard.writeText(window.location.href).then(
@@ -93,7 +96,7 @@ export default function BostonResult() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-24 pt-10">
+    <div className="print-page mx-auto max-w-3xl px-6 pb-24 pt-10">
       {state.status === 'loading' && (
         <div className="space-y-5">
           <div className="h-5 w-48 animate-pulse rounded bg-piranha-charcoal/10" />
@@ -121,7 +124,7 @@ export default function BostonResult() {
 
       {state.status === 'loaded' && (
         <>
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-[0.12em]">
+          <nav className="print-hide flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-[0.12em]">
             <Link
               to={`/map?city=${state.data.project.city}`}
               className="text-piranha-charcoal/60 transition-colors hover:text-piranha-burgundy"
@@ -134,10 +137,25 @@ export default function BostonResult() {
             >
               Edit inputs
             </Link>
+            {input && (
+              <Link
+                to={`/map?city=${state.data.project.city}&cmp=${encodeURIComponent(btoa(JSON.stringify(input)))}`}
+                className="text-piranha-charcoal/60 transition-colors hover:text-piranha-burgundy"
+              >
+                Compare another parcel
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="ml-auto rounded-full border border-piranha-charcoal/20 px-4 py-1.5 text-piranha-charcoal/70 transition-colors hover:border-piranha-charcoal/40"
+            >
+              Save as PDF
+            </button>
             <button
               type="button"
               onClick={copyLink}
-              className="ml-auto rounded-full border border-piranha-charcoal/20 px-4 py-1.5 text-piranha-charcoal/70 transition-colors hover:border-piranha-charcoal/40"
+              className="rounded-full border border-piranha-charcoal/20 px-4 py-1.5 text-piranha-charcoal/70 transition-colors hover:border-piranha-charcoal/40"
             >
               {copied ? 'Link copied' : 'Copy link'}
             </button>
@@ -164,86 +182,124 @@ export default function BostonResult() {
             </header>
           </Reveal>
 
-          <div className="mt-8">
+          <div className="print-hide mt-8">
             <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
           </div>
 
-          <Reveal className="mt-8">
-            <KeyMetrics
-              costs={state.data.costs}
-              timeline={state.data.timeline}
-              hurdles={state.data.hurdles}
-            />
-          </Reveal>
+          {state.data.developable === false ? (
+            <>
+              <Reveal className="mt-8">
+                <div className="rounded-2xl border border-amber-600/30 bg-amber-50/70 p-8">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800">
+                    {state.data.developableKind === 'no_coverage' ? 'Outside our coverage' : 'Not a developable site'}
+                  </p>
+                  <h2 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-piranha-charcoal">
+                    {state.data.developableKind === 'no_coverage'
+                      ? 'We don’t have zoning for this parcel.'
+                      : 'You can’t build here.'}
+                  </h2>
+                  <p className="mt-4 leading-relaxed text-piranha-charcoal/75">
+                    {state.data.developableNote}
+                  </p>
+                  <p className="mt-3 text-sm text-piranha-charcoal/55">
+                    {state.data.developableKind === 'no_coverage'
+                      ? 'Try a parcel inside one of our covered cities to run a full analysis.'
+                      : 'We’ve skipped the cost and timeline estimate — they don’t apply to a parcel like this. Pick a private lot to run a full analysis.'}
+                  </p>
+                </div>
+              </Reveal>
 
-          <Reveal className="mt-8">
-            <VerdictBanner
-              overall={state.data.feasibility.overall}
-              envelopeKnown={state.data.feasibility.envelopeKnown}
-            />
-          </Reveal>
+              <div className="mt-12 space-y-14">
+                <ReportSection n="01" title="The site" kicker="What the public record says about the parcel.">
+                  <SiteFacts parcel={state.data.parcel} />
+                </ReportSection>
+                {hasExisting(state.data.parcel.existing) && (
+                  <ReportSection n="02" title="What’s here today" kicker="What the record shows on the parcel.">
+                    <ExistingStructure existing={state.data.parcel.existing} />
+                  </ReportSection>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <Reveal className="mt-8">
+                <KeyMetrics
+                  costs={state.data.costs}
+                  timeline={state.data.timeline}
+                  hurdles={state.data.hurdles}
+                />
+              </Reveal>
 
-          {state.data.narrative && (
-            <Reveal className="mt-8">
-              <NarrativeSection narrative={state.data.narrative} />
-            </Reveal>
+              <Reveal className="mt-8">
+                <VerdictBanner
+                  overall={state.data.feasibility.overall}
+                  envelopeKnown={state.data.feasibility.envelopeKnown}
+                />
+              </Reveal>
+
+              {state.data.narrative && (
+                <Reveal className="mt-8">
+                  <NarrativeSection narrative={state.data.narrative} />
+                </Reveal>
+              )}
+
+              <div className="mt-16 space-y-14">
+                <ReportSection
+                  n="01"
+                  title="The reasoning"
+                  kicker="How the proposal measures against each zoning limit."
+                >
+                  <FeasibilityChecklist checks={state.data.feasibility.checks} />
+                </ReportSection>
+
+                <ReportSection
+                  n="02"
+                  title="Beyond zoning, the red tape"
+                  kicker="The approvals your project triggers, and what each one adds."
+                >
+                  <HurdlesSection hurdles={state.data.hurdles} />
+                </ReportSection>
+
+                <ReportSection
+                  n="03"
+                  title="What it costs"
+                  kicker="Construction, soft costs, and permits. A rough order of magnitude, and it does not include land."
+                >
+                  <CostBreakdown
+                    costs={state.data.costs}
+                    gfa={state.data.project.gfa}
+                    units={state.data.project.units}
+                  />
+                </ReportSection>
+
+                <ReportSection
+                  n="04"
+                  title="From design to move-in"
+                  kicker="The full life-cycle: architectural design, permits, site prep, and construction."
+                >
+                  <Timeline timeline={state.data.timeline} />
+                </ReportSection>
+
+                <ReportSection n="05" title="The site" kicker="What the public record says about the parcel.">
+                  <SiteFacts parcel={state.data.parcel} />
+                </ReportSection>
+
+                {hasExisting(state.data.parcel.existing) && (
+                  <ReportSection
+                    n="06"
+                    title="What’s here today"
+                    kicker="The existing structure, and what it takes to clear it."
+                  >
+                    <ExistingStructure existing={state.data.parcel.existing} />
+                  </ReportSection>
+                )}
+              </div>
+
+              <div className="print-hide mt-16">
+                <NextSteps city={state.data.project.city} />
+              </div>
+            </>
           )}
-
-          <div className="mt-16 space-y-14">
-            <ReportSection
-              n="01"
-              title="The reasoning"
-              kicker="How the proposal measures against each zoning limit."
-            >
-              <FeasibilityChecklist checks={state.data.feasibility.checks} />
-            </ReportSection>
-
-            <ReportSection
-              n="02"
-              title="Beyond zoning, the red tape"
-              kicker="The approvals your project triggers, and what each one adds."
-            >
-              <HurdlesSection hurdles={state.data.hurdles} />
-            </ReportSection>
-
-            <ReportSection
-              n="03"
-              title="What it costs"
-              kicker="Construction, soft costs, and permits. A rough order of magnitude, and it does not include land."
-            >
-              <CostBreakdown
-                costs={state.data.costs}
-                gfa={state.data.project.gfa}
-                units={state.data.project.units}
-              />
-            </ReportSection>
-
-            <ReportSection
-              n="04"
-              title="From design to move-in"
-              kicker="The full life-cycle: architectural design, permits, site prep, and construction."
-            >
-              <Timeline timeline={state.data.timeline} />
-            </ReportSection>
-
-            <ReportSection n="05" title="The site" kicker="What the public record says about the parcel.">
-              <SiteFacts parcel={state.data.parcel} />
-            </ReportSection>
-
-            {hasExisting(state.data.parcel.existing) && (
-              <ReportSection
-                n="06"
-                title="What’s here today"
-                kicker="The existing structure, and what it takes to clear it."
-              >
-                <ExistingStructure existing={state.data.parcel.existing} />
-              </ReportSection>
-            )}
-          </div>
-
-          <div className="mt-16">
-            <NextSteps city={state.data.project.city} />
-          </div>
 
           <div className="mt-8 space-y-6">
             <AssumptionsDisclosure assumptions={state.data.assumptions} />
@@ -262,6 +318,14 @@ export default function BostonResult() {
                 ))}
               </footer>
             )}
+          </div>
+
+          {/* Brand footer — prints on the PDF export. */}
+          <div className="print-only mt-12 flex items-center justify-between border-t border-piranha-charcoal/15 pt-5">
+            <LouisburgMark />
+            <span className="text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-piranha-charcoal/45">
+              A Louisburg Strategies brand
+            </span>
           </div>
         </>
       )}

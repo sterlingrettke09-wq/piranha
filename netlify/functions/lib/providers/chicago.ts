@@ -36,6 +36,28 @@ function chicagoExistingUse(cls: unknown): string | null {
   }
 }
 
+// Chicago base FAR by residential district class (Chicago Zoning Ordinance,
+// Title 17 — published base floor-area ratios). Commercial/downtown/manufacturing
+// FARs vary by suffix and aren't reliably derivable from the class alone, so we
+// leave those null (honestly "not in public data") rather than guess.
+const CHICAGO_BASE_FAR: Record<string, number> = {
+  'RS-1': 0.5,
+  'RS-2': 0.65,
+  'RS-3': 0.9,
+  'RT-3.5': 1.05,
+  'RT-4': 1.2,
+  'RT-4A': 1.2,
+  'RM-4.5': 1.7,
+  'RM-5': 2.0,
+  'RM-5.5': 2.5,
+  'RM-6': 4.4,
+  'RM-6.5': 6.6,
+}
+function chicagoBaseFAR(zone: string | null): number | null {
+  if (!zone) return null
+  return CHICAGO_BASE_FAR[zone.trim().toUpperCase()] ?? null
+}
+
 // Chicago zoning class prefix → use vocabulary.
 function usesForZone(zone: string | null): string[] | null {
   if (!zone) return null
@@ -82,7 +104,7 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
       subdistrict: null,
       article: null,
       maxHeightFt: null,
-      maxFAR: null, // Chicago FAR is district-specific and not in the open zoning layer.
+      maxFAR: chicagoBaseFAR(zone), // residential base FAR; null for B/C/D/M (varies by suffix)
       allowedUses: usesForZone(zone),
     },
     lot: {

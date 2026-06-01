@@ -12,6 +12,11 @@ const JUR_LABEL: Record<Jurisdiction, string> = {
   sf: 'San Francisco',
   seattle: 'Seattle',
   chicago: 'Chicago',
+  dc: 'Washington, DC',
+  austin: 'Austin',
+  la: 'Los Angeles',
+  denver: 'Denver',
+  minneapolis: 'Minneapolis',
 }
 
 const CAT_LABEL: Record<NewsCategory, string> = {

@@ -58,7 +58,7 @@ export const FIELDS = {
   // address = ST_NUM + ST_NAME; PID = parcel id; LAND_SF = lot size (sq ft).
   // OWNER / MAIL_* exist on this layer but are intentionally NOT requested — PII.
   // Trailing fields describe the *existing* structure (what's there today).
-  parcels: ['PID', 'ST_NUM', 'ST_NAME', 'LAND_SF', 'LU_DESC', 'YR_BUILT', 'GROSS_AREA', 'RES_UNITS', 'COM_UNITS', 'NUM_BLDGS'],
+  parcels: ['PID', 'ST_NUM', 'ST_NAME', 'LAND_SF', 'LU_DESC', 'YR_BUILT', 'GROSS_AREA', 'RES_UNITS', 'COM_UNITS', 'NUM_BLDGS', 'TOTAL_VALUE'],
   historic: ['HIST_NAME'],
   flood: ['FLD_ZONE'],
 } as const

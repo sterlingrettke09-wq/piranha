@@ -44,6 +44,11 @@ export function Map({
     })
     mapRef.current = map
 
+    // Zoom in / out controls (the "magnifier"). Compass hidden — zoom is the ask.
+    // Bottom-left stays clear of the centered search bar (mobile) and the
+    // right-side parcel panel (desktop).
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-left')
+
     map.on('style.load', () => {
       BRAND_OVERRIDES.forEach(({ layerId, property, value }) => {
         if (map.getLayer(layerId)) {

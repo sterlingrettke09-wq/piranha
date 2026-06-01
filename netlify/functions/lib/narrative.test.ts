@@ -8,7 +8,7 @@ import type { CostEstimate } from './cost'
 const parcel = { address: '1 Test St', zoning: { districtCode: 'B-2-65' } } as ParcelInfo
 const project = { use: 'commercial', gfa: 15000 } as AnalysisInput
 const cost: CostEstimate = {
-  costs: { hard: 6_000_000, soft: 1_500_000, permit: 60_100, total: 7_560_100, currency: 'USD' },
+  costs: { hard: 6_000_000, soft: 1_500_000, permit: 60_100, demolition: 0, total: 7_560_100, currency: 'USD' },
   timeline: { months: 4, path: 'as_of_right' },
 }
 
@@ -16,7 +16,7 @@ describe('buildNarrative', () => {
   it('states the verdict and the total cost', () => {
     const f: Feasibility = { overall: 'AS_OF_RIGHT', checks: [], path: 'as_of_right' }
     const text = buildNarrative(parcel, project, f, cost)
-    expect(text).toMatch(/as-of-right/i)
+    expect(text).toMatch(/without special permission/i)
     expect(text).toContain('$7,560,100')
   })
 
@@ -27,13 +27,20 @@ describe('buildNarrative', () => {
       checks: [{ dimension: 'far', status: 'NEEDS_RELIEF', proposed: 'FAR 3.00', allowed: 'max FAR 2.00', note: null }],
     }
     const text = buildNarrative(parcel, project, f, { ...cost, timeline: { months: 12, path: 'variance' } })
-    expect(text).toMatch(/relief/i)
+    expect(text).toMatch(/permission/i)
     expect(text).toContain('far')
   })
 
   it('reports the full life-cycle timeline, not the base permit time', () => {
     const f: Feasibility = { overall: 'AS_OF_RIGHT', checks: [], path: 'as_of_right' }
-    const text = buildNarrative(parcel, project, f, cost, { timelineMonths: 26, includesDemolition: true })
+    const demoCost: CostEstimate = {
+      ...cost,
+      costs: { ...cost.costs, demolition: 800_000, total: cost.costs.total + 800_000 },
+    }
+    const text = buildNarrative(parcel, { ...project, projectType: 'new' }, f, demoCost, {
+      timelineMonths: 26,
+      includesDemolition: true,
+    })
     expect(text).toContain('26 months')
     expect(text).not.toContain('4 months')
     expect(text).toMatch(/design to move-in/i)
