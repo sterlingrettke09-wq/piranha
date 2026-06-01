@@ -6,9 +6,9 @@ import type { CostEstimate } from './cost'
 const usd = (n: number) => `$${n.toLocaleString('en-US')}`
 
 const VERDICT_LEAD: Record<CheckStatus, string> = {
-  AS_OF_RIGHT: 'appears buildable as-of-right',
-  NEEDS_RELIEF: 'would require zoning relief',
-  PROHIBITED: 'appears to be prohibited',
+  AS_OF_RIGHT: 'appears buildable without special permission',
+  NEEDS_RELIEF: 'would need the city’s permission',
+  PROHIBITED: 'appears to be not allowed',
   INDETERMINATE: 'cannot be fully determined from available data',
 }
 

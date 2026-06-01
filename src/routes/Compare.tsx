@@ -14,10 +14,10 @@ function decode<T>(s: string | null): T | null {
 }
 
 const VERDICT: Record<CheckStatus, { label: string; cls: string }> = {
-  AS_OF_RIGHT: { label: 'As-of-right', cls: 'text-emerald-700' },
-  NEEDS_RELIEF: { label: 'Needs relief', cls: 'text-amber-700' },
-  PROHIBITED: { label: 'Not permitted', cls: 'text-rose-700' },
-  INDETERMINATE: { label: 'Indeterminate', cls: 'text-piranha-charcoal/60' },
+  AS_OF_RIGHT: { label: 'You can build it', cls: 'text-emerald-700' },
+  NEEDS_RELIEF: { label: 'Needs city permission', cls: 'text-amber-700' },
+  PROHIBITED: { label: 'Not allowed', cls: 'text-rose-700' },
+  INDETERMINATE: { label: 'Can’t tell', cls: 'text-piranha-charcoal/60' },
 }
 
 const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })

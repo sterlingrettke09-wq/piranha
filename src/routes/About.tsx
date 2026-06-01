@@ -46,9 +46,9 @@ export default function About() {
             <ul className="space-y-3">
               <li>
                 <span className="font-semibold text-piranha-charcoal">Feasibility.</span> Your
-                project’s use, size, and height against the property’s zoning limits: build
-                as-of-right, need a variance, can’t build it, or the data wasn’t clear enough to
-                say.
+                project’s use, size, and height against the property’s zoning limits: you can
+                build it, you’d need the city’s permission, you can’t build it, or the data
+                wasn’t clear enough to say.
               </li>
               <li>
                 <span className="font-semibold text-piranha-charcoal">Cost.</span> Construction

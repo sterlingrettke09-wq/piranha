@@ -1,8 +1,8 @@
 import type { AnalysisResult } from '../../../types/analysis'
 
 const PATH_LABEL: Record<AnalysisResult['timeline']['path'], string> = {
-  as_of_right: 'On the as-of-right path',
-  variance: 'Through discretionary review',
+  as_of_right: 'On the standard permit path',
+  variance: 'Through the city’s special-approval process',
   prohibited: 'No viable approval path',
 }
 

@@ -15,10 +15,10 @@ interface SearchEntry {
 const KEY_STORE = 'tpp_admin_key'
 
 const VERDICT_LABEL: Record<string, string> = {
-  AS_OF_RIGHT: 'As-of-right',
-  NEEDS_RELIEF: 'Needs relief',
-  PROHIBITED: 'Not permitted',
-  INDETERMINATE: 'Indeterminate',
+  AS_OF_RIGHT: 'Can build',
+  NEEDS_RELIEF: 'Needs permission',
+  PROHIBITED: 'Not allowed',
+  INDETERMINATE: 'Can’t tell',
 }
 
 const CITY_LABEL: Record<string, string> = {

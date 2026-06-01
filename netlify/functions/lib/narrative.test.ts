@@ -16,7 +16,7 @@ describe('buildNarrative', () => {
   it('states the verdict and the total cost', () => {
     const f: Feasibility = { overall: 'AS_OF_RIGHT', checks: [], path: 'as_of_right' }
     const text = buildNarrative(parcel, project, f, cost)
-    expect(text).toMatch(/as-of-right/i)
+    expect(text).toMatch(/without special permission/i)
     expect(text).toContain('$7,560,100')
   })
 
@@ -27,7 +27,7 @@ describe('buildNarrative', () => {
       checks: [{ dimension: 'far', status: 'NEEDS_RELIEF', proposed: 'FAR 3.00', allowed: 'max FAR 2.00', note: null }],
     }
     const text = buildNarrative(parcel, project, f, { ...cost, timeline: { months: 12, path: 'variance' } })
-    expect(text).toMatch(/relief/i)
+    expect(text).toMatch(/permission/i)
     expect(text).toContain('far')
   })
 

@@ -95,7 +95,7 @@ export default function Methodology() {
             <ul className="space-y-2">
               <li>
                 <span className="font-semibold text-piranha-charcoal">Feasibility.</span> Can you
-                build this here as-of-right, with relief, or not at all?
+                build this here, build it with the city’s permission, or not at all?
               </li>
               <li>
                 <span className="font-semibold text-piranha-charcoal">Cost.</span> A rough
@@ -138,16 +138,17 @@ export default function Methodology() {
               </li>
             </ul>
             <p>
-              For FAR and height, anything within the limit is as-of-right. Up to 1.5&times; over
-              is treated as needing relief (a variance). Beyond 1.5&times; we call it prohibited,
-              because that overage takes a rezoning, not a variance. Where a city&rsquo;s public
+              For FAR and height, anything within the limit needs no special permission. Up to
+              1.5&times; over is treated as needing the city&rsquo;s permission (an exception).
+              Beyond 1.5&times; we call it not allowed, because that overage takes a full rezoning,
+              not a one-off exception. Where a city&rsquo;s public
               data doesn&rsquo;t carry a FAR or height limit, that line reads &ldquo;not in public
               data&rdquo; and doesn&rsquo;t decide the verdict.
             </p>
             <p className="font-semibold text-piranha-charcoal">The housing rule</p>
             <p>
               Demolishing an established multifamily building (3 or more units) to build fewer units
-              is never a simple as-of-right teardown. We downgrade those to &ldquo;needs relief.&rdquo;
+              is never a simple teardown. We downgrade those to &ldquo;needs city permission.&rdquo;
               A large net loss of housing, 10 or more existing units, or a building of 5+ units
               collapsed to a single home, reads as prohibited: no-net-loss rules, rent regulation,
               and tenant protections generally bar it outright.

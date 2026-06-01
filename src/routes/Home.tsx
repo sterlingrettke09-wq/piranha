@@ -20,7 +20,7 @@ const FEATURES = [
   {
     n: '03',
     title: 'How long it takes',
-    body: 'The months to a permit on the path your project actually lands on, whether as-of-right or the longer road through variances and public review.',
+    body: 'The months to a permit on the path your project actually lands on, whether a straight shot or the longer road through special approvals and public review.',
   },
 ]
 
