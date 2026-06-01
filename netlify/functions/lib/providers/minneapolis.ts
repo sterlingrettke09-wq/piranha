@@ -14,8 +14,20 @@ import { lngLatToUtm15 } from '../geo'
 const PARCELS = 'https://gis.hennepin.us/arcgis/rest/services/HennepinData/LAND_PROPERTY/MapServer/1'
 const ZONING =
   'https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/Planning_Primary_Zoning/FeatureServer/0'
+const BUILT_FORM =
+  'https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/Planning_Zoning_Built_Form/FeatureServer/0'
 const HISTORIC =
   'https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/HPC_Districts/FeatureServer/0'
+
+// Minneapolis separates USE (primary zoning) from FORM. Max height comes from
+// the built-form district (Abbrv), per the City's Built Form Districts Handbook
+// (Title 20, Tables 540-7 / 540-9). Base (by-right) heights in feet. Core 50 is
+// the downtown CBD with no max-feet cap → null.
+const MPLS_BUILT_FORM_FT: Record<string, number | null> = {
+  BFI1: 28, BFI2: 28, BFI3: 42, BFC3: 42, BFC4: 56, BFC6: 84,
+  BFT10: 140, BFT15: 210, BFT20: 280, BFT30A: 420, BFT30B: 420,
+  BFPR: 140, BFPA: 35, BFC50: null,
+}
 
 // Minneapolis 2024 zoning code (Land_Use_Code) → use vocabulary.
 function usesForZone(code: string | null): string[] | null {
@@ -32,9 +44,10 @@ function usesForZone(code: string | null): string[] | null {
 export async function getMinneapolisParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const { x, y } = lngLatToUtm15(lng, lat)
-  const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
+  const [parcelR, zoningR, formR, histR, floodR] = await Promise.allSettled([
     fetchFeaturesXY(PARCELS, x, y, 26915, ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID']),
     fetchFeatures(ZONING, lat, lng, ['Land_Use_Code', 'Land_Use']),
+    fetchFeatures(BUILT_FORM, lat, lng, ['Abbrv', 'Built_Form']),
     fetchFeatures(HISTORIC, lat, lng, ['DISTRICT']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
@@ -50,8 +63,12 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   }
 
   const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  const form = formR.status === 'fulfilled' ? firstAttrs(formR.value) : null
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
+
+  const formAbbrv = form?.Abbrv ? String(form.Abbrv).trim().toUpperCase() : null
+  const maxHeightFt = formAbbrv && formAbbrv in MPLS_BUILT_FORM_FT ? MPLS_BUILT_FORM_FT[formAbbrv] : null
 
   const houseNo = parcel.HOUSE_NO != null ? String(parcel.HOUSE_NO).trim() : ''
   const streetNm = parcel.STREET_NM != null ? String(parcel.STREET_NM).replace(/\s+/g, ' ').trim() : ''
@@ -67,7 +84,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
       districtCode: code ?? 'Unknown',
       subdistrict: null,
       article: zoning?.Land_Use ? String(zoning.Land_Use) : null,
-      maxHeightFt: null,
+      maxHeightFt,
       maxFAR: null,
       allowedUses: usesForZone(code),
     },
@@ -79,7 +96,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
       historicDistrict: hist?.DISTRICT ? String(hist.DISTRICT) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
-    sources: { parcels: PARCELS, zoning: ZONING, historic: HISTORIC, flood: ENDPOINTS.flood },
+    sources: { parcels: PARCELS, zoning: ZONING, builtForm: BUILT_FORM, historic: HISTORIC, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }
 

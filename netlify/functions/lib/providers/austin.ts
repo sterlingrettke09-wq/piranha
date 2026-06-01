@@ -11,6 +11,25 @@ const PARCELS =
 const ZONING =
   'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/Current_Zoning_gdb/FeatureServer/0'
 
+// Max height (ft) + FAR by base zone, from Austin LDC §25-2-492 site-development
+// regulations (City of Austin Zoning Guide tables). Residential zones are
+// height-governed with no FAR (f: null). PUD/DR/AV/P vary case-by-case → null.
+const AUSTIN_LIMITS: Record<string, { h: number | null; f: number | null }> = {
+  RR: { h: 35, f: null }, 'SF-1': { h: 35, f: null }, 'SF-2': { h: 35, f: null }, 'SF-3': { h: 35, f: null },
+  'SF-4A': { h: 35, f: null }, 'SF-4B': { h: 30, f: null }, 'SF-5': { h: 35, f: null }, 'SF-6': { h: 35, f: null },
+  MH: { h: 35, f: null },
+  'MF-1': { h: 40, f: null }, 'MF-2': { h: 40, f: null }, 'MF-3': { h: 40, f: 0.75 },
+  'MF-4': { h: 60, f: 0.75 }, 'MF-5': { h: 60, f: 1.0 }, 'MF-6': { h: 90, f: null },
+  NO: { h: 35, f: 0.35 }, LO: { h: 40, f: 0.7 }, GO: { h: 60, f: 1.0 }, CR: { h: 40, f: 0.25 },
+  LR: { h: 40, f: 0.5 }, GR: { h: 60, f: 1.0 }, L: { h: 200, f: 8.0 }, CS: { h: 60, f: 2.0 }, 'CS-1': { h: 60, f: 2.0 },
+  CBD: { h: null, f: 8.0 }, DMU: { h: 120, f: 5.0 },
+  IP: { h: 60, f: 1.0 }, LI: { h: 60, f: 1.0 }, MI: { h: 120, f: 1.0 }, 'R&D': { h: 45, f: 0.25 },
+}
+function austinLimits(base: string | null): { h: number | null; f: number | null } {
+  if (!base) return { h: null, f: null }
+  return AUSTIN_LIMITS[base.toUpperCase().trim()] ?? { h: null, f: null }
+}
+
 // Austin base-zone prefix → use vocabulary.
 function usesForZone(base: string | null): string[] | null {
   if (!base) return null
@@ -51,6 +70,7 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
   const address = rawAddr.replace(/\s+\d{5}(-\d{4})?$/, '').trim() || 'Selected location'
   const acres = Number(parcel.tcad_acres)
   const base = parcel != null && zoning?.BASE_ZONE ? String(zoning.BASE_ZONE) : null
+  const lim = austinLimits(base)
 
   const info: ParcelInfo = {
     address,
@@ -60,8 +80,8 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
       districtCode: base ?? 'Unknown',
       subdistrict: zoning?.ZONING_ZTYPE ? String(zoning.ZONING_ZTYPE) : null,
       article: zoning?.ZONE_NAME ? String(zoning.ZONE_NAME) : null,
-      maxHeightFt: null,
-      maxFAR: null,
+      maxHeightFt: lim.h,
+      maxFAR: lim.f,
       allowedUses: usesForZone(base),
     },
     lot: {

@@ -10,6 +10,28 @@ const ZONING = 'https://denvergov.org/maps/data/Zoning/MapServer/1'
 const HISTORIC =
   'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/ODC_HIST_LANDMARKDISTRICT_A/FeatureServer/68'
 
+// Denver max height (ft). The form-based code's trailing NUMBER is max stories
+// (e.g. "-3", "-5"); the live HEIGHT_STORIES field carries it directly. Letter
+// suffixes (SU/TU single & two-unit) are 2.5 stories / 30 ft. Denver assumes
+// ~12 ft/story. maxFAR is null (form-based code, no FAR). Source: Denver Zoning
+// Code Art. 3/4/5 building-form height tables.
+const DENVER_FT_PER_STORY = 12
+function denverMaxHeightFt(zone: string | null, heightStories: unknown): number | null {
+  const stories = Number(heightStories)
+  if (Number.isFinite(stories) && stories > 0) return Math.round(stories * DENVER_FT_PER_STORY)
+  if (!zone) return null
+  const z = zone.toUpperCase().trim()
+  // Trailing numeric token = stories (e.g. G-MU-3, C-MX-5, U-RH-2.5).
+  const m = z.match(/-(\d+(?:\.\d+)?)$/)
+  if (m) {
+    const n = Number(m[1])
+    if (n >= 1 && n <= 60) return Math.round(n * DENVER_FT_PER_STORY)
+  }
+  // Single/two-unit (letter suffix) districts cap at ~2.5 stories / 30 ft.
+  if (/-(SU|TU)-/.test(z) || /-RH-/.test(z)) return 30
+  return null
+}
+
 // Denver code (ZONE_DISTRICT, e.g. "U-SU-A", "G-MU-3", "C-MX-5", "D-C") →
 // use vocabulary. The middle token carries the use family: SU/TU/RH/MU/RX...
 function usesForZone(code: string | null): string[] | null {
@@ -29,7 +51,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const t0 = Date.now()
   const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
     fetchFeatures(PARCELS, lat, lng, ['SITUS_ADDRESS_LINE1', 'LAND_AREA', 'SCHEDNUM']),
-    fetchFeatures(ZONING, lat, lng, ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT']),
+    fetchFeatures(ZONING, lat, lng, ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES']),
     fetchFeatures(HISTORIC, lat, lng, ['DIST_NAME']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
@@ -51,6 +73,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const address = parcel.SITUS_ADDRESS_LINE1 ? String(parcel.SITUS_ADDRESS_LINE1).replace(/\s+/g, ' ').trim() : 'Selected location'
   const land = Number(parcel.LAND_AREA)
   const code = zoning?.ZONE_DISTRICT ? String(zoning.ZONE_DISTRICT) : null
+  const maxHeightFt = denverMaxHeightFt(code, zoning?.HEIGHT_STORIES)
 
   const info: ParcelInfo = {
     address: address || 'Selected location',
@@ -60,7 +83,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       districtCode: code ?? 'Unknown',
       subdistrict: zoning?.OVERLAY_DISTRICT ? String(zoning.OVERLAY_DISTRICT) : null,
       article: zoning?.ZONE_DESCRIPTION ? String(zoning.ZONE_DESCRIPTION) : null,
-      maxHeightFt: null,
+      maxHeightFt,
       maxFAR: null,
       allowedUses: usesForZone(code),
     },

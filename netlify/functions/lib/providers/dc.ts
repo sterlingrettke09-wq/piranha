@@ -10,6 +10,30 @@ const PARCELS = `${BASE}/DCGIS_DATA/Property_and_Land/MapServer/40`
 const ZONING = `${BASE}/DCOZ/Zone_Mapservice/MapServer/24`
 const HISTORIC = `${BASE}/DCOZ/Zone_Mapservice/MapServer/6`
 
+// Max height (ft) + FAR by zone, from the 2016 Zoning Regulations (Title 11
+// DCMR): Subtitle D (R), E (RF), F (RA), G (MU). High-confidence families only;
+// Downtown (D) and Neighborhood (NC) zones vary by sub-area/street and are left
+// null (honest — no by-right envelope shown). Heights exclude penthouse.
+const DC_LIMITS: Record<string, { h: number | null; f: number | null }> = {
+  'RF-1': { h: 35, f: null }, 'RF-2': { h: 35, f: null }, 'RF-3': { h: 35, f: null },
+  'RF-4': { h: 40, f: 1.8 }, 'RF-5': { h: 50, f: 1.8 },
+  'RA-1': { h: 40, f: 0.9 }, 'RA-2': { h: 50, f: 1.8 }, 'RA-3': { h: 60, f: 3.0 },
+  'RA-4': { h: 90, f: 3.5 }, 'RA-5': { h: 90, f: 5.0 },
+  'MU-1': { h: 65, f: 4.0 }, 'MU-2': { h: 90, f: 6.0 }, 'MU-3': { h: 40, f: 1.0 },
+  'MU-4': { h: 50, f: 2.5 }, 'MU-5': { h: 70, f: 3.5 }, 'MU-6': { h: 90, f: 4.0 },
+  'MU-7': { h: 65, f: 5.0 }, 'MU-8': { h: 70, f: 6.5 }, 'MU-9': { h: 90, f: 6.0 }, 'MU-10': { h: 90, f: 6.0 },
+}
+function dcLimits(code: string | null): { h: number | null; f: number | null } {
+  if (!code) return { h: null, f: null }
+  const base = code.toUpperCase().trim().split('/')[0].trim()
+  // Georgetown overlay caps at 35 ft.
+  if (/\/GT|GEORGETOWN/i.test(code)) return { h: 35, f: null }
+  if (DC_LIMITS[base]) return DC_LIMITS[base]
+  // Residential House (R) zones: 40 ft, no FAR (Subtitle D § 303.1).
+  if (base.startsWith('R-') || /^R\d/.test(base)) return { h: 40, f: null }
+  return { h: null, f: null }
+}
+
 // DC zoning code prefix → use vocabulary. Codes follow the 2016 Zoning
 // Regulations (e.g. R-, RF-, RA-, MU-, NC-, PDR-, D-, US-, StE-).
 function usesForZone(code: string | null): string[] | null {
@@ -55,6 +79,7 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
   // across casings and to the 2016-code field ZR16.
   const zCode = zoning?.Zoning ?? zoning?.ZONING ?? zoning?.ZR16
   const code = zCode != null && String(zCode).trim() ? String(zCode).trim() : null
+  const lim = dcLimits(code)
 
   const info: ParcelInfo = {
     address: address || 'Selected location',
@@ -64,8 +89,8 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
       districtCode: code ?? 'Unknown',
       subdistrict: null,
       article: zoning?.Zone_District ? String(zoning.Zone_District) : null,
-      maxHeightFt: null,
-      maxFAR: null,
+      maxHeightFt: lim.h,
+      maxFAR: lim.f,
       allowedUses: usesForZone(code),
     },
     lot: {
