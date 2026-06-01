@@ -3,6 +3,18 @@ import type { ReactNode } from 'react'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
+import { getCity } from '../config/cities'
+import type { Use } from '../types/analysis'
+import {
+  costPerSqFtByUse,
+  cityCostIndex,
+  heightFactorTiers,
+  lifecycleMonths,
+  softCostPct,
+  PERMIT_BASE_FEE,
+  PERMIT_RATE_PER_1000,
+  VARIANCE_FILING_FEE,
+} from '../config/estimates'
 
 function Section({ n, title, children }: { n: string; title: string; children: ReactNode }) {
   return (
@@ -49,6 +61,24 @@ function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) 
 }
 
 export default function Methodology() {
+  // All tables below are generated from the live engine constants, so they can
+  // never drift from what the analysis actually computes (or from new cities).
+  const cityOrder = Object.keys(cityCostIndex).sort((a, b) => cityCostIndex[b] - cityCostIndex[a])
+  const useRows: [string, string][] = (
+    [
+      ['Residential', 'residential'],
+      ['Mixed-use', 'mixed'],
+      ['Commercial', 'commercial'],
+      ['Institutional', 'institutional'],
+    ] as [string, Use][]
+  ).map(([label, key]) => [label, `$${costPerSqFtByUse[key]}`])
+  const cityIndexRows: (string | number)[][] = cityOrder.map((s) => [getCity(s).name, cityCostIndex[s].toFixed(2)])
+  const heightRows: (string | number)[][] = heightFactorTiers.map((t) => [t.label, t.factor.toFixed(2)])
+  const timelineRows: (string | number)[][] = cityOrder
+    .filter((s) => lifecycleMonths[s])
+    .map((s) => [getCity(s).name, lifecycleMonths[s].single, lifecycleMonths[s].multi, lifecycleMonths[s].apartment])
+  const softPct = Math.round(softCostPct * 100)
+
   return (
     <PageContainer>
       <div className="mx-auto max-w-3xl space-y-16 py-10 sm:py-16">
@@ -132,8 +162,8 @@ export default function Methodology() {
             </p>
             <p className="rounded-xl bg-piranha-charcoal/[0.04] px-5 py-3 font-mono text-sm text-piranha-charcoal/80">
               hard = area &times; rate(use) &times; city index &times; height factor<br />
-              soft = 25% of hard<br />
-              permit = $100 + $10 per $1,000 of hard cost (+$600 if relief is required)<br />
+              soft = {softPct}% of hard<br />
+              permit = ${PERMIT_BASE_FEE} + ${PERMIT_RATE_PER_1000} per $1,000 of hard cost (+${VARIANCE_FILING_FEE} if relief is required)<br />
               total = hard + soft + permit
             </p>
             <p className="rounded-xl border border-piranha-burgundy/20 bg-piranha-burgundy/[0.04] px-5 py-3 text-sm text-piranha-charcoal/80">
@@ -141,45 +171,20 @@ export default function Methodology() {
               priciest markets often costs more than the building itself.
             </p>
             <p className="pt-2 font-semibold text-piranha-charcoal">Base rate by use (Boston, 2025)</p>
-            <Table
-              head={['Use', '$ / sq ft']}
-              rows={[
-                ['Residential', '$350'],
-                ['Mixed-use', '$375'],
-                ['Commercial', '$400'],
-                ['Institutional', '$450'],
-              ]}
-            />
+            <Table head={['Use', '$ / sq ft']} rows={useRows} />
             <p className="pt-2 font-semibold text-piranha-charcoal">City construction index</p>
             <p>
               Hard construction costs run higher in some metros than others. We scale the base rate
               by this index (Boston is the reference at 1.00). It covers construction only, not
               land, which varies far more.
             </p>
-            <Table
-              head={['City', 'Index']}
-              rows={[
-                ['New York', '1.18'],
-                ['San Francisco', '1.13'],
-                ['Boston', '1.00'],
-                ['Seattle', '1.00'],
-                ['Chicago', '0.92'],
-              ]}
-            />
+            <Table head={['City', 'Index']} rows={cityIndexRows} />
             <p className="pt-2 font-semibold text-piranha-charcoal">Height premium</p>
             <p>
               Taller buildings cost more per square foot (structure, elevators, fire and life
               safety). We apply a factor by height.
             </p>
-            <Table
-              head={['Building height', 'Factor']}
-              rows={[
-                ['Up to 4 stories', '1.00'],
-                ['5 to 8 stories', '1.15'],
-                ['9 to 20 stories', '1.35'],
-                ['Over 20 stories', '1.60'],
-              ]}
-            />
+            <Table head={['Building height', 'Factor']} rows={heightRows} />
           </Section>
 
           <Section n="04" title="Timeline">
@@ -192,16 +197,7 @@ export default function Methodology() {
               Building type: single-family is 1 unit, multi-family is 2 to 4, apartment is 5 or
               more. Commercial and institutional use the apartment column.
             </p>
-            <Table
-              head={['City', 'Single', 'Multi', 'Apartment']}
-              rows={[
-                ['New York', 18, 24, 36],
-                ['San Francisco', 24, 30, 42],
-                ['Boston', 14, 18, 26],
-                ['Seattle', 14, 18, 24],
-                ['Chicago', 11, 15, 20],
-              ]}
-            />
+            <Table head={['City', 'Single', 'Multi', 'Apartment']} rows={timelineRows} />
             <p>Then we adjust:</p>
             <ul className="space-y-2">
               <li>
