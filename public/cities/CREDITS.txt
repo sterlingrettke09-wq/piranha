@@ -1,13 +1,14 @@
 City hero photos — sourced from Wikimedia Commons, openly licensed.
 Downloaded and resized for web use on the /cities page.
+Format: file | subject | author | license
 
-boston.jpg      Boston skyline from Winthrop            CC-BY-4.0      commons.wikimedia.org/wiki/File:Boston_skyline_from_Grand_View_Ave_Winthrop_July_2025.jpg
-nyc.jpg         Statue of Liberty / Liberty Island      CC-BY-4.0      commons.wikimedia.org/wiki/File:Liberty_Island_photo_Don_Ramey_Logan.jpg
-chicago.jpg     Chicago skyline over Lake Michigan      CC-BY-SA-4.0   commons.wikimedia.org/wiki/File:Chicago-skyline-lake-burnham.jpg
-sf.jpg          Painted Ladies, Alamo Square            CC-BY-SA-4.0   commons.wikimedia.org/wiki/File:San_Francisco_(CA,_USA),_Painted_Ladies_--_2022_--_3063.jpg
-seattle.jpg     Space Needle                            CC-BY-SA-4.0   commons.wikimedia.org/wiki/File:Seattle_(WA,_USA),_Space_Needle_--_2022_--_1498.jpg
-dc.jpg          The White House                         CC-BY-SA-4.0   commons.wikimedia.org/wiki/File:The_White_House_June_2024.jpg
-austin.jpg      Texas State Capitol                     CC-BY-SA-4.0   commons.wikimedia.org/wiki/File:Texas_State_Capitol_and_Volunteer_Firemen_Monument_in_January_2023.jpg
-la.jpg          Griffith Observatory                    CC-BY-SA-4.0   commons.wikimedia.org/wiki/File:Griffith_Observatory_from_E_Hollywood,_Los_Angeles.jpg
-denver.jpg      Denver skyline                          Public Domain  commons.wikimedia.org/wiki/File:Denver_Skyline_(4801).jpg
-minneapolis.jpg Minneapolis skyline + Stone Arch Bridge CC-BY-2.0      commons.wikimedia.org/wiki/File:Minneapolis_Skyline_and_Stone_Arch_(15807972745).jpg
+boston.jpg      | Old State House, Boston            | Marco Almbauer        | Public Domain
+nyc.jpg         | Statue of Liberty / Liberty Island | Don Ramey Logan       | CC-BY-4.0
+chicago.jpg     | Chicago skyline on the Chicago River | Spatms              | CC-BY-SA-4.0
+sf.jpg          | Painted Ladies, Alamo Square       | (Wikimedia Commons)   | CC-BY-SA-4.0
+seattle.jpg     | Space Needle                       | (Wikimedia Commons)   | CC-BY-SA-4.0
+dc.jpg          | The White House                    | (Wikimedia Commons)   | CC-BY-SA-4.0
+austin.jpg      | Texas State Capitol                | (Wikimedia Commons)   | CC-BY-SA-4.0
+la.jpg          | Hollywood Sign                     | Downtowngal           | CC-BY-SA-4.0
+denver.jpg      | Red Rocks Amphitheatre, Colorado   | Sarbjit Bahga         | CC-BY-SA-4.0
+minneapolis.jpg | George Floyd Square memorial (38th & Chicago Ave) | Lorie Shaull | CC-BY-SA-2.0
