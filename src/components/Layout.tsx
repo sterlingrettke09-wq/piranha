@@ -41,7 +41,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-piranha-bone text-piranha-charcoal">
       <header
-        className={`border-b ${
+        className={`print-hide border-b ${
           dark ? 'border-piranha-bone/10 bg-[#1a1412]' : 'border-piranha-charcoal/10 bg-piranha-bone'
         }`}
       >
@@ -128,7 +128,7 @@ export function Layout({ children }: LayoutProps) {
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t border-piranha-charcoal/10 bg-piranha-charcoal text-piranha-bone">
+      <footer className="print-hide border-t border-piranha-charcoal/10 bg-piranha-charcoal text-piranha-bone">
         <div className="max-w-6xl mx-auto px-6 py-8 space-y-3">
           <p className="text-sm leading-relaxed max-w-3xl">
             The Piranha Project provides general regulatory information, not legal

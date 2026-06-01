@@ -19,6 +19,7 @@ import { NarrativeSection } from '../components/boston/result/NarrativeSection'
 import { AssumptionsDisclosure } from '../components/boston/result/AssumptionsDisclosure'
 import { NextSteps } from '../components/boston/result/NextSteps'
 import { SourceLinks } from '../components/boston/result/SourceLinks'
+import { LouisburgMark } from '../components/LouisburgMark'
 
 const PROJECT_TYPE_LABEL: Record<ProjectType, string> = {
   new: 'New construction',
@@ -95,7 +96,7 @@ export default function BostonResult() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-24 pt-10">
+    <div className="print-page mx-auto max-w-3xl px-6 pb-24 pt-10">
       {state.status === 'loading' && (
         <div className="space-y-5">
           <div className="h-5 w-48 animate-pulse rounded bg-piranha-charcoal/10" />
@@ -123,7 +124,7 @@ export default function BostonResult() {
 
       {state.status === 'loaded' && (
         <>
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-[0.12em]">
+          <nav className="print-hide flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-[0.12em]">
             <Link
               to={`/map?city=${state.data.project.city}`}
               className="text-piranha-charcoal/60 transition-colors hover:text-piranha-burgundy"
@@ -146,8 +147,15 @@ export default function BostonResult() {
             )}
             <button
               type="button"
-              onClick={copyLink}
+              onClick={() => window.print()}
               className="ml-auto rounded-full border border-piranha-charcoal/20 px-4 py-1.5 text-piranha-charcoal/70 transition-colors hover:border-piranha-charcoal/40"
+            >
+              Save as PDF
+            </button>
+            <button
+              type="button"
+              onClick={copyLink}
+              className="rounded-full border border-piranha-charcoal/20 px-4 py-1.5 text-piranha-charcoal/70 transition-colors hover:border-piranha-charcoal/40"
             >
               {copied ? 'Link copied' : 'Copy link'}
             </button>
@@ -174,7 +182,7 @@ export default function BostonResult() {
             </header>
           </Reveal>
 
-          <div className="mt-8">
+          <div className="print-hide mt-8">
             <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
           </div>
 
@@ -251,7 +259,7 @@ export default function BostonResult() {
             )}
           </div>
 
-          <div className="mt-16">
+          <div className="print-hide mt-16">
             <NextSteps city={state.data.project.city} />
           </div>
 
@@ -272,6 +280,14 @@ export default function BostonResult() {
                 ))}
               </footer>
             )}
+          </div>
+
+          {/* Brand footer — prints on the PDF export. */}
+          <div className="print-only mt-12 flex items-center justify-between border-t border-piranha-charcoal/15 pt-5">
+            <LouisburgMark />
+            <span className="text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-piranha-charcoal/45">
+              A Louisburg Strategies brand
+            </span>
           </div>
         </>
       )}

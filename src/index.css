@@ -162,6 +162,50 @@ body {
   }
 }
 
+/* ---- Print / "Save as PDF" for the feasibility report ---- */
+/* The report content prints; site chrome, the map, and interactive controls
+   drop out. A Louisburg Strategies brand mark prints in the footer. */
+.print-only {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  body {
+    background: #ffffff !important;
+  }
+  .print-hide {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  /* Defeat scroll-reveal so every block is visible when printed. */
+  .reveal,
+  .reveal-float {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  /* Flatten shadows/rounding that waste ink, keep brand colors. */
+  * {
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-page {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  /* Avoid splitting cards across page breaks where possible. */
+  section,
+  .reveal,
+  .reveal-float {
+    break-inside: avoid;
+  }
+}
+
 /* Slow ambient drift for the closing CTA fish. */
 @keyframes tpp-drift {
   0% { transform: translate(0, 0) rotate(0deg); }
