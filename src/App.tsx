@@ -14,6 +14,7 @@ const Ask = lazy(() => import('./routes/Ask'))
 const About = lazy(() => import('./routes/About'))
 const News = lazy(() => import('./routes/News'))
 const Methodology = lazy(() => import('./routes/Methodology'))
+const Compare = lazy(() => import('./routes/Compare'))
 const Admin = lazy(() => import('./routes/Admin'))
 const NotFound = lazy(() => import('./routes/NotFound'))
 
@@ -36,6 +37,7 @@ function RouteTitle() {
   else if (pathname === '/map' || pathname === '/boston') title = getCity(params.get('city') ?? 'boston').name
   else if (pathname === '/start' || pathname === '/boston/start') title = 'Define your project'
   else if (pathname === '/result' || pathname === '/boston/result') title = false
+  else if (pathname === '/compare') title = false
   else if (pathname === '/ask') title = 'Ask'
   else if (pathname === '/news') title = 'News'
   else if (pathname === '/about') title = 'About'
@@ -65,6 +67,7 @@ export default function App() {
             <Route path="/news" element={<News />} />
             <Route path="/about" element={<About />} />
             <Route path="/math" element={<Methodology />} />
+            <Route path="/compare" element={<Compare />} />
             {/* Hidden owner-only search log. Not linked from nav or sitemap. */}
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

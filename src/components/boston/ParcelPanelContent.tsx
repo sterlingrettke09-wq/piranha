@@ -5,7 +5,7 @@ import type { ParcelInfo, ParcelError } from '../../types/parcel'
 type Props =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; data: ParcelInfo; city: string }
+  | { status: 'loaded'; data: ParcelInfo; city: string; cmp?: string | null }
   | { status: 'error'; error: ParcelError; onRetry: () => void }
 
 function Eyebrow({ children }: { children: ReactNode }) {
@@ -248,15 +248,32 @@ export function ParcelPanelContent(props: Props) {
         </section>
       </div>
 
-      <Link
-        to={`/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
-        className="group mt-7 flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"
-      >
-        Start full analysis
-        <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
-          →
-        </span>
-      </Link>
+      {props.status === 'loaded' && props.cmp ? (
+        <Link
+          to={`/compare?a=${encodeURIComponent(props.cmp)}&b=${encodeURIComponent(btoa(JSON.stringify({ lat: data.coordinates[1], lng: data.coordinates[0], parcelId: data.parcelId })))}`}
+          className="group mt-7 flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"
+        >
+          Compare with this parcel
+          <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
+            →
+          </span>
+        </Link>
+      ) : (
+        <Link
+          to={`/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
+          className="group mt-7 flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"
+        >
+          Start full analysis
+          <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
+            →
+          </span>
+        </Link>
+      )}
+      {props.status === 'loaded' && props.cmp && (
+        <p className="mt-3 text-center text-[11px] text-piranha-charcoal/45">
+          Comparing against your first parcel, same project spec.
+        </p>
+      )}
     </div>
   )
 }

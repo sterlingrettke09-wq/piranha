@@ -136,6 +136,14 @@ export default function BostonResult() {
             >
               Edit inputs
             </Link>
+            {input && (
+              <Link
+                to={`/map?city=${state.data.project.city}&cmp=${encodeURIComponent(btoa(JSON.stringify(input)))}`}
+                className="text-piranha-charcoal/60 transition-colors hover:text-piranha-burgundy"
+              >
+                Compare another parcel
+              </Link>
+            )}
             <button
               type="button"
               onClick={copyLink}
