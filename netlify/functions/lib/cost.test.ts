@@ -51,6 +51,14 @@ describe('estimateCost', () => {
     expect(withDemo.costs.total).toBeGreaterThan(noDemo.costs.total)
   })
 
+  it('prices renovations/ADUs/changes-of-use below an identical ground-up build', () => {
+    const base = estimateCost({ ...project, projectType: 'new' }, asOfRight).costs.hard
+    for (const pt of ['change_of_use', 'adu', 'addition'] as const) {
+      const scoped = estimateCost({ ...project, projectType: pt }, asOfRight).costs.hard
+      expect(scoped).toBeLessThan(base)
+    }
+  })
+
   it('adds a variance filing fee and a longer timeline on the variance path', () => {
     const aor = estimateCost(project, asOfRight)
     const v = estimateCost(project, variance)
