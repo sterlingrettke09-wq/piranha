@@ -63,6 +63,15 @@ export interface AnalysisResult {
     maxHeightFt: number | null
     floodZone: string | null
     historicDistrict: string | null
+    /** Max by-right envelope (estimated), so Compare can show capacity even for
+     *  height-governed cities where FAR is null. */
+    envelope?: {
+      maxFloorAreaSqFt: number | null
+      maxHeightFt: number | null
+      maxStories: number | null
+      maxUnits: number | null
+      allowedUses: string[] | null
+    }
     existing?: {
       landUse?: string | null
       yearBuilt?: number | null
@@ -73,10 +82,12 @@ export interface AnalysisResult {
     }
   }
   project: AnalysisInput
-  /** When false, the parcel isn't a developable site (public/government land,
-   *  parks, federal property). The UI shows the reason instead of cost/timeline. */
+  /** When false, the parcel isn't usable for analysis. 'public' = government/park/
+   *  federal land you can't build on; 'no_coverage' = parcel found but no zoning
+   *  (likely a neighboring city we don't cover). The UI shows the reason. */
   developable?: boolean
   developableNote?: string | null
+  developableKind?: 'public' | 'no_coverage' | null
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[]; envelopeKnown?: boolean }
   hurdles: Hurdle[]
   costs: { hard: number; soft: number; permit: number; total: number; currency: 'USD' }

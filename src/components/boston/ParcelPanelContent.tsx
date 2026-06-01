@@ -121,7 +121,7 @@ export function ParcelPanelContent(props: Props) {
       <div className="mt-6 space-y-6 border-t border-piranha-charcoal/10 pt-6">
         {blocked && (
           <section className="space-y-1.5 rounded-xl border border-amber-600/30 bg-amber-50/70 p-4">
-            <Eyebrow>Not a developable site</Eyebrow>
+            <Eyebrow>{dev.kind === 'no_coverage' ? 'Outside our coverage' : 'Not a developable site'}</Eyebrow>
             <p className="text-sm leading-snug text-piranha-charcoal/75">{dev.reason}</p>
           </section>
         )}
@@ -265,7 +265,7 @@ export function ParcelPanelContent(props: Props) {
 
       {blocked ? (
         <p className="mt-7 rounded-full border border-piranha-charcoal/15 px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/50">
-          Public land — nothing to build
+          {dev.kind === 'no_coverage' ? 'Outside our zoning coverage' : 'Public land — nothing to build'}
         </p>
       ) : props.status === 'loaded' && props.cmp ? (
         <Link

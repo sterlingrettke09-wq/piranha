@@ -80,13 +80,12 @@ export default function Compare() {
     {
       label: 'Most you can build',
       render: (d) => {
-        const far = d.parcel.maxFAR
-        const lot = d.parcel.lotSqFt
-        return far != null && lot != null ? (
-          <span className="tabular-nums">{Math.round(far * lot).toLocaleString()} sq ft</span>
-        ) : (
-          <span className="text-piranha-charcoal/45">—</span>
-        )
+        const e = d.parcel.envelope
+        if (e?.maxFloorAreaSqFt != null)
+          return <span className="tabular-nums">{e.maxFloorAreaSqFt.toLocaleString()} sq ft</span>
+        if (e?.maxStories != null) return <span className="tabular-nums">{e.maxStories} stories</span>
+        if (e?.maxHeightFt != null) return <span className="tabular-nums">{e.maxHeightFt} ft</span>
+        return <span className="text-piranha-charcoal/45">—</span>
       },
     },
   ]

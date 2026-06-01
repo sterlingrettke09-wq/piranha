@@ -40,7 +40,8 @@ function metaFor(pathname: string, params: URLSearchParams): { title: string; de
   if (pathname === '/about') return { title: `About · ${BASE}`, desc: 'Why the Piranha Project exists and how it reads each city’s public records.' }
   if (pathname === '/math') return { title: `Methodology · ${BASE}`, desc: 'Exactly how the verdict, cost, and timeline are calculated, with the tables we use.' }
   if (pathname === '/ask') return { title: `Ask · ${BASE}`, desc: 'Questions about building, zoning, and the red tape, answered in plain English.' }
-  if (pathname === '/news') return { title: `News · ${BASE}`, desc: 'What’s moving in housing and land-use policy across our cities.' }
+  if (pathname === '/cities') return { title: `Cities · ${BASE}`, desc: 'The ten cities we cover, each read from its own public zoning and parcel records.' }
+  if (pathname === '/request-city') return { title: `Request a city · ${BASE}`, desc: 'Tell us where you want to build and we’ll try to add it to our database.' }
   return null // home and everything else keep the default index.html meta
 }
 

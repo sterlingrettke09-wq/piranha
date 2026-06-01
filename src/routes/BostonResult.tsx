@@ -191,17 +191,20 @@ export default function BostonResult() {
               <Reveal className="mt-8">
                 <div className="rounded-2xl border border-amber-600/30 bg-amber-50/70 p-8">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800">
-                    Not a developable site
+                    {state.data.developableKind === 'no_coverage' ? 'Outside our coverage' : 'Not a developable site'}
                   </p>
                   <h2 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-piranha-charcoal">
-                    You can’t build here.
+                    {state.data.developableKind === 'no_coverage'
+                      ? 'We don’t have zoning for this parcel.'
+                      : 'You can’t build here.'}
                   </h2>
                   <p className="mt-4 leading-relaxed text-piranha-charcoal/75">
                     {state.data.developableNote}
                   </p>
                   <p className="mt-3 text-sm text-piranha-charcoal/55">
-                    We’ve skipped the cost and timeline estimate — they don’t apply to a parcel like this.
-                    Pick a private lot to run a full analysis.
+                    {state.data.developableKind === 'no_coverage'
+                      ? 'Try a parcel inside one of our covered cities to run a full analysis.'
+                      : 'We’ve skipped the cost and timeline estimate — they don’t apply to a parcel like this. Pick a private lot to run a full analysis.'}
                   </p>
                 </div>
               </Reveal>

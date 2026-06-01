@@ -95,7 +95,7 @@ export default function Methodology() {
             <ul className="space-y-2">
               <li>
                 <span className="font-semibold text-piranha-charcoal">Feasibility.</span> Can you
-                build this here, by right, with relief, or not at all?
+                build this here as-of-right, with relief, or not at all?
               </li>
               <li>
                 <span className="font-semibold text-piranha-charcoal">Cost.</span> A rough
@@ -147,7 +147,7 @@ export default function Methodology() {
             <p className="font-semibold text-piranha-charcoal">The housing rule</p>
             <p>
               Demolishing an established multifamily building (3 or more units) to build fewer units
-              is never a simple by-right teardown. We downgrade those to &ldquo;needs relief.&rdquo;
+              is never a simple as-of-right teardown. We downgrade those to &ldquo;needs relief.&rdquo;
               A large net loss of housing, 10 or more existing units, or a building of 5+ units
               collapsed to a single home, reads as prohibited: no-net-loss rules, rent regulation,
               and tenant protections generally bar it outright.

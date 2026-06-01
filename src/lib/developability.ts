@@ -4,9 +4,15 @@
 // cost-and-timeline analysis on a national monument. Conservative by design:
 // only flags strong, specific signals so real private lots are never blocked.
 
+// 'public' = government/park/federal land you can't build on.
+// 'no_coverage' = we got a parcel but no zoning — likely a neighboring city or
+// unincorporated area outside the city's zoning data we cover.
+export type SiteBlockKind = 'public' | 'no_coverage'
+
 export interface Developability {
   developable: boolean
   reason: string | null
+  kind: SiteBlockKind | null
 }
 
 // Land-use strings that denote public / non-developable land. Word-boundaried
@@ -26,15 +32,17 @@ export function assessDevelopability(opts: {
   if (/^unz/.test(code)) {
     return {
       developable: false,
+      kind: 'public',
       reason:
         'This parcel has no zoning on record. That almost always means federal or other public land that is not open to private development.',
     }
   }
 
   // Open space / parkland zoning.
-  if (/\bopen space\b|^os\b|^os-|park/.test(code)) {
+  if (/\bopen space\b|^os\b|^os-|\bpark\b/.test(code)) {
     return {
       developable: false,
+      kind: 'public',
       reason: 'This parcel is zoned as open space or parkland, not as a developable building site.',
     }
   }
@@ -43,9 +51,22 @@ export function assessDevelopability(opts: {
   if (use && PUBLIC_LANDUSE.test(use)) {
     return {
       developable: false,
+      kind: 'public',
       reason: `Public records list this as ${use.toLowerCase()}. It reads as government or other public land, not a private development site.`,
     }
   }
 
-  return { developable: true, reason: null }
+  // Parcel exists but no zoning matched — usually a neighboring municipality or
+  // unincorporated land just outside the city's zoning coverage (e.g. clicking
+  // Manhattan Beach while in Los Angeles).
+  if (code === '' || code === 'unknown') {
+    return {
+      developable: false,
+      kind: 'no_coverage',
+      reason:
+        'We couldn’t find zoning for this parcel. It may sit in a neighboring city or unincorporated area that isn’t in the zoning data we cover yet, so we can’t run a reliable analysis here.',
+    }
+  }
+
+  return { developable: true, reason: null, kind: null }
 }
