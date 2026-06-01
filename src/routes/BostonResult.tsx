@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAnalysis } from '../hooks/useAnalysis'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { USES, PROJECT_TYPES, FUNDING_TYPES, type AnalysisInput, type Use, type ProjectType, type Funding } from '../types/analysis'
 import { Reveal } from '../components/Reveal'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
@@ -63,6 +64,7 @@ export default function BostonResult() {
   const input = useMemo(() => parseInput(params), [params])
   const state = useAnalysis(input)
   const [copied, setCopied] = useState(false)
+  useDocumentTitle(state.status === 'loaded' ? state.data.parcel.address : 'Feasibility report')
 
   function copyLink() {
     navigator.clipboard.writeText(window.location.href).then(

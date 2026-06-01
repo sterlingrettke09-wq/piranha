@@ -1,6 +1,8 @@
 import { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, useSearchParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { useDocumentTitle } from './hooks/useDocumentTitle'
+import { getCity } from './config/cities'
 import Home from './routes/Home'
 
 // Home stays eager so the landing page + intro paint instantly. Everything else
@@ -23,9 +25,31 @@ function RouteFallback() {
   )
 }
 
+// Sets the tab title per route on client-side navigation. Static routes are
+// handled here by path; /result returns false so the result page can own its
+// title (the parcel address, set once the analysis loads).
+function RouteTitle() {
+  const { pathname } = useLocation()
+  const [params] = useSearchParams()
+  let title: string | false | undefined
+  if (pathname === '/') title = undefined
+  else if (pathname === '/map' || pathname === '/boston') title = getCity(params.get('city') ?? 'boston').name
+  else if (pathname === '/start' || pathname === '/boston/start') title = 'Define your project'
+  else if (pathname === '/result' || pathname === '/boston/result') title = false
+  else if (pathname === '/ask') title = 'Ask'
+  else if (pathname === '/news') title = 'News'
+  else if (pathname === '/about') title = 'About'
+  else if (pathname === '/math') title = 'Methodology'
+  else if (pathname === '/admin') title = 'Search log'
+  else title = 'Page not found'
+  useDocumentTitle(title)
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <RouteTitle />
       <Layout>
         <Suspense fallback={<RouteFallback />}>
           <Routes>

@@ -6,6 +6,11 @@
 [build.environment]
   NODE_VERSION = "20.20.0"
 
+[[edge_functions]]
+  path = "/*"
+  function = "og"
+  excludedPath = ["/assets/*", "/logo/*", "/.netlify/*"]
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
