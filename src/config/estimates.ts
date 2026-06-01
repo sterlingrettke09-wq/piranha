@@ -22,6 +22,11 @@ export const cityCostIndex: Record<string, number> = {
   sf: 1.13,
   seattle: 1.0,
   chicago: 0.92,
+  dc: 0.93,
+  austin: 0.80,
+  la: 1.02,
+  denver: 0.90,
+  minneapolis: 0.97,
 }
 
 // High-rise construction costs more per sq ft (structure, elevators, life-safety).

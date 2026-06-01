@@ -107,6 +107,42 @@ export const SEATTLE_BBOX: Bbox = {
   east: -122.22,
 }
 
+export const DC_BBOX: Bbox = {
+  south: 38.79,
+  west: -77.12,
+  north: 38.996,
+  east: -76.91,
+}
+
+export const AUSTIN_BBOX: Bbox = {
+  south: 30.10,
+  west: -97.94,
+  north: 30.52,
+  east: -97.57,
+}
+
+// City of Los Angeles is sprawling + non-convex; a generous envelope.
+export const LA_BBOX: Bbox = {
+  south: 33.70,
+  west: -118.67,
+  north: 34.34,
+  east: -118.15,
+}
+
+export const DENVER_BBOX: Bbox = {
+  south: 39.61,
+  west: -105.11,
+  north: 39.91,
+  east: -104.60,
+}
+
+export const MINNEAPOLIS_BBOX: Bbox = {
+  south: 44.89,
+  west: -93.33,
+  north: 45.05,
+  east: -93.19,
+}
+
 export function isInBbox(bbox: Bbox, lat: number, lng: number): boolean {
   return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east
 }

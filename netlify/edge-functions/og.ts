@@ -11,6 +11,11 @@ const CITY: Record<string, string> = {
   chicago: 'Chicago',
   sf: 'San Francisco',
   seattle: 'Seattle',
+  dc: 'Washington, DC',
+  austin: 'Austin',
+  la: 'Los Angeles',
+  denver: 'Denver',
+  minneapolis: 'Minneapolis',
 }
 
 function cityName(slug: string | null): string {
