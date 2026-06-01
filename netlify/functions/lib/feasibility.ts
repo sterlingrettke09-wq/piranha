@@ -89,24 +89,31 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
     exUnits >= 3 || /apartment|condo|multi|triplex|fourplex|elevator|tenement|flats|housing/i.test(exLu)
   const proposedResUnits =
     project.use === 'residential' || project.use === 'mixed' ? (project.units ?? 1) : 0
+  // When the record names multifamily housing but omits a unit count, estimate
+  // it from building area so the no-net-loss rule still fires (don't let a
+  // missing number wave through demolishing apartments).
+  const exb = ex?.buildingAreaSqFt ?? 0
+  const unitsKnown = exUnits > 0
+  const effectiveExUnits = unitsKnown ? exUnits : exb > 0 ? Math.max(3, Math.round(exb / 1000)) : 3
   if (
     project.projectType === 'new' &&
     multifamilyExisting &&
-    exUnits > 0 &&
-    proposedResUnits < exUnits
+    proposedResUnits < effectiveExUnits
   ) {
-    // Severe: tearing down an apartment-scale building, or collapsing a sizable
-    // building down to a single home. Smaller reductions are "needs relief".
-    const severe = exUnits >= 10 || (exUnits >= 5 && proposedResUnits <= 1)
+    // Severe only when we actually know the count is large. With an estimated
+    // count we hedge to "needs city permission" rather than prohibiting.
+    const severe = unitsKnown && (exUnits >= 10 || (exUnits >= 5 && proposedResUnits <= 1))
     const status: CheckStatus = severe ? 'PROHIBITED' : 'NEEDS_RELIEF'
     const note = severe
       ? `This parcel holds roughly ${exUnits} homes. Tearing down established multifamily housing to build ${proposedResUnits || 'no'} ${proposedResUnits === 1 ? 'unit' : 'units'} is a large net loss of housing. No-net-loss rules, rent regulation, and tenant protections generally bar this outright, so it is not buildable as proposed.`
-      : `Replacing ${exUnits} existing homes with ${proposedResUnits} reduces the housing on this lot. Cities with no-net-loss rules require discretionary approval for this, and it may not be granted.`
+      : unitsKnown
+        ? `Replacing ${exUnits} existing homes with ${proposedResUnits} reduces the housing on this lot. Cities with no-net-loss rules require discretionary approval for this, and it may not be granted.`
+        : `The record shows existing multifamily housing here. Replacing it with fewer units triggers no-net-loss rules in many cities and needs city approval. Confirm the existing unit count.`
     checks.push({
       dimension: 'housing',
       status,
       proposed: `${proposedResUnits} ${proposedResUnits === 1 ? 'unit' : 'units'}`,
-      allowed: `${exUnits} existing`,
+      allowed: unitsKnown ? `${exUnits} existing` : 'existing multifamily',
       note,
     })
   }

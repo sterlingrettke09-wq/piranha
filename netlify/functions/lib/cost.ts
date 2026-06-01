@@ -11,6 +11,7 @@ import {
   timelineMonthsByPath,
   FT_PER_STORY,
   demoCostPerSqFt,
+  projectFactor,
 } from './assumptions'
 
 export interface CostEstimate {
@@ -31,8 +32,12 @@ export function estimateCost(
 ): CostEstimate {
   const cityIdx = cityCostIndex[project.city] ?? 1.0
   const stories = project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / FT_PER_STORY) : null)
+  // Renovations / ADUs / changes-of-use cost less per sq ft than ground-up new
+  // construction. Scale by the same project-scope factor the timeline uses, so
+  // cost and schedule stay consistent. (new = 1.0.)
+  const scope = projectFactor[project.projectType ?? 'new'] ?? 1
   const hard = Math.round(
-    project.gfa * costPerSqFtByUse[project.use] * cityIdx * heightCostFactor(stories),
+    project.gfa * costPerSqFtByUse[project.use] * cityIdx * heightCostFactor(stories) * scope,
   )
   const soft = Math.round(hard * softCostPct)
   const demoSf = opts.demolitionSqFt ?? 0

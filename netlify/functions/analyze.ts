@@ -9,6 +9,7 @@ import { estimateCost } from './lib/cost'
 import { resolveTimeline } from './lib/timeline'
 import { buildNarrative } from './lib/narrative'
 import { assumptionsSummary } from './lib/assumptions'
+import { avgUnitGrossSqFt } from '../../src/config/estimates'
 import { logSearch } from './lib/searchLog'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
@@ -80,9 +81,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const hasExistingBuilding = hurdles.some((h) => h.category === 'demolition')
 
   // New construction on a parcel with a building means tearing it down first —
-  // cost that estimate (correctly) for the existing building's area, not $0.
+  // cost that, not $0. Prefer the recorded building area; fall back to an
+  // estimate from unit count. When a teardown is required but we can't size it,
+  // demolitionSqFt stays null and the narrative says it's not included (no
+  // silent $0). Cities that carry no existing-structure data get a different
+  // caveat (see narrative): the estimate assumes a cleared site.
+  const exb = parcel.existing?.buildingAreaSqFt
+  const exu = parcel.existing?.units
   const demolitionSqFt =
-    project.projectType === 'new' && hasExistingBuilding ? (parcel.existing?.buildingAreaSqFt ?? null) : null
+    project.projectType === 'new' && hasExistingBuilding
+      ? exb && exb > 0
+        ? exb
+        : exu && exu > 0
+          ? exu * avgUnitGrossSqFt
+          : null
+      : null
   const estimate = estimateCost(project, feasibility, { demolitionSqFt })
   const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding, demolitionSqFt)
   const timeline = { months: timelineInfo.months, path: timelineInfo.path, tier: timelineInfo.tier }

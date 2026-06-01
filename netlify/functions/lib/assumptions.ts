@@ -11,6 +11,8 @@ import {
   VARIANCE_FILING_FEE,
   FT_PER_STORY,
   demoCostPerSqFt,
+  projectFactor,
+  avgUnitGrossSqFt,
 } from '../../../src/config/estimates'
 
 export {
@@ -23,6 +25,8 @@ export {
   VARIANCE_FILING_FEE,
   FT_PER_STORY,
   demoCostPerSqFt,
+  projectFactor,
+  avgUnitGrossSqFt,
 }
 
 export const timelineMonthsByPath = {

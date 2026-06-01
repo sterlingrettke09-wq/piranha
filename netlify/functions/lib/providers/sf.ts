@@ -75,8 +75,10 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const existingUse = luCode ? (SF_LANDUSE[luCode] ?? null) : null
 
   const a = pf.attributes
-  const stNum = a.from_st != null ? String(a.from_st).trim() : ''
-  const street = a.street != null ? String(a.street).trim() : ''
+  const stNumRaw = a.from_st != null ? String(a.from_st).trim() : ''
+  const stNum = stNumRaw === '0' ? '' : stNumRaw
+  const streetRaw = a.street != null ? String(a.street).trim() : ''
+  const street = /^unknown$/i.test(streetRaw) ? '' : streetRaw
   const stType = a.st_type != null ? String(a.st_type).trim() : ''
   let address = [stNum, street, stType].filter(Boolean).join(' ')
   if (!street) address = (await reverseGeocode(lat, lng)) ?? 'Selected location'
