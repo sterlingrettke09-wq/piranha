@@ -9,7 +9,24 @@
 [[edge_functions]]
   path = "/*"
   function = "og"
-  excludedPath = ["/assets/*", "/logo/*", "/.netlify/*"]
+  # Only HTML page requests need OG-tag rewriting. Exclude static assets so the
+  # edge function doesn't needlessly fire on images, fonts, icons, sitemap, etc.
+  excludedPath = [
+    "/assets/*",
+    "/logo/*",
+    "/cities/*",
+    "/.netlify/*",
+    "/*.png",
+    "/*.jpg",
+    "/*.jpeg",
+    "/*.svg",
+    "/*.ico",
+    "/*.webp",
+    "/*.woff",
+    "/*.woff2",
+    "/*.xml",
+    "/*.txt",
+  ]
 
 [[redirects]]
   from = "/api/*"
