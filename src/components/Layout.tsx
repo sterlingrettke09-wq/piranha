@@ -112,6 +112,13 @@ export function Layout({ children }: LayoutProps) {
                     {c.name}
                   </NavLink>
                 ))}
+                <NavLink
+                  to="/request-city"
+                  onClick={close}
+                  className={`block py-2 text-sm font-medium ${dark ? 'text-piranha-bone/55' : 'text-piranha-charcoal/55'}`}
+                >
+                  Request a city →
+                </NavLink>
               </div>
             </div>
 

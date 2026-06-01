@@ -59,6 +59,17 @@ export function CitiesNav({ light = false }: { light?: boolean }) {
                 {c.name}
               </button>
             ))}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                navigate('/request-city')
+              }}
+              className="mt-1 block w-full border-t border-piranha-charcoal/10 px-4 py-2 text-left text-sm text-piranha-charcoal/55 transition-colors hover:bg-piranha-charcoal/5 hover:text-piranha-burgundy"
+            >
+              Request a city →
+            </button>
           </div>
         </>
       )}
