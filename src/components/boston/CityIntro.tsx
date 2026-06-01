@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import type { City } from '../../config/cities'
+import { introSeen } from './introSeen'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
@@ -12,16 +13,24 @@ const prefersReduced = () =>
  * Cinematic city entry — a live satellite map that dives from a high sky view
  * down into the city with a 3D tilt + terrain, then dissolves into the
  * dashboard. Plays once per city per browser session. Give it `key={city.slug}`.
+ *
+ * `onReveal` fires once when the dashboard map should mount: at the dive's
+ * hand-off frame, or immediately on the fast (no-dive) path. This keeps the
+ * heavy dashboard map from rendering behind the opaque dive for its full run —
+ * the two mapbox instances no longer live concurrently through the animation.
  */
-export function CityIntro({ city }: { city: City }) {
-  const [done, setDone] = useState(() => {
-    if (typeof window === 'undefined') return true
-    try {
-      return !!window.sessionStorage.getItem(`tpp_city_${city.slug}`)
-    } catch {
-      return false
-    }
-  })
+export function CityIntro({ city, onReveal }: { city: City; onReveal?: () => void }) {
+  const [done, setDone] = useState(() => introSeen(city.slug))
+  const revealedRef = useRef(false)
+  const onRevealRef = useRef(onReveal)
+  useEffect(() => {
+    onRevealRef.current = onReveal
+  }, [onReveal])
+  const reveal = useCallback(() => {
+    if (revealedRef.current) return
+    revealedRef.current = true
+    onRevealRef.current?.()
+  }, [])
   const [exiting, setExiting] = useState(false)
   const mapEl = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
@@ -78,20 +87,25 @@ export function CityIntro({ city }: { city: City }) {
           curve: 1.45,
           essential: true,
         })
-        // Begin the crossfade the moment the camera settles at the dashboard frame.
+        // Begin the crossfade the moment the camera settles at the dashboard
+        // frame. Mount the dashboard map now so it loads under the fading dive.
         map.once('moveend', () => {
+          reveal()
           setExiting(true)
           setTimeout(() => setDone(true), 1000)
         })
       })
       // Safety net if 'moveend' never fires.
       fallbackExit = setTimeout(() => {
+        reveal()
         setExiting(true)
         setTimeout(() => setDone(true), 1000)
       }, 6000)
     }
 
     const fast = reduce || !TOKEN
+    // No dive: reveal the dashboard map immediately.
+    if (fast) reveal()
     const tExit = fast ? setTimeout(() => setExiting(true), 80) : null
     const tDone = fast ? setTimeout(() => setDone(true), 220) : null
     return () => {
@@ -103,11 +117,12 @@ export function CityIntro({ city }: { city: City }) {
         mapRef.current = null
       }
     }
-  }, [done, city.slug, city.center, city.landmark, city.zoom])
+  }, [done, city.slug, city.center, city.landmark, city.zoom, reveal])
 
   if (done) return null
 
   const dismiss = () => {
+    reveal()
     setExiting(true)
     setTimeout(() => setDone(true), 700)
   }

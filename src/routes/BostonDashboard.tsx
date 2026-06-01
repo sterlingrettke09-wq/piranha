@@ -4,6 +4,7 @@ import { Map } from '../components/boston/Map'
 import { SearchBar } from '../components/boston/SearchBar'
 import { ParcelPanel } from '../components/boston/ParcelPanel'
 import { CityIntro } from '../components/boston/CityIntro'
+import { introSeen } from '../components/boston/introSeen'
 import { getCity } from '../config/cities'
 
 interface Selection {
@@ -26,22 +27,35 @@ export default function BostonDashboard() {
     [city],
   )
 
+  // The dashboard map mounts immediately if the intro has already played this
+  // session; otherwise it waits for the intro to reach its hand-off frame, so
+  // the two mapbox instances never run concurrently through the dive. Recompute
+  // on city change during render (before CityIntro's effect marks it seen).
+  const [prevCity, setPrevCity] = useState(city)
+  const [showMap, setShowMap] = useState(() => introSeen(city))
+  if (city !== prevCity) {
+    setPrevCity(city)
+    setShowMap(introSeen(city))
+  }
+
   // Drop a stale selection when the city changes (header dropdown navigation).
   const activeSelection = selected && selected.city === city ? selected : null
 
   return (
     <div className="relative h-[calc(100vh-4rem-8.5rem)]">
-      <CityIntro key={city} city={current} />
+      <CityIntro key={city} city={current} onReveal={() => setShowMap(true)} />
       {/* 4rem header + ~8.5rem footer. Adjust if footer height changes. */}
       <div className="absolute inset-0">
-        <Map
-          key={city}
-          center={current.center}
-          zoom={current.zoom}
-          showZoningRaster={city === 'boston'}
-          onPointSelect={handleSelect}
-          focusedPoint={activeSelection}
-        />
+        {showMap && (
+          <Map
+            key={city}
+            center={current.center}
+            zoom={current.zoom}
+            showZoningRaster={city === 'boston'}
+            onPointSelect={handleSelect}
+            focusedPoint={activeSelection}
+          />
+        )}
       </div>
 
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[26rem] max-w-[calc(100%-2rem)] space-y-2">
