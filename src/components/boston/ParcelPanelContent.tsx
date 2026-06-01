@@ -97,6 +97,8 @@ export function ParcelPanelContent(props: Props) {
       data.existing.yearBuilt ||
       data.existing.buildingAreaSqFt ||
       data.existing.units)
+  const env = data.envelope
+  const hasEnvelope = !!env && (env.maxFloorAreaSqFt != null || env.maxHeightFt != null || env.maxUnits != null)
 
   return (
     <div className="p-7">
@@ -113,6 +115,39 @@ export function ParcelPanelContent(props: Props) {
       </header>
 
       <div className="mt-6 space-y-6 border-t border-piranha-charcoal/10 pt-6">
+        {hasEnvelope && env && (
+          <section className="space-y-2 rounded-xl border border-piranha-burgundy/20 bg-piranha-burgundy/[0.04] p-4">
+            <Eyebrow>What you can build</Eyebrow>
+            {env.maxFloorAreaSqFt != null && (
+              <p className="text-piranha-charcoal">
+                <span className="font-serif text-2xl tracking-tight tabular-nums">
+                  {env.maxFloorAreaSqFt.toLocaleString()}
+                </span>
+                <span className="ml-1.5 text-sm text-piranha-charcoal/55">sq ft by right</span>
+              </p>
+            )}
+            {(() => {
+              const bits = [
+                env.maxStories != null
+                  ? `up to ${env.maxStories} stories`
+                  : env.maxHeightFt != null
+                    ? `up to ${env.maxHeightFt} ft`
+                    : null,
+                env.maxUnits != null ? `about ${env.maxUnits.toLocaleString()} units` : null,
+              ].filter(Boolean)
+              return bits.length > 0 ? (
+                <p className="text-sm text-piranha-charcoal/70">{bits.join(' · ')}</p>
+              ) : null
+            })()}
+            {env.allowedUses && env.allowedUses.length > 0 && (
+              <p className="text-xs text-piranha-charcoal/55">Allowed: {env.allowedUses.join(', ')}</p>
+            )}
+            <p className="text-[11px] italic leading-snug text-piranha-charcoal/45">
+              Maximum by-right envelope, estimated from zoning and lot size.
+            </p>
+          </section>
+        )}
+
         <section className="space-y-2.5">
           <Eyebrow>Zoning</Eyebrow>
           <div className="flex flex-wrap items-center gap-2">

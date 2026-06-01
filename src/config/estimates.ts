@@ -77,3 +77,7 @@ export const projectFactor: Record<ProjectType, number> = {
 
 // A project needing discretionary relief adds a hearing cycle on top of baseline.
 export const reliefAddMonths = 6
+
+// Rough gross residential area per dwelling unit (incl. circulation, walls,
+// common area) — used to estimate how many units a buildable envelope implies.
+export const avgUnitGrossSqFt = 1000

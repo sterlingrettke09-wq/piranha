@@ -15,6 +15,7 @@ import { getNycParcelInfo } from './providers/nyc'
 import { getChicagoParcelInfo } from './providers/chicago'
 import { getSfParcelInfo } from './providers/sf'
 import { getSeattleParcelInfo } from './providers/seattle'
+import { computeEnvelope } from './envelope'
 
 export type { ParcelResult }
 
@@ -120,5 +121,7 @@ export async function getParcelInfo(city: string, lat: number, lng: number): Pro
       status: 400,
     }
   }
-  return cfg.provider(lat, lng)
+  const r = await cfg.provider(lat, lng)
+  if (r.ok) r.info.envelope = computeEnvelope(r.info, city)
+  return r
 }

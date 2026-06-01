@@ -23,6 +23,15 @@ export interface ParcelInfo {
     sizeSqFt: number | null
     lotType: string | null
   }
+  /** The maximum by-right envelope this parcel allows, derived from its zoning
+   *  limits and lot size. Estimated; shown only where the inputs are known. */
+  envelope?: {
+    maxFloorAreaSqFt: number | null
+    maxHeightFt: number | null
+    maxStories: number | null
+    maxUnits: number | null
+    allowedUses: string[] | null
+  }
   overlays: {
     historicDistrict: string | null
     floodZone: string | null
