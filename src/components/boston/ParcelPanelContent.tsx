@@ -134,7 +134,7 @@ export function ParcelPanelContent(props: Props) {
                 <span className="font-serif text-2xl tracking-tight tabular-nums">
                   {env.maxFloorAreaSqFt.toLocaleString()}
                 </span>
-                <span className="ml-1.5 text-sm text-piranha-charcoal/55">sq ft by right</span>
+                <span className="ml-1.5 text-sm text-piranha-charcoal/55">sq ft you can build</span>
               </p>
             )}
             {(() => {
@@ -154,11 +154,11 @@ export function ParcelPanelContent(props: Props) {
               <p className="text-xs text-piranha-charcoal/55">Allowed: {env.allowedUses.join(', ')}</p>
             )}
             <p className="text-[11px] leading-snug text-piranha-charcoal/55">
-              <span className="font-semibold">“By right”</span> means what you can build without asking the
-              city for special permission — straight to permits, no variance or rezoning.
+              The most you can build here without asking the city for special permission — straight
+              to permits, no variance or rezoning.
             </p>
             <p className="text-[11px] italic leading-snug text-piranha-charcoal/45">
-              Maximum envelope, estimated from zoning and lot size.
+              Estimated from zoning and lot size.
             </p>
           </section>
         )}

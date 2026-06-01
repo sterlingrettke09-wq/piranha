@@ -31,7 +31,7 @@ const STEPS = [
 ]
 
 const STATS = [
-  { figure: '5', label: 'Cities live, and counting' },
+  { figure: '10', label: 'Cities live, and counting' },
   { figure: '9', label: 'Kinds of red tape we surface, with more coming' },
   { figure: '100%', label: 'Built from public records' },
 ]
@@ -151,7 +151,7 @@ export default function Home() {
               Where we’re live
             </p>
             <h2 className="mt-4 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
-              Five cities, each on its own public data.
+              Ten cities, each on its own public data.
             </h2>
             <p className="mt-4 text-piranha-bone/55">We’ll add more as we expand.</p>
           </Reveal>

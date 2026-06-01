@@ -45,7 +45,7 @@ const FAQ: QA[] = [
   },
   {
     q: 'Which cities are covered?',
-    a: 'Five cities to start: Boston, New York City, Chicago, San Francisco, and Seattle, with more as we grow.',
+    a: 'Ten cities: Boston, New York City, Chicago, San Francisco, Seattle, Washington DC, Austin, Los Angeles, Denver, and Minneapolis, with more as we grow.',
   },
   {
     q: 'Is the assistant always right?',

@@ -4,8 +4,22 @@ import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
 import { CITIES } from '../config/cities'
 
-// On-brand gradient heroes, cycled per card. Keeps the page premium with no
-// external image dependencies; real city photos can drop in here later.
+// "City, ST" label per slug (city cards show this, not the marketing tagline).
+const LABEL: Record<string, string> = {
+  boston: 'Boston, MA',
+  nyc: 'New York, NY',
+  chicago: 'Chicago, IL',
+  sf: 'San Francisco, CA',
+  seattle: 'Seattle, WA',
+  dc: 'Washington, DC',
+  austin: 'Austin, TX',
+  la: 'Los Angeles, CA',
+  denver: 'Denver, CO',
+  minneapolis: 'Minneapolis, MN',
+}
+
+// On-brand gradient hero behind each photo — also the fallback if the photo
+// (public/cities/<slug>.jpg) is missing or fails to load.
 const HEROES = [
   'from-piranha-burgundy via-[#5a1422] to-piranha-charcoal',
   'from-piranha-charcoal via-[#2a1a1e] to-piranha-burgundy',
@@ -29,17 +43,29 @@ export default function Cities() {
               to={`/map?city=${c.slug}`}
               className="group relative block h-56 overflow-hidden rounded-2xl shadow-[0_18px_50px_-24px_rgba(26,26,26,0.55)]"
             >
-              <div
-                className={`absolute inset-0 bg-gradient-to-br ${HEROES[i % HEROES.length]} transition-transform duration-700 ease-out group-hover:scale-105`}
+              {/* Gradient base (fallback). */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${HEROES[i % HEROES.length]}`} />
+              {/* City photo, if present, sits on top and scales on hover. */}
+              <img
+                src={`/cities/${c.slug}.jpg`}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,165,92,0.18),transparent_60%)]" />
+              {/* Darkening scrim so the text stays legible over any photo. */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
               <div className="relative flex h-full flex-col justify-between p-6">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-piranha-bone/15 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-piranha-bone backdrop-blur-sm">
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-black/30 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-piranha-bone backdrop-blur-sm">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Live
                 </span>
                 <div>
-                  <h2 className="font-serif text-3xl leading-none tracking-tight text-piranha-bone">{c.name}</h2>
-                  <p className="mt-2 max-w-[16rem] text-sm leading-snug text-piranha-bone/70">{c.tagline}</p>
+                  <h2 className="font-serif text-3xl leading-none tracking-tight text-piranha-bone drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+                    {LABEL[c.slug] ?? c.name}
+                  </h2>
                   <span className="mt-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-gold">
                     Open the map
                     <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">→</span>
@@ -72,6 +98,10 @@ export default function Cities() {
           </Link>
         </Reveal>
       </div>
+
+      <p className="mt-10 text-xs text-piranha-charcoal/40">
+        City photos via Wikimedia Commons, under Creative Commons / public-domain licenses.
+      </p>
     </PageContainer>
   )
 }

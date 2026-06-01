@@ -78,7 +78,7 @@ export default function Compare() {
     { label: 'Timeline', render: (d) => <span className="tabular-nums">{d.timeline.months > 0 ? `${d.timeline.months} mo` : 'N/A'}</span> },
     { label: 'Approvals to clear', render: (d) => <span className="tabular-nums">{d.hurdles.length}</span> },
     {
-      label: 'Buildable by right',
+      label: 'Most you can build',
       render: (d) => {
         const far = d.parcel.maxFAR
         const lot = d.parcel.lotSqFt
