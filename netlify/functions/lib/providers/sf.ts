@@ -10,6 +10,7 @@ const ZONING = `${BASE}/3`
 const PARCELS = `${BASE}/23`
 const HISTORIC = `${BASE}/17` // Article 10 Historic Districts (name_1).
 const LANDUSE = `${BASE}/35` // Land use (landuse_landuse + landuse_resunits).
+const HEIGHT = `${BASE}/5` // Height districts (gen_hght = max height ft).
 const CA_ZONE3_FT = 2227 // EPSG:2227 NAD83 California zone 3 (US ft) — for lot area.
 
 // SF land-use code → plain-English existing use.
@@ -43,12 +44,13 @@ function usesForGen(gen: string | null): string[] | null {
 
 export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [zoningR, parcelR, floodR, histR, landR] = await Promise.allSettled([
+  const [zoningR, parcelR, floodR, histR, landR, heightR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['zoning', 'gen', 'districtname']),
     fetchFeatures(PARCELS, lat, lng, ['blklot', 'from_st', 'street', 'st_type'], true, CA_ZONE3_FT),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     fetchFeatures(HISTORIC, lat, lng, ['name_1']),
     fetchFeatures(LANDUSE, lat, lng, ['landuse_landuse', 'landuse_resunits']),
+    fetchFeatures(HEIGHT, lat, lng, ['gen_hght']),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -65,6 +67,8 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const land = landR.status === 'fulfilled' ? firstAttrs(landR.value) : null
+  const height = heightR.status === 'fulfilled' ? firstAttrs(heightR.value) : null
+  const maxHeightFt = height?.gen_hght != null && Number(height.gen_hght) > 0 ? Number(height.gen_hght) : null
 
   const luCode = land?.landuse_landuse ? String(land.landuse_landuse).trim().toUpperCase() : ''
   const luUnits = land?.landuse_resunits != null ? Number(land.landuse_resunits) : 0
@@ -87,8 +91,8 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
       districtCode: zone ?? 'Unknown',
       subdistrict: zoning?.districtname ? String(zoning.districtname) : null,
       article: null,
-      maxHeightFt: null,
-      maxFAR: null,
+      maxHeightFt, // from the Height Districts layer (gen_hght)
+      maxFAR: null, // SF residential is largely form-based (height/bulk), not FAR
       allowedUses: usesForGen(zoning?.gen != null ? String(zoning.gen) : null),
     },
     lot: {

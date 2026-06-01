@@ -35,7 +35,7 @@ export interface Feasibility {
 }
 
 export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): Feasibility {
-  const limits = resolveZoningLimits(parcel.zoning)
+  const limits = resolveZoningLimits(parcel.zoning, project.city)
   const checks: FeasibilityCheck[] = []
 
   // USE

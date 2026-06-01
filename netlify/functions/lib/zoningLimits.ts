@@ -42,16 +42,23 @@ function parseHeight(code: string): number | null {
   return n >= 20 && n <= 700 ? n : null
 }
 
-export function resolveZoningLimits(zoning: {
-  districtCode: string
-  maxFAR: number | null
-  maxHeightFt: number | null
-  allowedUses: string[] | null
-}): ResolvedLimits {
-  const fam = family(zoning.districtCode)
+export function resolveZoningLimits(
+  zoning: {
+    districtCode: string
+    maxFAR: number | null
+    maxHeightFt: number | null
+    allowedUses: string[] | null
+  },
+  // The family/height heuristics below are Boston district-code conventions, so
+  // they only apply to Boston. Other cities supply their own values via their
+  // provider (or leave them null → honestly "not in public data").
+  city: string = 'boston',
+): ResolvedLimits {
+  const boston = city === 'boston'
+  const fam = boston ? family(zoning.districtCode) : null
   return {
     maxFAR: zoning.maxFAR ?? (fam ? FAMILY_FAR[fam] ?? null : null),
-    maxHeightFt: zoning.maxHeightFt ?? parseHeight(zoning.districtCode),
+    maxHeightFt: zoning.maxHeightFt ?? (boston ? parseHeight(zoning.districtCode) : null),
     allowedUses: (zoning.allowedUses as Use[] | null) ?? (fam ? FAMILY_USES[fam] ?? null : null),
   }
 }
