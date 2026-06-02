@@ -2,7 +2,7 @@
 // (lot area) + Mapbox reverse-geocoded address. Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 
 const ZONING =
@@ -73,7 +73,7 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
   const t0 = Date.now()
   const [zoningR, parcelR, floodR, addrR, histR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['ZONE_CLASS'], false, undefined, 9000),
-    fetchFeatures(PARCELS, lat, lng, ['PIN10', 'AssessorBLDGclass'], true),
+    fetchParcelSnap(PARCELS, lat, lng, ['PIN10', 'AssessorBLDGclass'], true),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     reverseGeocode(lat, lng),
     fetchFeatures(HISTORIC, lat, lng, ['NAME'], false, undefined, 9000),

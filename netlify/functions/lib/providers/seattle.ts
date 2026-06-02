@@ -2,7 +2,7 @@
 // (ADDRESS + SQFTLOT fields). Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
 
 const ORG = 'https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services'
 const ZONING = `${ORG}/Current_Land_Use_Zoning_Detail_2/FeatureServer/0`
@@ -38,7 +38,7 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
   const t0 = Date.now()
   const [zoningR, parcelR, floodR, histR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['ZONING']),
-    fetchFeatures(PARCELS, lat, lng, ['PIN', 'ADDRESS', 'SQFTLOT', 'PRES_USE_DESC']),
+    fetchParcelSnap(PARCELS, lat, lng, ['PIN', 'ADDRESS', 'SQFTLOT', 'PRES_USE_DESC']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     fetchFeatures(HISTORIC, lat, lng, ['OVERLAY', 'DESCRIPTION', 'TYPE']),
   ])

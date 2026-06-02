@@ -4,7 +4,7 @@
 // district layer is published, so historic is left null.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
 
 const PARCELS =
   'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_public/MapServer/0'
@@ -47,7 +47,7 @@ function usesForZone(base: string | null): string[] | null {
 export async function getAustinParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [parcelR, zoningR, floodR] = await Promise.allSettled([
-    fetchFeatures(PARCELS, lat, lng, ['situs_address', 'tcad_acres', 'geo_id']),
+    fetchParcelSnap(PARCELS, lat, lng, ['situs_address', 'tcad_acres', 'geo_id']),
     fetchFeatures(ZONING, lat, lng, ['BASE_ZONE', 'ZONE_NAME', 'ZONING_ZTYPE']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])

@@ -56,7 +56,9 @@ export const lifecycleMonths: Record<string, Record<BuildingTier, number>> = {
   boston: { single: 14, multi: 18, apartment: 26 },
   nyc: { single: 18, multi: 24, apartment: 36 },
   chicago: { single: 11, multi: 15, apartment: 20 },
-  sf: { single: 24, multi: 30, apartment: 42 },
+  // SF is the slowest-permitting major US city: discretionary review, CEQA, and
+  // Planning Commission routinely push even modest projects past 3 years.
+  sf: { single: 30, multi: 44, apartment: 60 },
   seattle: { single: 14, multi: 18, apartment: 24 },
 }
 export const lifecycleFallback: Record<BuildingTier, number> = { single: 16, multi: 20, apartment: 30 }

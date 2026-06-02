@@ -82,5 +82,46 @@ export const fetchFeaturesXY = async (
   }
 }
 
+// Parcel lookup that tolerates a click landing on a street, river, or plaza:
+// try the exact point first, and if no polygon contains it, retry with a small
+// buffer to snap to the nearest parcel. Without this, addresses like riverside
+// Wacker Drive return "no parcel" even though the building is right there.
+export const fetchParcelSnap = async (
+  url: string,
+  lat: number,
+  lng: number,
+  fields: readonly string[],
+  returnGeometry = false,
+  outSR?: number,
+  distanceMeters = 30,
+  timeoutMs = 6000,
+): Promise<FeatureSet> => {
+  const exact = await fetchFeatures(url, lat, lng, fields, returnGeometry, outSR, timeoutMs)
+  if (exact.features && exact.features.length > 0) return exact
+  const base = url.endsWith('/') ? url.slice(0, -1) : url
+  const u = new URL(base + '/query')
+  u.searchParams.set('geometry', JSON.stringify({ x: lng, y: lat, spatialReference: { wkid: 4326 } }))
+  u.searchParams.set('geometryType', 'esriGeometryPoint')
+  u.searchParams.set('inSR', '4326')
+  u.searchParams.set('spatialRel', 'esriSpatialRelIntersects')
+  u.searchParams.set('distance', String(distanceMeters))
+  u.searchParams.set('units', 'esriSRUnit_Meter')
+  u.searchParams.set('outFields', fields.join(','))
+  u.searchParams.set('returnGeometry', returnGeometry ? 'true' : 'false')
+  if (outSR != null) u.searchParams.set('outSR', String(outSR))
+  u.searchParams.set('f', 'json')
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(u.toString(), { signal: ctrl.signal })
+    if (!res.ok) return exact
+    return (await res.json()) as FeatureSet
+  } catch {
+    return exact
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export const firstAttrs = (fs: FeatureSet) => fs.features?.[0]?.attributes ?? null
 export const firstFeature = (fs: FeatureSet) => (fs.features?.[0] as RawFeature | undefined) ?? null

@@ -3,7 +3,7 @@
 // 2026-06-01. All accept inSR=4326 point queries.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
 
 const PARCELS = 'https://denvergov.org/maps/data/Zoning/MapServer/0'
 const ZONING = 'https://denvergov.org/maps/data/Zoning/MapServer/1'
@@ -50,7 +50,7 @@ function usesForZone(code: string | null): string[] | null {
 export async function getDenverParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
-    fetchFeatures(PARCELS, lat, lng, [
+    fetchParcelSnap(PARCELS, lat, lng, [
       'SITUS_ADDRESS_LINE1',
       'LAND_AREA',
       'SCHEDNUM',

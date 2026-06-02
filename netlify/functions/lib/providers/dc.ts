@@ -3,7 +3,7 @@
 // 2026-06-01. All three layers accept inSR=4326 point queries.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
 
 const BASE = 'https://maps2.dcgis.dc.gov/dcgis/rest/services'
 const PARCELS = `${BASE}/DCGIS_DATA/Property_and_Land/MapServer/40`
@@ -51,7 +51,7 @@ function usesForZone(code: string | null): string[] | null {
 export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
-    fetchFeatures(PARCELS, lat, lng, ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE', 'SALETYPE', 'CLASSTYPE']),
+    fetchParcelSnap(PARCELS, lat, lng, ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE', 'SALETYPE', 'CLASSTYPE']),
     fetchFeatures(ZONING, lat, lng, ['ZONING', 'ZR16', 'Zone_District']),
     fetchFeatures(HISTORIC, lat, lng, ['HistDistrict_NAME']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),

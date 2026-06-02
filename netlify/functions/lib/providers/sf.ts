@@ -2,7 +2,7 @@
 // geometry for lot area). Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 
 const BASE = 'https://sfplanninggis.org/arcgiswa/rest/services/PlanningData/MapServer'
@@ -46,7 +46,7 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const t0 = Date.now()
   const [zoningR, parcelR, floodR, histR, landR, heightR] = await Promise.allSettled([
     fetchFeatures(ZONING, lat, lng, ['zoning', 'gen', 'districtname']),
-    fetchFeatures(PARCELS, lat, lng, ['blklot', 'from_st', 'street', 'st_type'], true, CA_ZONE3_FT),
+    fetchParcelSnap(PARCELS, lat, lng, ['blklot', 'from_st', 'street', 'st_type'], true, CA_ZONE3_FT),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     fetchFeatures(HISTORIC, lat, lng, ['name_1']),
     fetchFeatures(LANDUSE, lat, lng, ['landuse_landuse', 'landuse_resunits']),

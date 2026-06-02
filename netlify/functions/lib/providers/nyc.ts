@@ -3,7 +3,7 @@
 // and address. Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
 
 const MAPPLUTO =
   'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0'
@@ -54,7 +54,7 @@ function usesForDistrict(zone: string | null): string[] | null {
 export async function getNycParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [plutoR, floodR, histR] = await Promise.allSettled([
-    fetchFeatures(MAPPLUTO, lat, lng, FIELDS),
+    fetchParcelSnap(MAPPLUTO, lat, lng, FIELDS),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     fetchFeatures(HISTORIC, lat, lng, ['variable_id', 'variable_type']),
   ])

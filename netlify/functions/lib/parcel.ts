@@ -15,7 +15,7 @@ import {
 } from '../../../src/types/parcel'
 import { ENDPOINTS, FIELDS } from '../_endpoints'
 import { mapZoningUse } from './zoningUse'
-import { fetchFeatures, firstAttrs, type ParcelResult } from './arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from './arcgis'
 import { getNycParcelInfo } from './providers/nyc'
 import { getChicagoParcelInfo } from './providers/chicago'
 import { getSfParcelInfo } from './providers/sf'
@@ -34,7 +34,7 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
   const t0 = Date.now()
   const [zoningR, parcelR, historicR, floodR] = await Promise.allSettled([
     fetchFeatures(ENDPOINTS.zoning, lat, lng, FIELDS.zoning),
-    fetchFeatures(ENDPOINTS.parcels, lat, lng, FIELDS.parcels),
+    fetchParcelSnap(ENDPOINTS.parcels, lat, lng, FIELDS.parcels),
     fetchFeatures(ENDPOINTS.historic, lat, lng, FIELDS.historic),
     fetchFeatures(ENDPOINTS.flood, lat, lng, FIELDS.flood),
   ])
