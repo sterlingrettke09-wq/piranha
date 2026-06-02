@@ -13,6 +13,7 @@ export interface SearchEntry {
   ts: string // ISO timestamp
   city: string
   address: string
+  kind?: 'lookup' | 'analysis' // 'lookup' = map search/click; 'analysis' = full run
   use?: string
   projectType?: string
   gfa?: number
@@ -28,7 +29,10 @@ export async function logSearch(entry: SearchEntry): Promise<void> {
   try {
     const store = getStore(STORE)
     await store.setJSON(key, entry)
-  } catch {
+  } catch (blobErr) {
+    // Surface WHY Blobs failed (e.g. environment not configured) — this is the
+    // one line that tells us if the production store is the problem.
+    console.log({ event: 'searchlog.blobs_write_fail', message: String(blobErr) })
     try {
       await mkdir(FALLBACK_DIR, { recursive: true })
       await writeFile(join(FALLBACK_DIR, `${key}.json`), JSON.stringify(entry))
@@ -36,6 +40,18 @@ export async function logSearch(entry: SearchEntry): Promise<void> {
       // Logging must never break the analysis.
       console.log({ event: 'searchlog.write_fail', message: String(err) })
     }
+  }
+}
+
+// Reports whether the production Blobs store is actually reachable, so the admin
+// page can say "storage error: X" instead of a misleading empty list.
+export async function searchStorageStatus(): Promise<{ backend: 'blobs' | 'fallback'; error?: string }> {
+  try {
+    const store = getStore(STORE)
+    await store.list({ prefix: 'zzz-health-check-no-match' })
+    return { backend: 'blobs' }
+  } catch (err) {
+    return { backend: 'fallback', error: String(err) }
   }
 }
 
@@ -51,7 +67,8 @@ export async function readSearches(limit = 500): Promise<SearchEntry[]> {
       keys.map((k) => store.get(k, { type: 'json' }).catch(() => null)),
     )
     return entries.filter((e): e is SearchEntry => e != null)
-  } catch {
+  } catch (blobErr) {
+    console.log({ event: 'searchlog.blobs_read_fail', message: String(blobErr) })
     return readFallback(limit)
   }
 }

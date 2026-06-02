@@ -29,6 +29,14 @@ export function useParcelInfo(args: Args | null): State & { retry: () => void } 
       .then(async (res) => {
         const body = await res.json()
         if (cancelled) return
+        // Fire-and-forget: log every resolved search/click (uncached beacon, so
+        // it records even when the parcel response is served from CDN cache).
+        if (res.ok && (body as ParcelInfo).address) {
+          const addr = (body as ParcelInfo).address
+          fetch(`/api/log-search?city=${encodeURIComponent(city)}&address=${encodeURIComponent(addr)}&kind=lookup`, {
+            keepalive: true,
+          }).catch(() => {})
+        }
         setResult({
           key,
           value: res.ok

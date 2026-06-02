@@ -1,5 +1,5 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
-import { readSearches } from './lib/searchLog'
+import { readSearches, searchStorageStatus } from './lib/searchLog'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 
@@ -25,11 +25,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
-    const entries = await readSearches(500)
+    const [entries, storage] = await Promise.all([readSearches(500), searchStorageStatus()])
     return {
       statusCode: 200,
       headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
-      body: JSON.stringify({ count: entries.length, entries }),
+      body: JSON.stringify({ count: entries.length, entries, storage }),
     }
   } catch (err) {
     return {

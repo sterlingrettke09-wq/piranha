@@ -51,6 +51,7 @@ export default function Admin() {
   const [input, setInput] = useState('')
   const [status, setStatus] = useState<'locked' | 'loading' | 'ready' | 'error'>('locked')
   const [entries, setEntries] = useState<SearchEntry[]>([])
+  const [storageError, setStorageError] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [now] = useState(() => Date.now())
 
@@ -62,12 +63,17 @@ export default function Admin() {
         if (r.status === 401) throw new Error('That passphrase didn’t match.')
         if (r.status === 503) throw new Error('The log isn’t configured yet (set ADMIN_KEY in Netlify).')
         if (!r.ok) throw new Error('Could not load the log.')
-        return r.json() as Promise<{ count: number; entries: SearchEntry[] }>
+        return r.json() as Promise<{
+          count: number
+          entries: SearchEntry[]
+          storage?: { backend: string; error?: string }
+        }>
       })
       .then((data) => {
         localStorage.setItem(KEY_STORE, passphrase)
         setKey(passphrase)
         setEntries(data.entries)
+        setStorageError(data.storage && data.storage.backend !== 'blobs' ? (data.storage.error ?? 'unknown') : null)
         setStatus('ready')
       })
       .catch((e: Error) => {
@@ -172,6 +178,17 @@ export default function Admin() {
           </div>
         )}
       </header>
+
+      {unlocked && storageError && (
+        <div className="mt-8 rounded-2xl border border-rose-600/30 bg-rose-50/70 p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-800">Storage problem</p>
+          <p className="mt-2 text-sm text-piranha-charcoal/75">
+            The log store isn’t reachable, so searches aren’t being saved. This usually means Netlify Blobs
+            isn’t enabled for the site.
+          </p>
+          <p className="mt-2 break-words font-mono text-xs text-piranha-charcoal/55">{storageError}</p>
+        </div>
+      )}
 
       {unlocked && stats && (
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
