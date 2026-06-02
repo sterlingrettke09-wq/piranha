@@ -98,6 +98,7 @@ export function CinematicIntro() {
         src="/images/piranha-hero.jpg"
         alt=""
         aria-hidden="true"
+        fetchPriority="high"
         onError={() => setPhotoFailed(true)}
         className="tpp-kenburns h-full w-full object-cover"
       />
@@ -140,8 +141,10 @@ export function CinematicIntro() {
           <FishSchool className="absolute inset-0 h-full w-full" />
         </div>
 
-        {/* Opening photo, collapses on itself (one-way) to reveal the school */}
-        <div ref={photoRef} className="absolute inset-0 z-30 will-change-transform">
+        {/* Opening photo, collapses on itself (one-way) to reveal the school.
+            Solid dark bg so the school behind never flashes through while the
+            hero image is still decoding on first load. */}
+        <div ref={photoRef} className="absolute inset-0 z-30 bg-[#16110f] will-change-transform">
           {Photo}
         </div>
 
