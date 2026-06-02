@@ -6,8 +6,17 @@ import { tmpdir } from 'node:os'
 
 const STORE = 'search-log'
 // Local fallback for `netlify dev` (unlinked), where Blobs has no environment.
-// On a deployed Netlify site, Blobs is configured automatically and this is never used.
 const FALLBACK_DIR = join(tmpdir(), 'tpp-search-log')
+
+// Some Netlify deploys don't auto-inject the Blobs environment into functions
+// (MissingBlobsEnvironmentError). When that happens, configure the store
+// explicitly from env vars (a site ID + a personal access token). Falls back to
+// auto-config when those aren't set (local dev / deploys that do inject it).
+function searchStore() {
+  const siteID = process.env.NETLIFY_BLOBS_SITE_ID
+  const token = process.env.NETLIFY_BLOBS_TOKEN
+  return siteID && token ? getStore({ name: STORE, siteID, token }) : getStore(STORE)
+}
 
 export interface SearchEntry {
   ts: string // ISO timestamp
@@ -27,7 +36,7 @@ export interface SearchEntry {
 export async function logSearch(entry: SearchEntry): Promise<void> {
   const key = `${Date.now()}-${randomUUID()}`
   try {
-    const store = getStore(STORE)
+    const store = searchStore()
     await store.setJSON(key, entry)
   } catch (blobErr) {
     // Surface WHY Blobs failed (e.g. environment not configured) — this is the
@@ -47,7 +56,7 @@ export async function logSearch(entry: SearchEntry): Promise<void> {
 // page can say "storage error: X" instead of a misleading empty list.
 export async function searchStorageStatus(): Promise<{ backend: 'blobs' | 'fallback'; error?: string }> {
   try {
-    const store = getStore(STORE)
+    const store = searchStore()
     await store.list({ prefix: 'zzz-health-check-no-match' })
     return { backend: 'blobs' }
   } catch (err) {
@@ -57,7 +66,7 @@ export async function searchStorageStatus(): Promise<{ backend: 'blobs' | 'fallb
 
 export async function readSearches(limit = 500): Promise<SearchEntry[]> {
   try {
-    const store = getStore(STORE)
+    const store = searchStore()
     const { blobs } = await store.list()
     const keys = blobs
       .map((b) => b.key)
