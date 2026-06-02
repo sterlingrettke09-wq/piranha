@@ -45,7 +45,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   const t0 = Date.now()
   const { x, y } = lngLatToUtm15(lng, lat)
   const [parcelR, zoningR, formR, histR, floodR] = await Promise.allSettled([
-    fetchFeaturesXY(PARCELS, x, y, 26915, ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID']),
+    fetchFeaturesXY(PARCELS, x, y, 26915, ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID', 'BUILD_YR', 'BLDG_MV1']),
     fetchFeatures(ZONING, lat, lng, ['Land_Use_Code', 'Land_Use']),
     fetchFeatures(BUILT_FORM, lat, lng, ['Abbrv', 'Built_Form']),
     fetchFeatures(HISTORIC, lat, lng, ['DISTRICT']),
@@ -76,6 +76,15 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   const area = Number(parcel.PARCEL_AREA)
   const code = zoning?.Land_Use_Code ? String(zoning.Land_Use_Code) : null
 
+  // Existing structure: a building market value (BLDG_MV1 > 0) or a build year
+  // means a building stands here. No use label or floor area in this layer.
+  const bldgVal = Number(parcel.BLDG_MV1)
+  const buildYr = Number(parcel.BUILD_YR)
+  const existing =
+    (Number.isFinite(bldgVal) && bldgVal > 0) || (Number.isFinite(buildYr) && buildYr > 1000)
+      ? { yearBuilt: Number.isFinite(buildYr) && buildYr > 1000 ? buildYr : null, numBuildings: 1 }
+      : undefined
+
   const info: ParcelInfo = {
     address,
     parcelId: String(parcel.PID ?? ''),
@@ -96,6 +105,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
       historicDistrict: hist?.DISTRICT ? String(hist.DISTRICT) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
+    existing,
     sources: { parcels: PARCELS, zoning: ZONING, builtForm: BUILT_FORM, historic: HISTORIC, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }

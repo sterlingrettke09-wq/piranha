@@ -50,7 +50,15 @@ function usesForZone(code: string | null): string[] | null {
 export async function getDenverParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
-    fetchFeatures(PARCELS, lat, lng, ['SITUS_ADDRESS_LINE1', 'LAND_AREA', 'SCHEDNUM']),
+    fetchFeatures(PARCELS, lat, lng, [
+      'SITUS_ADDRESS_LINE1',
+      'LAND_AREA',
+      'SCHEDNUM',
+      'D_CLASS_CN',
+      'APPRAISED_IMP_VALUE',
+      'COM_ORIG_YEAR_BUILT',
+      'RES_ORIG_YEAR_BUILT',
+    ]),
     fetchFeatures(ZONING, lat, lng, ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES']),
     fetchFeatures(HISTORIC, lat, lng, ['DIST_NAME']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
@@ -75,6 +83,20 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const code = zoning?.ZONE_DISTRICT ? String(zoning.ZONE_DISTRICT) : null
   const maxHeightFt = denverMaxHeightFt(code, zoning?.HEIGHT_STORIES)
 
+  // Existing structure: improvement (building) value > 0 means a building stands
+  // here. D_CLASS_CN is a human-readable use; COM/RES_ORIG_YEAR_BUILT the year.
+  const impVal = Number(parcel.APPRAISED_IMP_VALUE)
+  const yr = Number(parcel.COM_ORIG_YEAR_BUILT) || Number(parcel.RES_ORIG_YEAR_BUILT)
+  const lu = parcel.D_CLASS_CN ? String(parcel.D_CLASS_CN).trim() : ''
+  const existing =
+    Number.isFinite(impVal) && impVal > 0
+      ? {
+          landUse: lu ? lu.charAt(0) + lu.slice(1).toLowerCase() : null,
+          yearBuilt: Number.isFinite(yr) && yr > 1000 ? yr : null,
+          numBuildings: 1,
+        }
+      : undefined
+
   const info: ParcelInfo = {
     address: address || 'Selected location',
     parcelId: String(parcel.SCHEDNUM ?? ''),
@@ -95,6 +117,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       historicDistrict: hist?.DIST_NAME ? String(hist.DIST_NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
+    existing,
     sources: { parcels: PARCELS, zoning: ZONING, historic: HISTORIC, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }

@@ -51,7 +51,7 @@ function usesForZone(code: string | null): string[] | null {
 export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
-    fetchFeatures(PARCELS, lat, lng, ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE']),
+    fetchFeatures(PARCELS, lat, lng, ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE', 'SALETYPE', 'CLASSTYPE']),
     fetchFeatures(ZONING, lat, lng, ['ZONING', 'ZR16', 'Zone_District']),
     fetchFeatures(HISTORIC, lat, lng, ['HistDistrict_NAME']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
@@ -81,6 +81,14 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
   const code = zCode != null && String(zCode).trim() ? String(zCode).trim() : null
   const lim = dcLimits(code)
 
+  // Existing structure: SALETYPE "Improved" means a building stands here (vs
+  // vacant land). CLASSTYPE's leading digit gives a coarse use (1 residential,
+  // 2 commercial, 5 institutional/exempt). No floor area or year in this layer.
+  const saleType = parcel.SALETYPE ? String(parcel.SALETYPE) : ''
+  const classDigit = parcel.CLASSTYPE ? String(parcel.CLASSTYPE).trim().charAt(0) : ''
+  const dcUse = ({ '1': 'Residential', '2': 'Commercial', '5': 'Institutional' } as Record<string, string>)[classDigit] ?? null
+  const existing = /improv/i.test(saleType) ? { landUse: dcUse, numBuildings: 1 } : undefined
+
   const info: ParcelInfo = {
     address: address || 'Selected location',
     parcelId: String(parcel.SSL ?? ''),
@@ -101,6 +109,7 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
       historicDistrict: hist?.HistDistrict_NAME ? String(hist.HistDistrict_NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },
+    existing,
     sources: { parcels: PARCELS, zoning: ZONING, historic: HISTORIC, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }
