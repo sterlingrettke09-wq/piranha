@@ -216,27 +216,38 @@ export function impactFee(city: string, use: Use, gfa: number, units: number | n
       return { perSqFt: rate, applied: true, label: `Denver affordable-housing fee (${feeArea ?? 'Typical'} market)` }
     }
     case 'seattle': {
-      // MHA payment varies by fee area (and zone suffix). Per-area representative
-      // rate; informational because the trigger (MHA zone) + build-units opt-out
-      // can't be fully resolved per parcel.
+      // MHA payment-in-lieu varies by fee area AND zone suffix (M / M1 / M2), so
+      // there is no single per-area number — these are representative midpoints
+      // across the M–M2 tiers. Informational only (applied:false): the trigger
+      // (MHA zone) + build-affordable-units opt-out can't be resolved per parcel.
+      // Source: SDCI MHA rate table (SMC 23.58B/23.58C), eff. 3/1/2026.
       const SEA: Record<string, { r: number; c: number }> = {
         'Low Areas': { r: 16, c: 11 },
-        'Medium Areas': { r: 28, c: 16 },
-        'High Areas': { r: 42, c: 18 },
-        'Downtown / South Lake Union Areas': { r: 30, c: 15 },
+        'Medium Areas': { r: 28, c: 15 },
+        'High Areas': { r: 45, c: 19 },
+        'Downtown / South Lake Union Areas': { r: 32, c: 22 },
       }
-      const a = (feeArea && SEA[feeArea]) || { r: 25, c: 15 }
+      const a = (feeArea && SEA[feeArea]) || { r: 28, c: 15 }
       return {
         perSqFt: use === 'residential' ? a.r : a.c,
         applied: false,
         label: `Seattle MHA${feeArea ? ` (${feeArea})` : ''} — applies in MHA zones, or build affordable units instead`,
       }
     }
-    case 'sf':
-      // Jobs-Housing Linkage (flat citywide, by use). Large-office rate eff. 1/1/2026.
-      return commercial && gfa >= 25000
-        ? { perSqFt: 85.9, applied: false, label: 'SF Jobs-Housing Linkage — large office ≥ 50k gsf (lab/retail lower)' }
-        : null
+    case 'sf': {
+      // Jobs-Housing Linkage (flat citywide office fee), tiered by size. Rates per
+      // the SF Citywide Development Impact Fee Register republished eff. 1/1/2026
+      // (large-office tier itself dates to the 2021 schedule): office ≥ 50k gsf
+      // $85.90/gsf; 25k–50k gsf $77.30; lab/retail lower. Informational only —
+      // the per-parcel office-vs-lab-vs-retail split can't be detected.
+      if (!commercial || gfa < 25000) return null
+      const large = gfa >= 50000
+      return {
+        perSqFt: large ? 85.9 : 77.3,
+        applied: false,
+        label: `SF Jobs-Housing Linkage — office (${large ? '≥ 50k gsf' : '25–50k gsf'}; lab/retail lower)`,
+      }
+    }
     default:
       return null
   }

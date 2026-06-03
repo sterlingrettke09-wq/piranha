@@ -47,7 +47,7 @@ const CHICAGO_BASE_FAR: Record<string, number> = {
   'RT-3.5': 1.05,
   'RT-4': 1.2,
   'RT-4A': 1.2,
-  'RM-4.5': 1.2, // Chicago Zoning Ordinance §17-2-0305 (was incorrectly 1.7)
+  'RM-4.5': 1.7, // Chicago Zoning Ordinance §17-2-0304-A FAR table (RM4.5 = 1.70)
   'RM-5': 2.0,
   'RM-5.5': 2.5,
   'RM-6': 4.4,
