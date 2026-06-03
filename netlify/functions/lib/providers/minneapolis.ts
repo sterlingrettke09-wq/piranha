@@ -79,7 +79,10 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
 
   const houseNo = parcel.HOUSE_NO != null ? String(parcel.HOUSE_NO).trim() : ''
   const streetNm = parcel.STREET_NM != null ? String(parcel.STREET_NM).replace(/\s+/g, ' ').trim() : ''
-  const address = [houseNo, streetNm].filter(Boolean).join(' ') || 'Selected location'
+  const rawAddress = [houseNo, streetNm].filter(Boolean).join(' ')
+  // Hennepin uses placeholder strings (e.g. "ADDRESS PENDING") on some civic /
+  // unaddressed parcels — don't surface those as a real address.
+  const address = !rawAddress || /pending|unknown|^0\b/i.test(rawAddress) ? 'Selected location' : rawAddress
   const area = Number(parcel.PARCEL_AREA)
   const code = zoning?.Land_Use_Code ? String(zoning.Land_Use_Code) : null
 

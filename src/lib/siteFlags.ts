@@ -144,3 +144,72 @@ export function assessSiteAdvisory(opts: {
 
   return null
 }
+
+// --- Civic HARD-BLOCK list (distinct from the advisory LANDMARKS above) ---
+// City halls, capitols, courthouses, marquee public parks, and airports. These
+// are definitively NOT private development sites, but their parcel data often
+// carries no public-owner / open-space / public-land-use signal (the per-city
+// gate in developability.ts misses them), so they're blocked by location here.
+// Radii are tuned to each site's footprint to limit catching adjacent lots.
+interface CivicBlock {
+  city: string
+  lat: number
+  lng: number
+  radiusM: number
+  label: string
+}
+const CIVIC_BLOCKS: CivicBlock[] = [
+  // City halls (some already block via owner/land-use; listed for robustness)
+  { city: 'boston', lat: 42.3605, lng: -71.0582, radiusM: 150, label: 'Boston City Hall' },
+  { city: 'nyc', lat: 40.71273, lng: -74.00597, radiusM: 150, label: 'New York City Hall' },
+  { city: 'chicago', lat: 41.88378, lng: -87.63197, radiusM: 160, label: 'Chicago City Hall' },
+  { city: 'sf', lat: 37.77927, lng: -122.41924, radiusM: 190, label: 'San Francisco City Hall' },
+  { city: 'seattle', lat: 47.60383, lng: -122.33006, radiusM: 150, label: 'Seattle City Hall' },
+  { city: 'dc', lat: 38.8937, lng: -77.0325, radiusM: 150, label: 'the John A. Wilson Building (DC City Hall)' },
+  { city: 'austin', lat: 30.2649, lng: -97.7472, radiusM: 170, label: 'Austin City Hall' },
+  { city: 'la', lat: 34.0537, lng: -118.2427, radiusM: 170, label: 'Los Angeles City Hall' },
+  { city: 'denver', lat: 39.7392, lng: -104.9903, radiusM: 180, label: 'the Denver City & County Building' },
+  { city: 'minneapolis', lat: 44.9773, lng: -93.2657, radiusM: 170, label: 'Minneapolis City Hall' },
+  // State / national capitols
+  { city: 'denver', lat: 39.7393, lng: -104.9848, radiusM: 190, label: 'the Colorado State Capitol' },
+  { city: 'austin', lat: 30.2747, lng: -97.7404, radiusM: 260, label: 'the Texas State Capitol' },
+  { city: 'boston', lat: 42.3588, lng: -71.0638, radiusM: 150, label: 'the Massachusetts State House' },
+  { city: 'dc', lat: 38.8899, lng: -77.0091, radiusM: 320, label: 'the United States Capitol' },
+  // Major courthouses (federal / county)
+  { city: 'sf', lat: 37.7816, lng: -122.4137, radiusM: 150, label: 'the Phillip Burton Federal Building & U.S. Courthouse' },
+  { city: 'la', lat: 34.0527, lng: -118.2476, radiusM: 150, label: 'the U.S. Courthouse' },
+  { city: 'chicago', lat: 41.8787, lng: -87.6299, radiusM: 150, label: 'the Dirksen Federal Courthouse' },
+  { city: 'dc', lat: 38.8922, lng: -77.0149, radiusM: 170, label: 'the U.S. District Courthouse' },
+  { city: 'denver', lat: 39.7418, lng: -104.9872, radiusM: 170, label: 'the Denver Justice Center' },
+  { city: 'seattle', lat: 47.6015, lng: -122.3316, radiusM: 150, label: 'the U.S. Courthouse' },
+  { city: 'austin', lat: 30.2705, lng: -97.7393, radiusM: 150, label: 'the U.S. Courthouse' },
+  { city: 'minneapolis', lat: 44.9779, lng: -93.2671, radiusM: 190, label: 'the Hennepin County Government Center' },
+  { city: 'boston', lat: 42.3567, lng: -71.0496, radiusM: 150, label: 'the Moakley Federal Courthouse' },
+  // Marquee public parks (radii cover the green/water core, not bordering lots)
+  { city: 'chicago', lat: 41.8735, lng: -87.6195, radiusM: 450, label: 'Grant Park' },
+  { city: 'chicago', lat: 41.8826, lng: -87.6231, radiusM: 240, label: 'Millennium Park' },
+  { city: 'denver', lat: 39.7003, lng: -104.97, radiusM: 420, label: 'Washington Park' },
+  { city: 'denver', lat: 39.7546, lng: -105.0033, radiusM: 200, label: 'Commons Park' },
+  { city: 'seattle', lat: 47.6205, lng: -122.3493, radiusM: 300, label: 'Seattle Center' },
+  { city: 'minneapolis', lat: 44.953, lng: -93.301, radiusM: 380, label: 'Lake of the Isles Park' },
+  // Airport terminals / airfields (large footprints)
+  { city: 'chicago', lat: 41.9786, lng: -87.9048, radiusM: 2500, label: "O'Hare International Airport" },
+  { city: 'denver', lat: 39.8493, lng: -104.6737, radiusM: 4000, label: 'Denver International Airport' },
+  { city: 'austin', lat: 30.1945, lng: -97.6699, radiusM: 1800, label: 'Austin-Bergstrom International Airport' },
+]
+
+/** Curated location-based hard block for civic/public sites whose parcel data
+ *  carries no public signal. Returns the site label, or null. */
+export function assessCivicHardBlock(opts: {
+  city?: string | null
+  lat?: number | null
+  lng?: number | null
+}): { label: string } | null {
+  const { city, lat, lng } = opts
+  if (!city || typeof lat !== 'number' || typeof lng !== 'number') return null
+  for (const b of CIVIC_BLOCKS) {
+    if (b.city !== city) continue
+    if (metersBetween(lat, lng, b.lat, b.lng) <= b.radiusM) return { label: b.label }
+  }
+  return null
+}

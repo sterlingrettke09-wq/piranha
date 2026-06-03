@@ -4,7 +4,7 @@ import { USES, PROJECT_TYPES, FUNDING_TYPES } from '../../src/types/analysis'
 import { getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
 import { assessDevelopability } from '../../src/lib/developability'
-import { assessSiteAdvisory } from '../../src/lib/siteFlags'
+import { assessSiteAdvisory, assessCivicHardBlock } from '../../src/lib/siteFlags'
 import { assessHurdles } from './lib/hurdles'
 import { estimateCost } from './lib/cost'
 import { resolveTimeline } from './lib/timeline'
@@ -75,11 +75,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
     heightFt: num(q.heightFt),
   }
 
-  const developability = assessDevelopability({
+  let developability = assessDevelopability({
     districtCode: parcel.zoning.districtCode,
     landUse: parcel.existing?.landUse ?? null,
     ownerPublic: parcel.existing?.ownerPublic ?? false,
   })
+  // Curated location hard-block for civic/public sites (city halls, capitols,
+  // courthouses, marquee parks, airports) whose parcel data carries no public
+  // signal. Only applied when the data-driven gate didn't already block.
+  if (developability.developable) {
+    const civic = assessCivicHardBlock({ city, lat, lng })
+    if (civic) {
+      developability = {
+        developable: false,
+        kind: 'public',
+        reason: `This location is within ${civic.label}, a civic or public site that isn’t open to private development.`,
+      }
+    }
+  }
   // Soft flag for stadiums / arenas / hospitals / campuses / museums — the
   // analysis still runs, but the UI warns the parcel is rarely buildable.
   const advisory = assessSiteAdvisory({

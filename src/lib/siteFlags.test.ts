@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest'
-import { assessSiteAdvisory } from './siteFlags'
+import { assessSiteAdvisory, assessCivicHardBlock } from './siteFlags'
+
+describe('assessCivicHardBlock — civic/public sites by location', () => {
+  it('blocks city halls, capitols, courthouses, parks, airports', () => {
+    expect(assessCivicHardBlock({ city: 'austin', lat: 30.2649, lng: -97.7472 })?.label).toMatch(/City Hall/i)
+    expect(assessCivicHardBlock({ city: 'seattle', lat: 47.60383, lng: -122.33006 })?.label).toMatch(/City Hall/i)
+    expect(assessCivicHardBlock({ city: 'denver', lat: 39.7393, lng: -104.9848 })?.label).toMatch(/Capitol/i)
+    expect(assessCivicHardBlock({ city: 'chicago', lat: 41.8787, lng: -87.6299 })?.label).toMatch(/Courthouse/i)
+    expect(assessCivicHardBlock({ city: 'chicago', lat: 41.8735, lng: -87.6195 })?.label).toMatch(/Grant Park/i)
+    expect(assessCivicHardBlock({ city: 'chicago', lat: 41.9786, lng: -87.9048 })?.label).toMatch(/O'Hare/i)
+  })
+  it('does not block an ordinary lot far from any civic site, or with missing coords', () => {
+    expect(assessCivicHardBlock({ city: 'chicago', lat: 41.95, lng: -87.66 })).toBeNull()
+    expect(assessCivicHardBlock({ city: 'austin', lat: null, lng: null })).toBeNull()
+    expect(assessCivicHardBlock({ city: 'denver', lat: 39.7393, lng: -104.9848 }) && true).toBe(true)
+  })
+  it('is scoped per city (same coords, wrong city → no block)', () => {
+    expect(assessCivicHardBlock({ city: 'boston', lat: 41.8787, lng: -87.6299 })).toBeNull()
+  })
+})
 
 describe('assessSiteAdvisory — land-use signals', () => {
   it('flags stadiums / sport facilities', () => {
