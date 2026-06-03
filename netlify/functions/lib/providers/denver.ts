@@ -4,6 +4,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { isGovernmentOwner } from '../../../../src/lib/developability'
 
 const PARCELS = 'https://denvergov.org/maps/data/Zoning/MapServer/0'
 const ZONING = 'https://denvergov.org/maps/data/Zoning/MapServer/1'
@@ -70,6 +71,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       'APPRAISED_IMP_VALUE',
       'COM_ORIG_YEAR_BUILT',
       'RES_ORIG_YEAR_BUILT',
+      'OWNER_NAME',
     ]),
     fetchParcelSnap(ZONING, lat, lng, ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES']),
     fetchFeatures(HISTORIC, lat, lng, ['DIST_NAME']),
@@ -103,7 +105,9 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const impVal = Number(parcel.APPRAISED_IMP_VALUE)
   const yr = Number(parcel.COM_ORIG_YEAR_BUILT) || Number(parcel.RES_ORIG_YEAR_BUILT)
   const lu = parcel.D_CLASS_CN ? String(parcel.D_CLASS_CN).trim() : ''
-  const existing =
+  // OWNER_NAME used only to derive a government-owned boolean (no name stored).
+  const ownerPublic = isGovernmentOwner(parcel.OWNER_NAME != null ? String(parcel.OWNER_NAME) : null)
+  const existingBase =
     Number.isFinite(impVal) && impVal > 0
       ? {
           landUse: lu ? lu.charAt(0) + lu.slice(1).toLowerCase() : null,
@@ -111,6 +115,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
           numBuildings: 1,
         }
       : undefined
+  const existing = ownerPublic ? { ...(existingBase ?? {}), ownerPublic: true } : existingBase
 
   const info: ParcelInfo = {
     address: address || 'Selected location',

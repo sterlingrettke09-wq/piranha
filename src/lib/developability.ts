@@ -18,7 +18,7 @@ export interface Developability {
 // Land-use strings that denote public / non-developable land. Word-boundaried
 // so "parking" is NOT caught by "park", and ordinary uses pass through.
 const PUBLIC_LANDUSE =
-  /\b(federal|government|gov't|white house|capitol|monument|memorial|cemeter(y|ies)|military|national park|park|parkland|open[ -]?space|right[- ]of[- ]way|public land|water|reservoir|tax[- ]exempt|city of boston|commonwealth of mass)\b/i
+  /\b(federal|governmental?|gov't|white house|capitol|monument|memorial|cemeter(y|ies)|military|national park|park|parkland|open[ -]?space|right[- ]of[- ]way|public land|water|reservoir|tax[- ]exempt|city of boston|commonwealth of mass)\b/i
 
 // Government / public-entity OWNER names (from assessing owner fields). Private
 // owners are individuals or LLCs, so these strong public-entity signals are safe

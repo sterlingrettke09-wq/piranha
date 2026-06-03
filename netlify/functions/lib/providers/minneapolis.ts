@@ -10,6 +10,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchFeaturesXYSnap, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
 import { lngLatToUtm15 } from '../geo'
+import { isGovernmentOwner } from '../../../../src/lib/developability'
 
 const PARCELS = 'https://gis.hennepin.us/arcgis/rest/services/HennepinData/LAND_PROPERTY/MapServer/1'
 const ZONING =
@@ -50,7 +51,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   const t0 = Date.now()
   const { x, y } = lngLatToUtm15(lng, lat)
   const [parcelR, zoningR, formR, histR, floodR, parkR] = await Promise.allSettled([
-    fetchFeaturesXYSnap(PARCELS, x, y, 26915, ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID', 'BUILD_YR', 'BLDG_MV1']),
+    fetchFeaturesXYSnap(PARCELS, x, y, 26915, ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID', 'BUILD_YR', 'BLDG_MV1', 'OWNER_NM']),
     fetchParcelSnap(ZONING, lat, lng, ['Land_Use_Code', 'Land_Use']),
     fetchFeatures(BUILT_FORM, lat, lng, ['Abbrv', 'Built_Form']),
     fetchFeatures(HISTORIC, lat, lng, ['DISTRICT']),
@@ -91,11 +92,14 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   // means a building stands here. No use label or floor area in this layer.
   const bldgVal = Number(parcel.BLDG_MV1)
   const buildYr = Number(parcel.BUILD_YR)
-  const existing = parkName
+  // OWNER_NM used only to derive a government-owned boolean (no name stored).
+  const ownerPublic = isGovernmentOwner(parcel.OWNER_NM != null ? String(parcel.OWNER_NM) : null)
+  const existingBase = parkName
     ? { landUse: `${parkName} (park)` } // "...park" → caught by the public-land gate
     : (Number.isFinite(bldgVal) && bldgVal > 0) || (Number.isFinite(buildYr) && buildYr > 1000)
       ? { yearBuilt: Number.isFinite(buildYr) && buildYr > 1000 ? buildYr : null, numBuildings: 1 }
       : undefined
+  const existing = ownerPublic ? { ...(existingBase ?? {}), ownerPublic: true } : existingBase
 
   const info: ParcelInfo = {
     address,
