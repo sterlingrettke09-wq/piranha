@@ -159,10 +159,15 @@ describe('assessHurdles — demolition / existing structure', () => {
       project({ city: 'seattle', projectType: 'new', use: 'residential', units: 1 }),
     )
     expect(cats(hs)).toContain('demolition')
-    const labels = hs.filter((h) => h.category === 'demolition').map((h) => h.label).join(' | ')
+    const labels = hs.map((h) => h.label).join(' | ')
     expect(labels).toMatch(/Demolition/)
     expect(labels).toMatch(/Replacing existing housing/)
-    expect(hs.filter((h) => h.category === 'demolition').reduce((s, h) => s + (h.addsMonths ?? 0), 0)).toBeGreaterThanOrEqual(9)
+    // Replacing-housing is now category 'review' (so its no-net-loss delay counts
+    // toward the discretionary timeline); the demolition hurdle no longer carries
+    // its own addsMonths (the demo phase is in the per-city timeline baseline).
+    const replace = hs.find((h) => h.label === 'Replacing existing housing')
+    expect(replace?.category).toBe('review')
+    expect(replace?.addsMonths).toBe(6)
   })
 
   it('does NOT flag demolition on a vacant lot', () => {

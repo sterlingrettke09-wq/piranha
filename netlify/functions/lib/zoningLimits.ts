@@ -30,9 +30,13 @@ const FAMILY_USES: Record<string, Use[]> = {
 
 function family(code: string): string | null {
   const c = code.toUpperCase().trim()
-  if (c.startsWith('OS')) return 'OS'
-  const m = c.match(/^[A-Z]/)
-  return m ? m[0] : null
+  if (/^OS(-|\b|$)/.test(c)) return 'OS'
+  // Only treat this as a Boston zoning code (e.g. "B-2-65", "C-3", "R-1") when a
+  // known family letter is followed by a dash, digit, or end. Otherwise a
+  // word-named subdistrict like "CHARLESTOWN NAVY YARD SUBDISTRICT" would match
+  // its first letter ("C") and fabricate a FAR + use list out of nothing.
+  const m = c.match(/^([RSBCI])(?:[-\d]|$)/)
+  return m ? m[1] : null
 }
 
 function parseHeight(code: string): number | null {

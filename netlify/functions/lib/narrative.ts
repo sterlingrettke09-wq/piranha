@@ -2,6 +2,7 @@ import type { ParcelInfo } from '../../../src/types/parcel'
 import type { AnalysisInput, CheckStatus } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
 import type { CostEstimate } from './cost'
+import { avgUnitGrossSqFt } from '../../../src/config/estimates'
 
 const usd = (n: number) => `$${n.toLocaleString('en-US')}`
 
@@ -11,6 +12,22 @@ const VERDICT_LEAD: Record<CheckStatus, string> = {
   PROHIBITED: 'appears to be not allowed',
   INDETERMINATE: 'cannot be fully determined from available data',
 }
+
+// Friendly labels so the generated prose never leaks raw enum tokens
+// (e.g. "far", "housing") into the plain-English report.
+const DIMENSION_LABEL: Record<string, string> = {
+  use: 'use',
+  far: 'floor-area ratio (FAR)',
+  height: 'height',
+  housing: 'existing housing',
+}
+const USE_LABEL: Record<string, string> = {
+  residential: 'residential',
+  commercial: 'commercial',
+  mixed: 'mixed-use',
+  institutional: 'institutional',
+}
+const dim = (d: string) => DIMENSION_LABEL[d] ?? d
 
 interface NarrativeOpts {
   /** Full life-cycle months (design → move-in). Falls back to the cost estimate. */
@@ -32,23 +49,31 @@ export function buildNarrative(
   const verdictLead = hedged
     ? 'fits the district’s allowed use, though public data has no FAR or height limit to check the size against'
     : VERDICT_LEAD[f.overall]
-  const lead = `A ${project.gfa.toLocaleString()} sf ${project.use} project at ${parcel.address} (district ${parcel.zoning.districtCode}) ${verdictLead}.`
+  const lead = `A ${project.gfa.toLocaleString()} sf ${USE_LABEL[project.use] ?? project.use} project at ${parcel.address} (district ${parcel.zoning.districtCode}) ${verdictLead}.`
 
   const blockers = f.checks.filter((ch) => ch.status === 'NEEDS_RELIEF' || ch.status === 'PROHIBITED')
   const reason = blockers.length
-    ? ` Constraints: ${blockers.map((b) => `${b.dimension} (${b.proposed} vs ${b.allowed})`).join('; ')}.`
+    ? ` Constraints: ${blockers.map((b) => `${dim(b.dimension)} (${b.proposed} vs ${b.allowed})`).join('; ')}.`
     : ''
 
   const unknowns = f.checks.filter((ch) => ch.status === 'INDETERMINATE').map((ch) => ch.dimension)
   const caveat = unknowns.length
-    ? ` The following could not be evaluated and are treated conservatively: ${unknowns.join(', ')}.`
+    ? ` The following could not be evaluated and are treated conservatively: ${unknowns.map(dim).join(', ')}.`
     : ''
+
+  // PROHIBITED projects get their cost/timeline zeroed by analyze.ts, so the
+  // narrative must NOT quote the (pre-zeroing) cost or schedule — otherwise the
+  // prose would print "$160M / demolish 2.8M sf" next to a "$0 / Not allowed"
+  // verdict. End after the verdict + the constraint that bars it.
+  if (f.overall === 'PROHIBITED') {
+    return `${lead}${reason}${caveat} As proposed, it isn’t buildable here, so no cost or timeline is estimated.`
+  }
 
   const demoPart = c.costs.demolition > 0 ? `, demolition ${usd(c.costs.demolition)}` : ''
   const cost = ` Estimated cost is ${usd(c.costs.total)} (hard ${usd(c.costs.hard)}, soft ${usd(c.costs.soft)}, permitting ${usd(c.costs.permit)}${demoPart}).`
 
   // Demolition honesty. Prefer recorded building area, else estimate from units.
-  const existingSf = parcel.existing?.buildingAreaSqFt ?? (parcel.existing?.units ?? 0) * 1000
+  const existingSf = parcel.existing?.buildingAreaSqFt ?? (parcel.existing?.units ?? 0) * avgUnitGrossSqFt
   let demoNote = ''
   if (project.projectType === 'new') {
     if (c.costs.demolition > 0 && existingSf > project.gfa * 1.5) {

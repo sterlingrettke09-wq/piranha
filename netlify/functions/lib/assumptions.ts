@@ -10,6 +10,7 @@ import {
   PERMIT_RATE_PER_1000,
   VARIANCE_FILING_FEE,
   FT_PER_STORY,
+  ftPerStory,
   demoCostPerSqFt,
   projectFactor,
   avgUnitGrossSqFt,
@@ -24,6 +25,7 @@ export {
   PERMIT_RATE_PER_1000,
   VARIANCE_FILING_FEE,
   FT_PER_STORY,
+  ftPerStory,
   demoCostPerSqFt,
   projectFactor,
   avgUnitGrossSqFt,
@@ -40,7 +42,7 @@ export function assumptionsSummary(city = 'boston', stories: number | null = nul
   const rate = (n: number) => `$${Math.round(n * idx)}/sf`
   const hf = heightCostFactor(stories)
   return {
-    cityCostIndex: `${idx.toFixed(2)}× vs. Boston base`,
+    cityCostIndex: `${idx.toFixed(2)}× U.S. national average`,
     hardCostResidential: rate(costPerSqFtByUse.residential),
     hardCostCommercial: rate(costPerSqFtByUse.commercial),
     hardCostMixed: rate(costPerSqFtByUse.mixed),
@@ -51,6 +53,6 @@ export function assumptionsSummary(city = 'boston', stories: number | null = nul
     varianceFiling: `$${VARIANCE_FILING_FEE} when relief required`,
     landCost: 'Not included (construction only)',
     timeline: 'Full life-cycle (design to move-in), estimated by city and building type',
-    feetPerStory: `${FT_PER_STORY} ft`,
+    feetPerStory: `${FT_PER_STORY} ft residential / 13 ft commercial`,
   }
 }

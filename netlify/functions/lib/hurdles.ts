@@ -73,6 +73,18 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     })
   }
 
+  // California Coastal Zone — a Coastal Development Permit is required, often with
+  // its own environmental review and (in some areas) Coastal Commission appeal.
+  if (parcel.overlays.coastalZone) {
+    hurdles.push({
+      category: 'environmental',
+      label: 'Coastal Development Permit',
+      status: 'required',
+      note: 'This parcel is in the California Coastal Zone. A Coastal Development Permit (city, and appealable to the Coastal Commission) is required, with its own review — this adds significant time and uncertainty.',
+      addsMonths: 9,
+    })
+  }
+
   // FEMA flood zone.
   const fz = parcel.overlays.floodZone
   if (fz && !FLOOD_OK.has(fz.toUpperCase())) {
@@ -109,7 +121,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         category: 'affordability',
         label: 'Inclusionary (IDP): income-restricted units',
         status: 'required',
-        note: 'Boston’s Inclusionary Development Policy requires roughly 13% of units be income-restricted (or a payment in lieu) for residential developments of 10+ units.',
+        note: 'Boston’s Inclusionary Development Policy requires roughly 17% of units be income-restricted (or a payment in lieu) for residential developments of 10+ units (raised from 13% in the 2024 zoning amendment).',
       })
     }
     if (project.gfa >= 50000) {
@@ -232,23 +244,28 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     const vacantOrUnbuilt = /vacant|parking|open space|outdoor|undevelop/i.test(lu)
     const hasBuilding =
       !!ex && ((ex.buildingAreaSqFt ?? 0) > 0 || exUnits > 0 || (ex.numBuildings ?? 0) > 0 || (!!lu && !vacantOrUnbuilt))
-    const multifamilyExisting = !!ex && (exUnits >= 3 || /apartment|condo|multi|townhouse|triplex|fourplex|housing/i.test(lu))
+    // Word-boundaried "multifamily" — NOT bare "multi", which wrongly matched
+    // commercial labels like "COMM MULTI-USE" (same fix as feasibility.ts).
+    const multifamilyExisting = !!ex && (exUnits >= 3 || /apartment|condo|multi-?family|townhouse|triplex|fourplex|housing/i.test(lu))
 
     if (hasBuilding) {
+      // No addsMonths here — the demolition phase is already in the timeline via
+      // the per-city demoMonths, so a hardcoded number here would contradict it.
       hurdles.push({
         category: 'demolition',
         label: 'Demolition of the existing building',
         status: 'required',
         note: `${lu ? `The record shows an existing ${lu.toLowerCase()} here. ` : 'There is already a building on this parcel. '}Building new means demolishing it first: a demolition permit, utility disconnects, and hazardous-material abatement, all of which add cost and time.`,
-        addsMonths: 3,
       })
       const proposedUnits = project.units ?? (isResidential ? 1 : 0)
       if (multifamilyExisting && (exUnits === 0 || proposedUnits < exUnits)) {
+        // 'review' (not 'demolition') so its no-net-loss/relocation delay counts
+        // toward the discretionary timeline instead of being filtered out.
         hurdles.push({
-          category: 'demolition',
+          category: 'review',
           label: 'Replacing existing housing',
           status: 'required',
-          note: 'This parcel already holds multiple homes. Tearing down occupied housing triggers tenant-relocation requirements and demolition review, and replacing it with fewer units runs into "no net loss of housing" rules in many cities. Expect significant added time, and in some places it may not be permitted at all.',
+          note: 'This parcel already holds multiple homes. Tearing down occupied housing triggers tenant-relocation requirements and demolition review, and replacing it with fewer units runs into “no net loss of housing” rules in many cities. Expect significant added time, and in some places it may not be permitted at all.',
           addsMonths: 6,
         })
       }

@@ -29,6 +29,10 @@ function dcLimits(code: string | null): { h: number | null; f: number | null } {
   // Georgetown overlay caps at 35 ft.
   if (/\/GT|GEORGETOWN/i.test(code)) return { h: 35, f: null }
   if (DC_LIMITS[base]) return DC_LIMITS[base]
+  // Lettered sub-zones (MU-7A, MU-7B, RA-4A…) share their numbered parent's
+  // limits closely enough; fall back to the parent rather than returning null.
+  const parent = base.replace(/([0-9])[A-Z]+$/, '$1')
+  if (parent !== base && DC_LIMITS[parent]) return DC_LIMITS[parent]
   // Residential House (R) zones: 40 ft, no FAR (Subtitle D § 303.1).
   if (base.startsWith('R-') || /^R\d/.test(base)) return { h: 40, f: null }
   return { h: null, f: null }
@@ -52,7 +56,7 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
   const t0 = Date.now()
   const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
     fetchParcelSnap(PARCELS, lat, lng, ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE', 'SALETYPE', 'CLASSTYPE']),
-    fetchFeatures(ZONING, lat, lng, ['ZONING', 'ZR16', 'Zone_District']),
+    fetchParcelSnap(ZONING, lat, lng, ['ZONING', 'ZR16', 'Zone_District']),
     fetchFeatures(HISTORIC, lat, lng, ['HistDistrict_NAME']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
@@ -84,10 +88,33 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
   // Existing structure: SALETYPE "Improved" means a building stands here (vs
   // vacant land). CLASSTYPE's leading digit gives a coarse use (1 residential,
   // 2 commercial, 5 institutional/exempt). No floor area or year in this layer.
+  //
+  // USECODE is more specific and is the key signal for landmark/special sites:
+  // 082=hospital, 083=university, 087/089=stadium/arena/exhibition. These large
+  // tax-exempt parcels usually have a null SALETYPE, so we surface their use from
+  // USECODE directly (which the "special site" flag then picks up).
+  const useCode = parcel.USECODE != null ? String(parcel.USECODE).trim() : ''
+  const ssl = parcel.SSL != null ? String(parcel.SSL).trim() : ''
+  // Federal / public land that zoning often bleeds ordinary R/C codes over:
+  // an SSL beginning "RES" is a federal Reservation (the Mall, traffic circles
+  // like Logan Circle, monument grounds); USECODE 086 = federal building (e.g.
+  // the Library of Congress), 191 = public reservation. Label these so the
+  // developability gate ("federal"/"public land") hard-blocks them.
+  const isFederalLand = /^RES\b/i.test(ssl) || useCode === '086' || useCode === '191'
+  const USECODE_LANDUSE: Record<string, string> = {
+    '082': 'Hospital',
+    '083': 'University / college',
+    '087': 'Stadium / arena',
+    '089': 'Arena / exhibition hall',
+  }
+  const useCodeLabel = USECODE_LANDUSE[useCode] ?? null
   const saleType = parcel.SALETYPE ? String(parcel.SALETYPE) : ''
   const classDigit = parcel.CLASSTYPE ? String(parcel.CLASSTYPE).trim().charAt(0) : ''
-  const dcUse = ({ '1': 'Residential', '2': 'Commercial', '5': 'Institutional' } as Record<string, string>)[classDigit] ?? null
-  const existing = /improv/i.test(saleType) ? { landUse: dcUse, numBuildings: 1 } : undefined
+  const dcUse = isFederalLand
+    ? 'Federal or other public land'
+    : useCodeLabel ?? (({ '1': 'Residential', '2': 'Commercial', '5': 'Institutional' } as Record<string, string>)[classDigit] ?? null)
+  const existing =
+    isFederalLand || /improv/i.test(saleType) || useCodeLabel ? { landUse: dcUse, numBuildings: 1 } : undefined
 
   const info: ParcelInfo = {
     address: address || 'Selected location',

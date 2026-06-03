@@ -18,7 +18,7 @@ export interface Developability {
 // Land-use strings that denote public / non-developable land. Word-boundaried
 // so "parking" is NOT caught by "park", and ordinary uses pass through.
 const PUBLIC_LANDUSE =
-  /\b(federal|government|gov't|white house|capitol|monument|memorial|cemeter(y|ies)|military|national park|park|parkland|right[- ]of[- ]way|public land|water|reservoir|tax[- ]exempt)\b/i
+  /\b(federal|government|gov't|white house|capitol|monument|memorial|cemeter(y|ies)|military|national park|park|parkland|open[ -]?space|right[- ]of[- ]way|public land|water|reservoir|tax[- ]exempt|city of boston|commonwealth of mass)\b/i
 
 export function assessDevelopability(opts: {
   districtCode?: string | null
@@ -38,8 +38,9 @@ export function assessDevelopability(opts: {
     }
   }
 
-  // Open space / parkland zoning.
-  if (/\bopen space\b|^os\b|^os-|\bpark\b/.test(code)) {
+  // Open space / parkland zoning. `^p$` catches SF/Austin "P" (Public) districts;
+  // does not match Chicago "PD"/Seattle "PMM"/"PUD" (those keep their own zoning).
+  if (/\bopen space\b|^os\b|^os-|^p$|\bpark\b/.test(code)) {
     return {
       developable: false,
       kind: 'public',

@@ -222,11 +222,25 @@ export default function BostonResult() {
             </>
           ) : (
             <>
+              {state.data.advisory && (
+                <Reveal className="mt-8">
+                  <div className="rounded-2xl border border-amber-600/30 bg-amber-50/70 p-6">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800">
+                      Heads up — likely not a development site
+                    </p>
+                    <p className="mt-3 leading-relaxed text-piranha-charcoal/80">
+                      {state.data.advisory.note}
+                    </p>
+                  </div>
+                </Reveal>
+              )}
+
               <Reveal className="mt-8">
                 <KeyMetrics
                   costs={state.data.costs}
                   timeline={state.data.timeline}
                   hurdles={state.data.hurdles}
+                  indeterminate={state.data.feasibility.overall === 'INDETERMINATE'}
                 />
               </Reveal>
 
@@ -269,6 +283,7 @@ export default function BostonResult() {
                     costs={state.data.costs}
                     gfa={state.data.project.gfa}
                     units={state.data.project.units}
+                    demolitionRequired={state.data.hurdles.some((h) => h.category === 'demolition')}
                   />
                 </ReportSection>
 
@@ -277,7 +292,10 @@ export default function BostonResult() {
                   title="From design to move-in"
                   kicker="The full life-cycle: architectural design, permits, site prep, and construction."
                 >
-                  <Timeline timeline={state.data.timeline} />
+                  <Timeline
+                    timeline={state.data.timeline}
+                    indeterminate={state.data.feasibility.overall === 'INDETERMINATE'}
+                  />
                 </ReportSection>
 
                 <ReportSection n="05" title="The site" kicker="What the public record says about the parcel.">
@@ -304,9 +322,9 @@ export default function BostonResult() {
           <div className="mt-8 space-y-6">
             <AssumptionsDisclosure assumptions={state.data.assumptions} />
             <p className="text-sm text-piranha-charcoal/60">
-              Want to see how every number is calculated? Read about our methodologies{' '}
+              Want to see how every number is calculated?{' '}
               <Link className="text-piranha-burgundy underline underline-offset-2" to="/math">
-                here
+                Read the methodology
               </Link>
               .
             </p>

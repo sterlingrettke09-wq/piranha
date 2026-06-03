@@ -9,6 +9,9 @@ const ZONING = `${ORG}/Current_Land_Use_Zoning_Detail_2/FeatureServer/0`
 const PARCELS = `${ORG}/Parcel_Boundary/FeatureServer/0`
 // All zoning overlays; we keep only TYPE=HISTORIC (e.g. Pioneer Square, Pike Place).
 const HISTORIC = `${ORG}/Zoning_Overlays-Historic-Special_Review_Districts/FeatureServer/23`
+// MHA fee area (Low / Medium / High / Downtown-SLU) — drives the affordable-housing
+// payment rate, so we surface it for a parcel-aware fee note.
+const MHA = `${ORG}/MHA_Fee_Areas_1/FeatureServer/0`
 
 function seattleHistoricName(features: Array<{ attributes: Record<string, unknown> }> | undefined): string | null {
   const f = features?.find((x) => String(x.attributes.TYPE ?? '').toUpperCase() === 'HISTORIC')
@@ -21,6 +24,27 @@ const DOWNTOWN = ['DOC', 'DMC', 'DRC', 'DMR', 'DH', 'PMM', 'IDM', 'IDR', 'PSM']
 const INDUSTRIAL = ['IB', 'IG', 'IC']
 
 // Seattle zoning code prefix → use vocabulary.
+// Seattle encodes the height limit (feet) right in the zone code: NC1-55 → 55,
+// DRC 85-170 → 170 (max), SM-U 95-320 → 320, DMC 340/290-440 → 440. Take the
+// largest plausible height number in the string as the max. Lowrise/Midrise/
+// Highrise tiers without a number get the SMC base-height by tier.
+function seattleMaxHeightFt(zone: string | null): number | null {
+  if (!zone) return null
+  const z = zone.toUpperCase()
+  // Industrial "U/##" (e.g. IG1 U/85) means height is UNLIMITED for industrial
+  // uses; the number only caps non-industrial. Don't report the number as the
+  // max — return null (no by-right cap) rather than a wrongly-low height.
+  if (/\bU\s*\//.test(z)) return null
+  const nums = (z.match(/\d{2,3}/g) ?? []).map(Number).filter((n) => n >= 25 && n <= 1000)
+  if (nums.length) return Math.max(...nums)
+  if (/\bLR1\b/.test(z)) return 30
+  if (/\bLR2\b/.test(z)) return 40
+  if (/\bLR3\b/.test(z)) return 50
+  if (/\bMR\b/.test(z)) return 85
+  if (/\bHR\b/.test(z)) return 240
+  return null
+}
+
 function usesForZone(zone: string | null): string[] | null {
   if (!zone) return null
   const z = zone.trim().toUpperCase()
@@ -36,11 +60,12 @@ function usesForZone(zone: string | null): string[] | null {
 
 export async function getSeattleParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [zoningR, parcelR, floodR, histR] = await Promise.allSettled([
-    fetchFeatures(ZONING, lat, lng, ['ZONING']),
+  const [zoningR, parcelR, floodR, histR, mhaR] = await Promise.allSettled([
+    fetchParcelSnap(ZONING, lat, lng, ['ZONING']),
     fetchParcelSnap(PARCELS, lat, lng, ['PIN', 'ADDRESS', 'SQFTLOT', 'PRES_USE_DESC']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     fetchFeatures(HISTORIC, lat, lng, ['OVERLAY', 'DESCRIPTION', 'TYPE']),
+    fetchFeatures(MHA, lat, lng, ['FEE_AREA']),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -56,7 +81,9 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
   const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 
-  const address = parcel.ADDRESS ? String(parcel.ADDRESS).replace(/\s+/g, ' ').trim() : 'Selected location'
+  // Trim FIRST, then fall back — a whitespace-only ADDRESS is truthy but renders
+  // a blank headline, so guard on the trimmed value.
+  const address = String(parcel.ADDRESS ?? '').replace(/\s+/g, ' ').trim() || 'Selected location'
   const sqft = Number(parcel.SQFTLOT)
   const zone = zoning?.ZONING ? String(zoning.ZONING) : null
 
@@ -68,7 +95,7 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
       districtCode: zone ?? 'Unknown',
       subdistrict: null,
       article: null,
-      maxHeightFt: null,
+      maxHeightFt: seattleMaxHeightFt(zone),
       maxFAR: null,
       allowedUses: usesForZone(zone),
     },
@@ -79,6 +106,7 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
     overlays: {
       historicDistrict: histR.status === 'fulfilled' ? seattleHistoricName(histR.value.features) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      feeArea: mhaR.status === 'fulfilled' ? (firstAttrs(mhaR.value)?.FEE_AREA ? String(firstAttrs(mhaR.value)!.FEE_AREA).trim() : undefined) : undefined,
     },
     existing: {
       landUse: parcel.PRES_USE_DESC ? String(parcel.PRES_USE_DESC).trim() : null,

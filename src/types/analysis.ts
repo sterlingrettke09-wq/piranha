@@ -52,6 +52,19 @@ export interface Hurdle {
   addsMonths?: number
 }
 
+/** A soft, non-blocking flag for parcels that look like a stadium, arena,
+ *  hospital, university, museum, or convention center — sites that are rarely
+ *  open to private redevelopment. The analysis still runs; the UI shows a
+ *  prominent warning above the report (the user can read on / "analyze anyway"). */
+export type SiteAdvisoryCategory = 'venue' | 'hospital' | 'university' | 'museum' | 'transit' | 'civic'
+export interface SiteAdvisory {
+  category: SiteAdvisoryCategory
+  /** Short noun phrase, e.g. "a stadium or arena". */
+  label: string
+  /** Full sentence shown in the warning banner. */
+  note: string
+}
+
 export interface AnalysisResult {
   parcel: {
     address: string
@@ -88,9 +101,11 @@ export interface AnalysisResult {
   developable?: boolean
   developableNote?: string | null
   developableKind?: 'public' | 'no_coverage' | null
+  /** Non-blocking "this looks like a stadium / hospital / campus" flag. */
+  advisory?: SiteAdvisory | null
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[]; envelopeKnown?: boolean }
   hurdles: Hurdle[]
-  costs: { hard: number; soft: number; permit: number; demolition: number; total: number; currency: 'USD' }
+  costs: { hard: number; soft: number; permit: number; demolition: number; impact: number; total: number; currency: 'USD' }
   timeline: { months: number; path: ApprovalPath; tier?: 'single' | 'multi' | 'apartment' }
   narrative: string
   assumptions: Record<string, string>

@@ -62,8 +62,8 @@ export default function Home() {
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-bone/65">
-              Zoning is only the start. A dozen more rules pile on cost, time, and doubt before you
-              break ground.
+              Zoning is only the start. A stack of other rules piles on cost, time, and doubt before
+              you break ground.
             </p>
           </Reveal>
           <Reveal delay={120}>

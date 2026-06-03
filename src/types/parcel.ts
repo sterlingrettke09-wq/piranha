@@ -38,6 +38,11 @@ export interface ParcelInfo {
   overlays: {
     historicDistrict: string | null
     floodZone: string | null
+    /** Inside the CA Coastal Zone → a Coastal Development Permit is required. */
+    coastalZone?: boolean
+    /** Affordable-housing/linkage fee market area (Denver High/Typical, Seattle
+     *  Low/Medium/High/Downtown) — lets the fee be parcel-exact, not a midpoint. */
+    feeArea?: string
   }
   /** What currently stands on the parcel, where the city's data carries it.
    *  Every field is optional — the UI shows only what's present. */

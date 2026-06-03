@@ -171,13 +171,14 @@ export default function Methodology() {
               This is construction cost. It does not include land or acquisition, which in the
               priciest markets often costs more than the building itself.
             </p>
-            <p className="pt-2 font-semibold text-piranha-charcoal">Base rate by use (Boston, 2025)</p>
+            <p className="pt-2 font-semibold text-piranha-charcoal">Base rate by use (U.S. national average, RSMeans 2026)</p>
             <Table head={['Use', '$ / sq ft']} rows={useRows} />
             <p className="pt-2 font-semibold text-piranha-charcoal">City construction index</p>
             <p>
               Hard construction costs run higher in some metros than others. We scale the base rate
-              by this index (Boston is the reference at 1.00). It covers construction only, not
-              land, which varies far more.
+              by this index (RSMeans City Cost Index, 2021 location factors), where the U.S. national
+              average is 1.00 (so Boston is 1.14). It covers construction only, not land, which
+              varies far more.
             </p>
             <Table head={['City', 'Index']} rows={cityIndexRows} />
             <p className="pt-2 font-semibold text-piranha-charcoal">Height premium</p>
@@ -202,11 +203,15 @@ export default function Methodology() {
             <p>Then we adjust:</p>
             <ul className="space-y-2">
               <li>
-                A vacant lot trims the demolition phase (1 to 4 months, by city), since there is
-                nothing to tear down.
+                A teardown adds a demolition phase (2 to 5 months, by city); a vacant lot skips it.
               </li>
-              <li>Additions, ADUs, and changes of use run shorter than a full ground-up build.</li>
-              <li>A project that needs a variance adds roughly 6 months for the hearing cycle.</li>
+              <li>
+                Additions and changes of use run shorter than a full ground-up build; an ADU costs
+                about the same per square foot (fixed costs spread over a tiny area).
+              </li>
+              <li>
+                A project that needs discretionary approval adds roughly 3 to 12 months, by city.
+              </li>
               <li>A prohibited project shows no timeline.</li>
             </ul>
             <p className="text-sm text-piranha-charcoal/55">
@@ -220,9 +225,8 @@ export default function Methodology() {
               Beyond the zoning verdict, we flag the approvals a project tends to trigger: historic
               review, inclusionary or affordability requirements, environmental review (CEQA, ULURP),
               parking rules, demolition and housing-replacement, and private deed or HOA
-              restrictions. These are qualitative flags that tell you where the friction is. They
-              inform the verdict and the timeline framing rather than adding fixed months to the
-              total.
+              restrictions. These flags tell you where the friction is — and the larger approvals
+              (environmental review, large-project review) add time to the timeline estimate above.
             </p>
           </Section>
 

@@ -7,35 +7,48 @@ import type { ProjectType, Use } from '../types/analysis'
 export type BuildingTier = 'single' | 'multi' | 'apartment'
 
 // ---- Construction cost ----
+// HARD construction cost ($/sf), U.S. NATIONAL average — labor + materials only,
+// excluding land and soft costs. Scaled per metro by cityCostIndex below (which
+// is also national-based), so the two numbers are independently sourced.
+// Source: RSMeans 2026 building models — apartment 4–7 story ≈ $340/sf, office
+// 5–10 story ≈ $390/sf. NOTE: "institutional" reflects schools/civic (~$450);
+// hospitals run far higher (~$700–975/sf), a known limitation of one bucket.
 export const costPerSqFtByUse: Record<Use, number> = {
-  residential: 350, // mid-rise multifamily hard cost, Boston ~2025 ($/sf)
-  commercial: 400,
-  mixed: 375,
-  institutional: 450,
+  residential: 340, // RSMeans 2026 mid-rise multifamily, national avg
+  commercial: 390, // RSMeans 2026 office 5–10 story, national avg
+  mixed: 365, // blend of residential + ground-floor commercial
+  institutional: 450, // schools/civic; healthcare is materially higher
 }
 
-// Relative hard-construction cost by metro (Boston = reference 1.0). Estimated
-// from published regional cost indices. Hard cost only; excludes land.
+// Relative HARD-construction cost by metro = RSMeans City Cost Index "total"
+// (materials + labor) ÷ 100, so U.S. national average = 1.00. Pairs with the
+// national $/sf above. Hard cost only — NOT land or market price, which is why
+// "expensive" cities like DC come out low: DC's cost is land, and its
+// construction labor (non-union VA/MD pool) is cheap. Chicago (1.20) outranks
+// LA (1.12) on heavily unionized trades.
+// Source: RSMeans City Cost Index, 2021 location factors.
 export const cityCostIndex: Record<string, number> = {
-  boston: 1.0,
-  nyc: 1.18,
-  sf: 1.13,
-  seattle: 1.0,
-  chicago: 0.92,
-  dc: 0.93,
-  austin: 0.80,
-  la: 1.02,
-  denver: 0.90,
-  minneapolis: 0.97,
+  nyc: 1.34, // Manhattan ~138; outer boroughs ~131
+  sf: 1.3, // 129.8
+  chicago: 1.2, // 119.5 — unionized trades
+  boston: 1.14, // 114.3
+  la: 1.12, // 111.8
+  minneapolis: 1.07, // 107.0
+  seattle: 1.07, // 106.7
+  dc: 0.95, // ~95 — low construction labor; land is the real cost
+  denver: 0.91, // 91.5
+  austin: 0.83, // 82.9
 }
 
-// High-rise construction costs more per sq ft (structure, elevators, life-safety).
-// These tiers drive both the engine factor and the /math display table.
+// High-rise construction costs more per sq ft (structure, elevators, life-safety),
+// but the premium plateaus rather than compounds. Source: RSMeans 2026 by-height
+// models — the big step is the wood→concrete jump at 4→5 stories; towers amortize
+// cores/elevators over more floor area, so the top tier is ~+45%, not +60%.
 export const heightFactorTiers: { label: string; max: number | null; factor: number }[] = [
   { label: 'Up to 4 stories', max: 4, factor: 1.0 },
-  { label: '5 to 8 stories', max: 8, factor: 1.15 },
-  { label: '9 to 20 stories', max: 20, factor: 1.35 },
-  { label: 'Over 20 stories', max: null, factor: 1.6 },
+  { label: '5 to 8 stories', max: 8, factor: 1.12 },
+  { label: '9 to 20 stories', max: 20, factor: 1.28 },
+  { label: 'Over 20 stories', max: null, factor: 1.45 },
 ]
 export function heightCostFactor(stories: number | null): number {
   if (stories == null) return 1.0
@@ -45,51 +58,192 @@ export function heightCostFactor(stories: number | null): number {
   return 1.0
 }
 
-export const softCostPct = 0.25 // soft costs as a share of hard cost
+// Soft costs (A&E, permits, financing, legal, developer OH) as a share of HARD
+// cost. Industry standard is 20–30% of hard cost; 0.25 is a defensible mid-range
+// blended value. Source: NMHC Housing Affordability Toolkit; Multifamily.loans.
+export const softCostPct = 0.25
+// Nominal/representative permit fees — NOT a sourced per-city fee schedule.
+// Real schedules vary (Chicago is sf-based w/ ~$602 min, DC ~$0.03/cu-ft, etc.),
+// but building-permit fees are rounding-error against multimillion-dollar
+// construction value, so a flat ~1%-of-value proxy is adequate here.
 export const PERMIT_BASE_FEE = 100 // flat building-permit filing fee (USD)
 export const PERMIT_RATE_PER_1000 = 10 // $ per $1,000 of construction value
 export const VARIANCE_FILING_FEE = 600 // variance filing + intake (USD)
-export const FT_PER_STORY = 11 // typical floor-to-floor incl. structure (ft)
+// Floor-to-floor height (ft), incl. structure. 11 ft is the residential standard
+// (9–11 ft typical); commercial/office runs ~13 ft. FT_PER_STORY is the residential
+// default (used for the use-agnostic envelope); ftPerStory(use) is use-aware for
+// cost/feasibility. Source: CRE floor-to-floor design standards (AdventuresinCRE).
+export const FT_PER_STORY = 11
+export function ftPerStory(use: Use): number {
+  return use === 'residential' ? 11 : 13
+}
 
-// ---- Timeline: full life-cycle months (design → permits → site prep → build → move-in) ----
+// ---- Timeline: full life-cycle months (design → permit review → site prep →
+// construction → move-in) for a STANDARD, by-right project on a buildable
+// (cleared) lot. A teardown adds demoMonthsByCity below; discretionary review
+// (variance, ULURP/CEQR, Article 80, historic, coastal) is added on top by the
+// hurdle engine — so a complex project runs LONGER than these floors.
+//
+// Grounded, not guessed:
+//  • Single-family: U.S. Census Survey of Construction 2023 — ~10 months from
+//    permit to completion alone (8.9 for-sale → 15.2 owner-built); + design and
+//    permit review puts a realistic floor near 14–16 months, more where permit
+//    queues are long (Seattle SDCI, NYC DOB), and ~2.5 yrs in SF.
+//  • Mid-rise multifamily ("multi"): ~24–34 months (12–20 mo build + design/permit).
+//  • High-rise / apartment tower: industry data shows 2–4 yrs typical, trending
+//    to 4–5+ yrs — so 38–66 months, NYC and SF at the top.
 export const lifecycleMonths: Record<string, Record<BuildingTier, number>> = {
-  boston: { single: 14, multi: 18, apartment: 26 },
-  nyc: { single: 18, multi: 24, apartment: 36 },
-  chicago: { single: 11, multi: 15, apartment: 20 },
+  austin: { single: 15, multi: 24, apartment: 38 },
+  denver: { single: 15, multi: 24, apartment: 38 },
+  minneapolis: { single: 16, multi: 24, apartment: 38 },
+  chicago: { single: 16, multi: 26, apartment: 40 },
+  dc: { single: 16, multi: 26, apartment: 40 },
+  boston: { single: 18, multi: 28, apartment: 44 }, // large projects trigger Article 80
+  seattle: { single: 18, multi: 30, apartment: 44 }, // SDCI permit queues run long
+  la: { single: 18, multi: 30, apartment: 48 }, // discretionary-heavy entitlement
+  nyc: { single: 20, multi: 34, apartment: 54 }, // DOB + ULURP for larger projects
   // SF is the slowest-permitting major US city: discretionary review, CEQA, and
   // Planning Commission routinely push even modest projects past 3 years.
-  sf: { single: 30, multi: 44, apartment: 60 },
-  seattle: { single: 14, multi: 18, apartment: 24 },
+  sf: { single: 30, multi: 46, apartment: 66 },
 }
-export const lifecycleFallback: Record<BuildingTier, number> = { single: 16, multi: 20, apartment: 30 }
+export const lifecycleFallback: Record<BuildingTier, number> = { single: 16, multi: 26, apartment: 40 }
 
-// Months of the life-cycle attributable to demolition + site clearing (a vacant
-// lot skips this). Grounded in each city's demolition-permit reality.
+// Months the life-cycle gains when an existing building must come down first
+// (a vacant lot skips this): demolition permit + asbestos/abatement survey +
+// utility disconnects + clearing. A teardown is rarely a quick add-on in a major
+// city, so these are months, not weeks.
+// Sourced from each city's demolition-permit process (permit + asbestos survey +
+// utility disconnect + clearing). SF carries §311 notice + historic-resource
+// eval; Denver's mandatory 21-day landmark posting pushes past 2 mo; LA's LADBS
+// plan-check is faster than assumed. Boston (Article 85) and Chicago (2003
+// Demolition-Delay Ordinance) can add a 90-day historic hold on flagged
+// buildings — surfaced as a conditional hurdle, not baked into the base here.
 export const demoMonthsByCity: Record<string, number> = {
-  boston: 2,
-  nyc: 3,
-  chicago: 1,
-  sf: 4,
-  seattle: 2,
+  boston: 3,
+  nyc: 4,
+  chicago: 3,
+  sf: 5, // §311 + historic eval + CEQA risk (was 4 — too low)
+  seattle: 3,
+  dc: 3,
+  austin: 2,
+  la: 3, // LADBS plan-check 1–4 wks (was 4 — too high)
+  denver: 3, // 21-day landmark posting + 10-day screen (was 2)
+  minneapolis: 2,
 }
-export const demoMonthsFallback = 2
+export const demoMonthsFallback = 3
 
 // Demolition cost per sq ft of EXISTING building removed (structural teardown,
-// haul-off, and disposal; abatement on older buildings can push this higher).
-// Estimate; scaled by the city construction index like hard cost.
-export const demoCostPerSqFt = 14
+// haul-off, disposal). Source: Angi/CommLoan 2025–26 — residential & small
+// commercial cluster $4–$12/sf; large concrete/steel runs higher. $12 is a
+// defensible blended base, scaled by the city construction index.
+// (Hazmat/asbestos abatement on pre-1980 buildings adds ~$2.5/sf — a future
+// conditional adder once year-built is threaded into the cost model.)
+export const demoCostPerSqFt = 12
 
-// Scope relative to a full new build (demo + ground-up).
+// Scope as a fraction of a full ground-up new build of the same size. Sources:
+// RSMeans renovation factors; Gensler/NAIOP adaptive-reuse (~30% cheaper than
+// new → 0.65); Terner Center ADU survey ($250/sf median — an ADU costs the SAME
+// or MORE per sf than a house, so the factor is ~1.0, NOT a discount).
 export const projectFactor: Record<ProjectType, number> = {
   new: 1,
-  addition: 0.6,
-  adu: 0.55,
-  change_of_use: 0.5,
+  addition: 0.65,
+  adu: 1.0, // ADUs are per-sf parity with new build (fixed costs over tiny area)
+  change_of_use: 0.65, // adaptive reuse ≈ 30% cheaper than new, not 50%
 }
 
-// A project needing discretionary relief adds a hearing cycle on top of baseline.
-export const reliefAddMonths = 6
+// Months a DISCRETIONARY approval (variance / special permit / design review)
+// adds on top of the by-right baseline, per city. A dimensional variance is a
+// single quick hearing in fast cities (Chicago/Minneapolis ~3) but attaches
+// lengthy discretionary review even to small projects elsewhere (SF ~12, LA ~10).
+// Sources: Terner Center (SF ~27-mo entitlement), UCLA Anderson (LA), CBC (NYC
+// ULURP/CEQR), Seattle design-review data, BPDA Article 80, city planning depts.
+// NOTE: this is the SIMPLE-variance tier. A major rezoning / ULURP / CEQA-EIR or
+// SEPA path runs far longer; that larger entitlement is layered on separately by
+// the hurdle engine, not captured here.
+export const reliefAddMonthsByCity: Record<string, number> = {
+  sf: 12,
+  la: 10,
+  seattle: 9,
+  nyc: 7,
+  boston: 6,
+  dc: 5,
+  austin: 4,
+  denver: 4,
+  chicago: 3,
+  minneapolis: 3,
+}
+export const reliefAddMonthsFallback = 6
 
-// Rough gross residential area per dwelling unit (incl. circulation, walls,
-// common area) — used to estimate how many units a buildable envelope implies.
-export const avgUnitGrossSqFt = 1000
+// Affordable-housing / linkage / impact fees ($/sf of GFA), verified against each
+// city's ordinance / fee schedule (2024–26). Conditional by use & size.
+//   applied:true  → baked into the cost total (we can check the trigger).
+//   applied:false → INFORMATIONAL only — the trigger (Seattle MHA zone, SF office-
+//     vs-retail) can't be detected per parcel, so we surface it as a note instead
+//     of risking an overstated total.
+// 5 cities have NO flat citywide linkage fee (NYC/Chicago/DC/Austin/Minneapolis):
+// their inclusionary requirements are unit set-asides, not per-sf fees.
+// NOTE: LA / Denver / Seattle fees are tiered by market area / zone, so the
+// single values below are representative MIDPOINTS of those schedules, not one
+// published number. Boston ($23.09) and SF (~$85.90 large office, eff. 1/1/26) are exact rates.
+// Sources: boston.gov linkage; LAHD AHLF (eff. 7/1/25, $10–23/sf res by area);
+// Denver EHA (eff. 7/1/25, by zone); seattle.gov MHA ($5–50/sf by zone); SF
+// Planning Jobs-Housing Linkage register.
+export interface ImpactFee {
+  perSqFt: number
+  applied: boolean
+  label: string
+}
+export function impactFee(city: string, use: Use, gfa: number, units: number | null, feeArea?: string): ImpactFee | null {
+  const commercial = use === 'commercial' || use === 'mixed' || use === 'institutional'
+  switch (city) {
+    case 'boston':
+      return commercial && gfa >= 50000
+        ? { perSqFt: 23.09, applied: true, label: 'Boston development linkage (commercial ≥ 50k sf)' }
+        : null
+    case 'la':
+      if (use === 'residential') return { perSqFt: 15, applied: true, label: 'LA affordable-housing linkage fee' }
+      return commercial && gfa >= 15000
+        ? { perSqFt: 5, applied: true, label: 'LA affordable-housing linkage fee (nonres ≥ 15k sf)' }
+        : null
+    case 'denver': {
+      // Residential <10 units is citywide-uniform ($5/sf, ≤1,600 sf/unit); 10+
+      // units fall under the inclusionary build mandate (no fee). Commercial
+      // varies by EHA market area: High $9, Typical $6 — now parcel-exact.
+      if (use === 'residential')
+        return (units ?? 1) >= 10 ? null : { perSqFt: 5, applied: true, label: 'Denver affordable-housing fee' }
+      if (!commercial) return null
+      const rate = feeArea === 'High' ? 9 : 6
+      return { perSqFt: rate, applied: true, label: `Denver affordable-housing fee (${feeArea ?? 'Typical'} market)` }
+    }
+    case 'seattle': {
+      // MHA payment varies by fee area (and zone suffix). Per-area representative
+      // rate; informational because the trigger (MHA zone) + build-units opt-out
+      // can't be fully resolved per parcel.
+      const SEA: Record<string, { r: number; c: number }> = {
+        'Low Areas': { r: 16, c: 11 },
+        'Medium Areas': { r: 28, c: 16 },
+        'High Areas': { r: 42, c: 18 },
+        'Downtown / South Lake Union Areas': { r: 30, c: 15 },
+      }
+      const a = (feeArea && SEA[feeArea]) || { r: 25, c: 15 }
+      return {
+        perSqFt: use === 'residential' ? a.r : a.c,
+        applied: false,
+        label: `Seattle MHA${feeArea ? ` (${feeArea})` : ''} — applies in MHA zones, or build affordable units instead`,
+      }
+    }
+    case 'sf':
+      // Jobs-Housing Linkage (flat citywide, by use). Large-office rate eff. 1/1/2026.
+      return commercial && gfa >= 25000
+        ? { perSqFt: 85.9, applied: false, label: 'SF Jobs-Housing Linkage — large office ≥ 50k gsf (lab/retail lower)' }
+        : null
+    default:
+      return null
+  }
+}
+
+// Gross residential area per dwelling unit (incl. circulation/common area) —
+// used to estimate how many units a buildable envelope implies. The median
+// multifamily NET unit is ~1,000 sf (Statista 2023); at ~75% net-to-gross
+// efficiency that grosses up to ~1,300 sf/unit.
+export const avgUnitGrossSqFt = 1300

@@ -1,5 +1,6 @@
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
+import { impactFee } from '../../../src/config/estimates'
 import {
   costPerSqFtByUse,
   cityCostIndex,
@@ -9,20 +10,24 @@ import {
   PERMIT_RATE_PER_1000,
   VARIANCE_FILING_FEE,
   timelineMonthsByPath,
-  FT_PER_STORY,
+  ftPerStory,
   demoCostPerSqFt,
   projectFactor,
 } from './assumptions'
 
 export interface CostEstimate {
-  costs: { hard: number; soft: number; permit: number; demolition: number; total: number; currency: 'USD' }
+  costs: { hard: number; soft: number; permit: number; demolition: number; impact: number; total: number; currency: 'USD' }
   timeline: { months: number; path: Feasibility['path'] }
+  /** A linkage/impact fee we can't bake in (uncheckable trigger) — surfaced as a note. */
+  impactNote?: string
 }
 
 export interface CostOpts {
   /** Sq ft of existing building to demolish first. When > 0, a demolition cost
    *  is added — otherwise the quote silently ignores tearing down what's there. */
   demolitionSqFt?: number | null
+  /** Affordable-housing fee market area (Denver/Seattle) → parcel-exact fee. */
+  feeArea?: string
 }
 
 export function estimateCost(
@@ -31,7 +36,7 @@ export function estimateCost(
   opts: CostOpts = {},
 ): CostEstimate {
   const cityIdx = cityCostIndex[project.city] ?? 1.0
-  const stories = project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / FT_PER_STORY) : null)
+  const stories = project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / ftPerStory(project.use)) : null)
   // Renovations / ADUs / changes-of-use cost less per sq ft than ground-up new
   // construction. Scale by the same project-scope factor the timeline uses, so
   // cost and schedule stay consistent. (new = 1.0.)
@@ -41,13 +46,25 @@ export function estimateCost(
   )
   const soft = Math.round(hard * softCostPct)
   const demoSf = opts.demolitionSqFt ?? 0
-  const demolition = demoSf > 0 ? Math.round(demoSf * demoCostPerSqFt * cityIdx) : 0
+  // Size-tier the demo rate: small/residential teardowns run cheaper per sf; large
+  // concrete/steel structures cost more (phased demo, hauling). $12 base ≈ mid.
+  const demoRate = demoSf >= 20000 ? 18 : demoSf > 0 && demoSf < 5000 ? 10 : demoCostPerSqFt
+  const demolition = demoSf > 0 ? Math.round(demoSf * demoRate * cityIdx) : 0
   const constructionValue = hard
   let permit = Math.round(PERMIT_BASE_FEE + (constructionValue / 1000) * PERMIT_RATE_PER_1000)
   if (feasibility.path === 'variance') permit += VARIANCE_FILING_FEE
-  const total = hard + soft + permit + demolition
+  // Affordable-housing / linkage fee. Baked into the total only when we can verify
+  // the trigger (use + size); otherwise surfaced as an informational note.
+  const fee = impactFee(project.city, project.use, project.gfa, project.units ?? null, opts.feeArea)
+  const impact = fee && fee.applied ? Math.round(fee.perSqFt * project.gfa) : 0
+  const impactNote =
+    fee && !fee.applied
+      ? `${fee.label}: roughly $${fee.perSqFt}/sq ft — not included in the total above.`
+      : undefined
+  const total = hard + soft + permit + demolition + impact
   return {
-    costs: { hard, soft, permit, demolition, total, currency: 'USD' },
+    costs: { hard, soft, permit, demolition, impact, total, currency: 'USD' },
     timeline: { months: timelineMonthsByPath[feasibility.path], path: feasibility.path },
+    impactNote,
   }
 }

@@ -47,7 +47,7 @@ const CHICAGO_BASE_FAR: Record<string, number> = {
   'RT-3.5': 1.05,
   'RT-4': 1.2,
   'RT-4A': 1.2,
-  'RM-4.5': 1.7,
+  'RM-4.5': 1.2, // Chicago Zoning Ordinance §17-2-0305 (was incorrectly 1.7)
   'RM-5': 2.0,
   'RM-5.5': 2.5,
   'RM-6': 4.4,
@@ -72,7 +72,7 @@ function usesForZone(zone: string | null): string[] | null {
 export async function getChicagoParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [zoningR, parcelR, floodR, addrR, histR] = await Promise.allSettled([
-    fetchFeatures(ZONING, lat, lng, ['ZONE_CLASS'], false, undefined, 9000),
+    fetchParcelSnap(ZONING, lat, lng, ['ZONE_CLASS'], false, undefined, 30, 9000),
     fetchParcelSnap(PARCELS, lat, lng, ['PIN10', 'AssessorBLDGclass'], true),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     reverseGeocode(lat, lng),

@@ -85,7 +85,11 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
   if (facil != null) farByUse.institutional = facil
   const mixed = Math.max(resid ?? 0, comm ?? 0)
   if (mixed > 0) farByUse.mixed = mixed
-  const maxFAR = Math.max(resid ?? 0, comm ?? 0, facil ?? 0) || null
+  // Headline FAR reflects the residential/commercial as-of-right limit, NOT the
+  // community-facility FAR (FacilFAR) — that's higher and applies only to CF uses
+  // (schools, hospitals). Including it made R7-2 display "Max FAR 6.5" while the
+  // residential envelope correctly used 3.44. Per-use FAR stays in farByUse.
+  const maxFAR = Math.max(resid ?? 0, comm ?? 0) || null
 
   const zone = lot.ZoneDist1 != null ? String(lot.ZoneDist1) : null
 

@@ -9,6 +9,9 @@ const PARCELS = 'https://denvergov.org/maps/data/Zoning/MapServer/0'
 const ZONING = 'https://denvergov.org/maps/data/Zoning/MapServer/1'
 const HISTORIC =
   'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/ODC_HIST_LANDMARKDISTRICT_A/FeatureServer/68'
+// Denver Expanding Housing Affordability (EHA) market area — "High" vs "Typical".
+// Only the commercial linkage fee varies by area; lets us price it exactly.
+const EHA = 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/EHA_WebService/FeatureServer/5'
 
 // Denver max height (ft). The form-based code's trailing NUMBER is max stories
 // (e.g. "-3", "-5"); the live HEIGHT_STORIES field carries it directly. Letter
@@ -16,9 +19,12 @@ const HISTORIC =
 // ~12 ft/story. maxFAR is null (form-based code, no FAR). Source: Denver Zoning
 // Code Art. 3/4/5 building-form height tables.
 const DENVER_FT_PER_STORY = 12
-function denverMaxHeightFt(zone: string | null, heightStories: unknown): number | null {
+function denverMaxHeightFt(zone: string | null, heightStories: unknown, description?: unknown): number | null {
   const stories = Number(heightStories)
   if (Number.isFinite(stories) && stories > 0) return Math.round(stories * DENVER_FT_PER_STORY)
+  // Legacy "Former Chapter 59" zones (B-3, O-1, R-X…) put a district CLASS in the
+  // trailing number, NOT a story count — don't fabricate a height from it.
+  if (/former chapter 59/i.test(String(description ?? ''))) return null
   if (!zone) return null
   const z = zone.toUpperCase().trim()
   // Trailing numeric token = stories (e.g. G-MU-3, C-MX-5, U-RH-2.5).
@@ -44,12 +50,18 @@ function usesForZone(code: string | null): string[] | null {
     return ['residential']
   if (z.startsWith('I-') || z.includes('-IMX') || z.includes('-IA') || z.includes('-IB')) return ['commercial', 'institutional']
   if (z.startsWith('OS') || z.startsWith('CMP')) return ['institutional']
+  // Legacy "Former Chapter 59" districts (pre-2010 recode): R-* residential,
+  // B-*/O-* business/office, before the form-based codes above. Without this they
+  // fell through to null → an INDETERMINATE verdict on plainly residential land.
+  if (/^R-MU/.test(z)) return ['mixed', 'residential', 'commercial']
+  if (/^R-/.test(z) || /^R\d/.test(z)) return ['residential']
+  if (/^B-/.test(z) || /^O-/.test(z)) return ['commercial', 'mixed', 'residential']
   return null
 }
 
 export async function getDenverParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
+  const [parcelR, zoningR, histR, floodR, ehaR] = await Promise.allSettled([
     fetchParcelSnap(PARCELS, lat, lng, [
       'SITUS_ADDRESS_LINE1',
       'LAND_AREA',
@@ -59,9 +71,10 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       'COM_ORIG_YEAR_BUILT',
       'RES_ORIG_YEAR_BUILT',
     ]),
-    fetchFeatures(ZONING, lat, lng, ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES']),
+    fetchParcelSnap(ZONING, lat, lng, ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES']),
     fetchFeatures(HISTORIC, lat, lng, ['DIST_NAME']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    fetchFeatures(EHA, lat, lng, ['MarketArea']),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -77,11 +90,13 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
+  const eha = ehaR.status === 'fulfilled' ? firstAttrs(ehaR.value) : null
+  const feeArea = eha?.MarketArea ? String(eha.MarketArea).trim() : undefined
 
   const address = parcel.SITUS_ADDRESS_LINE1 ? String(parcel.SITUS_ADDRESS_LINE1).replace(/\s+/g, ' ').trim() : 'Selected location'
   const land = Number(parcel.LAND_AREA)
   const code = zoning?.ZONE_DISTRICT ? String(zoning.ZONE_DISTRICT) : null
-  const maxHeightFt = denverMaxHeightFt(code, zoning?.HEIGHT_STORIES)
+  const maxHeightFt = denverMaxHeightFt(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION)
 
   // Existing structure: improvement (building) value > 0 means a building stands
   // here. D_CLASS_CN is a human-readable use; COM/RES_ORIG_YEAR_BUILT the year.
@@ -116,6 +131,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
     overlays: {
       historicDistrict: hist?.DIST_NAME ? String(hist.DIST_NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      feeArea,
     },
     existing,
     sources: { parcels: PARCELS, zoning: ZONING, historic: HISTORIC, flood: ENDPOINTS.flood },

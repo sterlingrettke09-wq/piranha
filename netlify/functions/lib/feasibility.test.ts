@@ -52,8 +52,8 @@ describe('assessFeasibility', () => {
     expect(r.envelopeKnown).toBe(true)
   })
 
-  it('needs relief when FAR exceeds the district limit', () => {
-    const r = assessFeasibility(parcel(), project({ gfa: 30000 })) // FAR 3.0 > 2.0
+  it('needs relief when FAR modestly exceeds the district limit (≤1.2×)', () => {
+    const r = assessFeasibility(parcel(), project({ gfa: 22000 })) // FAR 2.2 = 1.1× of 2.0
     expect(r.overall).toBe('NEEDS_RELIEF')
     expect(r.path).toBe('variance')
     expect(r.checks.find((c) => c.dimension === 'far')?.status).toBe('NEEDS_RELIEF')
@@ -80,9 +80,14 @@ describe('assessFeasibility', () => {
     expect(r.overall).toBe('PROHIBITED')
   })
 
-  it('still only needs relief at a modest overage (≤1.5×)', () => {
+  it('is PROHIBITED when FAR exceeds ~1.2× (a density bump beyond variance reach)', () => {
     const r = assessFeasibility(parcel(), project({ gfa: 28000 })) // FAR 2.8 = 1.4× of 2.0
-    expect(r.checks.find((c) => c.dimension === 'far')?.status).toBe('NEEDS_RELIEF')
+    expect(r.checks.find((c) => c.dimension === 'far')?.status).toBe('PROHIBITED')
+  })
+
+  it('still allows a height variance up to ~1.5×', () => {
+    const r = assessFeasibility(parcel(), project({ heightFt: 90 })) // 90 vs 65 = ~1.38×
+    expect(r.checks.find((c) => c.dimension === 'height')?.status).toBe('NEEDS_RELIEF')
   })
 
   it('flags use needing relief when not in the allowed list', () => {

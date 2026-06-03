@@ -28,7 +28,8 @@ describe('buildNarrative', () => {
     }
     const text = buildNarrative(parcel, project, f, { ...cost, timeline: { months: 12, path: 'variance' } })
     expect(text).toMatch(/permission/i)
-    expect(text).toContain('far')
+    // Friendly label, not the raw "far" enum token.
+    expect(text).toMatch(/floor-area ratio \(FAR\)/)
   })
 
   it('reports the full life-cycle timeline, not the base permit time', () => {

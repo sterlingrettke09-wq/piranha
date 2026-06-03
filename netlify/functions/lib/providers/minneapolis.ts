@@ -8,7 +8,7 @@
 // reproject 4326 normally.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchFeaturesXY, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchFeaturesXYSnap, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
 import { lngLatToUtm15 } from '../geo'
 
 const PARCELS = 'https://gis.hennepin.us/arcgis/rest/services/HennepinData/LAND_PROPERTY/MapServer/1'
@@ -18,6 +18,10 @@ const BUILT_FORM =
   'https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/Planning_Zoning_Built_Form/FeatureServer/0'
 const HISTORIC =
   'https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/HPC_Districts/FeatureServer/0'
+// City of Minneapolis park boundaries (MPRB). The 2040 zoning blankets parks in
+// adjacent residential codes (UN1, etc.), so a park reads as a buildable lot
+// unless we check this polygon layer explicitly.
+const PARKS = 'https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/Parks/FeatureServer/0'
 
 // Minneapolis separates USE (primary zoning) from FORM. Max height comes from
 // the built-form district (Abbrv), per the City's Built Form Districts Handbook
@@ -37,19 +41,21 @@ function usesForZone(code: string | null): string[] | null {
   if (z.startsWith('RM')) return ['residential', 'mixed', 'institutional']
   if (z.startsWith('CM') || z.startsWith('DT')) return ['commercial', 'mixed', 'residential']
   if (z.startsWith('PR')) return ['commercial', 'institutional']
-  if (z.startsWith('TR')) return ['institutional']
+  // TR = Transportation district (transit / right-of-way), NOT a standard
+  // building site — leave uses underivable rather than mislabel it institutional.
   return null
 }
 
 export async function getMinneapolisParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const { x, y } = lngLatToUtm15(lng, lat)
-  const [parcelR, zoningR, formR, histR, floodR] = await Promise.allSettled([
-    fetchFeaturesXY(PARCELS, x, y, 26915, ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID', 'BUILD_YR', 'BLDG_MV1']),
-    fetchFeatures(ZONING, lat, lng, ['Land_Use_Code', 'Land_Use']),
+  const [parcelR, zoningR, formR, histR, floodR, parkR] = await Promise.allSettled([
+    fetchFeaturesXYSnap(PARCELS, x, y, 26915, ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID', 'BUILD_YR', 'BLDG_MV1']),
+    fetchParcelSnap(ZONING, lat, lng, ['Land_Use_Code', 'Land_Use']),
     fetchFeatures(BUILT_FORM, lat, lng, ['Abbrv', 'Built_Form']),
     fetchFeatures(HISTORIC, lat, lng, ['DISTRICT']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    fetchFeatures(PARKS, lat, lng, ['PARK_NAME1']),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -76,12 +82,18 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   const area = Number(parcel.PARCEL_AREA)
   const code = zoning?.Land_Use_Code ? String(zoning.Land_Use_Code) : null
 
+  // Park boundary → mark as public open space so the developability gate blocks
+  // it (the zoning layer reports a normal residential code over parkland).
+  const park = parkR.status === 'fulfilled' ? firstAttrs(parkR.value) : null
+  const parkName = park?.PARK_NAME1 ? String(park.PARK_NAME1).replace(/\s+/g, ' ').trim() : null
+
   // Existing structure: a building market value (BLDG_MV1 > 0) or a build year
   // means a building stands here. No use label or floor area in this layer.
   const bldgVal = Number(parcel.BLDG_MV1)
   const buildYr = Number(parcel.BUILD_YR)
-  const existing =
-    (Number.isFinite(bldgVal) && bldgVal > 0) || (Number.isFinite(buildYr) && buildYr > 1000)
+  const existing = parkName
+    ? { landUse: `${parkName} (park)` } // "...park" → caught by the public-land gate
+    : (Number.isFinite(bldgVal) && bldgVal > 0) || (Number.isFinite(buildYr) && buildYr > 1000)
       ? { yearBuilt: Number.isFinite(buildYr) && buildYr > 1000 ? buildYr : null, numBuildings: 1 }
       : undefined
 

@@ -8,18 +8,26 @@ interface Props {
   costs: AnalysisResult['costs']
   gfa: number
   units?: number
+  /** A teardown is required but its floor area isn't in the city's data, so the
+   *  demolition cost couldn't be sized — show "not estimated" rather than omit it. */
+  demolitionRequired?: boolean
 }
 
-export function CostBreakdown({ costs, gfa, units }: Props) {
-  const rows: { label: string; value: number }[] = [
-    ...(costs.demolition > 0 ? [{ label: 'Demolish existing building', value: costs.demolition }] : []),
+export function CostBreakdown({ costs, gfa, units, demolitionRequired }: Props) {
+  const rows: { label: string; value: number | null }[] = [
+    ...(costs.demolition > 0
+      ? [{ label: 'Demolish existing building', value: costs.demolition }]
+      : demolitionRequired
+        ? [{ label: 'Demolish existing building', value: null }] // required, not sized
+        : []),
     { label: 'Construction (hard)', value: costs.hard },
     { label: 'Soft costs', value: costs.soft },
     { label: 'Permitting & approvals', value: costs.permit },
+    ...(costs.impact > 0 ? [{ label: 'Affordable-housing / linkage fee', value: costs.impact }] : []),
   ]
   // Per-sq-ft / per-unit reflect the building you're putting up — exclude
-  // demolition, which would otherwise inflate the rate on a teardown.
-  const construction = costs.total - costs.demolition
+  // demolition and the impact fee, which would otherwise inflate the rate.
+  const construction = costs.total - costs.demolition - costs.impact
   const perSqft = gfa > 0 ? construction / gfa : null
   const perUnit = units && units > 0 ? construction / units : null
 
@@ -62,7 +70,9 @@ export function CostBreakdown({ costs, gfa, units }: Props) {
             }`}
           >
             <dt className="text-piranha-charcoal/65">{r.label}</dt>
-            <dd className="font-medium text-piranha-charcoal tabular-nums">{usd(r.value)}</dd>
+            <dd className="font-medium text-piranha-charcoal tabular-nums">
+              {r.value === null ? <span className="text-piranha-charcoal/45">Not estimated</span> : usd(r.value)}
+            </dd>
           </div>
         ))}
       </dl>

@@ -73,7 +73,7 @@ export default function About() {
           <Section n="03" title="Data sources">
             <p>
               Live today across ten cities (Boston, New York, Chicago, San Francisco, Seattle,
-              Washington DC, Austin, Los Angeles, Denver, and Minneapolis), each wired from that
+              Washington, D.C., Austin, Los Angeles, Denver, and Minneapolis), each wired from that
               city’s own public data: zoning districts, parcels, and FEMA flood-hazard zones,
               plus local historic districts where available.
               Coverage depth varies by city, and we’re adding more rule types as we go.

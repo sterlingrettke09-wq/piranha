@@ -4,18 +4,25 @@ import { USES, PROJECT_TYPES, FUNDING_TYPES } from '../../src/types/analysis'
 import { getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
 import { assessDevelopability } from '../../src/lib/developability'
+import { assessSiteAdvisory } from '../../src/lib/siteFlags'
 import { assessHurdles } from './lib/hurdles'
 import { estimateCost } from './lib/cost'
 import { resolveTimeline } from './lib/timeline'
 import { buildNarrative } from './lib/narrative'
 import { assumptionsSummary } from './lib/assumptions'
-import { avgUnitGrossSqFt } from '../../src/config/estimates'
+import {
+  avgUnitGrossSqFt,
+  ftPerStory,
+  reliefAddMonthsByCity as RELIEF_ADD,
+  reliefAddMonthsFallback as RELIEF_FALLBACK,
+} from '../../src/config/estimates'
 import { logSearch } from './lib/searchLog'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 
 const DISCLAIMERS = [
   'Estimates only. Not legal, engineering, or financial advice.',
+  'Construction cost only — excludes land, financing, and tax credits or other incentives.',
   'Verify zoning, fees, and permitting with the city before relying on these figures.',
 ]
 
@@ -72,6 +79,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
     districtCode: parcel.zoning.districtCode,
     landUse: parcel.existing?.landUse ?? null,
   })
+  // Soft flag for stadiums / arenas / hospitals / campuses / museums — the
+  // analysis still runs, but the UI warns the parcel is rarely buildable.
+  const advisory = assessSiteAdvisory({
+    city,
+    districtCode: parcel.zoning.districtCode,
+    landUse: parcel.existing?.landUse ?? null,
+    lat,
+    lng,
+  })
   const feasibility = assessFeasibility(parcel, project)
   const hurdles = assessHurdles(city, parcel, project)
 
@@ -96,9 +112,29 @@ export const handler: Handler = async (event: HandlerEvent) => {
           ? exu * avgUnitGrossSqFt
           : null
       : null
-  const estimate = estimateCost(project, feasibility, { demolitionSqFt })
+  const estimate = estimateCost(project, feasibility, { demolitionSqFt, feeArea: parcel.overlays.feeArea })
   const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding, demolitionSqFt)
   const timeline = { months: timelineInfo.months, path: timelineInfo.path, tier: timelineInfo.tier }
+
+  // Discretionary/entitlement delay, computed ONCE here to avoid double-counting.
+  // The discretionary review processes are NESTED, not additive: environmental
+  // review (CEQA/CEQR/SEPA) runs inside the entitlement, and the per-city variance
+  // adder already represents "what discretionary review costs in this city." So we
+  // take the MAX of the per-city spine and the longest triggered entitlement
+  // hurdle (review/environmental/historic) — not their sum — and only ADD the
+  // genuinely-parallel processes (public funding / prevailing-wage). Capped at 24
+  // months, since even worst-case stacked entitlement tops out around there.
+  const ENTITLEMENT_CATS = new Set(['review', 'environmental', 'historic'])
+  const PARALLEL_CATS = new Set(['labor'])
+  const monthsIn = (cats: Set<string>, combine: (a: number, b: number) => number, seed: number) =>
+    hurdles
+      .filter((h) => cats.has(h.category) && typeof h.addsMonths === 'number')
+      .reduce((m, h) => combine(m, h.addsMonths ?? 0), seed)
+  const spine = feasibility.path === 'variance' ? RELIEF_ADD[city] ?? RELIEF_FALLBACK : 0
+  const entitlementMax = monthsIn(ENTITLEMENT_CATS, Math.max, 0)
+  const parallelSum = monthsIn(PARALLEL_CATS, (a, b) => a + b, 0)
+  const discretionaryMonths = Math.min(24, Math.max(spine, entitlementMax) + parallelSum)
+  if (timeline.path !== 'prohibited' && timeline.months > 0) timeline.months += discretionaryMonths
 
   const narrative = buildNarrative(parcel, project, feasibility, estimate, {
     timelineMonths: timeline.months,
@@ -124,15 +160,40 @@ export const handler: Handler = async (event: HandlerEvent) => {
     developable: developability.developable,
     developableNote: developability.reason,
     developableKind: developability.kind,
+    advisory,
     feasibility: { overall: feasibility.overall, checks: feasibility.checks, envelopeKnown: feasibility.envelopeKnown },
     hurdles,
     costs: estimate.costs,
     timeline,
     narrative,
-    assumptions: assumptionsSummary(city, project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / 11) : null)),
+    assumptions: assumptionsSummary(city, project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / ftPerStory(use)) : null)),
     sources: parcel.sources,
-    disclaimers: DISCLAIMERS,
+    disclaimers: [
+      ...DISCLAIMERS,
+      ...(city === 'austin'
+        ? ['Austin zoning reflects the city’s 2019 published layer and may not include recent reforms (e.g. the 2023–24 HOME changes). Verify current zoning with the City of Austin.']
+        : []),
+      ...(estimate.impactNote ? [estimate.impactNote] : []),
+    ],
     generatedAt: new Date().toISOString(),
+  }
+
+  // A non-developable parcel (public land / outside coverage) has no meaningful
+  // cost or timeline — zero them so the JSON matches what the UI shows (the
+  // "can't build / outside coverage" message), instead of emitting a confident
+  // teardown estimate for, say, Central Park.
+  if (!developability.developable) {
+    result.costs = { hard: 0, soft: 0, permit: 0, demolition: 0, impact: 0, total: 0, currency: 'USD' }
+    result.timeline = { months: 0, path: 'prohibited', tier: timeline.tier }
+    result.hurdles = []
+    result.feasibility = { overall: 'INDETERMINATE', checks: [], envelopeKnown: false }
+    result.narrative = developability.reason ?? ''
+  } else if (result.feasibility.overall === 'PROHIBITED') {
+    // A prohibited project can't be built as proposed, so a confident construction
+    // cost (e.g. a multimillion-dollar teardown of a building you're told you
+    // can't replace) is misleading next to the 0-month "no viable path" timeline.
+    // Zero the cost but keep the hurdles + narrative that explain WHY it's barred.
+    result.costs = { hard: 0, soft: 0, permit: 0, demolition: 0, impact: 0, total: 0, currency: 'USD' }
   }
 
   // Private intent log (owner-only, via /admin). Never blocks the response.
@@ -144,8 +205,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     projectType: project.projectType,
     gfa: project.gfa,
     units: project.units,
-    verdict: feasibility.overall,
-    months: timeline.months,
+    verdict: result.feasibility.overall,
+    months: result.timeline.months,
   })
 
   return {

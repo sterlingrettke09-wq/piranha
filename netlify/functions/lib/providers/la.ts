@@ -12,6 +12,9 @@ const PARCELS =
   'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0'
 const ZONING = 'https://maps.lacity.org/arcgis/rest/services/Mapping/NavigateLA/MapServer/71'
 const HPOZ = 'https://maps.lacity.org/arcgis/rest/services/Mapping/NavigateLA/MapServer/75'
+// CA Coastal Commission statewide Coastal Zone polygon — inside it, a Coastal
+// Development Permit is required (Venice, San Pedro, Pacific Palisades…).
+const COASTAL = 'https://services9.arcgis.com/wwVnNW92ZHUIr0V0/arcgis/rest/services/Coastal_Zone_Polygon/FeatureServer/0'
 
 // In LA, FAR + height are set by the Height District — the token after the base
 // zone in ZONE_CMPLT (e.g. "C2-1" → district 1; "[Q]R4-2" → 2; "R1-1XL" → 1XL).
@@ -55,11 +58,12 @@ function usesForZone(code: string | null): string[] | null {
 
 export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, hpozR, floodR] = await Promise.allSettled([
+  const [parcelR, zoningR, hpozR, floodR, coastalR] = await Promise.allSettled([
     fetchParcelSnap(PARCELS, lat, lng, ['SitusFullAddress', 'APN', 'UseType', 'UseDescription'], true, 2229),
-    fetchFeatures(ZONING, lat, lng, ['ZONE_CMPLT', 'ZONE_CLASS', 'ZONING_DESCRIPTION']),
+    fetchParcelSnap(ZONING, lat, lng, ['ZONE_CMPLT', 'ZONE_CLASS', 'ZONING_DESCRIPTION']),
     fetchFeatures(HPOZ, lat, lng, ['NAME']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    fetchFeatures(COASTAL, lat, lng, ['FID']),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -76,6 +80,7 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
   const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
   const hpoz = hpozR.status === 'fulfilled' ? firstAttrs(hpozR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
+  const inCoastalZone = coastalR.status === 'fulfilled' && (coastalR.value.features?.length ?? 0) > 0
 
   const rawAddr = parcel.SitusFullAddress ? String(parcel.SitusFullAddress).replace(/\s+/g, ' ').trim() : ''
   const address = rawAddr.split(/\s+LOS ANGELES\s+CA/i)[0].trim() || 'Selected location'
@@ -106,6 +111,7 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
       lotType: null,
     },
     overlays: {
+      coastalZone: inCoastalZone || undefined,
       historicDistrict: hpoz?.NAME ? `${String(hpoz.NAME)} HPOZ` : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
     },

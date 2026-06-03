@@ -1,13 +1,24 @@
-// Austin provider — Travis Central Appraisal District (TCAD) public parcels +
-// City of Austin Current Zoning. Verified live 2026-06-01. Both layers accept
-// inSR=4326 point queries (servers reproject). No point-in-polygon historic
-// district layer is published, so historic is left null.
+// Austin provider — TCAD parcels (via the City of Austin's ArcGIS Online
+// mirror) + City of Austin zoning. Endpoints verified live 2026-06-01.
+//
+// GOTCHA: the original TCAD host (gis.traviscountytx.gov) is reachable only over
+// IPv6 — its IPv4 endpoint hangs. Netlify's functions run on IPv4-only AWS, so
+// they could never reach it (every Austin lookup failed in production). We use
+// COA's "EXTERNAL_tcad_parcel" mirror on services.arcgis.com instead, which is
+// IPv4-reachable. Its SITUS field is house-number-only, so we reverse-geocode
+// the street address (as the SF provider does). Shape__Area is already sq ft.
+//
+// NOTE: the COA "Current_Zoning" layer is a 2019 snapshot, predating the 2023–24
+// HOME reforms, so codes are valid but limits may understate today's buildable
+// envelope (surfaced to users via an Austin disclaimer in analyze.ts). No
+// point-in-polygon historic layer is published, so historic is left null.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { reverseGeocode } from '../geo'
 
 const PARCELS =
-  'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_public/MapServer/0'
+  'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/EXTERNAL_tcad_parcel/FeatureServer/0'
 const ZONING =
   'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/Current_Zoning_gdb/FeatureServer/0'
 
@@ -47,8 +58,8 @@ function usesForZone(base: string | null): string[] | null {
 export async function getAustinParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [parcelR, zoningR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, ['situs_address', 'tcad_acres', 'geo_id']),
-    fetchFeatures(ZONING, lat, lng, ['BASE_ZONE', 'ZONE_NAME', 'ZONING_ZTYPE']),
+    fetchParcelSnap(PARCELS, lat, lng, ['SITUS', 'PID_10', 'Shape__Area']),
+    fetchParcelSnap(ZONING, lat, lng, ['BASE_ZONE', 'ZONE_NAME', 'ZONING_ZTYPE']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
 
@@ -65,16 +76,16 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
   const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 
-  // situs_address has a trailing zip; strip a 5-digit zip if present.
-  const rawAddr = parcel.situs_address ? String(parcel.situs_address).replace(/\s+/g, ' ').trim() : ''
-  const address = rawAddr.replace(/\s+\d{5}(-\d{4})?$/, '').trim() || 'Selected location'
-  const acres = Number(parcel.tcad_acres)
+  // The mirror's SITUS field holds only a house number (no street), so derive a
+  // proper street address by reverse-geocoding the click point.
+  const address = (await reverseGeocode(lat, lng)) ?? 'Selected location'
+  const areaSqFt = Number(parcel.Shape__Area) // already in square feet
   const base = parcel != null && zoning?.BASE_ZONE ? String(zoning.BASE_ZONE) : null
   const lim = austinLimits(base)
 
   const info: ParcelInfo = {
     address,
-    parcelId: String(parcel.geo_id ?? ''),
+    parcelId: String(parcel.PID_10 ?? ''),
     coordinates: [lng, lat],
     zoning: {
       districtCode: base ?? 'Unknown',
@@ -85,7 +96,7 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
       allowedUses: usesForZone(base),
     },
     lot: {
-      sizeSqFt: Number.isFinite(acres) && acres > 0 ? Math.round(acres * 43560) : null,
+      sizeSqFt: Number.isFinite(areaSqFt) && areaSqFt > 0 ? Math.round(areaSqFt) : null,
       lotType: null,
     },
     overlays: {

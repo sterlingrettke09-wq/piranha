@@ -8,12 +8,19 @@ const PATH_LABEL: Record<AnalysisResult['timeline']['path'], string> = {
 
 const TIER_LABEL: Record<NonNullable<AnalysisResult['timeline']['tier']>, string> = {
   single: 'a single-family home',
-  multi: 'a multi-family building',
+  multi: 'a multifamily building',
   apartment: 'an apartment-scale building',
 }
 
-export function Timeline({ timeline }: { timeline: AnalysisResult['timeline'] }) {
+export function Timeline({
+  timeline,
+  indeterminate,
+}: {
+  timeline: AnalysisResult['timeline']
+  indeterminate?: boolean
+}) {
   const hasMonths = timeline.months > 0
+  const pathLabel = indeterminate ? 'Not yet confirmed buildable' : PATH_LABEL[timeline.path]
   return (
     <div className="rounded-2xl border border-piranha-charcoal/10 bg-white/60 px-6 py-6">
       <div className="flex items-end gap-3">
@@ -27,7 +34,7 @@ export function Timeline({ timeline }: { timeline: AnalysisResult['timeline'] })
         )}
       </div>
       <p className="mt-3 text-xs uppercase tracking-[0.14em] text-piranha-charcoal/55">
-        {PATH_LABEL[timeline.path]}
+        {pathLabel}
       </p>
       {hasMonths && (
         <p className="mt-4 border-t border-piranha-charcoal/10 pt-4 text-sm leading-relaxed text-piranha-charcoal/60">

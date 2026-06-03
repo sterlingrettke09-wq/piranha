@@ -45,11 +45,11 @@ const FAQ: QA[] = [
   },
   {
     q: 'Which cities are covered?',
-    a: 'Ten cities: Boston, New York City, Chicago, San Francisco, Seattle, Washington DC, Austin, Los Angeles, Denver, and Minneapolis, with more as we grow.',
+    a: 'Ten cities: Boston, New York City, Chicago, San Francisco, Seattle, Washington, D.C., Austin, Los Angeles, Denver, and Minneapolis, with more as we grow.',
   },
   {
     q: 'Is the assistant always right?',
-    a: 'No. The assistant above is an AI (Google Gemini) giving general guidance, and it can be wrong. It’s a starting point. Double-check anything important with the city.',
+    a: 'No. The assistant above is an AI giving general guidance, and it can be wrong. It’s a starting point. Double-check anything important with the city.',
   },
   {
     q: 'Is this legal advice?',

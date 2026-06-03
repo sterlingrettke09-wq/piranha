@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { estimateCost } from './cost'
+import { costPerSqFtByUse, cityCostIndex, heightCostFactor } from '../../../src/config/estimates'
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
+
+const RES = costPerSqFtByUse.residential // national $/sf, sourced
 
 const project: AnalysisInput = { parcelId: 'p1', lat: 42.36, lng: -71.06, use: 'residential', gfa: 10000 }
 const asOfRight: Feasibility = { overall: 'AS_OF_RIGHT', checks: [], path: 'as_of_right' }
@@ -9,24 +12,28 @@ const variance: Feasibility = { overall: 'NEEDS_RELIEF', checks: [], path: 'vari
 
 describe('estimateCost', () => {
   it('computes hard cost as gfa x $/sf for the use', () => {
-    // residential seed = $350/sf -> 10000*350 = 3,500,000
-    expect(estimateCost(project, asOfRight).costs.hard).toBe(3_500_000)
+    expect(estimateCost(project, asOfRight).costs.hard).toBe(10_000 * RES)
   })
 
   it('scales hard cost by the city construction index', () => {
     const bos = estimateCost({ ...project, city: 'boston' }, asOfRight).costs.hard
     const nyc = estimateCost({ ...project, city: 'nyc' }, asOfRight).costs.hard
     const chi = estimateCost({ ...project, city: 'chicago' }, asOfRight).costs.hard
-    expect(nyc).toBeGreaterThan(bos)
-    expect(bos).toBeGreaterThan(chi)
-    expect(nyc).toBe(Math.round(10000 * 350 * 1.18))
+    const dc = estimateCost({ ...project, city: 'dc' }, asOfRight).costs.hard
+    // Per the RSMeans City Cost Index: NYC > Chicago (unionized trades) > Boston,
+    // and DC's construction is below the national average (cheap labor pool).
+    expect(nyc).toBeGreaterThan(chi)
+    expect(chi).toBeGreaterThan(bos)
+    expect(bos).toBeGreaterThan(dc)
+    expect(nyc).toBe(Math.round(10000 * RES * cityCostIndex.nyc))
+    expect(chi).toBe(Math.round(10000 * RES * cityCostIndex.chicago))
   })
 
   it('applies a height premium to taller buildings', () => {
     const low = estimateCost({ ...project, stories: 3 }, asOfRight).costs.hard
     const high = estimateCost({ ...project, stories: 15 }, asOfRight).costs.hard
     expect(high).toBeGreaterThan(low)
-    expect(high).toBe(Math.round(10000 * 350 * 1.35))
+    expect(high).toBe(Math.round(10000 * RES * heightCostFactor(15)))
   })
 
   it('computes soft cost as a fraction of hard', () => {
@@ -51,12 +58,20 @@ describe('estimateCost', () => {
     expect(withDemo.costs.total).toBeGreaterThan(noDemo.costs.total)
   })
 
-  it('prices renovations/ADUs/changes-of-use below an identical ground-up build', () => {
+  it('prices renovations & changes-of-use below an identical ground-up build', () => {
     const base = estimateCost({ ...project, projectType: 'new' }, asOfRight).costs.hard
-    for (const pt of ['change_of_use', 'adu', 'addition'] as const) {
+    for (const pt of ['change_of_use', 'addition'] as const) {
       const scoped = estimateCost({ ...project, projectType: pt }, asOfRight).costs.hard
       expect(scoped).toBeLessThan(base)
     }
+  })
+
+  it('prices an ADU at per-sf parity with new build (NOT a discount)', () => {
+    // Terner Center: ADUs run ~$250/sf — equal-or-more than a house per sf,
+    // because fixed costs (foundation, utilities, kitchen/bath) hit a tiny area.
+    const base = estimateCost({ ...project, projectType: 'new' }, asOfRight).costs.hard
+    const adu = estimateCost({ ...project, projectType: 'adu' }, asOfRight).costs.hard
+    expect(adu).toBe(base)
   })
 
   it('adds a variance filing fee and a longer timeline on the variance path', () => {

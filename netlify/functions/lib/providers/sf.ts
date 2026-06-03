@@ -45,12 +45,12 @@ function usesForGen(gen: string | null): string[] | null {
 export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [zoningR, parcelR, floodR, histR, landR, heightR] = await Promise.allSettled([
-    fetchFeatures(ZONING, lat, lng, ['zoning', 'gen', 'districtname']),
+    fetchParcelSnap(ZONING, lat, lng, ['zoning', 'gen', 'districtname']),
     fetchParcelSnap(PARCELS, lat, lng, ['blklot', 'from_st', 'street', 'st_type'], true, CA_ZONE3_FT),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     fetchFeatures(HISTORIC, lat, lng, ['name_1']),
     fetchFeatures(LANDUSE, lat, lng, ['landuse_landuse', 'landuse_resunits']),
-    fetchFeatures(HEIGHT, lat, lng, ['gen_hght']),
+    fetchParcelSnap(HEIGHT, lat, lng, ['gen_hght']),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -68,7 +68,10 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const land = landR.status === 'fulfilled' ? firstAttrs(landR.value) : null
   const height = heightR.status === 'fulfilled' ? firstAttrs(heightR.value) : null
-  const maxHeightFt = height?.gen_hght != null && Number(height.gen_hght) > 0 ? Number(height.gen_hght) : null
+  // gen_hght uses 9999 as a "no limit" sentinel (open-space / no height district);
+  // treat that (and any absurd value) as null, not a 9999 ft / 900-story tower.
+  const ghRaw = Number(height?.gen_hght)
+  const maxHeightFt = Number.isFinite(ghRaw) && ghRaw > 0 && ghRaw < 1000 ? ghRaw : null
 
   const luCode = land?.landuse_landuse ? String(land.landuse_landuse).trim().toUpperCase() : ''
   const luUnits = land?.landuse_resunits != null ? Number(land.landuse_resunits) : 0

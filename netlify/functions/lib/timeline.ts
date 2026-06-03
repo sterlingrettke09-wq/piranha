@@ -6,7 +6,6 @@ import {
   demoMonthsByCity as DEMO_MONTHS,
   demoMonthsFallback as DEMO_FALLBACK,
   projectFactor as PROJECT_FACTOR,
-  reliefAddMonths as RELIEF_ADD_MONTHS,
   type BuildingTier,
 } from '../../../src/config/estimates'
 
@@ -43,19 +42,22 @@ export function resolveTimeline(
   }
 
   const table = LIFECYCLE[city] ?? FALLBACK
-  let months = table[tier]
+  // Baseline = a cleared, by-right lot (the floor). Scale by project scope first.
+  let months = Math.round(table[tier] * PROJECT_FACTOR[project.projectType])
 
-  // The baseline assumes demo + rebuild; a vacant lot skips the demolition phase.
-  if (project.projectType === 'new' && !hasExistingBuilding) {
-    months -= DEMO_MONTHS[city] ?? DEMO_FALLBACK
+  // A teardown is NOT a quick add-on: a new build over an existing structure adds
+  // a demolition permit + asbestos/abatement survey + utility disconnects +
+  // clearing on top of the cleared-lot baseline.
+  if (includesDemolition) {
+    months += DEMO_MONTHS[city] ?? DEMO_FALLBACK
   }
 
-  months = Math.round(months * PROJECT_FACTOR[project.projectType])
+  // Discretionary/entitlement delay (variance, ULURP, CEQA, Article 80, etc.) is
+  // NOT added here — analyze.ts computes it once from the per-city adder + the
+  // triggered hurdles, so the nested approvals can't be double-counted.
 
-  if (feasibility.path === 'variance') months += RELIEF_ADD_MONTHS
-
-  // Razing a large existing building takes longer than the baseline demo phase
-  // (abatement, phased demolition, hauling). Add scaled months above ~50k sq ft.
+  // Razing a LARGE existing building takes longer than the standard demo phase
+  // (phased demolition, hauling). Add scaled months above ~50k sq ft.
   if (includesDemolition && demolitionSqFt != null && demolitionSqFt > 50000) {
     months += Math.min(18, Math.round(((demolitionSqFt - 50000) / 100000) * 3))
   }

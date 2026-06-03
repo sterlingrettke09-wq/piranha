@@ -13,10 +13,12 @@ interface Props {
   costs: AnalysisResult['costs']
   timeline: AnalysisResult['timeline']
   hurdles: AnalysisResult['hurdles']
+  /** When the verdict couldn't be determined, the timeline is conditional. */
+  indeterminate?: boolean
 }
 
 /** Three headline figures, editorial register — the first thing the eye lands on. */
-export function KeyMetrics({ costs, timeline, hurdles }: Props) {
+export function KeyMetrics({ costs, timeline, hurdles, indeterminate }: Props) {
   const requiredCount = hurdles.filter((h) => h.status === 'required').length
   const hurdleFigure = hurdles.length === 0 ? '0' : String(hurdles.length)
   const hurdleLabel =
@@ -34,7 +36,7 @@ export function KeyMetrics({ costs, timeline, hurdles }: Props) {
     {
       figure: timeline.months > 0 ? `${timeline.months}` : 'N/A',
       suffix: timeline.months > 0 ? (timeline.months === 1 ? ' mo' : ' mos') : '',
-      label: 'From design to move-in',
+      label: indeterminate ? 'Est. months, if permittable' : 'From design to move-in',
     },
     {
       figure: hurdleFigure,

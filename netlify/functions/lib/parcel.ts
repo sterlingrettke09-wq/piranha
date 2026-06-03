@@ -33,7 +33,7 @@ export type { ParcelResult }
 async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [zoningR, parcelR, historicR, floodR] = await Promise.allSettled([
-    fetchFeatures(ENDPOINTS.zoning, lat, lng, FIELDS.zoning),
+    fetchParcelSnap(ENDPOINTS.zoning, lat, lng, FIELDS.zoning),
     fetchParcelSnap(ENDPOINTS.parcels, lat, lng, FIELDS.parcels),
     fetchFeatures(ENDPOINTS.historic, lat, lng, FIELDS.historic),
     fetchFeatures(ENDPOINTS.flood, lat, lng, FIELDS.flood),
@@ -130,7 +130,17 @@ const CITIES: Record<string, CityConfig> = {
 export const LIVE_CITIES = Object.keys(CITIES)
 
 export async function getParcelInfo(city: string, lat: number, lng: number): Promise<ParcelResult> {
-  const cfg = CITIES[city] ?? CITIES.boston
+  const cfg = CITIES[city]
+  // An unknown city must NOT silently fall back to Boston's bbox (that yielded a
+  // confusing "outside Boston" error for a city the user never typed).
+  if (!cfg) {
+    return {
+      ok: false,
+      code: 'OUT_OF_BBOX',
+      message: `We don’t cover “${city}” yet. Pick one of the supported cities.`,
+      status: 400,
+    }
+  }
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !isInBbox(cfg.bbox, lat, lng)) {
     return {
       ok: false,

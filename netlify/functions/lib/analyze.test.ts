@@ -54,8 +54,8 @@ describe('analyze handler', () => {
       expect(body.disclaimers.length).toBeGreaterThan(0)
     })
     it('returns NEEDS_RELIEF when the project modestly exceeds FAR', async () => {
-      // lot 10000, maxFAR 2.0 → 20000 max. 28000 = FAR 2.8 = 1.4× (within variance range).
-      const res = await call({ ...baseParams, gfa: '28000' })
+      // lot 10000, maxFAR 2.0 → 20000 max. 22000 = FAR 2.2 = 1.1× (within the ~1.2× FAR variance range).
+      const res = await call({ ...baseParams, gfa: '22000' })
       expect(JSON.parse(res.body).feasibility.overall).toBe('NEEDS_RELIEF')
     })
 
