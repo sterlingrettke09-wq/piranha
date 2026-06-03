@@ -78,6 +78,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const developability = assessDevelopability({
     districtCode: parcel.zoning.districtCode,
     landUse: parcel.existing?.landUse ?? null,
+    ownerPublic: parcel.existing?.ownerPublic ?? false,
   })
   // Soft flag for stadiums / arenas / hospitals / campuses / museums — the
   // analysis still runs, but the UI warns the parcel is rarely buildable.

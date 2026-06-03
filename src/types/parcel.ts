@@ -53,6 +53,8 @@ export interface ParcelInfo {
     units?: number | null
     stories?: number | null
     numBuildings?: number | null
+    /** Owner is a government/public entity (derived boolean — no name stored). */
+    ownerPublic?: boolean
   }
   sources: Record<string, string>
   fetchedAt: string

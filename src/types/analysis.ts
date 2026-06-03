@@ -92,6 +92,7 @@ export interface AnalysisResult {
       units?: number | null
       stories?: number | null
       numBuildings?: number | null
+      ownerPublic?: boolean
     }
   }
   project: AnalysisInput

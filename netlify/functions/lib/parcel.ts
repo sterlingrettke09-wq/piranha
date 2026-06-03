@@ -15,6 +15,7 @@ import {
 } from '../../../src/types/parcel'
 import { ENDPOINTS, FIELDS } from '../_endpoints'
 import { mapZoningUse } from './zoningUse'
+import { isGovernmentOwner } from '../../../src/lib/developability'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from './arcgis'
 import { getNycParcelInfo } from './providers/nyc'
 import { getChicagoParcelInfo } from './providers/chicago'
@@ -66,12 +67,16 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
   const comU = posInt(parcel.COM_UNITS) ?? 0
   const totalUnits = resU + comU
   const luDesc = parcel.LU_DESC != null ? String(parcel.LU_DESC).trim() : ''
+  // OWNER is used ONLY to derive a government-owned boolean; the name is discarded
+  // here and never stored or returned (no owner PII leaves the server).
+  const ownerPublic = isGovernmentOwner(parcel.OWNER != null ? String(parcel.OWNER) : null)
   const existing = {
     landUse: luDesc || null,
     yearBuilt: posInt(parcel.YR_BUILT),
     buildingAreaSqFt: posInt(parcel.GROSS_AREA),
     units: totalUnits > 0 ? totalUnits : null,
     numBuildings: posInt(parcel.NUM_BLDGS),
+    ...(ownerPublic ? { ownerPublic: true } : {}),
   }
 
   const info: ParcelInfo = {

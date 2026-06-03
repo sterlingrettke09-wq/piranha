@@ -56,9 +56,12 @@ export const FIELDS = {
   // Use_ "Mixed-Use"; Open Space subdistricts return null limits.
   zoning: ['Name', 'District', 'Article', 'HeightMax', 'FARMax', 'Use_'],
   // address = ST_NUM + ST_NAME; PID = parcel id; LAND_SF = lot size (sq ft).
-  // OWNER / MAIL_* exist on this layer but are intentionally NOT requested — PII.
+  // OWNER is requested ONLY to detect government-owned parcels (City Hall, courts,
+  // schools, fire stations) so they're flagged non-developable. It is reduced to a
+  // boolean in the provider and never stored or returned — no owner PII leaves the
+  // server. MAIL_* remain intentionally unrequested.
   // Trailing fields describe the *existing* structure (what's there today).
-  parcels: ['PID', 'ST_NUM', 'ST_NAME', 'LAND_SF', 'LU_DESC', 'YR_BUILT', 'GROSS_AREA', 'RES_UNITS', 'COM_UNITS', 'NUM_BLDGS', 'TOTAL_VALUE'],
+  parcels: ['PID', 'ST_NUM', 'ST_NAME', 'LAND_SF', 'LU_DESC', 'OWNER', 'YR_BUILT', 'GROSS_AREA', 'RES_UNITS', 'COM_UNITS', 'NUM_BLDGS', 'TOTAL_VALUE'],
   historic: ['HIST_NAME'],
   flood: ['FLD_ZONE'],
 } as const

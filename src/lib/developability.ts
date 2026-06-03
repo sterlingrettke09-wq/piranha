@@ -20,12 +20,37 @@ export interface Developability {
 const PUBLIC_LANDUSE =
   /\b(federal|government|gov't|white house|capitol|monument|memorial|cemeter(y|ies)|military|national park|park|parkland|open[ -]?space|right[- ]of[- ]way|public land|water|reservoir|tax[- ]exempt|city of boston|commonwealth of mass)\b/i
 
+// Government / public-entity OWNER names (from assessing owner fields). Private
+// owners are individuals or LLCs, so these strong public-entity signals are safe
+// to hard-block. Used transiently in the provider to derive a boolean — owner
+// names are never stored or surfaced.
+const GOV_OWNER =
+  /\b(cit(y|ies) of|town of|county of|commonwealth(\s+of)?|state of|united states|u\.?s\.?\s*gov|federal government|housing authority|redevelopment authority|transit authority|\bMBTA\b|\bMTA\b|port authority|board of education|school (district|department)|national park service|general services admin)\b/i
+
+/** True when an assessing owner name denotes a government / public entity. */
+export function isGovernmentOwner(owner: string | null | undefined): boolean {
+  return !!owner && GOV_OWNER.test(owner)
+}
+
 export function assessDevelopability(opts: {
   districtCode?: string | null
   landUse?: string | null
+  /** True when the parcel's owner is a government/public entity (no name passed). */
+  ownerPublic?: boolean
 }): Developability {
   const code = (opts.districtCode ?? '').trim().toLowerCase()
   const use = (opts.landUse ?? '').trim()
+
+  // Government-owned (City Hall, courthouses, schools, fire stations). Strong,
+  // precise signal — hard-block before the softer land-use heuristics.
+  if (opts.ownerPublic) {
+    return {
+      developable: false,
+      kind: 'public',
+      reason:
+        'Public records list this parcel as government-owned — a civic building, school, or similar public site, not a private development parcel. Confirm ownership and availability before relying on any analysis.',
+    }
+  }
 
   // No zoning on record — typically federal or other public land (the White
   // House, the Mall, monument grounds all read as "Unzoned" in DC/Austin data).
