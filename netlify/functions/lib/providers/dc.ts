@@ -4,6 +4,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { isGovernmentOwner } from '../../../../src/lib/developability'
 
 const BASE = 'https://maps2.dcgis.dc.gov/dcgis/rest/services'
 const PARCELS = `${BASE}/DCGIS_DATA/Property_and_Land/MapServer/40`
@@ -55,7 +56,7 @@ function usesForZone(code: string | null): string[] | null {
 export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE', 'SALETYPE', 'CLASSTYPE']),
+    fetchParcelSnap(PARCELS, lat, lng, ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE', 'SALETYPE', 'CLASSTYPE', 'OWNERNAME']),
     fetchParcelSnap(ZONING, lat, lng, ['ZONING', 'ZR16', 'Zone_District']),
     fetchFeatures(HISTORIC, lat, lng, ['HistDistrict_NAME']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
@@ -113,8 +114,11 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
   const dcUse = isFederalLand
     ? 'Federal or other public land'
     : useCodeLabel ?? (({ '1': 'Residential', '2': 'Commercial', '5': 'Institutional' } as Record<string, string>)[classDigit] ?? null)
-  const existing =
+  // OWNERNAME used only to derive a government-owned boolean (no name stored).
+  const ownerPublic = isGovernmentOwner(parcel.OWNERNAME != null ? String(parcel.OWNERNAME) : null)
+  const existingBase =
     isFederalLand || /improv/i.test(saleType) || useCodeLabel ? { landUse: dcUse, numBuildings: 1 } : undefined
+  const existing = ownerPublic ? { ...(existingBase ?? {}), ownerPublic: true } : existingBase
 
   const info: ParcelInfo = {
     address: address || 'Selected location',

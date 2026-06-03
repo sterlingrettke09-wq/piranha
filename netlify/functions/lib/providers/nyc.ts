@@ -4,10 +4,13 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { isGovernmentOwner } from '../../../../src/lib/developability'
 
 const MAPPLUTO =
   'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0'
-const FIELDS = ['BBL', 'Address', 'ZoneDist1', 'ResidFAR', 'CommFAR', 'FacilFAR', 'LotArea', 'LandUse', 'YearBuilt', 'BldgArea', 'UnitsTotal', 'NumFloors', 'NumBldgs']
+// OwnerType (C=city, O=other public/state/federal) + OwnerName drive a public-
+// ownership flag; names are reduced to a boolean and never stored/returned.
+const FIELDS = ['BBL', 'Address', 'ZoneDist1', 'ResidFAR', 'CommFAR', 'FacilFAR', 'LotArea', 'LandUse', 'YearBuilt', 'BldgArea', 'UnitsTotal', 'NumFloors', 'NumBldgs', 'OwnerType', 'OwnerName']
 
 // NYC PLUTO LandUse code → plain-English label.
 const NYC_LAND_USE: Record<string, string> = {
@@ -93,6 +96,12 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
 
   const zone = lot.ZoneDist1 != null ? String(lot.ZoneDist1) : null
 
+  // OwnerType C = wholly city-owned, O = other public (state/federal/authority).
+  // Names used only to derive the boolean (no name stored/returned).
+  const ownerType = String(lot.OwnerType ?? '').trim().toUpperCase()
+  const ownerPublic =
+    ownerType === 'C' || ownerType === 'O' || isGovernmentOwner(lot.OwnerName != null ? String(lot.OwnerName) : null)
+
   const info: ParcelInfo = {
     address: lot.Address ? String(lot.Address) : 'Unknown address',
     parcelId: String(lot.BBL ?? ''),
@@ -121,6 +130,7 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
       units: num(lot.UnitsTotal),
       stories: num(lot.NumFloors),
       numBuildings: num(lot.NumBldgs),
+      ...(ownerPublic ? { ownerPublic: true } : {}),
     },
     sources: { zoning: MAPPLUTO, parcels: MAPPLUTO, flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),

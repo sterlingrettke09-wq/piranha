@@ -25,7 +25,7 @@ const PUBLIC_LANDUSE =
 // to hard-block. Used transiently in the provider to derive a boolean — owner
 // names are never stored or surfaced.
 const GOV_OWNER =
-  /\b(cit(y|ies) of|town of|county of|commonwealth(\s+of)?|state of|united states|u\.?s\.?\s*gov|federal government|housing authority|redevelopment authority|transit authority|\bMBTA\b|\bMTA\b|port authority|board of education|school (district|department)|national park service|general services admin)\b/i
+  /\b(cit(y|ies) of|town of|county of|commonwealth(\s+of)?|state of|united states|u\.?s\.?\s*gov|federal government|government of|district of columbia|housing authority|redevelopment authority|transit authority|\bMBTA\b|\bMTA\b|\bMTA\b|metropolitan transit|port authority|board of education|department of (education|transportation|general services|administrative)|school (district|department)|national park service|general services admin)\b/i
 
 /** True when an assessing owner name denotes a government / public entity. */
 export function isGovernmentOwner(owner: string | null | undefined): boolean {
