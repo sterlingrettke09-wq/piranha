@@ -221,6 +221,47 @@ const CIVIC_BLOCKS: CivicBlock[] = [
   { city: 'seattle', lat: 47.6145, lng: -122.349, radiusM: 160, label: 'the Seattle Public Schools headquarters' },
   // Military installations
   { city: 'austin', lat: 30.287, lng: -97.755, radiusM: 800, label: 'Camp Mabry' },
+  // More airports (in-city; others like SFO/SeaTac/MSP/Reagan sit outside the
+  // city bbox and already return no-coverage)
+  { city: 'chicago', lat: 41.786, lng: -87.7524, radiusM: 1500, label: 'Midway International Airport' },
+  { city: 'boston', lat: 42.3656, lng: -71.0096, radiusM: 2000, label: 'Logan International Airport' },
+  { city: 'nyc', lat: 40.6413, lng: -73.7781, radiusM: 3500, label: 'John F. Kennedy International Airport' },
+  { city: 'nyc', lat: 40.7769, lng: -73.874, radiusM: 1800, label: 'LaGuardia Airport' },
+  { city: 'la', lat: 34.2098, lng: -118.49, radiusM: 1500, label: 'Van Nuys Airport' },
+  // Major parks (radii tuned to the green/water core to limit catching bordering
+  // lots; owner-based cities also catch parks via ownership, listed for safety)
+  { city: 'boston', lat: 42.355, lng: -71.0656, radiusM: 260, label: 'Boston Common' },
+  { city: 'boston', lat: 42.3541, lng: -71.0704, radiusM: 200, label: 'the Public Garden' },
+  { city: 'boston', lat: 42.3043, lng: -71.0892, radiusM: 600, label: 'Franklin Park' },
+  { city: 'boston', lat: 42.2966, lng: -71.1225, radiusM: 700, label: 'the Arnold Arboretum' },
+  { city: 'nyc', lat: 40.7829, lng: -73.9654, radiusM: 700, label: 'Central Park' },
+  { city: 'nyc', lat: 40.6602, lng: -73.969, radiusM: 600, label: 'Prospect Park' },
+  { city: 'nyc', lat: 40.74, lng: -73.8407, radiusM: 700, label: 'Flushing Meadows–Corona Park' },
+  { city: 'chicago', lat: 41.9214, lng: -87.6339, radiusM: 450, label: 'Lincoln Park' },
+  { city: 'chicago', lat: 41.79, lng: -87.58, radiusM: 600, label: 'Jackson Park' },
+  { city: 'chicago', lat: 41.793, lng: -87.617, radiusM: 450, label: 'Washington Park' },
+  { city: 'chicago', lat: 41.905, lng: -87.701, radiusM: 500, label: 'Humboldt Park' },
+  { city: 'chicago', lat: 41.886, lng: -87.717, radiusM: 450, label: 'Garfield Park' },
+  { city: 'sf', lat: 37.7596, lng: -122.4269, radiusM: 200, label: 'Dolores Park' },
+  { city: 'sf', lat: 37.7989, lng: -122.4662, radiusM: 1000, label: 'the Presidio' },
+  { city: 'sf', lat: 37.768, lng: -122.442, radiusM: 220, label: 'Buena Vista Park' },
+  { city: 'seattle', lat: 47.658, lng: -122.4055, radiusM: 900, label: 'Discovery Park' },
+  { city: 'seattle', lat: 47.6806, lng: -122.3286, radiusM: 550, label: 'Green Lake Park' },
+  { city: 'seattle', lat: 47.63, lng: -122.316, radiusM: 280, label: 'Volunteer Park' },
+  { city: 'seattle', lat: 47.6685, lng: -122.3543, radiusM: 450, label: 'Woodland Park' },
+  { city: 'dc', lat: 38.956, lng: -77.046, radiusM: 1000, label: 'Rock Creek Park' },
+  { city: 'dc', lat: 38.921, lng: -77.035, radiusM: 200, label: 'Meridian Hill Park' },
+  { city: 'austin', lat: 30.267, lng: -97.772, radiusM: 600, label: 'Zilker Park' },
+  { city: 'austin', lat: 30.29, lng: -97.756, radiusM: 280, label: 'Pease Park' },
+  { city: 'la', lat: 34.1366, lng: -118.294, radiusM: 1800, label: 'Griffith Park' },
+  { city: 'la', lat: 34.078, lng: -118.245, radiusM: 700, label: 'Elysian Park' },
+  { city: 'la', lat: 34.0726, lng: -118.2606, radiusM: 220, label: 'Echo Park Lake' },
+  { city: 'la', lat: 34.0578, lng: -118.278, radiusM: 220, label: 'MacArthur Park' },
+  { city: 'denver', lat: 39.745, lng: -104.951, radiusM: 550, label: 'City Park' },
+  { city: 'denver', lat: 39.732, lng: -104.961, radiusM: 300, label: 'Cheesman Park' },
+  { city: 'minneapolis', lat: 44.9153, lng: -93.211, radiusM: 500, label: 'Minnehaha Park' },
+  { city: 'minneapolis', lat: 44.969, lng: -93.286, radiusM: 230, label: 'Loring Park' },
+  { city: 'minneapolis', lat: 44.922, lng: -93.307, radiusM: 500, label: 'Lake Harriet' },
 ]
 
 /** Curated location-based hard block for civic/public sites whose parcel data
