@@ -196,6 +196,31 @@ const CIVIC_BLOCKS: CivicBlock[] = [
   { city: 'chicago', lat: 41.9786, lng: -87.9048, radiusM: 2500, label: "O'Hare International Airport" },
   { city: 'denver', lat: 39.8493, lng: -104.6737, radiusM: 4000, label: 'Denver International Airport' },
   { city: 'austin', lat: 30.1945, lng: -97.6699, radiusM: 1800, label: 'Austin-Bergstrom International Airport' },
+  // Central libraries (main branches in the weak-signal cities)
+  { city: 'chicago', lat: 41.8757, lng: -87.6282, radiusM: 140, label: 'the Harold Washington Library' },
+  { city: 'la', lat: 34.0508, lng: -118.2554, radiusM: 150, label: 'the Los Angeles Central Library' },
+  { city: 'austin', lat: 30.273, lng: -97.7443, radiusM: 140, label: 'the Austin Central Library' },
+  // Major rail / transit terminals
+  { city: 'chicago', lat: 41.8789, lng: -87.639, radiusM: 220, label: 'Chicago Union Station' },
+  { city: 'la', lat: 34.0561, lng: -118.235, radiusM: 260, label: 'Union Station' },
+  { city: 'sf', lat: 37.7765, lng: -122.3942, radiusM: 200, label: 'the 4th & King Caltrain Station' },
+  { city: 'boston', lat: 42.3519, lng: -71.0552, radiusM: 200, label: 'South Station' },
+  { city: 'denver', lat: 39.7531, lng: -105.001, radiusM: 220, label: 'Denver Union Station' },
+  // Police / public-safety headquarters
+  { city: 'la', lat: 34.0534, lng: -118.2456, radiusM: 140, label: 'the LAPD headquarters' },
+  { city: 'chicago', lat: 41.859, lng: -87.618, radiusM: 150, label: 'the Chicago Police headquarters' },
+  { city: 'austin', lat: 30.2693, lng: -97.743, radiusM: 140, label: 'the Austin Police headquarters' },
+  // Cemeteries (large polygons → generous radii)
+  { city: 'chicago', lat: 41.7705, lng: -87.5995, radiusM: 700, label: 'Oak Woods Cemetery' },
+  { city: 'denver', lat: 39.7185, lng: -104.921, radiusM: 800, label: 'Fairmount Cemetery' },
+  { city: 'minneapolis', lat: 44.945, lng: -93.292, radiusM: 550, label: 'Lakewood Cemetery' },
+  { city: 'austin', lat: 30.2535, lng: -97.727, radiusM: 220, label: 'the Texas State Cemetery' },
+  // Flagship public schools (weak-signal cities; named landmarks)
+  { city: 'la', lat: 34.0966, lng: -118.3265, radiusM: 170, label: 'Hollywood High School' },
+  { city: 'sf', lat: 37.76, lng: -122.4869, radiusM: 170, label: 'George Washington High School' },
+  { city: 'seattle', lat: 47.6145, lng: -122.349, radiusM: 160, label: 'the Seattle Public Schools headquarters' },
+  // Military installations
+  { city: 'austin', lat: 30.287, lng: -97.755, radiusM: 800, label: 'Camp Mabry' },
 ]
 
 /** Curated location-based hard block for civic/public sites whose parcel data
