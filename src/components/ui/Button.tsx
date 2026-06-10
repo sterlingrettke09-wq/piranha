@@ -9,13 +9,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
 }
 
+// Filled variants get a soft shadow + a subtle pressed scale (.tpp-press);
+// the ghost variant stays flat (it reads as an outline, not a raised surface).
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-piranha-burgundy text-piranha-bone hover:bg-piranha-charcoal active:bg-piranha-charcoal',
+    'tpp-press bg-piranha-burgundy text-piranha-bone shadow-sm hover:bg-piranha-charcoal hover:shadow active:bg-piranha-charcoal',
   secondary:
-    'bg-piranha-charcoal text-piranha-bone hover:bg-piranha-burgundy',
+    'tpp-press bg-piranha-charcoal text-piranha-bone shadow-sm hover:bg-piranha-burgundy hover:shadow',
   ghost:
-    'bg-transparent text-piranha-charcoal border border-piranha-charcoal hover:bg-piranha-charcoal hover:text-piranha-bone',
+    'transition-colors duration-150 bg-transparent text-piranha-charcoal border border-piranha-charcoal hover:bg-piranha-charcoal hover:text-piranha-bone',
 }
 
 const sizeClasses: Record<Size, string> = {

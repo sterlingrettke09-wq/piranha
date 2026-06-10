@@ -116,7 +116,7 @@ export default function RedTape() {
         </Reveal>
 
         <Reveal>
-          <div className="overflow-x-auto rounded-2xl border border-piranha-charcoal/10 bg-white/60">
+          <div className="tpp-card overflow-x-auto rounded-2xl border border-piranha-charcoal/10 bg-white/60">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-piranha-charcoal/10 text-left text-xs uppercase tracking-[0.12em] text-piranha-charcoal/45">

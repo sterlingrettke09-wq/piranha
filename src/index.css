@@ -145,33 +145,39 @@ body {
   }
 }
 
-/* ---- Scroll-driven reveals (cinematic landing) ---- */
+/* ---- Scroll-driven reveals (cinematic landing) ----
+   Fast and reliable: a short fade + small rise so content snaps to full
+   strength instead of lingering half-opaque (the earlier 0.9–1.05s blur/scale
+   left sections ghosting at partial opacity — charcoal text reading as pale
+   gray). Once visible, the transition is dropped (no will-change pinned, no
+   re-animating on reflow). */
 .reveal {
   opacity: 0;
-  transform: translateY(34px);
+  transform: translateY(10px);
   transition:
-    opacity 0.9s cubic-bezier(0.16, 0.84, 0.44, 1),
-    transform 0.9s cubic-bezier(0.16, 0.84, 0.44, 1);
+    opacity 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
   transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform;
 }
-/* "Float to the front" — blocks scale up and sharpen as they arrive. */
+/* "Float to the front" — a gentler lift + faint de-blur, kept brief so it
+   resolves to crisp full-opacity quickly. */
 .reveal-float {
   opacity: 0;
-  transform: translateY(48px) scale(0.93);
-  filter: blur(8px);
+  transform: translateY(12px) scale(0.985);
+  filter: blur(3px);
   transition:
-    opacity 1s ease,
-    transform 1.05s cubic-bezier(0.16, 0.84, 0.44, 1),
-    filter 1s ease;
+    opacity 0.4s ease,
+    transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 0.4s ease;
   transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform, filter;
 }
 .reveal.is-visible,
 .reveal-float.is-visible {
   opacity: 1;
   transform: none;
   filter: none;
+  /* Drop the transition once revealed so a later reflow can't re-fade it. */
+  transition: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .reveal,
@@ -180,6 +186,68 @@ body {
     transform: none !important;
     filter: none !important;
     transition: none !important;
+  }
+}
+
+/* ---- Depth + craft utilities (shared across cards/buttons/headings) ---- */
+
+/* Layered card depth: a tight contact shadow + a soft ambient lift, both in
+   the warm charcoal ink so shadows read as part of the palette, not gray. */
+.tpp-card {
+  box-shadow:
+    0 1px 2px rgba(26, 22, 18, 0.06),
+    0 8px 24px rgba(26, 22, 18, 0.07);
+}
+/* Interactive cards: a slightly stronger lift + a 2px rise on hover. */
+.tpp-card-interactive {
+  box-shadow:
+    0 1px 2px rgba(26, 22, 18, 0.06),
+    0 8px 24px rgba(26, 22, 18, 0.07);
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.tpp-card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 2px 4px rgba(26, 22, 18, 0.08),
+    0 14px 36px rgba(26, 22, 18, 0.1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpp-card-interactive {
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .tpp-card-interactive:hover {
+    transform: none;
+  }
+}
+
+/* Reusable gold kicker rule — a short gold bar above a section eyebrow.
+   Standardizes the gold accent the site already uses ad hoc. */
+.tpp-kicker {
+  display: inline-block;
+  width: 2rem;
+  height: 2px;
+  border-radius: 9999px;
+  background-color: var(--color-piranha-gold);
+}
+
+/* Primary button press: a subtle pressed scale + soft shadow. Layered onto
+   the Button component's color transition. */
+.tpp-press {
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+.tpp-press:active {
+  transform: scale(0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpp-press:active {
+    transform: none;
   }
 }
 

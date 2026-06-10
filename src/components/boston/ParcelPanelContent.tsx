@@ -171,14 +171,14 @@ export function ParcelPanelContent(props: Props) {
 
       <div className="mt-6 space-y-6 border-t border-piranha-charcoal/10 pt-6">
         {blocked && (
-          <section className="space-y-1.5 rounded-xl border border-amber-600/30 bg-amber-50/70 p-4">
+          <section className="tpp-card space-y-1.5 rounded-xl border border-amber-600/30 bg-amber-50/70 p-4">
             <Eyebrow>{dev.kind === 'no_coverage' ? 'Outside our coverage' : 'Not a developable site'}</Eyebrow>
             <p className="text-sm leading-snug text-piranha-charcoal/75">{dev.reason}</p>
           </section>
         )}
 
         {hasEnvelope && env && (
-          <section className="space-y-2 rounded-xl border border-piranha-burgundy/20 bg-piranha-burgundy/[0.04] p-4">
+          <section className="tpp-card space-y-2 rounded-xl border border-piranha-burgundy/20 bg-piranha-burgundy/[0.04] p-4">
             <Eyebrow>What you can build</Eyebrow>
             {env.maxFloorAreaSqFt != null && (
               <p className="text-piranha-charcoal">

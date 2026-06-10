@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { classifyZoningFamily, ZONING_FAMILY_COLORS } from './bostonMapStyle'
+import {
+  classifyZoningFamily,
+  ZONING_FAMILY_COLORS,
+  BRAND_OVERRIDES,
+  BRAND,
+} from './bostonMapStyle'
 
 describe('classifyZoningFamily', () => {
   it('maps residential prefixes to the residential family', () => {
@@ -33,5 +38,44 @@ describe('classifyZoningFamily', () => {
       'other',
       'residential',
     ])
+  })
+})
+
+describe('BRAND_OVERRIDES (basemap legibility)', () => {
+  const byLayer = (id: string) => BRAND_OVERRIDES.filter((o) => o.layerId === id)
+
+  it('every override is a well-formed {layerId, property, value} triple', () => {
+    for (const o of BRAND_OVERRIDES) {
+      expect(typeof o.layerId).toBe('string')
+      expect(o.layerId.length).toBeGreaterThan(0)
+      expect(typeof o.property).toBe('string')
+      expect(o.property.length).toBeGreaterThan(0)
+      expect(['string', 'number']).toContain(typeof o.value)
+    }
+  })
+
+  it('keeps the warm bone land canvas', () => {
+    expect(byLayer('land')[0]?.value).toBe(BRAND.bone)
+    expect(byLayer('background')[0]?.value).toBe(BRAND.bone)
+  })
+
+  it('paints water clearly distinct from the land so the city is legible', () => {
+    const water = byLayer('water').find((o) => o.property === 'fill-color')
+    expect(water).toBeDefined()
+    // Regression guard: water must NOT collapse to the bone land tone (the old
+    // bug that rendered a featureless beige void).
+    expect(water?.value).not.toBe(BRAND.bone)
+  })
+
+  it('renders a visible road hierarchy (streets through primaries)', () => {
+    for (const road of [
+      'road-minor',
+      'road-street',
+      'road-secondary-tertiary',
+      'road-primary',
+    ]) {
+      const o = byLayer(road).find((x) => x.property === 'line-color')
+      expect(o, `missing line-color override for ${road}`).toBeDefined()
+    }
   })
 })

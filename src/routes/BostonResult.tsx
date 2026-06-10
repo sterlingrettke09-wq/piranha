@@ -244,34 +244,33 @@ export default function BostonResult() {
             </button>
           </nav>
 
-          <Reveal className="mt-10">
-            <header>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
-                Feasibility report
-              </p>
-              <h1 className="mt-5 font-serif text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.05] tracking-tight text-piranha-charcoal">
-                {state.data.parcel.address}
-              </h1>
-              <p className="mt-4 text-sm text-piranha-charcoal/55">
-                Parcel {state.data.parcel.parcelId} · District {state.data.parcel.districtCode}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Pill>{PROJECT_TYPE_LABEL[state.data.project.projectType]}</Pill>
-                <Pill>{state.data.project.use}</Pill>
-                <Pill>{state.data.project.gfa.toLocaleString()} sq ft</Pill>
-                {state.data.project.units ? <Pill>{state.data.project.units} units</Pill> : null}
-                {state.data.project.funding === 'public' ? <Pill>Publicly funded</Pill> : null}
-              </div>
-            </header>
-          </Reveal>
-
-          <div className="print-hide mt-8">
-            <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
-          </div>
+          {/* The report header is the first-paint moment — it must render
+              instantly, NOT wrapped in a scroll-reveal (which would leave the
+              top of the page blank until the observer fires). The MiniMap now
+              sits BELOW the verdict band (see further down), so the verdict
+              headline is the first substantial thing a visitor reads. */}
+          <header className="mt-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
+              Feasibility report
+            </p>
+            <h1 className="mt-4 font-serif text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.05] tracking-tight text-piranha-charcoal">
+              {state.data.parcel.address}
+            </h1>
+            <p className="mt-3 text-sm text-piranha-charcoal/55">
+              Parcel {state.data.parcel.parcelId} · District {state.data.parcel.districtCode}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Pill>{PROJECT_TYPE_LABEL[state.data.project.projectType]}</Pill>
+              <Pill>{state.data.project.use}</Pill>
+              <Pill>{state.data.project.gfa.toLocaleString()} sq ft</Pill>
+              {state.data.project.units ? <Pill>{state.data.project.units} units</Pill> : null}
+              {state.data.project.funding === 'public' ? <Pill>Publicly funded</Pill> : null}
+            </div>
+          </header>
 
           {state.data.developable === false ? (
             <>
-              <Reveal className="mt-8">
+              <div className="mt-6">
                 <div className="rounded-2xl border border-amber-600/30 bg-amber-50/70 p-8">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800">
                     {state.data.developableKind === 'no_coverage' ? 'Outside our coverage' : 'Not a developable site'}
@@ -296,7 +295,11 @@ export default function BostonResult() {
                     ← Try another parcel
                   </Link>
                 </div>
-              </Reveal>
+              </div>
+
+              <div className="print-hide mt-6">
+                <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
+              </div>
 
               <div className="mt-12 space-y-14">
                 <ReportSection n="01" title="The site" kicker="What the public record says about the parcel.">
@@ -348,13 +351,22 @@ export default function BostonResult() {
                 </Reveal>
               )}
 
-              <Reveal className="mt-8">
+              {/* The verdict is the hero of this page — render it immediately
+                  (NOT inside a scroll-reveal) so the headline is the first thing
+                  a visitor sees above the fold, never a blank card. */}
+              <div className="mt-6">
                 <VerdictBanner
                   overall={state.data.feasibility.overall}
                   envelopeKnown={state.data.feasibility.envelopeKnown}
                   city={state.data.project.city}
                 />
-              </Reveal>
+              </div>
+
+              {/* The parcel map now sits BELOW the verdict — context, not the
+                  opener. */}
+              <div className="print-hide mt-6">
+                <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
+              </div>
 
               {/* WO-8.2 — the loud band. Renders right after the verdict and
                   before the estimates; self-hides when no card has real data. */}

@@ -63,7 +63,7 @@ function RecentReportsRow() {
           {reports.map((r) => (
             <div
               key={r.url}
-              className="group relative rounded-2xl border border-piranha-charcoal/12 bg-white p-5 transition-colors hover:border-piranha-charcoal/25"
+              className="tpp-card-interactive group relative rounded-2xl border border-piranha-charcoal/12 bg-white p-5 hover:border-piranha-charcoal/25"
             >
               <button
                 type="button"
@@ -144,7 +144,7 @@ export default function Home() {
       <CinematicIntro />
 
       {/* ── Manifesto (dark) — escalating statements ─────────────── */}
-      <section className={`${DARK} px-6 py-32 text-center sm:py-40`}>
+      <section className={`${DARK} px-6 py-20 text-center sm:py-24`}>
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-gold">
@@ -152,23 +152,23 @@ export default function Home() {
             </p>
           </Reveal>
           <Reveal delay={120}>
-            <h1 className="mt-9 font-serif text-[clamp(2.4rem,5.5vw,4.6rem)] leading-[1.04] tracking-tight text-piranha-bone">
+            <h1 className="mt-7 font-serif text-[clamp(2.4rem,5.5vw,4.6rem)] leading-[1.04] tracking-tight text-piranha-bone">
               Building in America’s greatest cities has become almost impossible.
             </h1>
           </Reveal>
           <Reveal delay={120}>
-            <p className="mx-auto mt-10 max-w-xl text-lg leading-relaxed text-piranha-bone/65">
+            <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-piranha-bone/80">
               Zoning is only the start. A stack of other rules piles on cost, time, and doubt before
               you break ground.
             </p>
           </Reveal>
           <Reveal delay={120}>
-            <p className="mx-auto mt-14 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-bone">
+            <p className="mx-auto mt-10 max-w-2xl font-serif text-[clamp(1.8rem,3.6vw,2.9rem)] leading-[1.12] tracking-tight text-piranha-bone">
               We map all of it, in plain English.
             </p>
           </Reveal>
           <Reveal delay={160}>
-            <div className="mt-12 flex flex-col items-center gap-5">
+            <div className="mt-10 flex flex-col items-center gap-5">
               <ArrowLink to="/map" tone="light">
                 Try it out
               </ArrowLink>
@@ -184,17 +184,17 @@ export default function Home() {
       </section>
 
       {/* ── Feature cards (white on dark) ────────────────────────── */}
-      <section className={`${DARK} px-6 pb-32`}>
+      <section className={`${DARK} px-6 pb-24`}>
         <div className="mx-auto max-w-6xl">
           <Reveal>
             <h2 className="text-center font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
               Everything between you and a finished building.
             </h2>
           </Reveal>
-          <div className="mt-16 grid gap-6 md:grid-cols-3">
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
             {FEATURES.map((c, i) => (
-              <Reveal key={c.title} variant="float" delay={i * 120}>
-                <div className="flex h-full flex-col rounded-2xl bg-white p-9">
+              <Reveal key={c.title} variant="float" delay={i * 100}>
+                <div className="tpp-card flex h-full flex-col rounded-2xl bg-white p-9">
                   <span className="font-serif text-2xl text-piranha-gold">{c.n}</span>
                   <h3 className="mt-5 text-2xl font-semibold tracking-tight text-piranha-charcoal">{c.title}</h3>
                   <p className="mt-3 leading-relaxed text-piranha-charcoal/65">{c.body}</p>
@@ -243,25 +243,25 @@ export default function Home() {
       </section>
 
       {/* ── Stats (dark) ─────────────────────────────────────────── */}
-      <section className={`${DARK} px-6 py-28`}>
+      <section className={`${DARK} px-6 py-20`}>
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <h2 className="max-w-2xl font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
               A full picture, from public record.
             </h2>
           </Reveal>
-          <div className="mt-16 grid gap-12 sm:grid-cols-3">
+          <div className="mt-12 grid gap-12 sm:grid-cols-3">
             {STATS.map((s, i) => (
-              <Reveal key={s.label} delay={i * 120}>
+              <Reveal key={s.label} delay={i * 100}>
                 <div className="border-t border-piranha-bone/20 pt-5">
                   <p className="font-serif text-6xl tracking-tight text-piranha-bone sm:text-7xl">{s.figure}</p>
-                  <p className="mt-3 text-sm uppercase tracking-[0.14em] text-piranha-bone/55">{s.label}</p>
+                  <p className="mt-3 text-sm uppercase tracking-[0.14em] text-piranha-bone/70">{s.label}</p>
                 </div>
               </Reveal>
             ))}
           </div>
           <Reveal delay={120}>
-            <p className="mt-12 text-sm leading-relaxed text-piranha-bone/65">
+            <p className="mt-10 text-sm leading-relaxed text-piranha-bone/75">
               Curious which city asks the least?{' '}
               <Link to="/red-tape" className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone">
                 The Red Tape Index
@@ -273,7 +273,7 @@ export default function Home() {
       </section>
 
       {/* ── Cities (dark) ────────────────────────────────────────── */}
-      <section className={`${DARK} border-t border-piranha-bone/10 px-6 py-28`}>
+      <section className={`${DARK} border-t border-piranha-bone/10 px-6 py-20`}>
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-gold">
@@ -284,7 +284,7 @@ export default function Home() {
             </h2>
           </Reveal>
           <Reveal delay={120}>
-            <div className="mt-12 space-y-10">
+            <div className="mt-10 space-y-10">
               {CITY_GROUPS.map((group) => (
                 <div key={group.label}>
                   <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-piranha-gold/70">

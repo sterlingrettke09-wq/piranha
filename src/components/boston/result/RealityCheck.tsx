@@ -23,8 +23,13 @@ export function RealityCheck({ result }: { result: AnalysisResult }) {
   return (
     <section
       aria-label="Reality check"
-      className="overflow-hidden rounded-2xl bg-piranha-charcoal text-piranha-bone print:border print:border-piranha-charcoal/30 print:bg-white print:text-piranha-charcoal"
+      className="tpp-card relative overflow-hidden rounded-2xl bg-piranha-charcoal text-piranha-bone print:border print:border-piranha-charcoal/30 print:bg-white print:text-piranha-charcoal"
     >
+      {/* Faint gold top rule — a hairline of brand color across the dark band. */}
+      <span
+        className="absolute inset-x-0 top-0 h-0.5 bg-piranha-gold/70 print:hidden"
+        aria-hidden="true"
+      />
       <div className="px-6 py-7 sm:px-8 sm:py-8">
         <p className="text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-piranha-gold print:text-piranha-burgundy">
           Reality check
@@ -43,7 +48,7 @@ export function RealityCheck({ result }: { result: AnalysisResult }) {
                 {card.kicker}
               </p>
               <p className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-serif text-4xl leading-none tracking-tight tabular-nums">
+                <span className="font-serif text-5xl leading-none tracking-tight tabular-nums">
                   {card.big}
                 </span>
                 {card.unit && (
