@@ -176,9 +176,9 @@ export default function BostonDashboard() {
   }, [])
 
   return (
-    <div className="relative h-[calc(100vh-4rem-8.5rem)]">
+    <div className="relative h-[calc(100vh-4rem-3.5rem)]">
       <CityIntro key={city} city={current} onReveal={() => setShowMap(true)} />
-      {/* 4rem header + ~8.5rem footer. Adjust if footer height changes. */}
+      {/* 4rem header + ~3.5rem slim footer. Adjust if footer height changes. */}
       <div className="absolute inset-0">
         {showMap && (
           <Map

@@ -26,19 +26,22 @@ export function DisclaimerNotice() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-piranha-bone/15 bg-piranha-charcoal text-piranha-bone shadow-2xl">
-      <div className="mx-auto flex max-w-5xl flex-col items-start gap-3 px-6 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <p className="leading-relaxed text-piranha-bone/85">
-          The Piranha Project gives general regulatory <span className="font-semibold text-piranha-bone">estimates</span> built from public
-          data, not legal, engineering, or financial advice. Always verify with the
-          relevant city department before relying on anything here.
+    // Cookie-bar slim: one short line + a small OK, floating as a pill so it
+    // reads as a passing notice, not a wall. The full disclaimer lives at /terms.
+    <div className="fixed inset-x-0 bottom-3 z-40 flex justify-center px-4">
+      <div className="flex max-w-xl items-center gap-3 rounded-full border border-piranha-bone/15 bg-piranha-charcoal/95 py-2 pl-4 pr-2 text-xs text-piranha-bone/85 shadow-2xl backdrop-blur">
+        <p>
+          Estimates from public data — not legal advice.{' '}
+          <a href="/terms" className="underline underline-offset-2 hover:text-piranha-bone">
+            Details
+          </a>
         </p>
         <button
           type="button"
           onClick={dismiss}
-          className="shrink-0 rounded-md bg-piranha-burgundy px-5 py-2 text-xs font-semibold uppercase tracking-wider text-piranha-bone transition-colors hover:bg-piranha-burgundy/85"
+          className="shrink-0 rounded-full bg-piranha-burgundy px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-piranha-bone transition-colors hover:bg-piranha-burgundy/85"
         >
-          I understand
+          Got it
         </button>
       </div>
     </div>

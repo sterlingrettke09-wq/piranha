@@ -135,32 +135,36 @@ export function Layout({ children }: LayoutProps) {
 
       <main className="flex-1">{children}</main>
 
+      {/* One slim row: disclaimer (compressed — the full version lives at /terms)
+          + links. Height matters: BostonDashboard's map calc assumes ~3.5rem. */}
       <footer className="print-hide border-t border-piranha-charcoal/10 bg-piranha-charcoal text-piranha-bone">
-        <div className="max-w-6xl mx-auto px-6 py-8 space-y-3">
-          <p className="text-sm leading-relaxed max-w-3xl">
-            The Piranha Project provides general regulatory information, not legal
-            advice. Estimates are built from public data, so always verify with the
-            relevant city department.
-          </p>
-          <p className="text-xs text-piranha-bone/60">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-x-4 gap-y-1 px-6 py-4 text-xs text-piranha-bone/60">
+          <span>
+            Estimates from public records — not legal advice.{' '}
+            <NavLink to="/terms" className="underline underline-offset-2 hover:text-piranha-bone">
+              Verify with your city
+            </NavLink>
+            .
+          </span>
+          <span className="ml-auto flex flex-wrap items-center gap-x-2">
             <NavLink to="/red-tape" className="underline underline-offset-2 hover:text-piranha-bone">
               Red Tape Index
             </NavLink>
-            <span className="mx-2">·</span>
+            <span aria-hidden>·</span>
             <NavLink to="/math" className="underline underline-offset-2 hover:text-piranha-bone">
               Methodology
             </NavLink>
-            <span className="mx-2">·</span>
+            <span aria-hidden>·</span>
             <NavLink to="/privacy" className="underline underline-offset-2 hover:text-piranha-bone">
               Privacy
             </NavLink>
-            <span className="mx-2">·</span>
+            <span aria-hidden>·</span>
             <NavLink to="/terms" className="underline underline-offset-2 hover:text-piranha-bone">
               Terms
             </NavLink>
-            <span className="mx-2">·</span>
-            v1 · built by Louisburg Strategies
-          </p>
+            <span aria-hidden>·</span>
+            <span>built by Louisburg Strategies</span>
+          </span>
         </div>
       </footer>
 
