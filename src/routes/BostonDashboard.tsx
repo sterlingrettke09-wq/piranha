@@ -8,6 +8,7 @@ import { introSeen } from '../components/boston/introSeen'
 import { getCity, isCitySlug, DEFAULT_CITY } from '../config/cities'
 import { quantizeCoord } from '../lib/coords'
 import { decodeJsonB64 } from '../lib/b64'
+import { useParcelInfo } from '../hooks/useParcelInfo'
 import type { AnalysisInput } from '../types/analysis'
 
 interface Selection {
@@ -85,6 +86,21 @@ export default function BostonDashboard() {
   // Only show a shape that matches the CURRENT selection (clears on city change /
   // deselect / a newer click whose fetch hasn't resolved yet).
   const selectedShape = shapeResult && shapeResult.key === selectionKey ? shapeResult.shape : null
+
+  // The selected parcel's by-right envelope, for the map's 3D rise. The panel
+  // resolves the same parcel via useParcelInfo; calling it here too is cheap —
+  // the /api/parcel response is CDN-cached on the SAME quantized key, and the
+  // hook's log-once guard means the search isn't double-counted. We read only
+  // the envelope's known height/stories; when height is unknown we pass null so
+  // the map shows the flat outline with no extrusion and no chip (never a guess).
+  const parcelState = useParcelInfo(activeSelection ? { ...activeSelection, city } : null)
+  const envelope =
+    parcelState.status === 'loaded'
+      ? {
+          maxHeightFt: parcelState.data.envelope?.maxHeightFt ?? null,
+          maxStories: parcelState.data.envelope?.maxStories ?? null,
+        }
+      : null
 
   // cmp carries the first parcel's AnalysisInput (no address field) — name it by
   // parcelId so the banner is honest about which parcel you're comparing against.
@@ -172,6 +188,7 @@ export default function BostonDashboard() {
             onPointSelect={handleSelect}
             focusedPoint={activeSelection}
             selectedShape={selectedShape}
+            envelope={envelope}
             zoningLayer={current.zoningLayer}
           />
         )}

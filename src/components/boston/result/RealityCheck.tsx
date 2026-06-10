@@ -2,6 +2,26 @@ import { Link } from 'react-router-dom'
 import type { AnalysisResult } from '../../../types/analysis'
 import { cityName } from '../../../config/cities'
 import { buildRealityCards } from '../../../lib/realityCheck'
+import { useCountUp } from '../../../lib/countUp'
+
+// Each card's `big` is a pre-formatted string — sometimes a leading numeral
+// ("8 mo", "72%"), sometimes purely lexical ("None", "Relaxed"). Animate only
+// the numeral, preserving everything around it; lexical figures render verbatim
+// with no animation. Fired on mount (the band is at the fold). Reduced motion →
+// useCountUp returns the target immediately, so the string is unchanged at rest.
+function CountUpBig({ value }: { value: string }) {
+  const match = value.match(/^(\d+(?:\.\d+)?)(.*)$/s)
+  const target = match ? Number(match[1]) : NaN
+  const animated = useCountUp(Number.isFinite(target) ? target : 0)
+  if (!match || !Number.isFinite(target)) return <>{value}</>
+  const decimals = match[1].includes('.') ? match[1].split('.')[1].length : 0
+  return (
+    <>
+      {animated.toFixed(decimals)}
+      {match[2]}
+    </>
+  )
+}
 
 // WO-8.2 — the "Reality check" band. The differentiated, city-specific data
 // (measured permit time, board relief odds, parking reform) was previously
@@ -51,7 +71,7 @@ export function RealityCheck({ result }: { result: AnalysisResult }) {
               </p>
               <p className="mt-2 flex items-baseline gap-1.5">
                 <span className="font-serif text-5xl leading-none tracking-tight tabular-nums">
-                  {card.big}
+                  <CountUpBig value={card.big} />
                 </span>
                 {card.unit && (
                   <span className="text-sm text-piranha-bone/55 print:text-piranha-charcoal/55">

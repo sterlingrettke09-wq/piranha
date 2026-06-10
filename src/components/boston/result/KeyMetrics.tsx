@@ -1,5 +1,6 @@
 import type { AnalysisResult } from '../../../types/analysis'
 import { formatEstimate } from '../../../lib/format'
+import { useCountUp } from '../../../lib/countUp'
 
 interface Props {
   costs: AnalysisResult['costs']
@@ -12,7 +13,16 @@ interface Props {
 /** Three headline figures, editorial register — the first thing the eye lands on. */
 export function KeyMetrics({ costs, timeline, hurdles, indeterminate }: Props) {
   const requiredCount = hurdles.filter((h) => h.status === 'required').length
-  const hurdleFigure = hurdles.length === 0 ? '0' : String(hurdles.length)
+
+  // Count-up animation, fired on mount (the band sits at the fold). Each numeral
+  // animates from 0 to its value then holds; the displayed string is formatted
+  // through the SAME util used at rest, so the settled figure is identical to
+  // the static render. Reduced motion → instant (useCountUp returns the target).
+  const hasMonths = timeline.months > 0
+  const costValue = useCountUp(costs.total)
+  const monthsValue = useCountUp(hasMonths ? timeline.months : 0)
+  const hurdleValue = useCountUp(hurdles.length)
+
   const hurdleLabel =
     hurdles.length === 0
       ? 'Approvals beyond zoning'
@@ -22,16 +32,16 @@ export function KeyMetrics({ costs, timeline, hurdles, indeterminate }: Props) {
 
   const metrics = [
     {
-      figure: formatEstimate(costs.total),
+      figure: formatEstimate(costValue),
       label: 'Construction cost, excludes land',
     },
     {
-      figure: timeline.months > 0 ? `${timeline.months}` : 'N/A',
-      suffix: timeline.months > 0 ? (timeline.months === 1 ? ' mo' : ' mos') : '',
+      figure: hasMonths ? `${Math.round(monthsValue)}` : 'N/A',
+      suffix: hasMonths ? (timeline.months === 1 ? ' mo' : ' mos') : '',
       label: indeterminate ? 'Est. months, if permittable' : 'From design to move-in',
     },
     {
-      figure: hurdleFigure,
+      figure: String(Math.round(hurdleValue)),
       label: hurdleLabel,
     },
   ]

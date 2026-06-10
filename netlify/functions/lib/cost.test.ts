@@ -118,9 +118,11 @@ describe('impact fees per city', () => {
     expect(at({ city: 'boston', use: 'residential', gfa: 80_000 }).costs.impact).toBe(0)
   })
 
-  it('LA: residential always pays $15/sf; nonres only at ≥15k sf', () => {
-    expect(at({ city: 'la', use: 'residential', gfa: 10_000 }).costs.impact).toBe(150_000)
-    expect(at({ city: 'la', use: 'commercial', gfa: 15_000 }).costs.impact).toBe(75_000)
+  it('LA: residential always pays the Medium-tier rate; nonres only at ≥15k sf', () => {
+    // AHLF flattened to the published Medium market-area rate (eff. 7/1/2025):
+    // residential $12.90/sf, nonresidential $5.16/sf.
+    expect(at({ city: 'la', use: 'residential', gfa: 10_000 }).costs.impact).toBe(Math.round(12.9 * 10_000))
+    expect(at({ city: 'la', use: 'commercial', gfa: 15_000 }).costs.impact).toBe(Math.round(5.16 * 15_000))
     expect(at({ city: 'la', use: 'commercial', gfa: 14_999 }).costs.impact).toBe(0)
   })
 
