@@ -5,6 +5,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { USES, PROJECT_TYPES, FUNDING_TYPES, type AnalysisInput, type Use, type ProjectType, type Funding } from '../types/analysis'
 import { Reveal } from '../components/Reveal'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
+import { EmailReport } from '../components/boston/result/EmailReport'
 import { KeyMetrics } from '../components/boston/result/KeyMetrics'
 import { MiniMap } from '../components/boston/result/MiniMap'
 import { ReportSection } from '../components/boston/result/ReportSection'
@@ -212,6 +213,12 @@ export default function BostonResult() {
                       ? 'Try a parcel inside one of our covered cities to run a full analysis.'
                       : 'We’ve skipped the cost and timeline estimate — they don’t apply to a parcel like this. Pick a private lot to run a full analysis.'}
                   </p>
+                  <Link
+                    to={`/map?city=${state.data.project.city}`}
+                    className="mt-6 inline-flex rounded-full border border-piranha-charcoal/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/70 transition-colors hover:border-piranha-charcoal/40"
+                  >
+                    ← Try another parcel
+                  </Link>
                 </div>
               </Reveal>
 
@@ -254,6 +261,14 @@ export default function BostonResult() {
                 <VerdictBanner
                   overall={state.data.feasibility.overall}
                   envelopeKnown={state.data.feasibility.envelopeKnown}
+                />
+              </Reveal>
+
+              <Reveal className="mt-6">
+                <EmailReport
+                  address={state.data.parcel.address}
+                  city={state.data.project.city}
+                  verdict={state.data.feasibility.overall}
                 />
               </Reveal>
 

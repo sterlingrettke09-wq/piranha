@@ -12,6 +12,21 @@ import { StepHeight } from '../components/boston/wizard/StepHeight'
 const STEP_LABELS = ['Project', 'Use', 'Size', 'Height']
 const TOTAL_STEPS = STEP_LABELS.length
 
+// Human labels for the summary line on step 4. Kept in sync with the option
+// labels in StepType.tsx / StepUse.tsx.
+const PROJECT_TYPE_LABEL: Record<ProjectType, string> = {
+  new: 'New construction',
+  addition: 'Addition / renovation',
+  adu: 'Accessory dwelling unit',
+  change_of_use: 'Change of use',
+}
+const USE_LABEL: Record<Use, string> = {
+  residential: 'residential',
+  commercial: 'commercial',
+  mixed: 'mixed-use',
+  institutional: 'institutional',
+}
+
 export default function BostonWizard() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -92,6 +107,15 @@ export default function BostonWizard() {
     navigate(`/result?${p.toString()}`)
   }
 
+  // One-line recap of what the user has filled so far — only the segments they
+  // actually entered (WO-6.3). Shown above the submit button on the last step.
+  const summaryBits = [
+    projectType ? PROJECT_TYPE_LABEL[projectType] : null,
+    use ? USE_LABEL[use] : null,
+    canAdvanceSize ? `${gfaNum.toLocaleString()} sq ft` : null,
+    positive(stories) ? `${Number(stories)} stories` : positive(heightFt) ? `${Number(heightFt)} ft` : null,
+  ].filter(Boolean)
+
   const parcelStatus =
     parcelState.status === 'loaded'
       ? 'loaded'
@@ -130,6 +154,10 @@ export default function BostonWizard() {
             />
           )}
         </div>
+
+        {step === TOTAL_STEPS && summaryBits.length > 0 && (
+          <p className="text-sm text-piranha-charcoal/55">{summaryBits.join(' · ')}</p>
+        )}
 
         <div className="flex items-center justify-between border-t border-piranha-charcoal/10 pt-6">
           <button

@@ -125,6 +125,15 @@ export default function Home() {
               </Reveal>
             ))}
           </div>
+          <Reveal delay={120}>
+            <p className="mt-12 text-sm leading-relaxed text-piranha-charcoal/65">
+              Weighing two sites? Run a parcel, then{' '}
+              <Link to="/map" className="text-piranha-burgundy underline underline-offset-2 hover:text-piranha-charcoal">
+                line a second one up against it
+              </Link>{' '}
+              — same project spec, side by side.
+            </p>
+          </Reveal>
         </div>
       </section>
 
@@ -201,6 +210,14 @@ export default function Home() {
               <ArrowLink to="/map" tone="dark">
                 Try it out
               </ArrowLink>
+            </div>
+            <div className="mt-6 flex justify-center">
+              <Link
+                to="/result?city=boston&parcelId=0304578000&projectType=new&funding=private&lat=42.351159&lng=-71.066392&use=residential&gfa=12000&units=10&stories=4"
+                className="text-xs font-semibold uppercase tracking-[0.12em] text-piranha-burgundy underline underline-offset-2 transition-colors hover:text-piranha-charcoal"
+              >
+                See a sample report →
+              </Link>
             </div>
             <p className="mt-12 text-xs text-piranha-charcoal/45">
               Estimates built from public data, not legal advice.

@@ -9,7 +9,20 @@ interface SearchBarProps {
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 export function SearchBar({ city, onSelect }: SearchBarProps) {
-  if (!TOKEN) return null
+  // No Mapbox token (local dev without env, or a misconfigured deploy) — render
+  // a disabled look-alike instead of vanishing, so the search slot still reads
+  // as a real control and the user knows map clicks remain available.
+  if (!TOKEN) {
+    return (
+      <input
+        type="text"
+        disabled
+        aria-label="Address search"
+        placeholder="Search unavailable — map clicks still work"
+        className="w-full cursor-not-allowed rounded-md border border-piranha-charcoal/15 bg-white/80 px-4 py-2.5 text-sm text-piranha-charcoal/50 shadow-lg placeholder:text-piranha-charcoal/40"
+      />
+    )
+  }
 
   const current = getCity(city)
   const { bbox, center, name } = current

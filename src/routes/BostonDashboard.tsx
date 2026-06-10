@@ -75,9 +75,21 @@ export default function BostonDashboard() {
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[26rem] max-w-[calc(100%-2rem)] space-y-2">
         <SearchBar key={city} city={city} onSelect={handleSelect} />
         {cmp && (
-          <p className="rounded-full bg-piranha-burgundy px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-piranha-bone shadow-lg">
-            Pick a second parcel to compare
-          </p>
+          <div className="flex items-center gap-2 rounded-full bg-piranha-burgundy px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-piranha-bone shadow-lg">
+            <span className="flex-1 text-center">Pick a second parcel to compare</span>
+            <button
+              type="button"
+              aria-label="Cancel comparing"
+              onClick={() => {
+                const next = new URLSearchParams(params)
+                next.delete('cmp')
+                setParams(next)
+              }}
+              className="-mr-1 shrink-0 rounded-full px-1.5 leading-none text-piranha-bone/80 transition-colors hover:text-piranha-bone"
+            >
+              ✕
+            </button>
+          </div>
         )}
       </div>
       <div

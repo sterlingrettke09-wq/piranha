@@ -106,7 +106,16 @@ export default function Compare() {
         {proj.projectType.replace(/_/g, ' ')}
       </p>
 
-      <div className="mt-8 overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-white/60">
+      <div className="mt-6 rounded-xl border border-piranha-charcoal/15 bg-piranha-burgundy/[0.04] px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-piranha-burgundy">
+          How to read this
+        </p>
+        <p className="mt-1 text-sm text-piranha-charcoal/70">
+          Both columns run the same project spec; only the parcel differs.
+        </p>
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-white/60">
         <div className="grid grid-cols-[minmax(7rem,1fr)_1fr_1fr] border-b border-piranha-charcoal/10">
           <Cell muted>
             <span className="text-xs uppercase tracking-[0.12em]">Parcel</span>
@@ -135,7 +144,7 @@ export default function Compare() {
       </div>
 
       <p className="mt-4 text-xs text-piranha-charcoal/45">
-        Both columns run the same project spec; only the parcel differs. Estimates from public records, not advice.
+        Estimates from public records, not advice.
       </p>
       <div className="mt-8 flex gap-5 text-xs font-semibold uppercase tracking-[0.12em]">
         <Link to={`/map?city=${proj.city}`} className="text-piranha-charcoal/60 hover:text-piranha-burgundy">
