@@ -38,5 +38,13 @@
       "n": 13406,
       "vintage": "submitted 2022-01-01 onward; computed 2026-06-10; data.lacity.org Building & Safety Permit Information (permit_type = 'Bldg-New')"
     }
+  },
+  "denver": {
+    "newConstruction": {
+      "medianMonths": 4.4,
+      "p80Months": 10.4,
+      "n": 6590,
+      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; opendata-geospatial.denvergov.org Construction Permits (residential + commercial; CLASS = 'NEW BUILDING')"
+    }
   }
 }

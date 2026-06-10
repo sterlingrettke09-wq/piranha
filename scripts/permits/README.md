@@ -38,6 +38,8 @@ node scripts/permits/chicago.mjs
 node scripts/permits/austin.mjs
 node scripts/permits/la.mjs
 node scripts/permits/dc.mjs     # ArcGIS, not Socrata; no filed-date column → writes nothing (see below)
+node scripts/permits/denver.mjs # ArcGIS (denvergov org); has DATE_RECEIVED → lands a figure
+node scripts/permits/minneapolis.mjs # ArcGIS (CCS Permits); issued-date only → writes nothing (see below)
 ```
 
 Socrata throttles anonymous callers (HTTP 429), and NYC's portal is especially
@@ -86,6 +88,8 @@ then commit the updated artifact.
 | **Austin** | `austin.mjs` | **✅ landed** | **2.2 mo** | **6.3 mo** | **17279** | Socrata `3syk-w9eu`; `permittype = 'BP'` + `work_class = 'New'`; `applieddate` → `issue_date`, applied since 2022. 1.3 % same-day. |
 | **LA** | `la.mjs` | **✅ landed** | **6.0 mo** | **13.0 mo** | **13406** | Socrata `pi9x-tg5x` (live LADBS feed, current to within days); `permit_type = 'Bldg-New'`; `submitted_date` → `issue_date`, submitted since 2022. 1.2 % same-day. |
 | **DC** | `dc.mjs` | **⚠️ no trustworthy figure — left absent** | — | — | — | ArcGIS (not Socrata). DCRA Building Permits feed carries only `ISSUE_DATE`; no application/filed date → can't measure the filing leg. See below. |
+| **Denver** | `denver.mjs` | **✅ landed** | **4.4 mo** | **10.4 mo** | **6590** | ArcGIS denvergov org (`zdB7qR0BtYrg0Xpl`), residential layer 316 + commercial layer 317 pooled; `CLASS = 'NEW BUILDING'`; `DATE_RECEIVED` → `DATE_ISSUED`, received since 2022. 1.7 % same-day; data fresh to 2026-06-09. |
+| **Minneapolis** | `minneapolis.mjs` | **⚠️ no trustworthy figure — left absent** | — | — | — | ArcGIS Hub (`afSMGVsC7QlRK1kZ`). `CCS_Permits` feed carries only `issueDate` (+ project `completeDate`); no application/filed date → can't measure the filing leg. The legacy per-year Hub layers stop at 2014. See below. |
 
 ### NYC — why it is absent (honest failure)
 
@@ -129,9 +133,28 @@ and **writes nothing**, exiting 0. If DC ever exposes a genuine
 application/submitted timestamp, add it to `APPLIED_DATE_CANDIDATES` in
 `dc.mjs` and re-run.
 
-## Other cities (still TODO — one script each)
+### Minneapolis — why it is absent (honest failure, the Boston/DC mode)
 
-Denver and Minneapolis have open Socrata portals too and can be added the same
-way; their dataset ids are the open item to verify. Follow the same probe →
-filter → sanity-gate → merge pattern, mapping each portal's permit-type field
-to our new-construction class.
+Minneapolis publishes building permits through its ArcGIS Hub portal
+(opendata.minneapolismn.gov → `services.arcgis.com/afSMGVsC7QlRK1kZ`), so
+`minneapolis.mjs` speaks ArcGIS REST. The current feed is the **`CCS_Permits`**
+FeatureServer (CCS = Construction Code Services). The schema probe is the
+deal-breaker: it carries `issueDate` and `completeDate` — and **no
+application/filed/submitted date**. `completeDate` is the *project*-completion
+date (after issuance, and frequently null), the wrong direction entirely, so it
+can't supply the filing leg. (`workType = 'New'` does correctly isolate
+ground-up construction — the gap is the missing application date, not the type
+filter.) The legacy per-year `Minneapolis_Building_Permits_YYYY` Hub layers were
+also checked and stop at **2014**, too old for a 2022+ vintage. `minneapolis.mjs`
+therefore documents the gap and **writes nothing**, exiting 0. If Minneapolis
+ever exposes a genuine application/submitted timestamp, add it to
+`APPLIED_DATE_CANDIDATES` in `minneapolis.mjs` and re-run.
+
+## All ten cities accounted for
+
+Every city in the index now has a script. Seven publish a genuine
+application/filed date and land a measured figure (SF, Seattle, Chicago, Austin,
+LA, Denver); three publish issuance-only feeds and are honestly left absent
+(NYC's OTC artifact, DC, Minneapolis) — Boston remains a CKAN template pending a
+filed-date column. Re-run each script **quarterly** to refresh the vintage, then
+commit the updated `permitStats.json`.

@@ -144,6 +144,15 @@ export default async function (request: Request, context: { next: () => Promise<
     html = setMeta(html, 'property', 'og:description', d)
     html = setMeta(html, 'name', 'twitter:title', t)
     html = setMeta(html, 'name', 'twitter:description', d)
+
+    // The Red Tape Index gets its own share image (the ranked bar chart),
+    // generated offline by scripts/make_redtape_card.py. Every other route keeps
+    // the default piranha card hardcoded in index.html.
+    if (url.pathname === '/red-tape') {
+      const img = 'https://thepiranhaproject.com/logo/og-redtape.png'
+      html = setMeta(html, 'property', 'og:image', img)
+      html = setMeta(html, 'name', 'twitter:image', img)
+    }
   }
 
   // Real 404 status for unknown SPA routes (the body is still the shell, and
