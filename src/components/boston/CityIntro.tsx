@@ -9,6 +9,26 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 const prefersReduced = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+// Touch / pen primary input — the dive is heaviest exactly on the devices least
+// able to afford it. We don't kill it outright on coarse pointers (it's a big
+// part of the brand), but we trim or skip it based on the device's own signals.
+const coarsePointer = () =>
+  typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+
+// Chromium-only hints; feature-detected so other engines just see `false`/8.
+// saveData → user asked to conserve; low deviceMemory → cheap phone that will
+// stutter through a 3D terrain dive. Either, on a coarse pointer, skips the dive.
+const wantsLeanIntro = (): boolean => {
+  if (typeof navigator === 'undefined') return false
+  const nav = navigator as Navigator & {
+    connection?: { saveData?: boolean }
+    deviceMemory?: number
+  }
+  const saveData = nav.connection?.saveData === true
+  const lowMemory = (nav.deviceMemory ?? 8) <= 4
+  return saveData || lowMemory
+}
+
 /**
  * Cinematic city entry — a live satellite map that dives from a high sky view
  * down into the city with a 3D tilt + terrain, then dissolves into the
@@ -44,9 +64,16 @@ export function CityIntro({ city, onReveal }: { city: City; onReveal?: () => voi
     }
 
     const reduce = prefersReduced()
+    const coarse = coarsePointer()
+    // On coarse pointers, a constrained device (saveData / low memory) skips the
+    // dive entirely and takes the fast crossfade — same path reduced-motion uses.
+    const skipDive = coarse && wantsLeanIntro()
+    // Otherwise coarse pointers still dive, but the camera move is capped so the
+    // hold is short on phones (desktop keeps the full cinematic 4.2s).
+    const diveDuration = coarse ? Math.min(2500, 4200) : 4200
     const [clng, clat] = city.center
     const [llng, llat] = city.landmark ?? city.center
-    const canDive = !!TOKEN && !reduce && !!mapEl.current && !mapRef.current
+    const canDive = !!TOKEN && !reduce && !skipDive && !!mapEl.current && !mapRef.current
 
     let fallbackExit: ReturnType<typeof setTimeout> | null = null
 
@@ -83,7 +110,7 @@ export function CityIntro({ city, onReveal }: { city: City; onReveal?: () => voi
           zoom: city.zoom,
           pitch: 0,
           bearing: 0,
-          duration: 4200,
+          duration: diveDuration,
           curve: 1.45,
           essential: true,
         })
@@ -103,7 +130,7 @@ export function CityIntro({ city, onReveal }: { city: City; onReveal?: () => voi
       }, 6000)
     }
 
-    const fast = reduce || !TOKEN
+    const fast = reduce || !TOKEN || skipDive
     // No dive: reveal the dashboard map immediately.
     if (fast) reveal()
     const tExit = fast ? setTimeout(() => setExiting(true), 80) : null

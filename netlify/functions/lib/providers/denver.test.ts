@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { getDenverParcelInfo } from './denver'
 import { mockArcgisFetch, featureSet, ARCGIS_ERROR_200 } from './__fixtures__'
+import { resolveZoningLimits } from '../zoningLimits'
 
 // Endpoint URL substrings the Denver provider hits (see denver.ts):
 //   PARCELS  = .../Zoning/MapServer/0 → 'MapServer/0'
@@ -59,6 +60,12 @@ describe('getDenverParcelInfo — happy path', () => {
     // 5 stories × 12 ft/story = 60.
     expect(res.info.zoning.maxHeightFt).toBe(60)
     expect(res.info.zoning.maxFAR).toBeNull() // form-based code, no FAR
+    // WO-8.8 depth: resolving through the curated table keeps FAR null (Denver
+    // is height-governed) while the 60 ft height carries through — the honest
+    // "height-governed district" shape, not a fabricated FAR.
+    const resolved = resolveZoningLimits(res.info.zoning, 'denver')
+    expect(resolved.maxFAR).toBeNull()
+    expect(resolved.maxHeightFt).toBe(60)
     // -MX → commercial/mixed/residential.
     expect(res.info.zoning.allowedUses).toEqual(['commercial', 'mixed', 'residential'])
     // EHA market area feeds overlays.feeArea.

@@ -69,12 +69,15 @@ export function CostBreakdown({ costs, gfa, units, demolitionRequired }: Props) 
         {rows.map((r, i) => (
           <div
             key={r.label}
-            className={`flex items-baseline justify-between px-6 py-3.5 ${
+            className={`flex items-baseline justify-between gap-3 px-6 py-3.5 ${
               i > 0 ? 'border-t border-piranha-charcoal/10' : ''
             }`}
           >
-            <dt className="text-piranha-charcoal/65">{r.label}</dt>
-            <dd className="font-medium text-piranha-charcoal tabular-nums">
+            {/* min-w-0 lets the long "Demolition — not estimated…" label wrap
+                instead of forcing the row wider than 360px; the value never
+                shrinks below its content. */}
+            <dt className="min-w-0 text-piranha-charcoal/65">{r.label}</dt>
+            <dd className="shrink-0 font-medium text-piranha-charcoal tabular-nums">
               {r.value === null ? <span className="text-piranha-charcoal/45">—</span> : usd(r.value)}
             </dd>
           </div>

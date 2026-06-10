@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Map, type ParcelShapeFeature } from '../components/boston/Map'
 import { SearchBar } from '../components/boston/SearchBar'
@@ -91,6 +91,74 @@ export default function BostonDashboard() {
   const cmpInput = cmp ? decodeJsonB64<AnalysisInput>(cmp) : null
   const cmpLabel = cmpInput?.parcelId ? `parcel ${cmpInput.parcelId}` : 'your first parcel'
 
+  // ── Mobile bottom sheet (WO-8.5a) ─────────────────────────────────────────
+  // On <md the panel is a peek-state sheet: ~35vh (address + key status + the
+  // primary CTA poking above the fold) that drags/taps up to ~85vh. The map
+  // stays interactive in peek (the sheet only covers the bottom third and the
+  // backdrop isn't a blocking scrim). Desktop (md+) ignores all of this and
+  // keeps the right-rail via the md: classes on the wrapper.
+  const PEEK_VH = 35
+  const EXPANDED_VH = 85
+  const [sheetExpanded, setSheetExpanded] = useState(false)
+  // Live drag offset in px (0 = at the current snap target). Cleared on release.
+  const [dragOffset, setDragOffset] = useState(0)
+  const dragRef = useRef<{ startY: number; pointerId: number } | null>(null)
+  const suppressClickRef = useRef(false)
+  const reducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  // A new selection re-peeks the sheet so the fresh address + CTA are framed.
+  // Derived during render (mirrors the prevCity/showMap pattern above) rather
+  // than in an effect, so the peek is applied in the same commit as the
+  // selection change — no extra render, no setState-in-effect.
+  const [sheetSelectionKey, setSheetSelectionKey] = useState(selectionKey)
+  if (selectionKey !== sheetSelectionKey) {
+    setSheetSelectionKey(selectionKey)
+    if (selectionKey) setSheetExpanded(false)
+  }
+
+  const onHandlePointerDown = useCallback((e: React.PointerEvent) => {
+    dragRef.current = { startY: e.clientY, pointerId: e.pointerId }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }, [])
+  const onHandlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    // Up-drag (negative) when peeked should expand; down-drag when expanded
+    // should collapse. Track the raw delta; snap on release.
+    setDragOffset(e.clientY - dragRef.current.startY)
+  }, [])
+  const endDrag = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragRef.current) return
+      const delta = e.clientY - dragRef.current.startY
+      const wasDrag = Math.abs(delta) >= 6
+      dragRef.current = null
+      setDragOffset(0)
+      // Only snap on a real drag past the threshold. A tap (tiny delta) is left
+      // to the synthetic `click` handler so keyboard activation and tap share one
+      // toggle path and never double-fire.
+      const THRESHOLD = 40
+      if (!wasDrag) return
+      // A drag fires a synthetic click afterward; suppress it so the drag's snap
+      // isn't immediately undone by a toggle.
+      suppressClickRef.current = true
+      if (delta < -THRESHOLD) setSheetExpanded(true)
+      else if (delta > THRESHOLD) setSheetExpanded(false)
+    },
+    [],
+  )
+  // Taps and keyboard activation toggle the sheet here. A real drag also fires a
+  // synthetic click afterward; endDrag set suppressClickRef so that one click is
+  // consumed and the drag's snap stands.
+  const onHandleClick = useCallback(() => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false
+      return
+    }
+    setSheetExpanded((v) => !v)
+  }, [])
+
   return (
     <div className="relative h-[calc(100vh-4rem-8.5rem)]">
       <CityIntro key={city} city={current} onReveal={() => setShowMap(true)} />
@@ -130,11 +198,44 @@ export default function BostonDashboard() {
         )}
       </div>
       <div
-        className={`absolute z-10 md:right-4 md:top-4 md:bottom-4 md:left-auto md:w-[420px] md:max-h-none left-0 right-0 bottom-0 max-h-[60vh] ${
-          activeSelection ? 'block' : 'hidden md:block'
+        // md+: the original right-rail, untouched. <md: a bottom sheet whose
+        // height is driven by inline style (peek vs expanded vh, plus the live
+        // drag offset) — the md: utilities reset every mobile property so the
+        // desktop rail is unaffected by the sheet's inline height/transform.
+        style={
+          {
+            // Only consulted under md via the CSS var; harmless on desktop where
+            // height is `auto` from md:h-auto. translateY tracks the active drag.
+            '--sheet-h': `${sheetExpanded ? EXPANDED_VH : PEEK_VH}vh`,
+            transform: dragOffset ? `translateY(${dragOffset}px)` : undefined,
+          } as React.CSSProperties
+        }
+        className={`absolute z-10 left-0 right-0 bottom-0 flex h-[var(--sheet-h)] flex-col ${
+          reducedMotion || dragOffset ? '' : 'transition-[height,transform] duration-300 ease-out'
+        } md:right-4 md:top-4 md:bottom-4 md:left-auto md:h-auto md:transform-none md:transition-none ${
+          activeSelection ? 'flex' : 'hidden md:flex'
         }`}
       >
-        <ParcelPanel selected={activeSelection} city={city} cmp={cmp} />
+        {/* Drag handle — mobile only. A real button so it's keyboard- and
+            screen-reader-operable; aria-expanded reflects the sheet state. It
+            sits ABOVE the panel in the flex column so it never overlaps content;
+            the panel below takes the remaining height and scrolls internally. */}
+        <button
+          type="button"
+          aria-label={sheetExpanded ? 'Collapse parcel details' : 'Expand parcel details'}
+          aria-expanded={sheetExpanded}
+          onClick={onHandleClick}
+          onPointerDown={onHandlePointerDown}
+          onPointerMove={onHandlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          className="flex h-9 w-full shrink-0 touch-none items-center justify-center rounded-t-2xl border border-b-0 border-piranha-charcoal/10 bg-piranha-bone/95 backdrop-blur-sm md:hidden"
+        >
+          <span aria-hidden className="h-1.5 w-10 rounded-full bg-piranha-charcoal/25" />
+        </button>
+        <div className="min-h-0 flex-1">
+          <ParcelPanel selected={activeSelection} city={city} cmp={cmp} />
+        </div>
       </div>
     </div>
   )

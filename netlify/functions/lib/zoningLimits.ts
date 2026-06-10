@@ -3,6 +3,8 @@
 // number, e.g. "B-2-65" => 65 ft. Family (leading letters) maps to seed
 // FAR and allowed uses. Unknowns return null -> feasibility INDETERMINATE.
 import type { Use } from '../../../src/types/analysis'
+import { resolveChicago } from './zoning/chicago'
+import { resolveDenver } from './zoning/denver'
 
 export interface ResolvedLimits {
   maxFAR: number | null
@@ -58,11 +60,34 @@ export function resolveZoningLimits(
   // provider (or leave them null → honestly "not in public data").
   city: string = 'boston',
 ): ResolvedLimits {
+  // Per-city curated district tables (WO-8.8 depth program) sit BETWEEN provider
+  // data (which always wins when non-null) and the Boston family heuristics.
+  // They only contribute FAR/height the provider left null — sourced municipal
+  // figures, never guesses (see netlify/functions/lib/zoning/<city>.ts).
+  const table = cityTableLimits(city, zoning.districtCode)
+
   const boston = city === 'boston'
   const fam = boston ? family(zoning.districtCode) : null
   return {
-    maxFAR: zoning.maxFAR ?? (fam ? FAMILY_FAR[fam] ?? null : null),
-    maxHeightFt: zoning.maxHeightFt ?? (boston ? parseHeight(zoning.districtCode) : null),
+    maxFAR: zoning.maxFAR ?? table.far ?? (fam ? FAMILY_FAR[fam] ?? null : null),
+    maxHeightFt: zoning.maxHeightFt ?? table.heightFt ?? (boston ? parseHeight(zoning.districtCode) : null),
     allowedUses: (zoning.allowedUses as Use[] | null) ?? (fam ? FAMILY_USES[fam] ?? null : null),
+  }
+}
+
+// Consult the per-city curated zoning table for FAR/height. Returns nulls for
+// any city without a table (or any district not in it) so the resolver falls
+// through to the next layer unchanged.
+function cityTableLimits(
+  city: string,
+  districtCode: string,
+): { far: number | null; heightFt: number | null } {
+  switch (city) {
+    case 'chicago':
+      return resolveChicago(districtCode)
+    case 'denver':
+      return resolveDenver(districtCode)
+    default:
+      return { far: null, heightFt: null }
   }
 }

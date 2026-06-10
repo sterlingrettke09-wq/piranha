@@ -4,6 +4,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
+import { CHICAGO_BASE_FAR } from '../zoning/chicago'
 
 const ZONING =
   'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/15'
@@ -36,23 +37,11 @@ function chicagoExistingUse(cls: unknown): string | null {
   }
 }
 
-// Chicago base FAR by residential district class (Chicago Zoning Ordinance,
-// Title 17 — published base floor-area ratios). Commercial/downtown/manufacturing
-// FARs vary by suffix and aren't reliably derivable from the class alone, so we
-// leave those null (honestly "not in public data") rather than guess.
-const CHICAGO_BASE_FAR: Record<string, number> = {
-  'RS-1': 0.5,
-  'RS-2': 0.65,
-  'RS-3': 0.9,
-  'RT-3.5': 1.05,
-  'RT-4': 1.2,
-  'RT-4A': 1.2,
-  'RM-4.5': 1.7, // Chicago Zoning Ordinance §17-2-0304-A FAR table (RM4.5 = 1.70)
-  'RM-5': 2.0,
-  'RM-5.5': 2.5,
-  'RM-6': 4.4,
-  'RM-6.5': 6.6,
-}
+// Chicago base FAR by residential district class. The table now lives in
+// netlify/functions/lib/zoning/chicago.ts (WO-8.8 depth program) alongside the
+// B/C/D/M suffix tables; we import it here so the provider still surfaces the
+// residential base FAR at parcel-resolve time. B/C/D/M FARs are filled in
+// downstream by resolveZoningLimits via resolveChicago().
 function chicagoBaseFAR(zone: string | null): number | null {
   if (!zone) return null
   return CHICAGO_BASE_FAR[zone.trim().toUpperCase()] ?? null

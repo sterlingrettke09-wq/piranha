@@ -128,32 +128,51 @@ export default function Compare() {
         </p>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-white/60">
-        <div className="grid grid-cols-[minmax(7rem,1fr)_1fr_1fr] border-b border-piranha-charcoal/10">
-          <Cell muted>
-            <span className="text-xs uppercase tracking-[0.12em]">Parcel</span>
-          </Cell>
-          {cols.map((c) => (
-            <Cell key={c.side}>
-              <span className="font-serif text-lg leading-tight tracking-tight">
-                {c.state.status === 'loaded' ? c.state.data.parcel.address : c.side === 'A' ? 'Parcel A' : 'Parcel B'}
-              </span>
-            </Cell>
-          ))}
-        </div>
-        {rows.map((r, i) => (
-          <div
-            key={r.label}
-            className={`grid grid-cols-[minmax(7rem,1fr)_1fr_1fr] ${i > 0 ? 'border-t border-piranha-charcoal/8' : ''}`}
-          >
-            <Cell muted>
-              <span className="text-sm">{r.label}</span>
-            </Cell>
-            {cols.map((c) => (
-              <Cell key={c.side}>{val(c.state, r.render)}</Cell>
+      {/* At 360px three columns inside ~312px of content would crush the
+          addresses and values. Scroll the table horizontally instead: the outer
+          wrapper clips + scrolls, the inner block holds a min-width so the grid
+          keeps legible column sizes and the user swipes to see Parcel B. The
+          right-edge fade is a subtle "there's more →" affordance. */}
+      <div className="relative mt-6">
+        <div className="overflow-x-auto overflow-y-hidden rounded-2xl border border-piranha-charcoal/10 bg-white/60">
+          <div className="min-w-[34rem]">
+            <div className="grid grid-cols-[minmax(7rem,1fr)_1fr_1fr] border-b border-piranha-charcoal/10">
+              <Cell muted>
+                <span className="text-xs uppercase tracking-[0.12em]">Parcel</span>
+              </Cell>
+              {cols.map((c) => (
+                <Cell key={c.side}>
+                  <span className="font-serif text-lg leading-tight tracking-tight">
+                    {c.state.status === 'loaded'
+                      ? c.state.data.parcel.address
+                      : c.side === 'A'
+                        ? 'Parcel A'
+                        : 'Parcel B'}
+                  </span>
+                </Cell>
+              ))}
+            </div>
+            {rows.map((r, i) => (
+              <div
+                key={r.label}
+                className={`grid grid-cols-[minmax(7rem,1fr)_1fr_1fr] ${i > 0 ? 'border-t border-piranha-charcoal/8' : ''}`}
+              >
+                <Cell muted>
+                  <span className="text-sm">{r.label}</span>
+                </Cell>
+                {cols.map((c) => (
+                  <Cell key={c.side}>{val(c.state, r.render)}</Cell>
+                ))}
+              </div>
             ))}
           </div>
-        ))}
+        </div>
+        {/* Scroll affordance — a soft fade at the right edge on narrow viewports
+            where the table overflows; hidden once there's room (md+). */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-2xl bg-gradient-to-l from-piranha-bone/80 to-transparent md:hidden"
+        />
       </div>
 
       <p className="mt-4 text-xs text-piranha-charcoal/45">

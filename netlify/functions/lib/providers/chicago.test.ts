@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { getChicagoParcelInfo } from './chicago'
 import { mockArcgisFetch, ARCGIS_ERROR_200 } from './__fixtures__'
 import { chicagoRoutesRM5, chicagoRoutesB32 } from './__fixtures__/chicago'
+import { resolveZoningLimits } from '../zoningLimits'
 
 // Inside the Chicago bbox (the Loop).
 const LAT = 41.88
@@ -46,8 +47,13 @@ describe('getChicagoParcelInfo', () => {
     expect(res.ok).toBe(true)
     if (!res.ok) return
     expect(res.info.zoning.districtCode).toBe('B3-2')
-    // chicagoBaseFAR: B-class not in the table → null.
+    // At the PROVIDER level chicagoBaseFAR only fills residential classes, so the
+    // raw provider FAR for a B-class is still null…
     expect(res.info.zoning.maxFAR).toBeNull()
+    // …but WO-8.8's curated Title 17 table fills it downstream: resolving the
+    // B3-2 district now yields the §17-3-0403-A dash-2 FAR of 2.2 (was null).
+    const resolved = resolveZoningLimits(res.info.zoning, 'chicago')
+    expect(resolved.maxFAR).toBe(2.2)
     // usesForZone: 'B' prefix → commercial + mixed + residential.
     expect(res.info.zoning.allowedUses).toEqual(['commercial', 'mixed', 'residential'])
   })

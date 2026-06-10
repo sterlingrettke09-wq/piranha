@@ -152,7 +152,11 @@ export function ParcelPanelContent(props: Props) {
   const instantSpec = blocked ? null : buildDefaultSpec(data, props.city)
 
   return (
-    <div className="p-7">
+    // On mobile this is a flex column so the trailing CTA can pin to the bottom
+    // (sticky) — in the ~35vh peek sheet the address + status sit up top and the
+    // primary action stays reachable without scrolling. On md+ it's the plain
+    // block it always was.
+    <div className="flex min-h-full flex-col p-7">
       <header>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-piranha-burgundy">
           Parcel
@@ -315,6 +319,11 @@ export function ParcelPanelContent(props: Props) {
         </section>
       </div>
 
+      {/* Action footer. On mobile it sticks to the bottom of the sheet so the
+          primary CTA stays visible in the peek state and while scrolling; mt-auto
+          pushes it down when content is short. On md+ it's static (sticky with a
+          bottom of 0 inside a non-scrolling context is a no-op there). */}
+      <div className="sticky bottom-0 z-[1] mt-auto -mx-7 -mb-7 bg-piranha-bone/95 px-7 pb-7 pt-3 backdrop-blur-sm md:static md:mx-0 md:mb-0 md:bg-transparent md:px-0 md:pb-0 md:pt-0 md:backdrop-blur-none">
       {blocked ? (
         <p className="mt-7 rounded-full border border-piranha-charcoal/15 px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/50">
           {dev.kind === 'no_coverage' ? 'Outside our zoning coverage' : 'Public land — nothing to build'}
@@ -366,6 +375,7 @@ export function ParcelPanelContent(props: Props) {
           Comparing against your first parcel, same project spec.
         </p>
       )}
+      </div>
     </div>
   )
 }
