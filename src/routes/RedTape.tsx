@@ -1,15 +1,18 @@
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
 import { getCity } from '../config/cities'
-import { computeRedTapeIndex, REFERENCE } from '../lib/redTapeIndex'
+import { computeRedTapeIndex, REFERENCE, type RankedCity } from '../lib/redTapeIndex'
+import { storyFor } from '../lib/cityStories'
 
 // The Red Tape Index — a shareable ranking of the cities we cover, ordered by
 // how much process and fee a single reference project carries. Every figure is
 // computed live from the same constants that drive every report (see /math), so
 // the table reorders itself the moment a constant changes; nothing here is
-// hand-typed.
+// hand-typed. Each row expands into a plain-English story (WO-8.7a) and a
+// "Run a parcel in {city}" funnel CTA (WO-8.7b) — also fully computed.
 
 const EM_DASH = '—'
 
@@ -25,8 +28,51 @@ function fmtScore(n: number): string {
   return n.toFixed(0)
 }
 
+function fmtPct(rate: number): string {
+  return `${Math.round(rate * 100)}%`
+}
+
+/** The concrete, sourced stat chips a city's story references — only the ones
+ *  the data actually carries, so a city with no measured permit time simply
+ *  shows fewer chips (never a fabricated one). */
+function StatChips({ city }: { city: RankedCity }) {
+  const chips: { label: string; value: string }[] = []
+  if (city.measuredMedianMonths != null) {
+    chips.push({
+      label: 'Measured permit',
+      value: `${city.measuredMedianMonths} mo median${city.measuredPermitN ? ` · n=${city.measuredPermitN.toLocaleString()}` : ''}`,
+    })
+  }
+  if (city.reliefGrantRate != null) {
+    chips.push({
+      label: 'Board says yes',
+      value: `${fmtPct(city.reliefGrantRate)}${city.reliefN ? ` · n=${city.reliefN.toLocaleString()}` : ''}`,
+    })
+  }
+  chips.push({ label: 'By-right lifecycle', value: `${city.lifecycleMonths} mo` })
+  chips.push({ label: '+ One variance', value: `${city.reliefAddMonths} mo` })
+  if (city.feePerSqFt > 0) {
+    chips.push({ label: 'Fee / sf', value: `$${city.feePerSqFt.toFixed(2)}` })
+  }
+  chips.push({ label: 'Parking mandate', value: city.parkingLabel })
+
+  return (
+    <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+      {chips.map((c) => (
+        <div key={c.label}>
+          <dt className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/45">
+            {c.label}
+          </dt>
+          <dd className="mt-0.5 font-medium tabular-nums text-piranha-charcoal">{c.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 export default function RedTape() {
   const ranked = computeRedTapeIndex()
+  const [open, setOpen] = useState<string | null>(null)
 
   return (
     <PageContainer>
@@ -35,7 +81,7 @@ export default function RedTape() {
           Pick one project — a mid-rise apartment building, about 40,000 square feet, ground-up
           new construction — and ask the same question of every city we cover: how many months of
           process, and how much in fees, before you can build it? This is that answer, ranked from
-          least red tape to most.
+          least red tape to most. Open any city for the story behind its number.
         </PageHeading>
 
         <Reveal>
@@ -81,36 +127,94 @@ export default function RedTape() {
                   <th className="px-5 py-3 text-right font-semibold">Fee / sf</th>
                   <th className="px-5 py-3 font-semibold">Parking mandate</th>
                   <th className="px-5 py-3 text-right font-semibold">Score</th>
+                  <th className="px-5 py-3">
+                    <span className="sr-only">Expand</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {ranked.map((r) => (
-                  <tr key={r.slug} className="border-b border-piranha-charcoal/5 last:border-0">
-                    <td className="px-5 py-3 font-serif tabular-nums text-piranha-gold">{r.rank}</td>
-                    <td className="px-5 py-3 font-medium text-piranha-charcoal">{getCity(r.slug).name}</td>
-                    <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
-                      {fmtMonths(r.lifecycleMonths)}
-                    </td>
-                    <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
-                      {fmtMonths(r.reliefAddMonths)}
-                    </td>
-                    <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
-                      {fmtFee(r.feePerSqFt)}
-                    </td>
-                    <td
-                      className={`px-5 py-3 ${
-                        r.parkingStatus === 'abolished'
-                          ? 'font-medium text-piranha-gold'
-                          : 'text-piranha-charcoal/75'
-                      }`}
-                    >
-                      {r.parkingLabel}
-                    </td>
-                    <td className="px-5 py-3 text-right font-semibold tabular-nums text-piranha-charcoal">
-                      {fmtScore(r.score)}
-                    </td>
-                  </tr>
-                ))}
+                {ranked.map((r) => {
+                  const name = getCity(r.slug).name
+                  const isOpen = open === r.slug
+                  const panelId = `story-${r.slug}`
+                  return (
+                    <Fragment key={r.slug}>
+                      <tr
+                        className={`border-b border-piranha-charcoal/5 last:border-0 ${
+                          isOpen ? 'bg-piranha-bone/60' : ''
+                        }`}
+                      >
+                        <td className="px-5 py-3 font-serif tabular-nums text-piranha-gold">{r.rank}</td>
+                        <td className="px-5 py-3 font-medium text-piranha-charcoal">{name}</td>
+                        <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
+                          {fmtMonths(r.lifecycleMonths)}
+                        </td>
+                        <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
+                          {fmtMonths(r.reliefAddMonths)}
+                        </td>
+                        <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
+                          {fmtFee(r.feePerSqFt)}
+                        </td>
+                        <td
+                          className={`px-5 py-3 ${
+                            r.parkingStatus === 'abolished'
+                              ? 'font-medium text-piranha-gold'
+                              : 'text-piranha-charcoal/75'
+                          }`}
+                        >
+                          {r.parkingLabel}
+                        </td>
+                        <td className="px-5 py-3 text-right font-semibold tabular-nums text-piranha-charcoal">
+                          {fmtScore(r.score)}
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setOpen(isOpen ? null : r.slug)}
+                            aria-expanded={isOpen}
+                            aria-controls={panelId}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-piranha-burgundy transition-colors hover:text-piranha-charcoal"
+                          >
+                            {isOpen ? 'Less' : 'Story'}
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                              className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                            >
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="border-b border-piranha-charcoal/5 last:border-0">
+                          <td colSpan={8} className="bg-piranha-bone/60 px-5 pb-6 pt-1">
+                            <div id={panelId} className="max-w-2xl">
+                              <p className="font-serif text-lg leading-relaxed tracking-tight text-piranha-charcoal">
+                                {storyFor(r, ranked)}
+                              </p>
+                              <StatChips city={r} />
+                              <Link
+                                to={`/map?city=${r.slug}`}
+                                className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-piranha-burgundy px-5 py-2.5 text-sm font-semibold text-piranha-bone transition-colors hover:bg-piranha-charcoal"
+                              >
+                                Run a parcel in {name}
+                                <span aria-hidden="true">→</span>
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>

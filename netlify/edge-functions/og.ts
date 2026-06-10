@@ -52,7 +52,7 @@ function metaFor(pathname: string, params: URLSearchParams): { title: string; de
   }
   if (pathname === '/about') return { title: `About · ${BASE}`, desc: 'Why the Piranha Project exists and how it reads each city’s public records.' }
   if (pathname === '/math') return { title: `Methodology · ${BASE}`, desc: 'Exactly how the verdict, cost, and timeline are calculated, with the tables we use.' }
-  if (pathname === '/red-tape') return { title: `The Red Tape Index · ${BASE}`, desc: 'Ten cities ranked by the cost of permission: months of process and fees per square foot for one reference project, computed from public data.' }
+  if (pathname === '/red-tape') return { title: `The Red Tape Index · ${BASE}`, desc: 'Chicago permits a new building in about a month; San Francisco takes about a year. Ten cities ranked by the real cost of permission — months, fees, and the boards that almost always say yes (Boston, 93%). Computed from public data.' }
   if (pathname === '/ask') return { title: `Ask · ${BASE}`, desc: 'Questions about building, zoning, and the red tape, answered in plain English.' }
   if (pathname === '/cities') return { title: `Cities · ${BASE}`, desc: 'The cities we cover, each read from its own public zoning and parcel records.' }
   if (pathname === '/request-city') return { title: `Request a city · ${BASE}`, desc: 'Tell us where you want to build and we’ll try to add it to our database.' }

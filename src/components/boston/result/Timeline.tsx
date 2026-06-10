@@ -1,5 +1,4 @@
 import type { AnalysisResult } from '../../../types/analysis'
-import { cityName } from '../../../config/cities'
 
 const PATH_LABEL: Record<AnalysisResult['timeline']['path'], string> = {
   as_of_right: 'On the standard permit path',
@@ -15,17 +14,13 @@ const TIER_LABEL: Record<NonNullable<AnalysisResult['timeline']['tier']>, string
 
 export function Timeline({
   timeline,
-  city,
   indeterminate,
 }: {
   timeline: AnalysisResult['timeline']
-  /** City slug — only needed to label the measured permit line. */
-  city?: string
   indeterminate?: boolean
 }) {
   const hasMonths = timeline.months > 0
   const pathLabel = indeterminate ? 'Not yet confirmed buildable' : PATH_LABEL[timeline.path]
-  const measured = timeline.measured
   return (
     <div className="rounded-2xl border border-piranha-charcoal/10 bg-white/60 px-6 py-6">
       <div className="flex items-end gap-3">
@@ -46,14 +41,6 @@ export function Timeline({
           {timeline.tier ? `Estimated as ${TIER_LABEL[timeline.tier]}, ` : 'Estimated '}
           covering the whole arc: design, permits, site work, and construction. Coastal and
           discretionary cities run longer on complex projects.
-        </p>
-      )}
-      {hasMonths && measured && (
-        <p className="mt-3 text-xs leading-relaxed text-piranha-charcoal/45">
-          Measured: the median new-construction permit in {city ? cityName(city) : 'this city'} ran{' '}
-          {measured.medianMonths} months from filing to issuance (p80 {measured.p80Months}, n=
-          {measured.n}; {measured.vintage}) — permit time only, a subset of the full life-cycle
-          shown above.
         </p>
       )}
     </div>

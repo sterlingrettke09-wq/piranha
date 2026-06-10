@@ -1,6 +1,5 @@
 import type { CheckStatus } from '../../../types/analysis'
 import { VERDICT } from '../../../lib/verdictLabels'
-import { cityName } from '../../../config/cities'
 
 // Per-status visual styling (dot / accent / tint) lives here; the copy
 // (headline, sub, word) comes from the shared verdictLabels module so no two
@@ -31,16 +30,13 @@ const LIMITED = {
 export function VerdictBanner({
   overall,
   envelopeKnown = true,
-  city,
-  reliefOdds,
 }: {
   overall: CheckStatus
   envelopeKnown?: boolean
+  /** City slug — retained for callers; the verdict copy itself is city-agnostic
+   *  and the relief-odds context now lives in the RealityCheck band (WO-8.2),
+   *  so this banner no longer renders a relief sub-line of its own. */
   city?: string
-  /** Historical board grant rate for variance-type relief in this city. When
-   *  present on a NEEDS_RELIEF verdict, renders one muted context sub-line.
-   *  Context, not a per-project prediction; never shown without real data. */
-  reliefOdds?: { grantRate: number; n: number; window: string; vintage: string }
 }) {
   const limited = overall === 'AS_OF_RIGHT' && !envelopeKnown
   const copy = VERDICT[overall]
@@ -52,15 +48,6 @@ export function VerdictBanner({
   const dot = limited ? LIMITED.dot : style.dot
   const accent = limited ? LIMITED.accent : style.accent
   const tint = limited ? LIMITED.tint : style.tint
-
-  // Historical board grant rate, shown only on a NEEDS_RELIEF verdict and only
-  // when the city's offline relief pipeline produced a real figure. Context, not
-  // a per-project prediction — never a placeholder when data is absent.
-  const reliefLine =
-    overall === 'NEEDS_RELIEF' && reliefOdds && city
-      ? `${cityName(city)}'s board granted ${Math.round(reliefOdds.grantRate * 100)}% of ` +
-        `variance requests (${reliefOdds.window}, n=${reliefOdds.n}).`
-      : null
 
   return (
     <div
@@ -74,11 +61,6 @@ export function VerdictBanner({
         {headline}
       </h2>
       <p className="mt-4 max-w-xl leading-relaxed text-piranha-charcoal/70">{sub}</p>
-      {reliefLine && (
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-piranha-charcoal/55 print:text-piranha-charcoal/70">
-          {reliefLine}
-        </p>
-      )}
     </div>
   )
 }

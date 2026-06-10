@@ -7,6 +7,7 @@ import { AskAssistant } from '../components/AskAssistant'
 import { USES, PROJECT_TYPES, FUNDING_TYPES, type AnalysisInput, type Use, type ProjectType, type Funding } from '../types/analysis'
 import { Reveal } from '../components/Reveal'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
+import { RealityCheck } from '../components/boston/result/RealityCheck'
 import { EmailReport } from '../components/boston/result/EmailReport'
 import { KeyMetrics } from '../components/boston/result/KeyMetrics'
 import { MiniMap } from '../components/boston/result/MiniMap'
@@ -79,6 +80,16 @@ export default function BostonResult() {
 
   // The URL this report lives at — also the dedupe/pin key in recentReports.
   const reportUrl = window.location.pathname + window.location.search
+
+  // The wizard link for the instant-report "refine" banner: the same params the
+  // report was built from, minus the auto flag (the wizard shouldn't re-trigger
+  // anything from it). parseInput ignores `auto` entirely, so dropping it here
+  // only affects this link.
+  const refineParams = useMemo(() => {
+    const p = new URLSearchParams(params)
+    p.delete('auto')
+    return p.toString()
+  }, [params])
 
   // Initialize the pin star from storage on mount (lazy initializer, so no
   // setState-in-effect). Recording below preserves any existing pin, so this
@@ -313,21 +324,50 @@ export default function BostonResult() {
                 </Reveal>
               )}
 
-              <Reveal className="mt-8">
-                <KeyMetrics
-                  costs={state.data.costs}
-                  timeline={state.data.timeline}
-                  hurdles={state.data.hurdles}
-                  indeterminate={state.data.feasibility.overall === 'INDETERMINATE'}
-                />
-              </Reveal>
+              {/* WO-8.4 — instant-report provenance banner. When the report was
+                  reached via the panel's "Instant report" action (auto=1), tell
+                  the visitor the spec was inferred from the parcel's own limits
+                  and link them to the wizard to refine it. Print-hidden. */}
+              {params.get('auto') === '1' && (
+                <Reveal className="mt-8">
+                  <Link
+                    to={`/start?${refineParams}`}
+                    className="print-hide group flex items-center justify-between gap-4 rounded-xl border border-piranha-gold/40 bg-piranha-gold/10 px-5 py-4 text-sm text-piranha-charcoal/80 transition-colors hover:border-piranha-gold/70"
+                  >
+                    <span>
+                      <span className="font-semibold">Built from this parcel’s own limits.</span>{' '}
+                      We picked a reasonable default project — refine the assumptions.
+                    </span>
+                    <span
+                      aria-hidden
+                      className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-piranha-burgundy transition-transform group-hover:translate-x-0.5"
+                    >
+                      Refine →
+                    </span>
+                  </Link>
+                </Reveal>
+              )}
 
               <Reveal className="mt-8">
                 <VerdictBanner
                   overall={state.data.feasibility.overall}
                   envelopeKnown={state.data.feasibility.envelopeKnown}
                   city={state.data.project.city}
-                  reliefOdds={state.data.reliefOdds}
+                />
+              </Reveal>
+
+              {/* WO-8.2 — the loud band. Renders right after the verdict and
+                  before the estimates; self-hides when no card has real data. */}
+              <Reveal className="mt-6">
+                <RealityCheck result={state.data} />
+              </Reveal>
+
+              <Reveal className="mt-8">
+                <KeyMetrics
+                  costs={state.data.costs}
+                  timeline={state.data.timeline}
+                  hurdles={state.data.hurdles}
+                  indeterminate={state.data.feasibility.overall === 'INDETERMINATE'}
                 />
               </Reveal>
 
@@ -382,7 +422,6 @@ export default function BostonResult() {
                 >
                   <Timeline
                     timeline={state.data.timeline}
-                    city={state.data.project.city}
                     indeterminate={state.data.feasibility.overall === 'INDETERMINATE'}
                   />
                 </ReportSection>

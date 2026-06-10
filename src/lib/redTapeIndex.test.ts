@@ -102,6 +102,20 @@ describe('computeRedTapeIndex', () => {
     }
   })
 
+  it('exposes measured permit medians + relief odds where the artifacts carry them', () => {
+    // Chicago has a measured new-construction median; Boston has a relief rate.
+    const chicago = ranked.find((r) => r.slug === 'chicago')!
+    expect(chicago.measuredMedianMonths).toBe(1)
+    expect(chicago.measuredPermitN).toBeGreaterThan(0)
+    const boston = ranked.find((r) => r.slug === 'boston')!
+    expect(boston.reliefGrantRate).toBeCloseTo(0.927, 3)
+    expect(boston.reliefN).toBeGreaterThan(0)
+    // A city with no artifact for a field gets null, never a fabricated number.
+    const dc = ranked.find((r) => r.slug === 'dc')!
+    expect(dc.measuredMedianMonths).toBeNull()
+    expect(dc.reliefGrantRate).toBeNull()
+  })
+
   it('does NOT let parking influence the composite score (informational only)', () => {
     // The composite is months 70% + fees 30%; parking rides alongside untouched.
     for (const r of ranked) {

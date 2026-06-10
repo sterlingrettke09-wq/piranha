@@ -168,10 +168,16 @@ export default function Home() {
             </p>
           </Reveal>
           <Reveal delay={160}>
-            <div className="mt-12 flex justify-center">
+            <div className="mt-12 flex flex-col items-center gap-5">
               <ArrowLink to="/map" tone="light">
                 Try it out
               </ArrowLink>
+              <Link
+                to="/red-tape"
+                className="text-sm font-semibold uppercase tracking-[0.12em] text-piranha-gold underline underline-offset-4 transition-colors hover:text-piranha-bone"
+              >
+                Read the Red Tape Index →
+              </Link>
             </div>
           </Reveal>
         </div>

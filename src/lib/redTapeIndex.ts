@@ -21,6 +21,21 @@ import {
 } from '../config/estimates'
 import { PARKING_RULES, type ParkingRule } from '../config/parkingRules'
 import type { Use } from '../types/analysis'
+// Empirical artifacts — the SAME static JSON the analysis functions inline
+// (netlify/functions/lib/{timeline,relief}.ts). Imported here so the Red Tape
+// Index can expose measured medians + relief odds per city without re-typing a
+// single number; change the artifact and the page changes with it.
+import permitStatsJson from '../../netlify/functions/lib/data/permitStats.json'
+import reliefStatsJson from '../../netlify/functions/lib/data/reliefStats.json'
+
+const PERMIT_STATS = permitStatsJson as Record<
+  string,
+  { newConstruction?: { medianMonths: number; p80Months: number; n: number } } | undefined
+>
+const RELIEF_STATS = reliefStatsJson as Record<
+  string,
+  { variance?: { grantRate: number; n: number } } | undefined
+>
 
 // Compact, table-cell version of a parking headline ("Abolished (2025)" /
 // "Near transit only"). Informational only — NOT folded into the composite
@@ -86,6 +101,15 @@ export interface RankedCity {
   parkingStatus: ParkingRule['status'] | null
   /** Compact table-cell label for the parking column ("Abolished (2025)"). */
   parkingLabel: string
+  /** Measured median months filing→permit for new construction, when the
+   *  open-data pipeline produced a trustworthy figure (else null). */
+  measuredMedianMonths: number | null
+  /** Sample size behind measuredMedianMonths (else null). */
+  measuredPermitN: number | null
+  /** Empirical board grant rate (0–1) for variance-type relief, when measured. */
+  reliefGrantRate: number | null
+  /** Sample size behind reliefGrantRate (else null). */
+  reliefN: number | null
 }
 
 const MONTHS_WEIGHT = 0.7
@@ -144,11 +168,17 @@ export function computeRedTapeIndex(constants: Partial<RedTapeConstants> = {}): 
 
   return scored.map((s, i) => {
     const rule = PARKING_RULES[s.slug]
+    const measured = PERMIT_STATS[s.slug]?.newConstruction
+    const relief = RELIEF_STATS[s.slug]?.variance
     return {
       ...s,
       rank: i + 1,
       parkingStatus: rule?.status ?? null,
       parkingLabel: parkingCell(rule),
+      measuredMedianMonths: measured?.medianMonths ?? null,
+      measuredPermitN: measured?.n ?? null,
+      reliefGrantRate: relief?.grantRate ?? null,
+      reliefN: relief?.n ?? null,
     }
   })
 }

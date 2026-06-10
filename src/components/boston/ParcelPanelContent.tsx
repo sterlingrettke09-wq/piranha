@@ -1,8 +1,31 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import type { ParcelInfo, ParcelError } from '../../types/parcel'
+import type { AnalysisInput } from '../../types/analysis'
 import { assessDevelopability } from '../../lib/developability'
+import { buildDefaultSpec } from '../../lib/defaultSpec'
 import { encodeJsonB64 } from '../../lib/b64'
+
+// Build the /result URL the "Instant report" CTA points at, using the same
+// param names BostonResult.parseInput reads, plus auto=1 so the report shows
+// its "built from the parcel's limits — refine" banner. parseInput ignores
+// `auto` (it only reads known keys), so it round-trips cleanly to the wizard.
+function instantReportUrl(spec: AnalysisInput): string {
+  const p = new URLSearchParams()
+  p.set('city', spec.city)
+  p.set('parcelId', spec.parcelId)
+  p.set('lat', String(spec.lat))
+  p.set('lng', String(spec.lng))
+  p.set('use', spec.use)
+  p.set('gfa', String(spec.gfa))
+  p.set('projectType', spec.projectType)
+  p.set('funding', spec.funding)
+  if (spec.units != null) p.set('units', String(spec.units))
+  if (spec.stories != null) p.set('stories', String(spec.stories))
+  if (spec.heightFt != null) p.set('heightFt', String(spec.heightFt))
+  p.set('auto', '1')
+  return `/result?${p.toString()}`
+}
 
 type Props =
   | { status: 'idle' }
@@ -124,6 +147,9 @@ export function ParcelPanelContent(props: Props) {
   const blocked = !dev.developable
   const hasEnvelope =
     !blocked && !!env && (env.maxFloorAreaSqFt != null || env.maxHeightFt != null || env.maxUnits != null)
+  // Default spec for the instant-report CTA — null when the parcel offers no
+  // size basis, in which case we keep the old single "Start full analysis" CTA.
+  const instantSpec = blocked ? null : buildDefaultSpec(data, props.city)
 
   return (
     <div className="p-7">
@@ -303,6 +329,27 @@ export function ParcelPanelContent(props: Props) {
             →
           </span>
         </Link>
+      ) : instantSpec ? (
+        // WO-8.4 — instant report as the primary action, with the wizard demoted
+        // to a subordinate "Customize" link. Only when the parcel gives us a
+        // usable default spec; otherwise the old single CTA below.
+        <div className="mt-7 space-y-3">
+          <Link
+            to={instantReportUrl(instantSpec)}
+            className="group flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"
+          >
+            Instant report
+            <span aria-hidden className="transition-transform duration-300 ease-out group-hover:translate-x-1">
+              →
+            </span>
+          </Link>
+          <Link
+            to={`/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
+            className="block text-center text-xs font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/55 underline-offset-4 transition-colors hover:text-piranha-burgundy hover:underline"
+          >
+            Customize analysis
+          </Link>
+        </div>
       ) : (
         <Link
           to={`/start?city=${encodeURIComponent(props.city)}&parcelId=${encodeURIComponent(data.parcelId)}&lat=${data.coordinates[1]}&lng=${data.coordinates[0]}`}
