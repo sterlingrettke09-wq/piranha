@@ -94,14 +94,21 @@ export function CinematicIntro() {
 
   const Photo = !photoFailed ? (
     <>
-      <img
-        src="/images/piranha-hero.jpg"
-        alt=""
-        aria-hidden="true"
-        fetchPriority="high"
-        onError={() => setPhotoFailed(true)}
-        className="tpp-kenburns h-full w-full object-cover"
-      />
+      {/* AVIF ≈ 53 kB, WebP ≈ 72 kB, JPEG fallback ≈ 153 kB (was a 510 kB
+          JPEG — and this image is the LCP). Keep the preload in index.html
+          pointed at the AVIF source. */}
+      <picture className="block h-full w-full">
+        <source srcSet="/images/piranha-hero.avif" type="image/avif" />
+        <source srcSet="/images/piranha-hero.webp" type="image/webp" />
+        <img
+          src="/images/piranha-hero.jpg"
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          onError={() => setPhotoFailed(true)}
+          className="tpp-kenburns h-full w-full object-cover"
+        />
+      </picture>
       {/* Cinematic grade: bottom-anchored gradient for title legibility + an
           edge vignette so the frame feels composed, not flat. */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/15 to-black/80" />

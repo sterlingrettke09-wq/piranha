@@ -6,8 +6,10 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Hero photo: load early so the opener paints the image, not a flash of the layer behind it. -->
-    <link rel="preload" as="image" href="/images/piranha-hero.jpg" fetchpriority="high" />
+    <!-- Hero photo (the LCP): preload the AVIF the <picture> in CinematicIntro
+         selects. Browsers without AVIF ignore the typed preload harmlessly and
+         fall through to the WebP/JPEG sources. -->
+    <link rel="preload" as="image" href="/images/piranha-hero.avif" type="image/avif" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
