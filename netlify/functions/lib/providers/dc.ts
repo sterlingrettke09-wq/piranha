@@ -69,7 +69,7 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
 
   const parcel = firstAttrs(parcelR.value)
   warnIfMissing(parcel, ['SSL', 'LANDAREA'], 'dc')
-  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['ZONING'], 'dc')
+  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, [['Zoning', 'ZONING', 'ZR16']], 'dc')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

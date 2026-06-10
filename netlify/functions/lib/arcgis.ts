@@ -279,15 +279,19 @@ export const firstFeature = (fs: FeatureSet) => (fs.features?.[0] as RawFeature 
 // nulls a verdict input citywide, forever (NYC has renamed PLUTO fields across
 // versions). This logs when a feature arrives WITHOUT a critical field as a
 // key (absence ≠ null: a present-but-null value is legitimate data).
+// A string[] entry means "any of these casings/aliases satisfies the check"
+// (e.g. DC's zoning layer serves `Zoning`, not `ZONING`, and the provider
+// falls back across casings — the canary must accept the same set).
 export function warnIfMissing(
   attrs: Record<string, unknown> | null,
-  fields: readonly string[],
+  fields: readonly (string | readonly string[])[],
   city: string,
 ): void {
   if (!attrs) return
   for (const field of fields) {
-    if (!(field in attrs)) {
-      console.log({ event: 'schema_drift', city, field })
+    const alternatives = Array.isArray(field) ? field : [field as string]
+    if (!alternatives.some((f) => f in attrs)) {
+      console.log({ event: 'schema_drift', city, field: alternatives.join('|') })
     }
   }
 }
