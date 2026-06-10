@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
+import { CITIES } from '../config/cities'
 
 // Encode a flat object as application/x-www-form-urlencoded for Netlify Forms.
 function encode(data: Record<string, string>) {
@@ -45,7 +46,7 @@ export default function RequestCity() {
   return (
     <PageContainer>
       <PageHeading eyebrow="Coverage" title="Request a city.">
-        We are live in 10 cities and looking to add more. Tell us where you want to
+        We are live in {CITIES.length} cities and looking to add more. Tell us where you want to
         build and we will try to add it to our database.
       </PageHeading>
 

@@ -37,7 +37,7 @@ const CITY_GROUPS = [
 ]
 
 const STATS = [
-  { figure: '10', label: 'Cities live, and counting' },
+  { figure: String(CITIES.length), label: 'Cities live, and counting' },
   { figure: '9', label: 'Kinds of red tape we surface, with more coming' },
   { figure: '100%', label: 'Built from public records' },
 ]

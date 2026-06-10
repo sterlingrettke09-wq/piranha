@@ -1,8 +1,9 @@
 import type { AnalysisResult } from '../../../types/analysis'
+import { formatEstimate } from '../../../lib/format'
 
-function usd(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-}
+// The cost model is order-of-magnitude, so every figure renders at 3 sig figs
+// with a magnitude suffix ($4.18M / $425k / $425/sq ft) rather than to the dollar.
+const usd = (n: number): string => formatEstimate(n)
 
 interface Props {
   costs: AnalysisResult['costs']

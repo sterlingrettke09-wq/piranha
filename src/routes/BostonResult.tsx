@@ -353,6 +353,15 @@ export default function BostonResult() {
           </div>
         </>
       )}
+
+      {/* Unconditional print disclaimer — renders on the PDF for EVERY state
+          (loaded, error/blocked, no-coverage), so no printed report can leave
+          without it (WO-4.2). */}
+      <p className="print-only mt-10 border-t border-piranha-charcoal/15 pt-4 text-[0.6rem] leading-relaxed text-piranha-charcoal/50">
+        Estimates only — not legal, engineering, or financial advice. Construction cost excludes
+        land and financing. Generated from public records — verify with the city.
+        thepiranhaproject.com
+      </p>
     </div>
   )
 }

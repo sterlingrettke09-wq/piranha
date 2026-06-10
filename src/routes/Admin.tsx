@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { cityName } from '../config/cities'
+import { VERDICT } from '../lib/verdictLabels'
+import type { CheckStatus } from '../types/analysis'
 
 interface SearchEntry {
   ts: string
@@ -15,12 +17,11 @@ interface SearchEntry {
 
 const KEY_STORE = 'tpp_admin_key'
 
-const VERDICT_LABEL: Record<string, string> = {
-  AS_OF_RIGHT: 'Can build',
-  NEEDS_RELIEF: 'Needs permission',
-  PROHIBITED: 'Not allowed',
-  INDETERMINATE: 'Can’t tell',
-}
+// Map the logged verdict enum to the shared compact label so the admin log
+// stays in sync with what users see on the result page.
+const VERDICT_LABEL: Record<string, string> = Object.fromEntries(
+  (Object.keys(VERDICT) as CheckStatus[]).map((s) => [s, VERDICT[s].short]),
+)
 
 function fmt(ts: string): string {
   const d = new Date(ts)

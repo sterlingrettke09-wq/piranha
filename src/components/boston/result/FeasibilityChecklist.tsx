@@ -1,10 +1,13 @@
 import type { FeasibilityCheck, CheckStatus } from '../../../types/analysis'
+import { CHECKLIST_LABEL } from '../../../lib/verdictLabels'
 
+// Per-dimension words come from the shared verdictLabels module; only the
+// dot/accent styling is local.
 const STATUS: Record<CheckStatus, { word: string; dot: string; accent: string }> = {
-  AS_OF_RIGHT: { word: 'Within limits', dot: 'bg-emerald-600', accent: 'text-emerald-700' },
-  NEEDS_RELIEF: { word: 'Over the limit', dot: 'bg-amber-500', accent: 'text-amber-700' },
-  PROHIBITED: { word: 'Conflict', dot: 'bg-rose-600', accent: 'text-rose-700' },
-  INDETERMINATE: { word: 'No data', dot: 'bg-piranha-charcoal/30', accent: 'text-piranha-charcoal/55' },
+  AS_OF_RIGHT: { word: CHECKLIST_LABEL.AS_OF_RIGHT, dot: 'bg-emerald-600', accent: 'text-emerald-700' },
+  NEEDS_RELIEF: { word: CHECKLIST_LABEL.NEEDS_RELIEF, dot: 'bg-amber-500', accent: 'text-amber-700' },
+  PROHIBITED: { word: CHECKLIST_LABEL.PROHIBITED, dot: 'bg-rose-600', accent: 'text-rose-700' },
+  INDETERMINATE: { word: CHECKLIST_LABEL.INDETERMINATE, dot: 'bg-piranha-charcoal/30', accent: 'text-piranha-charcoal/55' },
 }
 
 const DIMENSION_LABEL: Record<FeasibilityCheck['dimension'], string> = {

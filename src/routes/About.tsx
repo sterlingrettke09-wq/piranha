@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
+import { CITIES } from '../config/cities'
 
 function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
@@ -72,7 +73,7 @@ export default function About() {
 
           <Section n="03" title="Data sources">
             <p>
-              Live today across ten cities (Boston, New York, Chicago, San Francisco, Seattle,
+              Live today across {CITIES.length} cities (Boston, New York, Chicago, San Francisco, Seattle,
               Washington, D.C., Austin, Los Angeles, Denver, and Minneapolis), each wired from that
               city’s own public data: zoning districts, parcels, and FEMA flood-hazard zones,
               plus local historic districts where available.

@@ -16,6 +16,8 @@ const Methodology = lazy(() => import('./routes/Methodology'))
 const Compare = lazy(() => import('./routes/Compare'))
 const RequestCity = lazy(() => import('./routes/RequestCity'))
 const Cities = lazy(() => import('./routes/Cities'))
+const Privacy = lazy(() => import('./routes/Privacy'))
+const Terms = lazy(() => import('./routes/Terms'))
 const Admin = lazy(() => import('./routes/Admin'))
 const NotFound = lazy(() => import('./routes/NotFound'))
 
@@ -44,6 +46,8 @@ function RouteTitle() {
   else if (pathname === '/math') title = 'Methodology'
   else if (pathname === '/request-city') title = 'Request a city'
   else if (pathname === '/cities') title = 'Cities'
+  else if (pathname === '/privacy') title = 'Privacy'
+  else if (pathname === '/terms') title = 'Terms'
   else if (pathname === '/admin') title = 'Search log'
   else title = 'Page not found'
   useDocumentTitle(title)
@@ -71,6 +75,8 @@ export default function App() {
             <Route path="/compare" element={<Compare />} />
             <Route path="/request-city" element={<RequestCity />} />
             <Route path="/cities" element={<Cities />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             {/* Hidden owner-only search log. Not linked from nav or sitemap. */}
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

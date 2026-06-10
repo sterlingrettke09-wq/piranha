@@ -4,20 +4,24 @@ import { useAnalysis } from '../hooks/useAnalysis'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import type { AnalysisInput, AnalysisResult, CheckStatus } from '../types/analysis'
 import { decodeJsonB64 } from '../lib/b64'
+import { VERDICT } from '../lib/verdictLabels'
+import { formatEstimate } from '../lib/format'
 
 function decode<T>(s: string | null): T | null {
   if (!s) return null
   return decodeJsonB64<T>(s)
 }
 
-const VERDICT: Record<CheckStatus, { label: string; cls: string }> = {
-  AS_OF_RIGHT: { label: 'You can build it', cls: 'text-emerald-700' },
-  NEEDS_RELIEF: { label: 'Needs city permission', cls: 'text-amber-700' },
-  PROHIBITED: { label: 'Not allowed', cls: 'text-rose-700' },
-  INDETERMINATE: { label: 'Can’t tell', cls: 'text-piranha-charcoal/60' },
+// Verdict copy comes from the shared module (`VERDICT[status].short`); only the
+// per-status text color is local to this table.
+const VERDICT_CLS: Record<CheckStatus, string> = {
+  AS_OF_RIGHT: 'text-emerald-700',
+  NEEDS_RELIEF: 'text-amber-700',
+  PROHIBITED: 'text-rose-700',
+  INDETERMINATE: 'text-piranha-charcoal/60',
 }
 
-const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+const usd = (n: number) => formatEstimate(n)
 
 type Loc = { lat: number; lng: number; parcelId?: string }
 
@@ -69,7 +73,11 @@ export default function Compare() {
   const rows: { label: string; render: (d: AnalysisResult) => React.ReactNode }[] = [
     {
       label: 'Verdict',
-      render: (d) => <span className={`font-semibold ${VERDICT[d.feasibility.overall].cls}`}>{VERDICT[d.feasibility.overall].label}</span>,
+      render: (d) => (
+        <span className={`font-semibold ${VERDICT_CLS[d.feasibility.overall]}`}>
+          {VERDICT[d.feasibility.overall].short}
+        </span>
+      ),
     },
     { label: 'Construction cost', render: (d) => <span className="tabular-nums">{usd(d.costs.total)}</span> },
     { label: 'Timeline', render: (d) => <span className="tabular-nums">{d.timeline.months > 0 ? `${d.timeline.months} mo` : 'N/A'}</span> },

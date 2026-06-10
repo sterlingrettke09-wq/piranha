@@ -1,13 +1,5 @@
 import type { AnalysisResult } from '../../../types/analysis'
-
-function usdCompact(n: number): string {
-  if (n >= 1_000_000) {
-    const m = n / 1_000_000
-    return `$${m >= 100 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, '')}M`
-  }
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`
-  return `$${Math.round(n)}`
-}
+import { formatEstimate } from '../../../lib/format'
 
 interface Props {
   costs: AnalysisResult['costs']
@@ -30,7 +22,7 @@ export function KeyMetrics({ costs, timeline, hurdles, indeterminate }: Props) {
 
   const metrics = [
     {
-      figure: usdCompact(costs.total),
+      figure: formatEstimate(costs.total),
       label: 'Construction cost, excludes land',
     },
     {

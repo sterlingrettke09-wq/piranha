@@ -53,8 +53,10 @@ function metaFor(pathname: string, params: URLSearchParams): { title: string; de
   if (pathname === '/about') return { title: `About · ${BASE}`, desc: 'Why the Piranha Project exists and how it reads each city’s public records.' }
   if (pathname === '/math') return { title: `Methodology · ${BASE}`, desc: 'Exactly how the verdict, cost, and timeline are calculated, with the tables we use.' }
   if (pathname === '/ask') return { title: `Ask · ${BASE}`, desc: 'Questions about building, zoning, and the red tape, answered in plain English.' }
-  if (pathname === '/cities') return { title: `Cities · ${BASE}`, desc: 'The ten cities we cover, each read from its own public zoning and parcel records.' }
+  if (pathname === '/cities') return { title: `Cities · ${BASE}`, desc: 'The cities we cover, each read from its own public zoning and parcel records.' }
   if (pathname === '/request-city') return { title: `Request a city · ${BASE}`, desc: 'Tell us where you want to build and we’ll try to add it to our database.' }
+  if (pathname === '/privacy') return { title: `Privacy · ${BASE}`, desc: 'What we collect and where it goes, in plain English: searches, request-city emails, and the services we use.' }
+  if (pathname === '/terms') return { title: `Terms · ${BASE}`, desc: 'The plain-English terms of use: estimates not advice, verify with the city, no warranty, acceptable use.' }
   return null // home and everything else keep the default index.html meta
 }
 
@@ -88,6 +90,8 @@ const KNOWN_ROUTES = new Set([
   '/compare',
   '/request-city',
   '/cities',
+  '/privacy',
+  '/terms',
   '/admin',
 ])
 

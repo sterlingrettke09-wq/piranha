@@ -146,6 +146,14 @@ export function Layout({ children }: LayoutProps) {
               Methodology
             </NavLink>
             <span className="mx-2">·</span>
+            <NavLink to="/privacy" className="underline underline-offset-2 hover:text-piranha-bone">
+              Privacy
+            </NavLink>
+            <span className="mx-2">·</span>
+            <NavLink to="/terms" className="underline underline-offset-2 hover:text-piranha-bone">
+              Terms
+            </NavLink>
+            <span className="mx-2">·</span>
             v1 · built by Louisburg Strategies
           </p>
         </div>

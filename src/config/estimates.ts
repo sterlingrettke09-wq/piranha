@@ -10,6 +10,12 @@ import type { ProjectType, Use } from '../types/analysis'
 // verdicts for up to 24h (+7d stale-while-revalidate).
 export const ESTIMATES_VERSION = 1
 
+// Human-readable vintage of the cost tables, surfaced on the result page so the
+// data provenance can't silently drift from the figures above. Sourced from the
+// comments on costPerSqFtByUse (RSMeans 2026 building models) and cityCostIndex
+// (RSMeans City Cost Index, 2021 location factors).
+export const COST_DATA_VINTAGE = 'RSMeans 2026 base rates · 2021 city cost indices'
+
 export type BuildingTier = 'single' | 'multi' | 'apartment'
 
 // ---- Construction cost ----

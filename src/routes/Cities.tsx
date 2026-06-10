@@ -17,7 +17,7 @@ const HEROES = [
 export default function Cities() {
   return (
     <PageContainer>
-      <PageHeading eyebrow="Coverage" title="Ten cities, live.">
+      <PageHeading eyebrow="Coverage" title={`${CITIES.length} cities, live.`}>
         Pick any property in a covered city and we’ll tell you what you can build, what
         approvals you’d need, what it would cost, and how long it would take.
       </PageHeading>

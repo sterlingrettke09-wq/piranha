@@ -1,6 +1,7 @@
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { AskAssistant } from '../components/AskAssistant'
+import { CITIES } from '../config/cities'
 
 interface QA {
   q: string
@@ -45,7 +46,7 @@ const FAQ: QA[] = [
   },
   {
     q: 'Which cities are covered?',
-    a: 'Ten cities: Boston, New York City, Chicago, San Francisco, Seattle, Washington, D.C., Austin, Los Angeles, Denver, and Minneapolis, with more as we grow.',
+    a: `${CITIES.length} cities: Boston, New York City, Chicago, San Francisco, Seattle, Washington, D.C., Austin, Los Angeles, Denver, and Minneapolis, with more as we grow.`,
   },
   {
     q: 'Is the assistant always right?',

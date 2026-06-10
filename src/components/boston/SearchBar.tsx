@@ -15,21 +15,26 @@ export function SearchBar({ city, onSelect }: SearchBarProps) {
   const { bbox, center, name } = current
 
   return (
-    <SearchBox
-      accessToken={TOKEN}
-      options={{
-        bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
-        country: 'us',
-        proximity: { lng: center[0], lat: center[1] },
-        types: 'address',
-      }}
-      placeholder={`Search ${name} address`}
-      onRetrieve={(res) => {
-        const f = res.features?.[0]
-        if (!f) return
-        const [lng, lat] = f.geometry.coordinates
-        onSelect(lat, lng)
-      }}
-    />
+    <div>
+      <SearchBox
+        accessToken={TOKEN}
+        options={{
+          bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
+          country: 'us',
+          proximity: { lng: center[0], lat: center[1] },
+          types: 'address',
+        }}
+        placeholder={`Search ${name} address`}
+        onRetrieve={(res) => {
+          const f = res.features?.[0]
+          if (!f) return
+          const [lng, lat] = f.geometry.coordinates
+          onSelect(lat, lng)
+        }}
+      />
+      <p className="mt-1.5 text-xs text-piranha-charcoal/40">
+        Searches are logged anonymously to improve coverage.
+      </p>
+    </div>
   )
 }
