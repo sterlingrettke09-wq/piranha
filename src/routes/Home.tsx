@@ -155,6 +155,15 @@ export default function Home() {
               </Reveal>
             ))}
           </div>
+          <Reveal delay={120}>
+            <p className="mt-12 text-sm leading-relaxed text-piranha-bone/65">
+              Curious which city asks the least?{' '}
+              <Link to="/red-tape" className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone">
+                The Red Tape Index
+              </Link>{' '}
+              ranks all ten by the months and fees a single project carries.
+            </p>
+          </Reveal>
         </div>
       </section>
 

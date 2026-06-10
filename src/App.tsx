@@ -13,6 +13,7 @@ const BostonResult = lazy(() => import('./routes/BostonResult'))
 const Ask = lazy(() => import('./routes/Ask'))
 const About = lazy(() => import('./routes/About'))
 const Methodology = lazy(() => import('./routes/Methodology'))
+const RedTape = lazy(() => import('./routes/RedTape'))
 const Compare = lazy(() => import('./routes/Compare'))
 const RequestCity = lazy(() => import('./routes/RequestCity'))
 const Cities = lazy(() => import('./routes/Cities'))
@@ -44,6 +45,7 @@ function RouteTitle() {
   else if (pathname === '/ask') title = 'Ask'
   else if (pathname === '/about') title = 'About'
   else if (pathname === '/math') title = 'Methodology'
+  else if (pathname === '/red-tape') title = 'The Red Tape Index'
   else if (pathname === '/request-city') title = 'Request a city'
   else if (pathname === '/cities') title = 'Cities'
   else if (pathname === '/privacy') title = 'Privacy'
@@ -72,6 +74,7 @@ export default function App() {
             <Route path="/ask" element={<Ask />} />
             <Route path="/about" element={<About />} />
             <Route path="/math" element={<Methodology />} />
+            <Route path="/red-tape" element={<RedTape />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/request-city" element={<RequestCity />} />
             <Route path="/cities" element={<Cities />} />
