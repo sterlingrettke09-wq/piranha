@@ -4,20 +4,6 @@ import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
 import { CITIES } from '../config/cities'
 
-// "City, ST" label per slug (city cards show this, not the marketing tagline).
-const LABEL: Record<string, string> = {
-  boston: 'Boston, MA',
-  nyc: 'New York, NY',
-  chicago: 'Chicago, IL',
-  sf: 'San Francisco, CA',
-  seattle: 'Seattle, WA',
-  dc: 'Washington, DC',
-  austin: 'Austin, TX',
-  la: 'Los Angeles, CA',
-  denver: 'Denver, CO',
-  minneapolis: 'Minneapolis, MN',
-}
-
 // On-brand gradient hero behind each photo — also the fallback if the photo
 // (public/cities/<slug>.jpg) is missing or fails to load.
 const HEROES = [
@@ -64,7 +50,7 @@ export default function Cities() {
                 </span>
                 <div>
                   <h2 className="font-serif text-3xl leading-none tracking-tight text-piranha-bone drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
-                    {LABEL[c.slug] ?? c.name}
+                    {c.stateLabel}
                   </h2>
                   <span className="mt-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-gold">
                     Open the map

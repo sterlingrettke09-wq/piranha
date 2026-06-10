@@ -1,3 +1,7 @@
+> **Historical note (2026-06-09):** This plan predates implementation. The shipped
+> assistant uses Google Gemini (not Claude/Anthropic), and the analyze endpoint is
+> a deterministic calculator with no LLM. See README.md for current architecture.
+
 # Boston Dashboard Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

@@ -14,6 +14,12 @@
       href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!--
+      NOTE: the <title>, description/OG/Twitter metas, and the canonical link
+      below are rewritten per-route at the edge by netlify/edge-functions/og.ts.
+      Keep them as standard <meta .../> and <link .../> tags; if you reformat
+      or remove them, update og.ts to match.
+    -->
     <title>The Piranha Project</title>
     <meta name="description" content="See every rule between you and a finished building: what it costs, how long it takes, and where it has gone too far. Built from public records, in plain English." />
     <link rel="canonical" href="https://thepiranhaproject.com/" />
@@ -27,6 +33,23 @@
     <meta name="twitter:title" content="The Piranha Project" />
     <meta name="twitter:description" content="What it really takes to build, mapped from public records and shown in plain English." />
     <meta name="twitter:image" content="https://thepiranhaproject.com/logo/og-card.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "The Piranha Project",
+        "url": "https://thepiranhaproject.com/",
+        "description": "Parcel-level building feasibility, cost, and timeline estimates for ten US cities, drawn from public zoning and parcel records.",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "creator": {
+          "@type": "Organization",
+          "name": "Louisburg Strategies",
+          "url": "https://louisburgstrategies.com"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -130,6 +130,9 @@ export function CityIntro({ city, onReveal }: { city: City; onReveal?: () => voi
   return (
     <div
       onClick={dismiss}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') dismiss()
+      }}
       className={`fixed inset-0 z-[60] cursor-pointer overflow-hidden bg-[#10100f] transition-opacity duration-1000 ease-in-out ${
         exiting ? 'opacity-0' : 'opacity-100'
       }`}
@@ -147,6 +150,19 @@ export function CityIntro({ city, onReveal }: { city: City; onReveal?: () => voi
           </h1>
         </div>
       </div>
+      {/* Keyboard-accessible skip — the overlay div's click isn't reachable by
+          keyboard, and the intro otherwise holds the page for ~5 seconds. */}
+      <button
+        type="button"
+        autoFocus
+        onClick={(e) => {
+          e.stopPropagation()
+          dismiss()
+        }}
+        className="absolute bottom-6 right-6 rounded-full border border-piranha-bone/40 px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-piranha-bone/80 transition-colors hover:border-piranha-bone hover:text-piranha-bone focus-visible:outline focus-visible:outline-2 focus-visible:outline-piranha-gold"
+      >
+        Skip intro
+      </button>
     </div>
   )
 }

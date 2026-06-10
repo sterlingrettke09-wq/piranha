@@ -3,14 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import type { AnalysisInput, AnalysisResult, CheckStatus } from '../types/analysis'
+import { decodeJsonB64 } from '../lib/b64'
 
 function decode<T>(s: string | null): T | null {
   if (!s) return null
-  try {
-    return JSON.parse(atob(s)) as T
-  } catch {
-    return null
-  }
+  return decodeJsonB64<T>(s)
 }
 
 const VERDICT: Record<CheckStatus, { label: string; cls: string }> = {

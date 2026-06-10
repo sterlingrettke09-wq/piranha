@@ -37,6 +37,19 @@ function metaFor(pathname: string, params: URLSearchParams): { title: string; de
       desc: 'A parcel-level read on what it takes to build here: feasibility, cost, and timeline, from public records.',
     }
   }
+  if (pathname === '/start' || pathname === '/boston/start') {
+    const c = cityName(params.get('city'))
+    return {
+      title: `Plan a project · ${c} · ${BASE}`,
+      desc: `Describe what you want to build in ${c} and get a parcel-level feasibility read: zoning, cost, and timeline.`,
+    }
+  }
+  if (pathname === '/compare') {
+    return {
+      title: `Compare parcels · ${BASE}`,
+      desc: 'Two parcels side by side: feasibility, cost, and timeline, drawn from public records.',
+    }
+  }
   if (pathname === '/about') return { title: `About · ${BASE}`, desc: 'Why the Piranha Project exists and how it reads each city’s public records.' }
   if (pathname === '/math') return { title: `Methodology · ${BASE}`, desc: 'Exactly how the verdict, cost, and timeline are calculated, with the tables we use.' }
   if (pathname === '/ask') return { title: `Ask · ${BASE}`, desc: 'Questions about building, zoning, and the red tape, answered in plain English.' }
@@ -45,8 +58,29 @@ function metaFor(pathname: string, params: URLSearchParams): { title: string; de
   return null // home and everything else keep the default index.html meta
 }
 
+// Canonical URL for a route. The city param changes page content on the map /
+// wizard / result routes, so it's kept; every other query param is stripped so
+// crawlers don't index tracking-or-state variants as separate pages.
+function canonicalFor(url: URL): string {
+  const keepCity = ['/map', '/boston', '/result', '/boston/result', '/start', '/boston/start']
+  const city = url.searchParams.get('city')
+  const suffix = keepCity.includes(url.pathname) && city ? `?city=${encodeURIComponent(city)}` : ''
+  return `${url.origin}${url.pathname}${suffix}`
+}
+
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+// Attribute-order-tolerant replacers. `[^>]*?` between the identifying
+// attribute and `content` tolerates extra attributes and whitespace; a second
+// pattern handles `content` appearing BEFORE the identifying attribute, so a
+// reformat of index.html can't silently disable the rewrite.
+function setMeta(html: string, attr: 'name' | 'property', key: string, value: string): string {
+  const after = new RegExp(`(<meta\\b[^>]*?${attr}="${key}"[^>]*?content=")[^"]*(")`)
+  if (after.test(html)) return html.replace(after, `$1${value}$2`)
+  const before = new RegExp(`(<meta\\b[^>]*?content=")[^"]*("[^>]*?${attr}="${key}")`)
+  return html.replace(before, `$1${value}$2`)
+}
 
 export default async function (request: Request, context: { next: () => Promise<Response> }): Promise<Response> {
   const res = await context.next()
@@ -54,19 +88,31 @@ export default async function (request: Request, context: { next: () => Promise<
 
   const url = new URL(request.url)
   const m = metaFor(url.pathname, url.searchParams)
-  if (!m) return res
+  const canonical = esc(canonicalFor(url))
 
-  const html = await res.text()
-  const t = esc(m.title)
-  const d = esc(m.desc)
-  const out = html
-    .replace(/<title>[\s\S]*?<\/title>/, `<title>${t}</title>`)
-    .replace(/(<meta\s+name="description"\s+content=")[^"]*(")/, `$1${d}$2`)
-    .replace(/(<meta\s+property="og:title"\s+content=")[^"]*(")/, `$1${t}$2`)
-    .replace(/(<meta\s+property="og:description"\s+content=")[^"]*(")/, `$1${d}$2`)
-    .replace(/(<meta\s+name="twitter:title"\s+content=")[^"]*(")/, `$1${t}$2`)
-    .replace(/(<meta\s+name="twitter:description"\s+content=")[^"]*(")/, `$1${d}$2`)
-    .replace(/(<meta\s+property="og:url"\s+content=")[^"]*(")/, `$1${esc(url.href)}$2`)
+  let html = await res.text()
 
-  return new Response(out, { status: res.status, headers: res.headers })
+  // Every HTML route gets a correct self-referencing canonical + og:url. The
+  // shipped index.html hardcodes the homepage URL, which told crawlers every
+  // page was a duplicate of "/".
+  html = html.replace(/(<link\b[^>]*?rel="canonical"[^>]*?href=")[^"]*(")/, `$1${canonical}$2`)
+  html = setMeta(html, 'property', 'og:url', canonical)
+
+  // The owner-only search log should never be indexed.
+  if (url.pathname === '/admin') {
+    html = html.replace('</head>', '    <meta name="robots" content="noindex, nofollow" />\n  </head>')
+  }
+
+  if (m) {
+    const t = esc(m.title)
+    const d = esc(m.desc)
+    html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${t}</title>`)
+    html = setMeta(html, 'name', 'description', d)
+    html = setMeta(html, 'property', 'og:title', t)
+    html = setMeta(html, 'property', 'og:description', d)
+    html = setMeta(html, 'name', 'twitter:title', t)
+    html = setMeta(html, 'name', 'twitter:description', d)
+  }
+
+  return new Response(html, { status: res.status, headers: res.headers })
 }

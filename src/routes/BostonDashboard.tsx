@@ -1,11 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Map } from '../components/boston/Map'
 import { SearchBar } from '../components/boston/SearchBar'
 import { ParcelPanel } from '../components/boston/ParcelPanel'
 import { CityIntro } from '../components/boston/CityIntro'
 import { introSeen } from '../components/boston/introSeen'
-import { getCity } from '../config/cities'
+import { getCity, isCitySlug, DEFAULT_CITY } from '../config/cities'
 
 interface Selection {
   lat: number
@@ -14,9 +14,21 @@ interface Selection {
 }
 
 export default function BostonDashboard() {
-  const [params] = useSearchParams()
-  const city = params.get('city') ?? 'boston'
+  const [params, setParams] = useSearchParams()
+  const rawCity = params.get('city')
+  // An unknown ?city= slug (typo, dead link) silently rendered Boston while the
+  // URL kept claiming another city. Normalize the URL instead so what you see
+  // and what you share always match.
+  const unknownCity = rawCity !== null && !isCitySlug(rawCity)
+  const city = rawCity !== null && isCitySlug(rawCity) ? rawCity : DEFAULT_CITY
   const current = getCity(city)
+  useEffect(() => {
+    if (unknownCity) {
+      const next = new URLSearchParams(params)
+      next.delete('city')
+      setParams(next, { replace: true })
+    }
+  }, [unknownCity, params, setParams])
   // When arriving from a result's "Compare another parcel" link, cmp carries the
   // first parcel's full project spec (base64). The panel CTA then routes to /compare.
   const cmp = params.get('cmp')
@@ -51,7 +63,6 @@ export default function BostonDashboard() {
             key={city}
             center={current.center}
             zoom={current.zoom}
-            showZoningRaster={city === 'boston'}
             onPointSelect={handleSelect}
             focusedPoint={activeSelection}
           />

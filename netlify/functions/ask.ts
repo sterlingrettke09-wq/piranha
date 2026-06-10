@@ -1,4 +1,5 @@
 import type { Handler } from '@netlify/functions'
+import { clientIp, rateLimited } from './lib/guard'
 
 // Google Gemini (cheapest credible option). Set GEMINI_API_KEY in Netlify to
 // switch the assistant on. Swap MODEL for another Gemini model if you like —
@@ -18,20 +19,10 @@ Boundaries: You provide general regulatory information, not legal, engineering, 
 
 Respond only with your final answer in plain prose. Do not include exploratory reasoning, meta-commentary, or markdown headings.`
 
-// Best-effort, per-warm-instance rate limit. Serverless instances are
-// ephemeral, so this is a soft guard, NOT a durable limiter — a real cap
-// needs a shared store (Netlify KV / Upstash). Documented intentionally.
-const WINDOW_MS = 60_000
-const MAX_PER_WINDOW = 8
-const hits = new Map<string, number[]>()
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now()
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS)
-  recent.push(now)
-  hits.set(ip, recent)
-  return recent.length > MAX_PER_WINDOW
-}
+// Soft per-IP rate limit (shared implementation in lib/guard.ts; see the
+// caveats there about per-instance scope). Pair with a billing alert on the
+// Gemini key for a durable spend cap.
+const RATE = { name: 'ask', windowMs: 60_000, max: 8 } as const
 
 const json = (statusCode: number, body: unknown) => ({
   statusCode,
@@ -73,11 +64,7 @@ export const handler: Handler = async (event) => {
     })
   }
 
-  const ip =
-    event.headers['x-nf-client-connection-ip'] ||
-    event.headers['x-forwarded-for'] ||
-    'unknown'
-  if (rateLimited(ip)) {
+  if (rateLimited(clientIp(event.headers), RATE)) {
     return json(429, {
       code: 'RATE_LIMITED',
       message: 'Too many questions in a short time — please wait a moment and try again.',

@@ -20,6 +20,7 @@ import { AssumptionsDisclosure } from '../components/boston/result/AssumptionsDi
 import { NextSteps } from '../components/boston/result/NextSteps'
 import { SourceLinks } from '../components/boston/result/SourceLinks'
 import { LouisburgMark } from '../components/LouisburgMark'
+import { encodeJsonB64 } from '../lib/b64'
 
 const PROJECT_TYPE_LABEL: Record<ProjectType, string> = {
   new: 'New construction',
@@ -30,10 +31,15 @@ const PROJECT_TYPE_LABEL: Record<ProjectType, string> = {
 
 function parseInput(params: URLSearchParams): AnalysisInput | null {
   const city = params.get('city') ?? 'boston'
+  // Absent params get sensible defaults, but a PRESENT-and-garbled value means
+  // a corrupted/tampered link — reject it (like `use` below) rather than
+  // silently analyzing a different project than the link claimed.
   const ptRaw = params.get('projectType')
-  const projectType: ProjectType = ptRaw && (PROJECT_TYPES as string[]).includes(ptRaw) ? (ptRaw as ProjectType) : 'new'
+  if (ptRaw !== null && !(PROJECT_TYPES as string[]).includes(ptRaw)) return null
+  const projectType: ProjectType = (ptRaw as ProjectType | null) ?? 'new'
   const fRaw = params.get('funding')
-  const funding: Funding = fRaw && (FUNDING_TYPES as string[]).includes(fRaw) ? (fRaw as Funding) : 'private'
+  if (fRaw !== null && !(FUNDING_TYPES as string[]).includes(fRaw)) return null
+  const funding: Funding = (fRaw as Funding | null) ?? 'private'
   const parcelId = params.get('parcelId') ?? ''
   const lat = Number(params.get('lat'))
   const lng = Number(params.get('lng'))
@@ -139,7 +145,7 @@ export default function BostonResult() {
             </Link>
             {input && (
               <Link
-                to={`/map?city=${state.data.project.city}&cmp=${encodeURIComponent(btoa(JSON.stringify(input)))}`}
+                to={`/map?city=${state.data.project.city}&cmp=${encodeURIComponent(encodeJsonB64(input))}`}
                 className="text-piranha-charcoal/60 transition-colors hover:text-piranha-burgundy"
               >
                 Compare another parcel

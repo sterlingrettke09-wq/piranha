@@ -58,8 +58,10 @@ export function lngLatToUtm15(lng: number, lat: number): { x: number; y: number 
   return { x, y }
 }
 
-// Reverse-geocode a point to a street address via Mapbox. Returns null if no
-// token is configured or no result — callers fall back gracefully.
+// Reverse-geocode a point to a street address via Mapbox Geocoding v6 (v5 is
+// legacy). Returns null if no token is configured or no result — callers fall
+// back gracefully. Prefer a dedicated server-side MAPBOX_TOKEN so the public
+// VITE_ token can stay tightly URL-restricted; VITE_ is accepted as a fallback.
 export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   const token = process.env.MAPBOX_TOKEN || process.env.VITE_MAPBOX_TOKEN
   if (!token) return null
@@ -67,17 +69,20 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   const timer = setTimeout(() => ctrl.abort(), 4000)
   try {
     const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=address&limit=1&access_token=${token}`,
+      `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${lng}&latitude=${lat}&types=address&limit=1&access_token=${token}`,
       { signal: ctrl.signal },
     )
     if (!res.ok) return null
     const d = (await res.json()) as {
-      features?: Array<{ text?: string; address?: string; place_name?: string }>
+      features?: Array<{
+        properties?: { name?: string; full_address?: string }
+      }>
     }
-    const f = d.features?.[0]
-    if (!f) return null
-    if (f.address && f.text) return `${f.address} ${f.text}`
-    return f.text ?? f.place_name ?? null
+    const p = d.features?.[0]?.properties
+    if (!p) return null
+    // v6 `name` for an address feature is "<number> <street>"; full_address
+    // appends city/state/zip, which the UI doesn't need but beats nothing.
+    return p.name ?? p.full_address ?? null
   } catch {
     return null
   } finally {

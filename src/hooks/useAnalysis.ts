@@ -32,11 +32,14 @@ export function useAnalysis(input: AnalysisInput | null): State & { retry: () =>
 
   useEffect(() => {
     if (key === null || qs === null) return
-    let cancelled = false
-    fetch(`/api/analyze?${qs}`)
+    // Abort superseded requests (input change, retry, unmount) instead of just
+    // ignoring their results — an analyze call fans out to several upstream
+    // services, so cancelled requests are real wasted server work.
+    const ctrl = new AbortController()
+    fetch(`/api/analyze?${qs}`, { signal: ctrl.signal })
       .then(async (res) => {
         const body = await res.json()
-        if (cancelled) return
+        if (ctrl.signal.aborted) return
         setResult({
           key,
           value: res.ok
@@ -45,7 +48,7 @@ export function useAnalysis(input: AnalysisInput | null): State & { retry: () =>
         })
       })
       .catch((err) => {
-        if (cancelled) return
+        if (ctrl.signal.aborted) return
         setResult({
           key,
           value: {
@@ -55,7 +58,7 @@ export function useAnalysis(input: AnalysisInput | null): State & { retry: () =>
         })
       })
     return () => {
-      cancelled = true
+      ctrl.abort()
     }
   }, [key, qs])
 

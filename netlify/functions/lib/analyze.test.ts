@@ -4,7 +4,9 @@ import { handler } from '../analyze'
 const call = (qs: Record<string, string> = {}) =>
   handler({ queryStringParameters: qs } as unknown as Parameters<typeof handler>[0])
 
-const baseParams = { lat: '42.3601', lng: '-71.0589', use: 'commercial', gfa: '15000', heightFt: '50' }
+// A neutral Boston coordinate (South End) — away from civic hard-block sites
+// like City Hall / the State House so the mocked parcel drives the verdict.
+const baseParams = { lat: '42.3400', lng: '-71.0700', use: 'commercial', gfa: '15000', heightFt: '50' }
 
 const mockParcel = () =>
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {

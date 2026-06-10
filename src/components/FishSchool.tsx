@@ -63,7 +63,12 @@ export function FishSchool({ className = '' }: { className?: string }) {
     resize()
     window.addEventListener('resize', resize)
 
-    const count = Math.max(30, Math.min(80, Math.round((w * h) / 15000)))
+    // The flocking loop is O(n²) per frame, so the fish count is the battery
+    // budget. Coarse pointers (phones/tablets) get a smaller school — the
+    // cursor-chasing behavior doesn't apply there anyway.
+    const coarsePointer = window.matchMedia('(pointer: coarse)').matches
+    const maxFish = coarsePointer ? 40 : 80
+    const count = Math.max(20, Math.min(maxFish, Math.round((w * h) / 15000)))
     const fish: Fish[] = Array.from({ length: count }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,

@@ -116,7 +116,7 @@ export interface AnalysisResult {
 }
 
 export interface AnalysisError {
-  code: 'BAD_INPUT' | 'NO_PARCEL' | 'OUT_OF_BBOX' | 'UPSTREAM_ERROR' | 'INTERNAL'
+  code: 'BAD_INPUT' | 'NO_PARCEL' | 'OUT_OF_BBOX' | 'UPSTREAM_ERROR' | 'RATE_LIMITED' | 'INTERNAL'
   message: string
 }
 

@@ -1,8 +1,13 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { ParcelError } from '../../src/types/parcel'
 import { getParcelInfo } from './lib/parcel'
+import { clientIp, rateLimited } from './lib/guard'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
+
+// Soft per-IP rate limit on cache misses (each miss queries upstream ArcGIS +
+// Mapbox). Generous: rapid map clicking is a legitimate usage pattern.
+const RATE = { name: 'parcel', windowMs: 60_000, max: 60 } as const
 
 const fail = (code: ParcelError['code'], message: string, status: number) => ({
   statusCode: status,
@@ -11,6 +16,9 @@ const fail = (code: ParcelError['code'], message: string, status: number) => ({
 })
 
 export const handler: Handler = async (event: HandlerEvent) => {
+  if (rateLimited(clientIp(event.headers ?? {}), RATE)) {
+    return fail('RATE_LIMITED', 'Too many requests — please wait a moment and try again.', 429)
+  }
   const city = event.queryStringParameters?.city ?? 'boston'
   const lat = Number(event.queryStringParameters?.lat)
   const lng = Number(event.queryStringParameters?.lng)

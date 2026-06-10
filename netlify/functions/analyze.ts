@@ -17,8 +17,23 @@ import {
   reliefAddMonthsFallback as RELIEF_FALLBACK,
 } from '../../src/config/estimates'
 import { logSearch } from './lib/searchLog'
+import { clientIp, rateLimited } from './lib/guard'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
+
+// Soft per-IP rate limit on cache misses. Each miss fans out to several
+// upstream ArcGIS queries (plus a Mapbox reverse-geocode), so an abuser
+// varying lat/lng to defeat the CDN cache burns real upstream quota.
+const RATE = { name: 'analyze', windowMs: 60_000, max: 20 } as const
+
+// Sanity bounds on project inputs. Anything past these isn't a real project;
+// rejecting (not clamping) keeps garbage out of the search log and avoids
+// running the cost/timeline math on absurd numbers. 4M sf ≈ the largest
+// single-building programs in the US; 120 stories > any US building.
+const MAX_GFA = 4_000_000
+const MAX_UNITS = 5_000
+const MAX_STORIES = 120
+const MAX_HEIGHT_FT = 1_600
 
 const DISCLAIMERS = [
   'Estimates only. Not legal, engineering, or financial advice.',
@@ -39,6 +54,10 @@ const num = (v: string | undefined): number | undefined => {
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
+  if (rateLimited(clientIp(event.headers ?? {}), RATE)) {
+    return fail('RATE_LIMITED', 'Too many requests — please wait a moment and try again.', 429)
+  }
+
   const q = event.queryStringParameters ?? {}
   const city = q.city ?? 'boston'
   const projectType: ProjectType = PROJECT_TYPES.includes(q.projectType as ProjectType)
@@ -52,6 +71,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   if (!USES.includes(use) || !Number.isFinite(gfa) || gfa <= 0) {
     return fail('BAD_INPUT', 'Missing or invalid project inputs (use, gfa).', 400)
+  }
+  const units = num(q.units)
+  const stories = num(q.stories)
+  const heightFt = num(q.heightFt)
+  if (
+    gfa > MAX_GFA ||
+    (units != null && (units <= 0 || units > MAX_UNITS)) ||
+    (stories != null && (stories <= 0 || stories > MAX_STORIES)) ||
+    (heightFt != null && (heightFt <= 0 || heightFt > MAX_HEIGHT_FT))
+  ) {
+    return fail('BAD_INPUT', 'One or more project inputs are out of range.', 400)
   }
 
   // getParcelInfo validates the per-city bounding box (returns OUT_OF_BBOX).
@@ -70,9 +100,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
     lng,
     use,
     gfa,
-    units: num(q.units),
-    stories: num(q.stories),
-    heightFt: num(q.heightFt),
+    units,
+    stories,
+    heightFt,
   }
 
   let developability = assessDevelopability({

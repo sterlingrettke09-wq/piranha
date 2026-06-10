@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from './ui/Button'
 
 type State =
@@ -10,18 +10,28 @@ type State =
 export function AskAssistant() {
   const [question, setQuestion] = useState('')
   const [state, setState] = useState<State>({ status: 'idle' })
+  const labelId = useId()
+  const hintId = useId()
+
+  // Abort an in-flight question on unmount (navigation away mid-answer).
+  const ctrlRef = useRef<AbortController | null>(null)
+  useEffect(() => () => ctrlRef.current?.abort(), [])
 
   async function ask() {
     const q = question.trim()
     if (q === '' || state.status === 'loading') return
     setState({ status: 'loading' })
+    const ctrl = new AbortController()
+    ctrlRef.current = ctrl
     try {
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q }),
+        signal: ctrl.signal,
       })
       const body = await res.json()
+      if (ctrl.signal.aborted) return
       if (res.ok && typeof body.answer === 'string') {
         setState({ status: 'answer', text: body.answer })
       } else {
@@ -31,6 +41,7 @@ export function AskAssistant() {
         })
       }
     } catch {
+      if (ctrl.signal.aborted) return
       setState({ status: 'error', message: 'Network error. Please try again.' })
     }
   }
@@ -40,7 +51,7 @@ export function AskAssistant() {
       <h2 className="font-serif text-xl tracking-tight text-piranha-charcoal">
         Ask the assistant
       </h2>
-      <p className="mt-1 text-sm text-piranha-charcoal/60">
+      <p id={labelId} className="mt-1 text-sm text-piranha-charcoal/60">
         A question about zoning, permitting, or what it takes to build? Ask in plain
         English.
       </p>
@@ -55,11 +66,15 @@ export function AskAssistant() {
           }}
           rows={3}
           maxLength={1000}
+          aria-labelledby={labelId}
+          aria-describedby={hintId}
           placeholder="e.g. What's the difference between a variance and a special permit?"
           className="w-full resize-y rounded-md border border-piranha-charcoal/20 bg-white px-3 py-2 text-piranha-charcoal focus:border-piranha-burgundy focus:outline-none"
         />
         <div className="flex items-center justify-between">
-          <span className="text-xs text-piranha-charcoal/40">⌘/Ctrl + Enter to send</span>
+          <span id={hintId} className="text-xs text-piranha-charcoal/40">
+            ⌘/Ctrl + Enter to send
+          </span>
           <Button
             size="sm"
             onClick={ask}
@@ -70,27 +85,33 @@ export function AskAssistant() {
         </div>
       </div>
 
-      {state.status === 'loading' && (
-        <div className="mt-4 h-16 animate-pulse rounded-md bg-piranha-charcoal/5" />
-      )}
+      {/* Live region: screen readers announce the answer (or error) when it
+          arrives, instead of it appearing silently below the fold. */}
+      <div aria-live="polite" role="status">
+        {state.status === 'loading' && (
+          <div className="mt-4 h-16 animate-pulse rounded-md bg-piranha-charcoal/5">
+            <span className="sr-only">Thinking…</span>
+          </div>
+        )}
 
-      {state.status === 'answer' && (
-        <div className="mt-4 space-y-2">
-          <p className="whitespace-pre-line leading-relaxed text-piranha-charcoal/85">
-            {state.text}
-          </p>
-          <p className="text-xs text-piranha-charcoal/45">
-            General information, not legal advice. Verify with the relevant city
-            department.
-          </p>
-        </div>
-      )}
+        {state.status === 'answer' && (
+          <div className="mt-4 space-y-2">
+            <p className="whitespace-pre-line leading-relaxed text-piranha-charcoal/85">
+              {state.text}
+            </p>
+            <p className="text-xs text-piranha-charcoal/45">
+              General information, not legal advice. Verify with the relevant city
+              department.
+            </p>
+          </div>
+        )}
 
-      {state.status === 'error' && (
-        <p className="mt-4 rounded-md border border-rose-600/30 bg-rose-50 px-3 py-2 text-sm text-rose-900">
-          {state.message}
-        </p>
-      )}
+        {state.status === 'error' && (
+          <p className="mt-4 rounded-md border border-rose-600/30 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+            {state.message}
+          </p>
+        )}
+      </div>
     </section>
   )
 }

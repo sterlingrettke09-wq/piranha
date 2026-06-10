@@ -64,6 +64,7 @@ export type ParcelErrorCode =
   | 'OUT_OF_BBOX'
   | 'NO_PARCEL'
   | 'UPSTREAM_ERROR'
+  | 'RATE_LIMITED'
   | 'INTERNAL'
 
 export interface ParcelError {

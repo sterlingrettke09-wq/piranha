@@ -17,15 +17,18 @@ export interface Developability {
 
 // Land-use strings that denote public / non-developable land. Word-boundaried
 // so "parking" is NOT caught by "park", and ordinary uses pass through.
+// "Park" and "water" only match as the whole land-use value or in specific
+// public compounds — a bare \bpark\b / \bwater\b token would wrongly block
+// private uses like "Trailer park" (a residence) or "Waterfront residential".
 const PUBLIC_LANDUSE =
-  /\b(federal|governmental?|gov't|white house|capitol|monument|memorial|cemeter(y|ies)|military|national park|park|parkland|open[ -]?space|right[- ]of[- ]way|public land|water|reservoir|tax[- ]exempt|city of boston|commonwealth of mass)\b/i
+  /\b(federal|governmental?|gov't|white house|capitol|monument|memorial|cemeter(y|ies)|military|national park|public park|state park|city park|parkland|park land|open[ -]?space|right[- ]of[- ]way|public land|water body|waterway|water (department|supply|treatment|district)|reservoir|tax[- ]exempt|city of boston|commonwealth of mass)\b|^parks?$|^water$/i
 
 // Government / public-entity OWNER names (from assessing owner fields). Private
 // owners are individuals or LLCs, so these strong public-entity signals are safe
 // to hard-block. Used transiently in the provider to derive a boolean — owner
 // names are never stored or surfaced.
 const GOV_OWNER =
-  /\b(cit(y|ies) of|town of|county of|commonwealth(\s+of)?|state of|united states|u\.?s\.?\s*gov|federal government|government of|district of columbia|housing authority|redevelopment authority|transit authority|\bMBTA\b|\bMTA\b|\bMTA\b|metropolitan transit|port authority|board of education|department of (education|transportation|general services|administrative)|school (district|department)|national park service|general services admin)\b/i
+  /\b(cit(y|ies) of|town of|county of|commonwealth(\s+of)?|state of|united states|u\.?s\.?\s*gov|federal government|government of|district of columbia|housing authority|redevelopment authority|transit authority|MBTA|MTA|metropolitan transit|port authority|board of education|department of (education|transportation|general services|administrative)|school (district|department)|national park service|general services admin)\b/i
 
 /** True when an assessing owner name denotes a government / public entity. */
 export function isGovernmentOwner(owner: string | null | undefined): boolean {
@@ -65,7 +68,9 @@ export function assessDevelopability(opts: {
 
   // Open space / parkland zoning. `^p$` catches SF/Austin "P" (Public) districts;
   // does not match Chicago "PD"/Seattle "PMM"/"PUD" (those keep their own zoning).
-  if (/\bopen space\b|^os\b|^os-|^p$|\bpark\b/.test(code)) {
+  // "parkland" (not bare "park") so named district areas like a hypothetical
+  // "Hyde Park Neighborhood" string can't block a whole residential neighborhood.
+  if (/\bopen space\b|^os\b|^os-|^p$|\bparkland\b|^parks?$/.test(code)) {
     return {
       developable: false,
       kind: 'public',

@@ -21,6 +21,25 @@ describe('isGovernmentOwner', () => {
   })
 })
 
+describe('assessDevelopability — park/water land-use precision', () => {
+  it('blocks genuine park / water land uses', () => {
+    expect(assessDevelopability({ districtCode: 'R-1', landUse: 'Park' }).developable).toBe(false)
+    expect(assessDevelopability({ districtCode: 'R-1', landUse: 'Public park' }).developable).toBe(false)
+    expect(assessDevelopability({ districtCode: 'R-1', landUse: 'Parkland' }).developable).toBe(false)
+    expect(assessDevelopability({ districtCode: 'R-1', landUse: 'Water' }).developable).toBe(false)
+    expect(assessDevelopability({ districtCode: 'R-1', landUse: 'Water treatment facility' }).developable).toBe(false)
+  })
+  it('does NOT block private uses that merely contain "park" or "water"', () => {
+    expect(assessDevelopability({ districtCode: 'R-1', landUse: 'Trailer park' }).developable).toBe(true)
+    expect(assessDevelopability({ districtCode: 'R-1', landUse: 'Waterfront residential' }).developable).toBe(true)
+    expect(assessDevelopability({ districtCode: 'R-1', landUse: 'Parking lot' }).developable).toBe(true)
+  })
+  it('does NOT block a named district that contains "Park"', () => {
+    const r = assessDevelopability({ districtCode: 'Hyde Park Neighborhood', landUse: 'Two-family' })
+    expect(r.developable).toBe(true)
+  })
+})
+
 describe('assessDevelopability — government-owned parcels', () => {
   it('hard-blocks a government-owned parcel (e.g. Boston City Hall)', () => {
     const r = assessDevelopability({

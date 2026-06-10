@@ -60,7 +60,8 @@ export async function searchStorageStatus(): Promise<{ backend: 'blobs' | 'fallb
     await store.list({ prefix: 'zzz-health-check-no-match' })
     return { backend: 'blobs' }
   } catch (err) {
-    return { backend: 'fallback', error: String(err) }
+    // Owner-facing diagnostic (the endpoint is auth-gated): message only, no stack.
+    return { backend: 'fallback', error: err instanceof Error ? err.message : String(err) }
   }
 }
 

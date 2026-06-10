@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import type { ParcelInfo, ParcelError } from '../../types/parcel'
 import { assessDevelopability } from '../../lib/developability'
+import { encodeJsonB64 } from '../../lib/b64'
 
 type Props =
   | { status: 'idle' }
@@ -269,7 +270,7 @@ export function ParcelPanelContent(props: Props) {
         </p>
       ) : props.status === 'loaded' && props.cmp ? (
         <Link
-          to={`/compare?a=${encodeURIComponent(props.cmp)}&b=${encodeURIComponent(btoa(JSON.stringify({ lat: data.coordinates[1], lng: data.coordinates[0], parcelId: data.parcelId })))}`}
+          to={`/compare?a=${encodeURIComponent(props.cmp)}&b=${encodeURIComponent(encodeJsonB64({ lat: data.coordinates[1], lng: data.coordinates[0], parcelId: data.parcelId }))}`}
           className="group mt-7 flex items-center justify-center gap-3 rounded-full bg-piranha-burgundy px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.14em] text-piranha-bone transition-colors hover:bg-piranha-charcoal"
         >
           Compare with this parcel

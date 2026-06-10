@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { cityName } from '../config/cities'
 
 interface SearchEntry {
   ts: string
@@ -19,19 +20,6 @@ const VERDICT_LABEL: Record<string, string> = {
   NEEDS_RELIEF: 'Needs permission',
   PROHIBITED: 'Not allowed',
   INDETERMINATE: 'Can’t tell',
-}
-
-const CITY_LABEL: Record<string, string> = {
-  boston: 'Boston',
-  nyc: 'New York',
-  chicago: 'Chicago',
-  sf: 'San Francisco',
-  seattle: 'Seattle',
-  dc: 'Washington, DC',
-  austin: 'Austin',
-  la: 'Los Angeles',
-  denver: 'Denver',
-  minneapolis: 'Minneapolis',
 }
 
 function fmt(ts: string): string {
@@ -112,7 +100,7 @@ export default function Admin() {
     let last7 = 0
     for (const e of entries) {
       byCity[e.city] = (byCity[e.city] ?? 0) + 1
-      const k = `${e.address} · ${CITY_LABEL[e.city] ?? e.city}`
+      const k = `${e.address} · ${cityName(e.city)}`
       byAddress[k] = (byAddress[k] ?? 0) + 1
       const t = new Date(e.ts).getTime()
       if (!Number.isNaN(t) && now - t < 7 * 86_400_000) last7 += 1
@@ -202,7 +190,7 @@ export default function Admin() {
             <ul className="mt-2 space-y-1 text-sm">
               {stats.cities.map(([slug, n]) => (
                 <li key={slug} className="flex justify-between">
-                  <span className="text-piranha-charcoal/75">{CITY_LABEL[slug] ?? slug}</span>
+                  <span className="text-piranha-charcoal/75">{cityName(slug)}</span>
                   <span className="tabular-nums text-piranha-charcoal/55">{n}</span>
                 </li>
               ))}
@@ -269,7 +257,7 @@ export default function Admin() {
               {entries.map((e, i) => (
                 <tr key={i} className="border-b border-piranha-charcoal/5 last:border-0">
                   <td className="whitespace-nowrap px-5 py-3 text-piranha-charcoal/55 tabular-nums">{fmt(e.ts)}</td>
-                  <td className="whitespace-nowrap px-5 py-3 text-piranha-charcoal/75">{CITY_LABEL[e.city] ?? e.city}</td>
+                  <td className="whitespace-nowrap px-5 py-3 text-piranha-charcoal/75">{cityName(e.city)}</td>
                   <td className="px-5 py-3 font-medium text-piranha-charcoal">{e.address}</td>
                   <td className="px-5 py-3 text-piranha-charcoal/70">
                     {[

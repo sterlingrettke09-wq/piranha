@@ -69,7 +69,10 @@ export default function BostonWizard() {
 
   const gfaNum = Number(gfa)
   const canAdvanceSize = gfa !== '' && Number.isFinite(gfaNum) && gfaNum > 0
-  const canSubmit = heightFt !== '' || stories !== ''
+  // Height needs a positive value, not just a non-empty one — "0 stories"
+  // isn't a buildable project and the API rejects it.
+  const positive = (v: string) => v !== '' && Number.isFinite(Number(v)) && Number(v) > 0
+  const canSubmit = positive(heightFt) || positive(stories)
   const canAdvance =
     step === 1 ? projectType !== null : step === 2 ? use !== null : step === 3 ? canAdvanceSize : true
 
