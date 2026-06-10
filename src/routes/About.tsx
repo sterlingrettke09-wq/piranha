@@ -23,9 +23,9 @@ export default function About() {
     <PageContainer>
       <div className="mx-auto max-w-3xl space-y-16 py-10 sm:py-16">
         <PageHeading eyebrow="About" title="Built to bite through red tape.">
-          The Piranha Project is a tool for everyone, from real-estate builders and investors
-          to the people who just don’t understand why nothing has been built in their zip code
-          in half a decade. It answers one deceptively hard question:{' '}
+          The Piranha Project is for builders, investors, and anyone who wonders why nothing
+          has gone up in their zip code in half a decade. It answers one deceptively hard
+          question:{' '}
           <span className="font-semibold text-piranha-charcoal">
             “Can I build this here, and what will it take?”
           </span>{' '}
