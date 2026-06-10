@@ -57,10 +57,14 @@ function usesForZone(base: string | null): string[] | null {
 
 export async function getAustinParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, floodR] = await Promise.allSettled([
+  // reverseGeocode runs inside the fan-out: awaiting it after the parcel
+  // fetch made its latency ADD to the slowest upstream instead of running
+  // alongside it (and pushed worst-case toward the 10s function ceiling).
+  const [parcelR, zoningR, floodR, geocodeR] = await Promise.allSettled([
     fetchParcelSnap(PARCELS, lat, lng, ['SITUS', 'PID_10', 'Shape__Area']),
     fetchParcelSnap(ZONING, lat, lng, ['BASE_ZONE', 'ZONE_NAME', 'ZONING_ZTYPE']),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    reverseGeocode(lat, lng),
   ])
 
   if (parcelR.status === 'rejected') {
@@ -78,7 +82,7 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
 
   // The mirror's SITUS field holds only a house number (no street), so derive a
   // proper street address by reverse-geocoding the click point.
-  const address = (await reverseGeocode(lat, lng)) ?? 'Selected location'
+  const address = (geocodeR.status === 'fulfilled' ? geocodeR.value : null) ?? 'Selected location'
   const areaSqFt = Number(parcel.Shape__Area) // already in square feet
   const base = parcel != null && zoning?.BASE_ZONE ? String(zoning.BASE_ZONE) : null
   const lim = austinLimits(base)

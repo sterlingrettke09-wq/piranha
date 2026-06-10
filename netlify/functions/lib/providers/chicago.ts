@@ -71,12 +71,15 @@ function usesForZone(zone: string | null): string[] | null {
 
 export async function getChicagoParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
+  // No per-call timeout overrides: the snap helpers enforce a shared 8s
+  // budget (exact + retry + buffered) so a slow Chicago layer can't push the
+  // function past Netlify's 10s ceiling, which the old 9s overrides did.
   const [zoningR, parcelR, floodR, addrR, histR] = await Promise.allSettled([
-    fetchParcelSnap(ZONING, lat, lng, ['ZONE_CLASS'], false, undefined, 30, 9000),
+    fetchParcelSnap(ZONING, lat, lng, ['ZONE_CLASS']),
     fetchParcelSnap(PARCELS, lat, lng, ['PIN10', 'AssessorBLDGclass'], true),
     fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     reverseGeocode(lat, lng),
-    fetchFeatures(HISTORIC, lat, lng, ['NAME'], false, undefined, 9000),
+    fetchFeatures(HISTORIC, lat, lng, ['NAME']),
   ])
 
   if (parcelR.status === 'rejected') {

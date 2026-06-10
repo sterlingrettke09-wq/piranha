@@ -72,6 +72,34 @@ export const fetchFeatures = async (
   }
 }
 
+// Snap helpers (the REQUIRED parcel/zoning fetches) get a shared time budget
+// and one retry. Rationale: Netlify kills functions at 10s; the old behavior
+// let exact (6s) + buffered (6s) run sequentially = 12s worst case (Chicago's
+// 9s overrides: 18s) — an opaque platform kill instead of a clean
+// UPSTREAM_ERROR. Budget: exact ≤4s with one retry on transient failure,
+// buffered gets whatever remains. Optional overlay fetches (plain
+// fetchFeatures) keep zero retries — they already degrade gracefully.
+const SNAP_BUDGET_MS = 8000
+const ATTEMPT_CAP_MS = 4000
+const RETRY_DELAY_MS = 250
+const MIN_USEFUL_MS = 500
+
+async function attemptWithRetry<T>(
+  fn: (timeoutMs: number) => Promise<T>,
+  deadline: number,
+): Promise<T> {
+  const remaining = () => deadline - Date.now()
+  try {
+    return await fn(Math.min(ATTEMPT_CAP_MS, Math.max(MIN_USEFUL_MS, remaining())))
+  } catch (err) {
+    // One retry on any failure (network reset, 5xx, error-JSON) if there's
+    // still enough budget for the delay plus a useful attempt.
+    if (remaining() < RETRY_DELAY_MS + MIN_USEFUL_MS) throw err
+    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+    return await fn(Math.min(ATTEMPT_CAP_MS, Math.max(MIN_USEFUL_MS, remaining())))
+  }
+}
+
 type GeomFeature = { attributes: Record<string, unknown>; geometry?: { rings?: number[][][] } }
 
 function ringCentroid(rings?: number[][][]): [number, number] | null {
@@ -150,10 +178,14 @@ export const fetchFeaturesXYSnap = async (
   inSR: number,
   fields: readonly string[],
   distanceMeters = 30,
-  timeoutMs = 6000,
+  budgetMs = SNAP_BUDGET_MS,
 ): Promise<FeatureSet> => {
-  const exact = await fetchFeaturesXY(url, x, y, inSR, fields, timeoutMs)
+  const deadline = Date.now() + budgetMs
+  const exact = await attemptWithRetry((t) => fetchFeaturesXY(url, x, y, inSR, fields, t), deadline)
   if (exact.features && exact.features.length > 0) return exact
+  const bufferedMs = deadline - Date.now()
+  if (bufferedMs < MIN_USEFUL_MS) return exact
+  const timeoutMs = Math.min(ATTEMPT_CAP_MS, bufferedMs)
   const base = url.endsWith('/') ? url.slice(0, -1) : url
   const u = new URL(base + '/query')
   u.searchParams.set('geometry', JSON.stringify({ x, y, spatialReference: { wkid: inSR } }))
@@ -196,10 +228,17 @@ export const fetchParcelSnap = async (
   returnGeometry = false,
   outSR?: number,
   distanceMeters = 30,
-  timeoutMs = 6000,
+  budgetMs = SNAP_BUDGET_MS,
 ): Promise<FeatureSet> => {
-  const exact = await fetchFeatures(url, lat, lng, fields, returnGeometry, outSR, timeoutMs)
+  const deadline = Date.now() + budgetMs
+  const exact = await attemptWithRetry(
+    (t) => fetchFeatures(url, lat, lng, fields, returnGeometry, outSR, t),
+    deadline,
+  )
   if (exact.features && exact.features.length > 0) return exact
+  const bufferedMs = deadline - Date.now()
+  if (bufferedMs < MIN_USEFUL_MS) return exact
+  const timeoutMs = Math.min(ATTEMPT_CAP_MS, bufferedMs)
   const base = url.endsWith('/') ? url.slice(0, -1) : url
   const u = new URL(base + '/query')
   u.searchParams.set('geometry', JSON.stringify({ x: lng, y: lat, spatialReference: { wkid: 4326 } }))
