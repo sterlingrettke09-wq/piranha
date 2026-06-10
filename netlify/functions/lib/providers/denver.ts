@@ -109,12 +109,17 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const lu = parcel.D_CLASS_CN ? String(parcel.D_CLASS_CN).trim() : ''
   // OWNER_NAME used only to derive a government-owned boolean (no name stored).
   const ownerPublic = isGovernmentOwner(parcel.OWNER_NAME != null ? String(parcel.OWNER_NAME) : null)
+  // APPRAISED_IMP_VALUE is the IMPROVEMENT (building) value only — NOT land +
+  // building — so we label it 'improvement only' and never present it as a total
+  // (assessedValueBasis). Coarse land-cost proxy only; never feeds the cost math.
   const existingBase =
     Number.isFinite(impVal) && impVal > 0
       ? {
           landUse: lu ? lu.charAt(0) + lu.slice(1).toLowerCase() : null,
           yearBuilt: Number.isFinite(yr) && yr > 1000 ? yr : null,
           numBuildings: 1,
+          assessedValue: Math.round(impVal),
+          assessedValueBasis: 'improvement only',
         }
       : undefined
   const existing = ownerPublic ? { ...(existingBase ?? {}), ownerPublic: true } : existingBase

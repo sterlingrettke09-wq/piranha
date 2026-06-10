@@ -59,6 +59,15 @@ export interface ParcelInfo {
     numBuildings?: number | null
     /** Owner is a government/public entity (derived boolean — no name stored). */
     ownerPublic?: boolean
+    /** County assessor's total/improvement value, in dollars — a coarse
+     *  LAND-COST PROXY only; assessor values typically lag market prices
+     *  substantially. Never used in the cost math. */
+    assessedValue?: number | null
+    /** Qualifier for what `assessedValue` measures, since semantics differ by
+     *  city (e.g. 'total assessed (county)', 'improvement only',
+     *  'assessed (≈45% of market for most classes)'). Printed by the UI so an
+     *  improvement-only number is never shown as a total. */
+    assessedValueBasis?: string | null
   }
   sources: Record<string, string>
   fetchedAt: string

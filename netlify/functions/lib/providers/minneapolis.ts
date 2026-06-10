@@ -98,10 +98,19 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   const buildYr = Number(parcel.BUILD_YR)
   // OWNER_NM used only to derive a government-owned boolean (no name stored).
   const ownerPublic = isGovernmentOwner(parcel.OWNER_NM != null ? String(parcel.OWNER_NM) : null)
+  // BLDG_MV1 is Hennepin County's BUILDING (improvement) market value — the
+  // structure only, NOT land + building — so we label it 'improvement only' and
+  // never present it as a total (assessedValueBasis). Coarse land-cost proxy
+  // only; never feeds the cost math.
+  const hasBldgVal = Number.isFinite(bldgVal) && bldgVal > 0
   const existingBase = parkName
     ? { landUse: `${parkName} (park)` } // "...park" → caught by the public-land gate
-    : (Number.isFinite(bldgVal) && bldgVal > 0) || (Number.isFinite(buildYr) && buildYr > 1000)
-      ? { yearBuilt: Number.isFinite(buildYr) && buildYr > 1000 ? buildYr : null, numBuildings: 1 }
+    : hasBldgVal || (Number.isFinite(buildYr) && buildYr > 1000)
+      ? {
+          yearBuilt: Number.isFinite(buildYr) && buildYr > 1000 ? buildYr : null,
+          numBuildings: 1,
+          ...(hasBldgVal ? { assessedValue: Math.round(bldgVal), assessedValueBasis: 'improvement only' } : {}),
+        }
       : undefined
   const existing = ownerPublic ? { ...(existingBase ?? {}), ownerPublic: true } : existingBase
 

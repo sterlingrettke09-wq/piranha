@@ -72,12 +72,16 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
   // OWNER is used ONLY to derive a government-owned boolean; the name is discarded
   // here and never stored or returned (no owner PII leaves the server).
   const ownerPublic = isGovernmentOwner(parcel.OWNER != null ? String(parcel.OWNER) : null)
+  // TOTAL_VALUE is the assessor's full total (land + improvement). MA assesses at
+  // ~full market value, so this is a usable land-cost proxy (see assessedValueBasis).
+  const totalValue = posInt(parcel.TOTAL_VALUE)
   const existing = {
     landUse: luDesc || null,
     yearBuilt: posInt(parcel.YR_BUILT),
     buildingAreaSqFt: posInt(parcel.GROSS_AREA),
     units: totalUnits > 0 ? totalUnits : null,
     numBuildings: posInt(parcel.NUM_BLDGS),
+    ...(totalValue != null ? { assessedValue: totalValue, assessedValueBasis: 'total assessed (county)' } : {}),
     ...(ownerPublic ? { ownerPublic: true } : {}),
   }
 
@@ -104,7 +108,7 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
     existing,
     // MA assesses at ~full market value, so this is a usable reference (not a
     // market appraisal). Fractional/frozen-assessment cities omit it.
-    assessedValue: posInt(parcel.TOTAL_VALUE),
+    assessedValue: totalValue,
     sources: ENDPOINTS,
     fetchedAt: new Date().toISOString(),
   }

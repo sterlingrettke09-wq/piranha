@@ -1,13 +1,17 @@
 import type { AnalysisResult } from '../../../types/analysis'
+import { formatEstimate } from '../../../lib/format'
 import { hasExisting } from './existing'
 
 type Existing = NonNullable<AnalysisResult['parcel']['existing']>
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value, qualifier }: { label: string; value: string; qualifier?: string }) {
   return (
     <div className="space-y-1">
       <dt className="text-xs uppercase tracking-[0.12em] text-piranha-charcoal/45">{label}</dt>
-      <dd className="text-piranha-charcoal">{value}</dd>
+      <dd className="text-piranha-charcoal">
+        {value}
+        {qualifier ? <span className="ml-1.5 text-piranha-charcoal/45">{qualifier}</span> : null}
+      </dd>
     </div>
   )
 }
@@ -25,7 +29,7 @@ export function ExistingStructure({ existing }: { existing: Existing | undefined
     )
   }
 
-  const facts: { label: string; value: string }[] = []
+  const facts: { label: string; value: string; qualifier?: string }[] = []
   if (existing.landUse) facts.push({ label: 'Current use', value: existing.landUse })
   if (existing.yearBuilt) facts.push({ label: 'Year built', value: String(existing.yearBuilt) })
   if (existing.stories) facts.push({ label: 'Floors', value: String(existing.stories) })
@@ -34,11 +38,19 @@ export function ExistingStructure({ existing }: { existing: Existing | undefined
     facts.push({ label: 'Building area', value: `${existing.buildingAreaSqFt.toLocaleString()} sq ft` })
   if (existing.numBuildings && existing.numBuildings > 1)
     facts.push({ label: 'Buildings', value: String(existing.numBuildings) })
+  // Coarse land-cost proxy only — the basis qualifier keeps an improvement-only
+  // number from reading as a total. Never used in the cost math.
+  if (existing.assessedValue != null)
+    facts.push({
+      label: 'Assessed value',
+      value: formatEstimate(existing.assessedValue),
+      qualifier: existing.assessedValueBasis ?? undefined,
+    })
 
   return (
     <dl className="grid grid-cols-2 gap-x-8 gap-y-6 rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-6 sm:grid-cols-3">
       {facts.map((f) => (
-        <Fact key={f.label} label={f.label} value={f.value} />
+        <Fact key={f.label} label={f.label} value={f.value} qualifier={f.qualifier} />
       ))}
     </dl>
   )

@@ -93,6 +93,19 @@ export default function Compare() {
         return <span className="text-piranha-charcoal/45">—</span>
       },
     },
+    {
+      // Coarse land-cost proxy from county assessor records — never used in the
+      // cost math; em-dash where the provider carries no value.
+      label: 'Assessed value (county)',
+      render: (d) => {
+        const v = d.parcel.existing?.assessedValue
+        return v != null ? (
+          <span className="tabular-nums">{usd(v)}</span>
+        ) : (
+          <span className="text-piranha-charcoal/45">—</span>
+        )
+      },
+    },
   ]
 
   return (

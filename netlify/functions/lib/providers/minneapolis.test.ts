@@ -66,6 +66,9 @@ describe('getMinneapolisParcelInfo — happy path', () => {
     // Existing building derived from BLDG_MV1 > 0 / BUILD_YR.
     expect(res.info.existing?.yearBuilt).toBe(1990)
     expect(res.info.existing?.numBuildings).toBe(1)
+    // BLDG_MV1 → assessedValue, flagged as improvement-only (building, not total).
+    expect(res.info.existing?.assessedValue).toBe(1200000)
+    expect(res.info.existing?.assessedValueBasis).toBe('improvement only')
   })
 
   it('Core 50 (BFC50) built form yields a null max height', async () => {

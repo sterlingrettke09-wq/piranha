@@ -14,5 +14,29 @@
       "n": 3956,
       "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.seattle.gov Building Permits (permittypedesc = New)"
     }
+  },
+  "chicago": {
+    "newConstruction": {
+      "medianMonths": 1,
+      "p80Months": 3.9,
+      "n": 5899,
+      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.cityofchicago.org Building Permits (permit_type = 'PERMIT - NEW CONSTRUCTION')"
+    }
+  },
+  "austin": {
+    "newConstruction": {
+      "medianMonths": 2.2,
+      "p80Months": 6.3,
+      "n": 17279,
+      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class = New)"
+    }
+  },
+  "la": {
+    "newConstruction": {
+      "medianMonths": 6,
+      "p80Months": 13,
+      "n": 13406,
+      "vintage": "submitted 2022-01-01 onward; computed 2026-06-10; data.lacity.org Building & Safety Permit Information (permit_type = 'Bldg-New')"
+    }
   }
 }

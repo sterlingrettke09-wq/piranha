@@ -19,6 +19,7 @@ export const nycPluto = {
         YearBuilt: 1925,
         NumBldgs: 1,
         LandUse: '05',
+        AssessTot: 12500000,
         OwnerType: 'P',
         OwnerName: '1472 BROADWAY LLC',
       },

@@ -34,6 +34,10 @@ node scripts/permits/boston.mjs
 node scripts/permits/sf.mjs
 node scripts/permits/seattle.mjs
 node scripts/permits/nyc.mjs   # probes both DOB feeds; currently writes nothing (see below)
+node scripts/permits/chicago.mjs
+node scripts/permits/austin.mjs
+node scripts/permits/la.mjs
+node scripts/permits/dc.mjs     # ArcGIS, not Socrata; no filed-date column → writes nothing (see below)
 ```
 
 Socrata throttles anonymous callers (HTTP 429), and NYC's portal is especially
@@ -78,6 +82,10 @@ then commit the updated artifact.
 | **SF** | `sf.mjs` | **✅ landed** | **11.8 mo** | **24.4 mo** | **165** | Socrata `i98e-djp9`; `permit_type` 1 ("new construction") + 2 ("new construction wood frame"); `filed_date` → `issued_date`, filed since 2022. |
 | **Seattle** | `seattle.mjs` | **✅ landed** | **6.2 mo** | **10.8 mo** | **3956** | Socrata `76t5-zqzr`; `permittypedesc = 'New'`; `applieddate` → `issueddate`, applied since 2022. (Socrata omits null fields from row JSON, so date columns are confirmed via the `/api/views` metadata, not a single-row probe.) |
 | **NYC** | `nyc.mjs` | **⚠️ no trustworthy figure — left absent** | (0.0) | — | 3261 | See below. |
+| **Chicago** | `chicago.mjs` | **✅ landed** | **1.0 mo** | **3.9 mo** | **5899** | Socrata `ydr8-5enu`; `permit_type = 'PERMIT - NEW CONSTRUCTION'`; `application_start_date` → `issue_date`, applied since 2022. 22.3 % same-day (under the 50 % OTC gate); fast express-permit culture pulls the median to ~1 mo. |
+| **Austin** | `austin.mjs` | **✅ landed** | **2.2 mo** | **6.3 mo** | **17279** | Socrata `3syk-w9eu`; `permittype = 'BP'` + `work_class = 'New'`; `applieddate` → `issue_date`, applied since 2022. 1.3 % same-day. |
+| **LA** | `la.mjs` | **✅ landed** | **6.0 mo** | **13.0 mo** | **13406** | Socrata `pi9x-tg5x` (live LADBS feed, current to within days); `permit_type = 'Bldg-New'`; `submitted_date` → `issue_date`, submitted since 2022. 1.2 % same-day. |
+| **DC** | `dc.mjs` | **⚠️ no trustworthy figure — left absent** | — | — | — | ArcGIS (not Socrata). DCRA Building Permits feed carries only `ISSUE_DATE`; no application/filed date → can't measure the filing leg. See below. |
 
 ### NYC — why it is absent (honest failure)
 
@@ -104,18 +112,26 @@ filing→issuance latency** for new construction:
 If NYC later exposes a genuine application/pre-filing timestamp (e.g. a DOB NOW
 "submitted" date alongside "issued"), point `nyc.mjs` at it and re-run.
 
+### DC — why it is absent (honest failure, the Boston mode)
+
+DC publishes building permits only as **ArcGIS FeatureServer** layers
+(opendata.dc.gov → `maps2.dcgis.dc.gov/.../FEEDS/DCRA/FeatureServer`, one layer
+per year), so `dc.mjs` speaks ArcGIS REST rather than Socrata. The schema probe
+is the deal-breaker: the DCRA feed carries `ISSUE_DATE` plus the GIS
+housekeeping stamps `CREATED_DATE` / `LAST_EDITED_DATE` — and **no
+application/filed date**. `CREATED_DATE` is a single ETL load timestamp (every
+new-building row in the 2024 layer reads `2026-06-09`, ~850–890 days after
+issuance), i.e. when the record was loaded into GIS, not when the permit was
+filed. Using it would fabricate the filing leg. (`PERMIT_SUBTYPE_NAME =
+'NEW BUILDING'` does correctly isolate ground-up construction — the gap is the
+missing filing date, not the type filter.) `dc.mjs` therefore documents the gap
+and **writes nothing**, exiting 0. If DC ever exposes a genuine
+application/submitted timestamp, add it to `APPLIED_DATE_CANDIDATES` in
+`dc.mjs` and re-run.
+
 ## Other cities (still TODO — one script each)
 
-The remaining cities are Socrata portals; verify each dataset id at run time
-(they rotate), map the permit-type field to our new-construction class, and
-follow the same probe → filter → sanity-gate → merge pattern:
-
-- **Chicago** — `data.cityofchicago.org` building permits (Socrata); permit
-  type `PERMIT - NEW CONSTRUCTION`.
-- **Austin** — `data.austintexas.gov` issued construction permits (Socrata);
-  work class "New".
-- **Los Angeles** — `data.lacity.org` building permits (Socrata); permit type
-  "Bldg-New".
-
-DC, Denver, and Minneapolis have open portals too and can be added the same
-way; their dataset ids are the open item to verify.
+Denver and Minneapolis have open Socrata portals too and can be added the same
+way; their dataset ids are the open item to verify. Follow the same probe →
+filter → sanity-gate → merge pattern, mapping each portal's permit-type field
+to our new-construction class.

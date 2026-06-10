@@ -10,7 +10,11 @@ const MAPPLUTO =
   'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0'
 // OwnerType (C=city, O=other public/state/federal) + OwnerName drive a public-
 // ownership flag; names are reduced to a boolean and never stored/returned.
-const FIELDS = ['BBL', 'Address', 'ZoneDist1', 'ResidFAR', 'CommFAR', 'FacilFAR', 'LotArea', 'LandUse', 'YearBuilt', 'BldgArea', 'UnitsTotal', 'NumFloors', 'NumBldgs', 'OwnerType', 'OwnerName']
+// AssessTot is PLUTO's total ASSESSED value (land + building). For most NYC tax
+// classes the assessed value is held to ≈45% of estimated market value, so it is
+// a coarse land-cost PROXY only — labelled accordingly (assessedValueBasis) and
+// never fed into the cost math.
+const FIELDS = ['BBL', 'Address', 'ZoneDist1', 'ResidFAR', 'CommFAR', 'FacilFAR', 'LotArea', 'LandUse', 'YearBuilt', 'BldgArea', 'UnitsTotal', 'NumFloors', 'NumBldgs', 'OwnerType', 'OwnerName', 'AssessTot']
 
 // NYC PLUTO LandUse code → plain-English label.
 const NYC_LAND_USE: Record<string, string> = {
@@ -136,6 +140,9 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
       units: num(lot.UnitsTotal),
       stories: num(lot.NumFloors),
       numBuildings: num(lot.NumBldgs),
+      ...(num(lot.AssessTot) != null
+        ? { assessedValue: num(lot.AssessTot), assessedValueBasis: 'assessed (≈45% of market for most classes)' }
+        : {}),
       ...(ownerPublic ? { ownerPublic: true } : {}),
     },
     sources: { zoning: MAPPLUTO, parcels: MAPPLUTO, flood: ENDPOINTS.flood, historic: HISTORIC },

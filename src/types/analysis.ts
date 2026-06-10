@@ -98,6 +98,13 @@ export interface AnalysisResult {
       stories?: number | null
       numBuildings?: number | null
       ownerPublic?: boolean
+      /** County assessor's total/improvement value, in dollars — a coarse
+       *  LAND-COST PROXY only; assessor values typically lag market prices
+       *  substantially. Never used in the cost math. */
+      assessedValue?: number | null
+      /** Qualifier for what `assessedValue` measures (semantics differ by
+       *  city); printed by the UI as the muted qualifier. */
+      assessedValueBasis?: string | null
     }
   }
   project: AnalysisInput
@@ -110,6 +117,11 @@ export interface AnalysisResult {
   /** Non-blocking "this looks like a stadium / hospital / campus" flag. */
   advisory?: SiteAdvisory | null
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[]; envelopeKnown?: boolean }
+  /** Historical board grant rate for variance-type relief in this city —
+   *  context, not a prediction for any specific project. Attached only when the
+   *  verdict needs relief (feasibility.path === 'variance') and the city's
+   *  offline relief pipeline produced a trustworthy figure; absent otherwise. */
+  reliefOdds?: { grantRate: number; n: number; window: string; vintage: string }
   hurdles: Hurdle[]
   costs: { hard: number; soft: number; permit: number; demolition: number; impact: number; total: number; currency: 'USD' }
   timeline: {

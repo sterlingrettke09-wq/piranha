@@ -169,7 +169,7 @@ describe('parcel handler — NYC (MapPLUTO)', () => {
       const u = String(url)
       if (u.includes('MAPPLUTO')) {
         return new Response(JSON.stringify({
-          features: [{ attributes: { BBL: '1009950005', Address: '1472 BROADWAY', ZoneDist1: 'C6-7', ResidFAR: 10, CommFAR: 15, FacilFAR: 15, LotArea: 45800 } }],
+          features: [{ attributes: { BBL: '1009950005', Address: '1472 BROADWAY', ZoneDist1: 'C6-7', ResidFAR: 10, CommFAR: 15, FacilFAR: 15, LotArea: 45800, AssessTot: 12500000 } }],
         }))
       }
       if (u.includes('NFHL')) return new Response(JSON.stringify({ features: [{ attributes: { FLD_ZONE: 'X' } }] }))
@@ -190,6 +190,9 @@ describe('parcel handler — NYC (MapPLUTO)', () => {
     expect(body.zoning.allowedUses).toContain('commercial')
     expect(body.lot.sizeSqFt).toBe(45800)
     expect(body.overlays.floodZone).toBe('X')
+    // PLUTO AssessTot → existing.assessedValue, labelled as a ≈45%-of-market proxy.
+    expect(body.existing?.assessedValue).toBe(12500000)
+    expect(body.existing?.assessedValueBasis).toBe('assessed (≈45% of market for most classes)')
   })
 
   it('rejects NYC coords outside the NYC bbox with 400', async () => {
@@ -256,6 +259,9 @@ describe('parcel handler — resilience', () => {
     expect(body.parcelId).toBe('0304567000')
     expect(body.zoning.districtCode).toBe('B-2-65')
     expect(body.existing?.buildingAreaSqFt).toBe(3600)
+    // Boston TOTAL_VALUE → existing.assessedValue, labelled as the county total.
+    expect(body.existing?.assessedValue).toBe(985000)
+    expect(body.existing?.assessedValueBasis).toBe('total assessed (county)')
   })
 
   it('logs a schema_drift event when a critical field is ABSENT from the parcel attrs', async () => {

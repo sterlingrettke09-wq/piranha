@@ -1,0 +1,18 @@
+{
+  "boston": {
+    "variance": {
+      "grantRate": 0.927,
+      "n": 3820,
+      "window": "2022–2026",
+      "vintage": "decided 2022-01-01 onward; computed 2026-06-10; data.boston.gov Zoning Board of Appeal Tracker (decision field); granted (AppProv/Approved) ÷ decided, excludes withdrawn/deferred; 3542 granted, 278 denied"
+    }
+  },
+  "sf": {
+    "variance": {
+      "grantRate": 0.976,
+      "n": 289,
+      "window": "2022–2026",
+      "vintage": "opened 2022-01-01 onward; computed 2026-06-10; data.sfgov.org Planning Department Records - Non-Projects (record_type VAR); granted (Closed - Approved/Approved) ÷ decided, excludes withdrawn/cancelled/in-progress; 282 granted, 7 denied"
+    }
+  }
+}

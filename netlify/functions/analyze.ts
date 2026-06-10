@@ -8,6 +8,7 @@ import { assessSiteAdvisory, assessCivicHardBlock } from '../../src/lib/siteFlag
 import { assessHurdles } from './lib/hurdles'
 import { estimateCost } from './lib/cost'
 import { resolveTimeline } from './lib/timeline'
+import { reliefOddsFor } from './lib/relief'
 import { buildNarrative } from './lib/narrative'
 import { assumptionsSummary } from './lib/assumptions'
 import {
@@ -222,6 +223,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     developableKind: developability.kind,
     advisory,
     feasibility: { overall: feasibility.overall, checks: feasibility.checks, envelopeKnown: feasibility.envelopeKnown },
+    // Historical board grant rate for variance-type relief, attached only when
+    // the verdict needs relief. Context for a NEEDS_RELIEF result, never a
+    // per-project prediction; absent when the city has no trustworthy figure.
+    ...(feasibility.path === 'variance' ? { reliefOdds: reliefOddsFor(city) } : {}),
     hurdles,
     costs: estimate.costs,
     timeline,

@@ -104,6 +104,21 @@ describe('measured permit timing', () => {
     expectMeasuredShape(t.measured)
   })
 
+  it('Chicago (landed via chicago.mjs) → measured is populated', () => {
+    const t = resolveTimeline('chicago', project({ city: 'chicago' }), feas('by-right'), false)
+    expectMeasuredShape(t.measured)
+  })
+
+  it('Austin (landed via austin.mjs) → measured is populated', () => {
+    const t = resolveTimeline('austin', project({ city: 'austin' }), feas('by-right'), false)
+    expectMeasuredShape(t.measured)
+  })
+
+  it('Los Angeles (landed via la.mjs) → measured is populated', () => {
+    const t = resolveTimeline('la', project({ city: 'la' }), feas('by-right'), false)
+    expectMeasuredShape(t.measured)
+  })
+
   it('a city absent from permitStats → measured is undefined', () => {
     // 'atlantis' is not a real city and will never be in the artifact.
     const t = resolveTimeline('atlantis', project({ city: 'atlantis' }), feas('by-right'), false)

@@ -67,6 +67,9 @@ describe('getDenverParcelInfo — happy path', () => {
     expect(res.info.existing?.yearBuilt).toBe(1958)
     expect(res.info.existing?.landUse).toBe('Commercial')
     expect(res.info.existing?.numBuildings).toBe(1)
+    // APPRAISED_IMP_VALUE → assessedValue, flagged as improvement-only (not a total).
+    expect(res.info.existing?.assessedValue).toBe(450000)
+    expect(res.info.existing?.assessedValueBasis).toBe('improvement only')
   })
 
   it('Former-Chapter-59 guard: returns null height despite a trailing number in the code', async () => {

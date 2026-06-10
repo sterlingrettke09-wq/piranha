@@ -261,6 +261,8 @@ export default function BostonResult() {
                 <VerdictBanner
                   overall={state.data.feasibility.overall}
                   envelopeKnown={state.data.feasibility.envelopeKnown}
+                  city={state.data.project.city}
+                  reliefOdds={state.data.reliefOdds}
                 />
               </Reveal>
 
