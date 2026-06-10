@@ -10,12 +10,10 @@
          selects. Browsers without AVIF ignore the typed preload harmlessly and
          fall through to the WebP/JPEG sources. -->
     <link rel="preload" as="image" href="/images/piranha-hero.avif" type="image/avif" fetchpriority="high" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Fonts are self-hosted (see @font-face in src/index.css). Preload the
+         two faces used above the fold so text paints in the right face. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/libre-caslon-display-latin.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin-var.woff2" crossorigin />
     <!--
       NOTE: the <title>, description/OG/Twitter metas, and the canonical link
       below are rewritten per-route at the edge by netlify/edge-functions/og.ts.
