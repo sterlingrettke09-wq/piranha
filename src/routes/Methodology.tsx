@@ -210,7 +210,12 @@ export default function Methodology() {
                 about the same per square foot (fixed costs spread over a tiny area).
               </li>
               <li>
-                A project that needs discretionary approval adds roughly 3 to 12 months, by city.
+                A project that needs discretionary approval adds time for the approvals it triggers.
+                The longest single process governs; each additional triggered approval contributes
+                half its time, since reviews partially overlap. A genuinely serial permit — one that
+                can&rsquo;t start until another finishes, like a California Coastal Development Permit
+                — adds in full. The total entitlement add is capped at 24 months; when that cap binds,
+                the report says so, because heavily contested projects can exceed it.
               </li>
               <li>A prohibited project shows no timeline.</li>
             </ul>

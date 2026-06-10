@@ -2,22 +2,50 @@ import type { AnalysisResult } from '../../../types/analysis'
 
 type Parcel = AnalysisResult['parcel']
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value, note }: { label: string; value: string; note?: string | null }) {
   return (
     <div className="space-y-1">
       <dt className="text-xs uppercase tracking-[0.12em] text-piranha-charcoal/45">{label}</dt>
-      <dd className="text-piranha-charcoal">{value}</dd>
+      <dd className="text-piranha-charcoal">
+        {value}
+        {note && <span className="ml-1.5 text-xs text-piranha-charcoal/45">{note}</span>}
+      </dd>
     </div>
   )
 }
 
+// Labels which FAR drove the envelope's headline floor area, so the figure reads
+// as use-specific rather than a single use-agnostic cap (WO-5.5).
+function farBasisLabel(basis: 'residential' | 'mixed' | 'district' | null | undefined): string | null {
+  switch (basis) {
+    case 'residential':
+      return '(residential FAR)'
+    case 'mixed':
+      return '(mixed-use FAR)'
+    case 'district':
+      return '(district FAR)'
+    default:
+      return null
+  }
+}
+
 export function SiteFacts({ parcel }: { parcel: Parcel }) {
-  const facts: { label: string; value: string }[] = [
+  const env = parcel.envelope
+  const facts: { label: string; value: string; note?: string | null }[] = [
     { label: 'Zoning district', value: parcel.districtCode || '—' },
     {
       label: 'Lot size',
       value: parcel.lotSqFt ? `${parcel.lotSqFt.toLocaleString()} sq ft` : 'Not on file',
     },
+    ...(env && env.maxFloorAreaSqFt != null
+      ? [
+          {
+            label: 'Max floor area',
+            value: `${env.maxFloorAreaSqFt.toLocaleString()} sq ft`,
+            note: farBasisLabel(env.farBasis),
+          },
+        ]
+      : []),
     { label: 'Max FAR', value: parcel.maxFAR != null ? parcel.maxFAR.toFixed(2) : 'Not in public data' },
     {
       label: 'Max height',
@@ -31,7 +59,7 @@ export function SiteFacts({ parcel }: { parcel: Parcel }) {
   return (
     <dl className="grid grid-cols-2 gap-x-8 gap-y-6 rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-6 sm:grid-cols-3">
       {facts.map((f) => (
-        <Fact key={f.label} label={f.label} value={f.value} />
+        <Fact key={f.label} label={f.label} value={f.value} note={f.note} />
       ))}
     </dl>
   )

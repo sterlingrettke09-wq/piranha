@@ -34,6 +34,10 @@ export interface ParcelInfo {
     maxStories: number | null
     maxUnits: number | null
     allowedUses: string[] | null
+    /** Which FAR drove the headline floor area: the residential per-use FAR, the
+     *  mixed-use per-use FAR, the district maxFAR, or null when no FAR applied.
+     *  Lets the UI label the envelope so the number isn't read as use-agnostic. */
+    farBasis: 'residential' | 'mixed' | 'district' | null
   }
   overlays: {
     historicDistrict: string | null

@@ -36,7 +36,9 @@ describe('computeEnvelope — Boston family heuristics', () => {
     const env = computeEnvelope(info({ districtCode: 'B-2-65', lotSqFt: 10_000 }), 'boston')
     expect(env.maxFloorAreaSqFt).toBe(20_000) // family B FAR 2.0 × 10,000
     expect(env.maxHeightFt).toBe(65) // trailing height token
-    expect(env.maxStories).toBe(5) // floor(65 / 11 ft)
+    // No per-use FAR → district basis → 13 ft/story (commercial). floor(65/13)=5.
+    expect(env.farBasis).toBe('district')
+    expect(env.maxStories).toBe(5)
     expect(env.allowedUses).toContain('residential')
     expect(env.maxUnits).toBe(15) // floor(20,000 / 1,300 gross sf/unit)
   })
@@ -49,15 +51,12 @@ describe('computeEnvelope — Boston family heuristics', () => {
     expect(env.maxFloorAreaSqFt).toBeNull()
     expect(env.maxHeightFt).toBeNull()
     expect(env.maxUnits).toBeNull()
+    expect(env.farBasis).toBeNull() // no FAR drove anything
   })
 })
 
-describe('computeEnvelope — per-use FAR pick (current behavior, see WO-5.5)', () => {
-  it('headline floor area uses the RESIDENTIAL FAR when broken out, even if commercial is higher', () => {
-    // NOTE: pins the documented asymmetry — the envelope headline picks
-    // residential ?? mixed ?? district FAR while the feasibility check uses
-    // farByUse[project.use]. WO-5.5 will label the basis; until then this is
-    // the behavior the panel shows.
+describe('computeEnvelope — per-use FAR pick and basis labeling (WO-5.5)', () => {
+  it('headline floor area uses the RESIDENTIAL FAR when broken out, and labels the basis', () => {
     const env = computeEnvelope(
       info({
         districtCode: 'C6-7',
@@ -69,14 +68,56 @@ describe('computeEnvelope — per-use FAR pick (current behavior, see WO-5.5)', 
       'nyc',
     )
     expect(env.maxFloorAreaSqFt).toBe(10_000) // residential FAR 10, not the 15 headline max
+    expect(env.farBasis).toBe('residential')
   })
 
-  it('falls back to the district maxFAR when no per-use FAR exists', () => {
+  it('uses the MIXED FAR (and 0.85 residential-share for units) when no residential FAR exists', () => {
+    const env = computeEnvelope(
+      info({
+        districtCode: 'C6-7',
+        farByUse: { mixed: 10, commercial: 15 },
+        allowedUses: ['commercial', 'mixed'],
+        lotSqFt: 1_000,
+      }),
+      'nyc',
+    )
+    expect(env.maxFloorAreaSqFt).toBe(10_000) // mixed FAR 10
+    expect(env.farBasis).toBe('mixed')
+    // Mixed envelope isn't 100% residential: floor(10,000 × 0.85 / 1,300) = 6.
+    expect(env.maxUnits).toBe(6)
+  })
+
+  it('falls back to the district maxFAR (basis "district") when no per-use FAR exists', () => {
     const env = computeEnvelope(
       info({ districtCode: 'MU-4', maxFAR: 2.5, allowedUses: ['mixed'], lotSqFt: 4_000 }),
       'dc',
     )
     expect(env.maxFloorAreaSqFt).toBe(10_000)
+    expect(env.farBasis).toBe('district')
+    // District basis → no 0.85 share applied; 10,000 / 1,300 = 7.
+    expect(env.maxUnits).toBe(7)
+  })
+
+  it('uses 13 ft/story for a district basis and 11 ft/story for a residential basis', () => {
+    const district = computeEnvelope(
+      info({ districtCode: 'C-1', maxFAR: 4, maxHeightFt: 130, allowedUses: ['commercial'], lotSqFt: 1_000 }),
+      'nyc',
+    )
+    expect(district.farBasis).toBe('district')
+    expect(district.maxStories).toBe(10) // floor(130 / 13)
+
+    const residential = computeEnvelope(
+      info({
+        districtCode: 'R-1',
+        maxHeightFt: 130,
+        farByUse: { residential: 4 },
+        allowedUses: ['residential'],
+        lotSqFt: 1_000,
+      }),
+      'nyc',
+    )
+    expect(residential.farBasis).toBe('residential')
+    expect(residential.maxStories).toBe(11) // floor(130 / 11)
   })
 })
 
@@ -87,6 +128,17 @@ describe('computeEnvelope — null propagation', () => {
     expect(env.maxStories).toBeNull() // B-2 has no trailing height token
   })
 
+  it('keeps the residential 11 ft default for a known height with no FAR basis', () => {
+    // Height present, but no FAR anywhere → basis null → default to residential
+    // 11 ft/story (the taller, conservative story count).
+    const env = computeEnvelope(
+      info({ districtCode: 'UNKNOWN ZONE', maxHeightFt: 55, lotSqFt: null }),
+      'nyc',
+    )
+    expect(env.farBasis).toBeNull()
+    expect(env.maxStories).toBe(5) // floor(55 / 11)
+  })
+
   it('returns null maxUnits when residential is not an allowed use', () => {
     const env = computeEnvelope(
       info({ districtCode: 'M1', maxFAR: 2, allowedUses: ['commercial', 'institutional'], lotSqFt: 10_000 }),
@@ -94,5 +146,6 @@ describe('computeEnvelope — null propagation', () => {
     )
     expect(env.maxFloorAreaSqFt).toBe(20_000)
     expect(env.maxUnits).toBeNull()
+    expect(env.farBasis).toBe('district')
   })
 })

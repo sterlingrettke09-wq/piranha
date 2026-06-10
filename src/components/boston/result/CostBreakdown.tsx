@@ -19,7 +19,10 @@ export function CostBreakdown({ costs, gfa, units, demolitionRequired }: Props) 
     ...(costs.demolition > 0
       ? [{ label: 'Demolish existing building', value: costs.demolition }]
       : demolitionRequired
-        ? [{ label: 'Demolish existing building', value: null }] // required, not sized
+        ? // Teardown detected but the city's data carries no building size, so the
+          // demolition cost couldn't be sized. Show the gap as a visible line — not
+          // a silent omission — so a developer reading the table sees it (WO-5.9).
+          [{ label: 'Demolition — not estimated (no building-size data for this city)', value: null }]
         : []),
     { label: 'Construction (hard)', value: costs.hard },
     { label: 'Soft costs', value: costs.soft },
@@ -72,7 +75,7 @@ export function CostBreakdown({ costs, gfa, units, demolitionRequired }: Props) 
           >
             <dt className="text-piranha-charcoal/65">{r.label}</dt>
             <dd className="font-medium text-piranha-charcoal tabular-nums">
-              {r.value === null ? <span className="text-piranha-charcoal/45">Not estimated</span> : usd(r.value)}
+              {r.value === null ? <span className="text-piranha-charcoal/45">—</span> : usd(r.value)}
             </dd>
           </div>
         ))}

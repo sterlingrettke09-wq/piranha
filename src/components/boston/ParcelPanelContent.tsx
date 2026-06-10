@@ -10,6 +10,21 @@ type Props =
   | { status: 'loaded'; data: ParcelInfo; city: string; cmp?: string | null }
   | { status: 'error'; error: ParcelError; onRetry: () => void }
 
+// Labels the FAR that drove the headline floor area, so the number reads as
+// use-specific rather than a single use-agnostic cap (WO-5.5).
+function farBasisLabel(basis: 'residential' | 'mixed' | 'district' | null | undefined): string | null {
+  switch (basis) {
+    case 'residential':
+      return '(residential FAR)'
+    case 'mixed':
+      return '(mixed-use FAR)'
+    case 'district':
+      return '(district FAR)'
+    default:
+      return null
+  }
+}
+
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
     <h3 className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-piranha-charcoal/45">
@@ -136,6 +151,11 @@ export function ParcelPanelContent(props: Props) {
                   {env.maxFloorAreaSqFt.toLocaleString()}
                 </span>
                 <span className="ml-1.5 text-sm text-piranha-charcoal/55">sq ft you can build</span>
+                {farBasisLabel(env.farBasis) && (
+                  <span className="ml-1.5 text-xs text-piranha-charcoal/45">
+                    {farBasisLabel(env.farBasis)}
+                  </span>
+                )}
               </p>
             )}
             {(() => {

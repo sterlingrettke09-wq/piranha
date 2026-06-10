@@ -88,6 +88,7 @@ export interface AnalysisResult {
       maxStories: number | null
       maxUnits: number | null
       allowedUses: string[] | null
+      farBasis: 'residential' | 'mixed' | 'district' | null
     }
     existing?: {
       landUse?: string | null
