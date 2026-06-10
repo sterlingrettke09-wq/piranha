@@ -119,20 +119,24 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         note: 'Boston’s Inclusionary Development Policy requires roughly 17% of units be income-restricted (or a payment in lieu) for residential developments of 10+ units (raised from 13% in the 2024 zoning amendment).',
       })
     }
+    // Article 80 thresholds verified against bostonplans.org (2026-06-10):
+    // Large Project Review at 50,000+ sf; Small Project Review at 20,000–50,000
+    // sf OR 15+ dwelling units. The BPDA's review functions moved to the city's
+    // Planning Department in July 2024 — same Article 80 process, new letterhead.
     if (project.gfa >= 50000) {
       hurdles.push({
         category: 'review',
-        label: 'Article 80 Large Project Review (BPDA)',
+        label: 'Article 80 Large Project Review',
         status: 'required',
-        note: 'Developments of 50,000+ sq ft undergo BPDA Article 80 Large Project Review, including community meetings and impact studies.',
+        note: 'Developments of 50,000+ sq ft undergo Article 80 Large Project Review by the Planning Department (formerly the BPDA), including community meetings and impact studies. For most large Boston projects this is the longest single gate.',
         addsMonths: 9,
       })
-    } else if (project.gfa >= 20000) {
+    } else if (project.gfa >= 20000 || (isResidential && units >= 15)) {
       hurdles.push({
         category: 'review',
-        label: 'Article 80 Small Project Review (BPDA)',
+        label: 'Article 80 Small Project Review',
         status: 'required',
-        note: 'Developments of 20,000–50,000 sq ft undergo BPDA Article 80 Small Project Review.',
+        note: 'Developments of 20,000–50,000 sq ft — or any project adding 15+ dwelling units — undergo Article 80 Small Project Review by the Planning Department (formerly the BPDA), covering design and climate resilience.',
         addsMonths: 4,
       })
     }
@@ -261,6 +265,21 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         status: 'likely',
         note: 'Washington’s State Environmental Policy Act applies above local thresholds (roughly 20+ units or larger commercial), adding review time.',
         addsMonths: 4,
+      })
+    }
+    // Design review SUSPENDED — rare good news worth surfacing. Verified at
+    // seattle.gov/sdci/codes/changes-to-code/2025-design-review-program-changes
+    // (2026-06-10): CB 121048 (Sept 26, 2025) made design review voluntary
+    // while SDCI writes permanent rules required by state HB 1293; permanent
+    // legislation was expected at Council in spring 2026. Status 'info', no
+    // months — this REMOVES a board rather than adding one, and the rules are
+    // in flux, so we tell the user to confirm at filing.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'review',
+        label: 'Design review: currently suspended',
+        status: 'info',
+        note: 'Seattle made design review voluntary in September 2025 (Council Bill 121048) while it writes permanent rules to comply with state law HB 1293 — one less board between you and a permit, for now. Permanent replacement rules were due in 2026; confirm the current status when you file.',
       })
     }
   }

@@ -65,3 +65,12 @@ the attempt recorded.
   source comment.
 - cost.test.ts LA expectations updated to the new rates.
 - All other figures VERIFIED unchanged or UNVERIFIABLE-LABELED (RSMeans).
+
+## V2 additions (2026-06-10)
+
+| Claim | Source | Status |
+| --- | --- | --- |
+| Boston Article 80 Small Project Review triggers at 20,000–50,000 sf **or 15+ dwelling units**; Large at 50,000+ sf; review now run by the Planning Department (BPDA functions transferred July 2024) | bostonplans.org/projects/development-review/small-projects + /large-projects (fetched 2026-06-10) | VERIFIED — unit trigger added to hurdles.ts |
+| Seattle design review suspended/voluntary per CB 121048 (passed 2025-09-26), pending permanent HB 1293 rules expected 2026 | seattle.gov/sdci/codes/changes-to-code/2025-design-review-program-changes (fetched 2026-06-10) | VERIFIED — added as status:'info' hurdle, no months |
+| Example demo parcels (10 cities) resolve to real addresses + districts | Live /api/parcel probes, one per city (2026-06-10) | VERIFIED — coords + labels in src/config/exampleParcels.ts |
+| Chicago prod returned districtCode "Unknown" at multiple points while the city's ArcGIS answered correctly direct | Live probes of thepiranhaproject.com + gisapps.chicago.gov (2026-06-10) | DIAGNOSED as CDN-cached degraded responses → cacheControlFor() now caps degraded TTL at 300s |

@@ -45,6 +45,18 @@ describe('assessHurdles — Boston', () => {
     expect(cats(hs)).toContain('review')
   })
 
+  it('flags Article 80 SMALL project review for 15+ units even under 20k sf', () => {
+    // bostonplans.org (verified 2026-06-10): Small Project Review applies at
+    // 20,000+ sf OR 15+ dwelling units — the unit trigger alone is enough.
+    const hs = assessHurdles('boston', parcel({}), project({ gfa: 14000, units: 16 }))
+    expect(hs.some((h) => /Small Project Review/.test(h.label))).toBe(true)
+  })
+
+  it('does NOT fire Article 80 for a small low-unit project', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ gfa: 8000, units: 6 }))
+    expect(hs.some((h) => /Project Review/.test(h.label))).toBe(false)
+  })
+
   it('always includes a private deed/HOA info note', () => {
     const hs = assessHurdles('boston', parcel({}), project({}))
     expect(cats(hs)).toContain('private')
@@ -98,6 +110,17 @@ describe('assessHurdles — other cities', () => {
     const hs = assessHurdles('seattle', parcel({}), project({ city: 'seattle', units: 30, gfa: 40000 }))
     expect(hs.some((h) => /MHA/.test(h.label))).toBe(true)
     expect(hs.some((h) => /SEPA/.test(h.label))).toBe(true)
+  })
+
+  it('Seattle: design-review suspension surfaces as INFO with no added months', () => {
+    // CB 121048 (Sept 2025) made design review voluntary pending HB 1293 rules.
+    const hs = assessHurdles('seattle', parcel({}), project({ city: 'seattle', projectType: 'new' }))
+    const dr = hs.find((h) => /Design review/.test(h.label))
+    expect(dr?.status).toBe('info')
+    expect(dr?.addsMonths).toBeUndefined()
+    // Not shown for renovations — it's framed around new development filings.
+    const reno = assessHurdles('seattle', parcel({}), project({ city: 'seattle', projectType: 'addition' }))
+    expect(reno.some((h) => /Design review/.test(h.label))).toBe(false)
   })
 })
 
