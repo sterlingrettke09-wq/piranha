@@ -13,7 +13,7 @@ frontage" / "this code has no FAR — it's height-governed") IS depth — it tel
 the engine what to check and lets the UI say so honestly. Never widen a
 block-regex or fabricate a figure to make a verdict look more decisive.
 
-## Done (tranche 1 — this WO)
+## Done (tranche 1)
 
 - **Chicago** — `netlify/functions/lib/zoning/chicago.ts`.
   B/C FAR §17-3-0403-A, B/C height §17-3-0408-A, D base FAR §17-4-0405-A
@@ -24,6 +24,31 @@ block-regex or fabricate a figure to make a verdict look more decisive.
   height derived from the trailing stories token × ~12 ft/story
   (DZC Art. 3–9 building-form tables; Art. 13 rules of measurement).
 
+## Done (tranche 2)
+
+- **NYC** — `netlify/functions/lib/zoning/nyc.ts`. THE GAP WAS HEIGHT (PLUTO
+  gives per-use FAR but never height). `NYC_CONTEXTUAL_HEIGHTS` stores the max
+  building height *without* a qualifying ground floor (the lower, conservative
+  column) from **ZR 23-662(a) Table 1** for the 12 contextual lettered districts:
+  R6A 70, R6B 50, R7A 80, R7B 75, R7D 100, R7X 120, R8A 120, R8B 75, R8X 150,
+  R9A 135, R9X 160, R10A 185 (R9A/R9X/R10A stored at the non-wide-street figure).
+  `NYC_COMMERCIAL_EQUIVALENT` maps the C districts whose residential equivalent
+  is one of those (**ZR 34-112**, last amended 12/5/2024) — e.g. C4-4A→R7A,
+  C6-4A→R10A. Non-contextual R6/R7-1/R7-2/R8/R9/R10 and their bare-R C-equivalents
+  (incl. C6-7→R10) are sky-exposure-plane governed → **null height** (honest).
+  R9D/R10X (Table-1 "N/A", tower regs ZR 23-663) intentionally omitted → null.
+  Provider farByUse still wins for FAR; the table fills maxHeightFt only.
+- **Seattle** — `netlify/functions/lib/zoning/seattle.ts`. THE GAP WAS FAR (the
+  provider derives height from the suffix but leaves FAR null). `resolveSeattle`
+  parses the trailing height-limit suffix (stripping MIO/M affordability prefixes
+  the way `providers/seattle.ts` does) and looks up **SMC 23.47A.013 Table A**
+  (FAR outside Station Area Overlays): 30→2.5, 40→3.0, 55→3.75, 65→4.5, 75→5.5,
+  85→5.75, 95→6.25, 145→7.0, 200→8.25, for NC1/NC2/NC3/C1/C2 zones. The 40-ft
+  row's no-MHA-suffix 3.25 and the 200-ft First Hill/Capitol Hill 12.0 are
+  location/MHA-conditioned bonuses → store the conservative base. LR/MR/HR
+  (SMC 23.45) and SM (SMC 23.48) have separate tables → **null FAR** (skipped).
+  Unknown suffix (e.g. NC2-50, no Table-A row) stays null — never interpolated.
+
 ---
 
 ## Queued (subsequent tranches)
@@ -32,25 +57,6 @@ Each city below gets its own `netlify/functions/lib/zoning/<city>.ts` module in
 the same shape (`Record<district, { far: number | null; heightFt: number | null }>`
 plus a `resolve<City>()` parser), wired into `resolveZoningLimits`, with a
 per-city table test (≥8 districts, incl. unknown→null and "varies"→null).
-
-### NYC — contextual R-districts
-- **Source:** NYC Zoning Resolution (ZR) Article II, Chapter 3 — residential
-  bulk regulations. Contextual districts (R6A/R6B/R7A/R7B/R8A/R8B/R9A/R10A…)
-  carry published max FAR and max base/building height per district.
-  Commercial overlays (C1/C2) and C-district equivalents in ZR Article III.
-  <https://zr.planning.nyc.gov/>
-- **Done means:** the ~25 most common contextual R-districts + C overlays with
-  ZR-cited FAR + base/max height; non-contextual (R6 without a letter, where
-  height/FAR vary by program — Quality Housing vs height-factor) left null with
-  a note; tested.
-
-### Seattle — SM and zone suffixes
-- **Source:** Seattle Municipal Code Title 23, esp. SMC 23.45 (multifamily LR/MR/HR
-  FAR + height tables), SMC 23.47A (commercial/NC FAR + height by suffix, e.g.
-  NC2-40, NC3-65, NC3P-95), SMC 23.48 (Seattle Mixed "SM-" suffixes carrying the
-  height in the code). <https://library.municode.com/wa/seattle/codes/municipal_code>
-- **Done means:** LR1/LR2/LR3, MR, HR, the NC1/NC2/NC3 ± P families with their
-  trailing height token parsed, SM-suffix height parse; tested.
 
 ### DC — matter-of-right subtitle tables
 - **Source:** DC Zoning Regulations of 2016, Title 11 DCMR — Subtitle E

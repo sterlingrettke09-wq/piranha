@@ -211,6 +211,148 @@ describe('assessHurdles — demolition / existing structure', () => {
   })
 })
 
+describe('assessHurdles — tenant-protection teardown (LA RSO / SF Rent Ordinance)', () => {
+  const laTeardown = (h: ReturnType<typeof assessHurdles>) => h.find((x) => /RSO \+ Ellis Act/.test(x.label))
+  const sfTeardown = (h: ReturnType<typeof assessHurdles>) => h.find((x) => /Rent Ordinance \+ Section 317/.test(x.label))
+
+  it('LA pre-1978 multifamily teardown → hurdle present, status likely, 6 months', () => {
+    const hs = assessHurdles(
+      'la',
+      parcel({ existing: { landUse: 'Apartment', yearBuilt: 1965 } }),
+      project({ city: 'la', projectType: 'new', use: 'residential', units: 20 }),
+    )
+    const h = laTeardown(hs)
+    expect(h, 'expected an LA RSO/Ellis hurdle').toBeTruthy()
+    expect(h?.status).toBe('likely')
+    expect(h?.addsMonths).toBe(6)
+    expect(h?.note).toMatch(/Rent Stabilization Ordinance|RSO/)
+    expect(h?.note).toMatch(/Ellis Act/)
+    // Year is KNOWN → assertive copy, not the confirm branch.
+    expect(h?.note).toMatch(/predates October 1, 1978/)
+  })
+
+  it('LA 1985 multifamily building → teardown hurdle ABSENT (post-RSO)', () => {
+    const hs = assessHurdles(
+      'la',
+      parcel({ existing: { landUse: 'Apartment', yearBuilt: 1985 } }),
+      project({ city: 'la', projectType: 'new', use: 'residential', units: 20 }),
+    )
+    expect(laTeardown(hs)).toBeFalsy()
+  })
+
+  it('LA multifamily, yearBuilt unknown → present with confirm language', () => {
+    const hs = assessHurdles(
+      'la',
+      parcel({ existing: { landUse: 'Apartment' } }),
+      project({ city: 'la', projectType: 'new', use: 'residential', units: 20 }),
+    )
+    const h = laTeardown(hs)
+    expect(h, 'expected an LA RSO/Ellis hurdle on unknown year').toBeTruthy()
+    expect(h?.note).toMatch(/confirm the building’s RSO status/)
+  })
+
+  it('LA duplex (units=2, no regex match) still trips the rental-multifamily floor', () => {
+    const hs = assessHurdles(
+      'la',
+      parcel({ existing: { landUse: 'Duplex', units: 2 } }),
+      project({ city: 'la', projectType: 'new', use: 'residential', units: 8 }),
+    )
+    expect(laTeardown(hs)).toBeTruthy()
+  })
+
+  it('LA single-family teardown → NO rent-control hurdle (not rental multifamily)', () => {
+    const hs = assessHurdles(
+      'la',
+      parcel({ existing: { landUse: 'Single Family Residence' } }),
+      project({ city: 'la', projectType: 'new', use: 'residential', units: 4 }),
+    )
+    expect(laTeardown(hs)).toBeFalsy()
+  })
+
+  it('LA fires even when the project ADDS units (trigger is lost tenancies, not net loss)', () => {
+    const hs = assessHurdles(
+      'la',
+      parcel({ existing: { landUse: 'Apartment', units: 4, yearBuilt: 1960 } }),
+      project({ city: 'la', projectType: 'new', use: 'residential', units: 40 }),
+    )
+    expect(laTeardown(hs)).toBeTruthy()
+  })
+
+  it('SF multifamily teardown → hurdle present, confirm language (SF data carries no yearBuilt)', () => {
+    const hs = assessHurdles(
+      'sf',
+      parcel({ existing: { landUse: 'Residential building', units: 6 } }),
+      project({ city: 'sf', projectType: 'new', use: 'residential', units: 12 }),
+    )
+    const h = sfTeardown(hs)
+    expect(h, 'expected an SF Rent Ordinance/317 hurdle').toBeTruthy()
+    expect(h?.status).toBe('likely')
+    expect(h?.addsMonths).toBe(6)
+    expect(h?.note).toMatch(/Rent Ordinance/)
+    expect(h?.note).toMatch(/Section 317/)
+    expect(h?.note).toMatch(/confirm the building’s rent-control status/)
+  })
+
+  it('SF post-1980 multifamily (if year ever known) → teardown ABSENT', () => {
+    const hs = assessHurdles(
+      'sf',
+      parcel({ existing: { landUse: 'Residential building', units: 6, yearBuilt: 1995 } }),
+      project({ city: 'sf', projectType: 'new', use: 'residential', units: 12 }),
+    )
+    expect(sfTeardown(hs)).toBeFalsy()
+  })
+
+  it('does NOT fire on an ADDITION (only new construction tears anything down)', () => {
+    const la = assessHurdles('la', parcel({ existing: { landUse: 'Apartment' } }), project({ city: 'la', projectType: 'addition' }))
+    const sf = assessHurdles('sf', parcel({ existing: { landUse: 'Residential building', units: 6 } }), project({ city: 'sf', projectType: 'addition' }))
+    expect(laTeardown(la)).toBeFalsy()
+    expect(sfTeardown(sf)).toBeFalsy()
+  })
+
+  it('leak guard: non-LA/SF cities never emit a rent-control teardown hurdle', () => {
+    for (const city of ['boston', 'nyc', 'chicago', 'seattle', 'dc', 'austin', 'denver', 'minneapolis']) {
+      const hs = assessHurdles(
+        city,
+        parcel({ existing: { landUse: 'Apartment', units: 8, yearBuilt: 1955 } }),
+        project({ city, projectType: 'new', use: 'residential', units: 4 }),
+      )
+      expect(laTeardown(hs), `${city} leaked LA hurdle`).toBeFalsy()
+      expect(sfTeardown(hs), `${city} leaked SF hurdle`).toBeFalsy()
+    }
+  })
+})
+
+describe('assessHurdles — Boston abutter appeals (MGL c.40A §17)', () => {
+  const abutter = (h: ReturnType<typeof assessHurdles>) => h.find((x) => /Abutter appeal/.test(x.label))
+
+  it('variance (discretionary) path → abutter hurdle present, info status, no addsMonths', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ city: 'boston' }), { path: 'variance' })
+    const h = abutter(hs)
+    expect(h, 'expected an abutter-appeal hurdle on the variance path').toBeTruthy()
+    expect(h?.status).toBe('info')
+    expect(h?.addsMonths).toBeUndefined()
+    expect(h?.note).toMatch(/40A/)
+    expect(h?.note).toMatch(/courthouse/)
+  })
+
+  it('as-of-right path → abutter hurdle ABSENT (no discretionary approval, no appeal)', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ city: 'boston' }), { path: 'as_of_right' })
+    expect(abutter(hs)).toBeFalsy()
+  })
+
+  it('no path supplied → abutter hurdle ABSENT (defaults to non-discretionary)', () => {
+    const hs = assessHurdles('boston', parcel({}), project({ city: 'boston' }))
+    expect(abutter(hs)).toBeFalsy()
+  })
+
+  it('leak guard: variance path in non-Boston cities never emits the abutter hurdle', () => {
+    for (const city of ['nyc', 'chicago', 'sf', 'seattle', 'la', 'dc', 'austin', 'denver', 'minneapolis']) {
+      const hs = assessHurdles(city, parcel({}), project({ city }), { path: 'variance' })
+      expect(abutter(hs), `${city} leaked the Boston abutter hurdle`).toBeFalsy()
+    }
+  })
+})
+
 describe('assessHurdles — project type', () => {
   it('ADU adds ADU-specific rules', () => {
     const hs = assessHurdles('boston', parcel({}), project({ projectType: 'adu' }))

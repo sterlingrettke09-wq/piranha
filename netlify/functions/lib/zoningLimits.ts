@@ -5,6 +5,8 @@
 import type { Use } from '../../../src/types/analysis'
 import { resolveChicago } from './zoning/chicago'
 import { resolveDenver } from './zoning/denver'
+import { resolveNyc } from './zoning/nyc'
+import { resolveSeattle } from './zoning/seattle'
 
 export interface ResolvedLimits {
   maxFAR: number | null
@@ -87,6 +89,14 @@ function cityTableLimits(
       return resolveChicago(districtCode)
     case 'denver':
       return resolveDenver(districtCode)
+    case 'nyc':
+      // NYC: provider farByUse (MapPLUTO) wins for FAR; this only fills the
+      // height left null by PLUTO, and only for contextual districts (ZR 23-662).
+      return resolveNyc(districtCode)
+    case 'seattle':
+      // Seattle: provider derives height from the suffix; this only fills the
+      // NC/C FAR left null by the zoning feed (SMC 23.47A.013 Table A).
+      return resolveSeattle(districtCode)
     default:
       return { far: null, heightFt: null }
   }

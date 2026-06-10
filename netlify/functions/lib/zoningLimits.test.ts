@@ -92,8 +92,63 @@ describe('resolveZoningLimits — per-city curated tables (WO-8.8)', () => {
   })
 
   it('a city without a table falls through to all-null (no fabrication)', () => {
-    const r = resolveZoningLimits(z('B3-2'), 'seattle')
+    const r = resolveZoningLimits(z('B3-2'), 'dc')
     expect(r.maxFAR).toBeNull()
     expect(r.maxHeightFt).toBeNull()
+  })
+
+  // ── NYC (depth tranche 2) — table fills HEIGHT for contextual districts only;
+  //    provider farByUse still wins for FAR. ─────────────────────────────────
+  it('NYC: a contextual R7A gets the ZR 23-662 height 80 ft, FAR stays provider-sourced (null here)', () => {
+    const r = resolveZoningLimits(z('R7A'), 'nyc')
+    expect(r.maxHeightFt).toBe(80)
+    expect(r.maxFAR).toBeNull() // FAR comes from PLUTO farByUse, not this table
+  })
+
+  it('NYC: a commercial C4-4A resolves to its R7A equivalent height (80 ft)', () => {
+    expect(resolveZoningLimits(z('C4-4A'), 'nyc').maxHeightFt).toBe(80)
+  })
+
+  it('NYC: a NON-contextual R6 stays null height (sky-exposure-plane governed)', () => {
+    expect(resolveZoningLimits(z('R6'), 'nyc').maxHeightFt).toBeNull()
+  })
+
+  it('NYC: provider height always wins over the contextual table', () => {
+    const r = resolveZoningLimits(z('R7A', { maxHeightFt: 99 }), 'nyc')
+    expect(r.maxHeightFt).toBe(99)
+  })
+
+  // ── Seattle (depth tranche 2) — table fills FAR for NC/C zones; provider
+  //    derives height. ────────────────────────────────────────────────────────
+  it('Seattle: an NC3-65 gets the SMC 23.47A.013 Table-A FAR 4.5', () => {
+    const r = resolveZoningLimits(z('NC3-65'), 'seattle')
+    expect(r.maxFAR).toBe(4.5)
+  })
+
+  it('Seattle: an unknown height suffix stays null FAR (no interpolation)', () => {
+    expect(resolveZoningLimits(z('NC2-50'), 'seattle').maxFAR).toBeNull()
+  })
+
+  it('Seattle: provider FAR always wins over the table', () => {
+    const r = resolveZoningLimits(z('NC3-65', { maxFAR: 9 }), 'seattle')
+    expect(r.maxFAR).toBe(9)
+  })
+
+  // ── Cross-city leak guards — each city's table must not fire under another. ──
+  it('the NYC contextual table does NOT apply under boston (R7A → Boston "R" heuristic)', () => {
+    // Under Boston, "R7A" hits the family-letter heuristic (R → FAR 1.0), and
+    // must NOT pick up NYC's 80 ft contextual height.
+    const r = resolveZoningLimits(z('R7A'), 'boston')
+    expect(r.maxHeightFt).toBeNull() // no NYC leak
+    expect(r.maxFAR).toBe(1.0) // Boston "R" family FAR, not anything NYC
+  })
+
+  it('the NYC table does not leak into Seattle, nor Seattle FAR into NYC', () => {
+    expect(resolveZoningLimits(z('R7A'), 'seattle').maxHeightFt).toBeNull()
+    expect(resolveZoningLimits(z('NC3-65'), 'nyc').maxFAR).toBeNull()
+  })
+
+  it('the Seattle table does not leak into Chicago', () => {
+    expect(resolveZoningLimits(z('NC3-65'), 'chicago').maxFAR).toBeNull()
   })
 })

@@ -144,6 +144,25 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         note: 'Large commercial projects (100,000+ sq ft) pay linkage fees into Boston’s Neighborhood Housing and Jobs Trusts.',
       })
     }
+    // Abutter appeals — the real chokepoint for Boston projects that need any
+    // discretionary approval (a variance/special permit from the ZBA). Under
+    // MGL c.40A §17, any aggrieved abutter may appeal a ZBA decision to the Land
+    // Court or Superior Court within 20 days of the decision being filed.
+    // Source: Mass. General Laws c.40A §17 (mass.gov/info-details/mass-general-
+    // laws-c40a-ss-17; malegislature.gov Chapter 40A Section 17). The pending
+    // appeal clouds the permit and routinely stalls financing/construction for
+    // 6–18 months even when the developer ultimately prevails. NO addsMonths:
+    // an appeal is a RISK, not a certainty — most approvals are never appealed,
+    // so baking months into every variance timeline would overstate delay. We
+    // surface it as 'info' so it informs without inflating the verdict.
+    if (discretionary) {
+      hurdles.push({
+        category: 'review',
+        label: 'Abutter appeal risk (MGL c.40A §17)',
+        status: 'info',
+        note: 'This project needs a discretionary approval from the Zoning Board of Appeal. Under Massachusetts law (MGL c.40A §17), any aggrieved abutter can appeal the ZBA’s decision to Land Court or Superior Court within 20 days — and that appeal clouds the permit while it’s litigated, routinely adding 6–18 months even when the developer wins. The board approves the large majority of variances it hears; in Boston, the courthouse — not the hearing room — is where projects actually die.',
+      })
+    }
   } else if (city === 'nyc') {
     if (isResidential && units >= 10) {
       hurdles.push({
@@ -259,6 +278,12 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // Word-boundaried "multifamily" — NOT bare "multi", which wrongly matched
     // commercial labels like "COMM MULTI-USE" (same fix as feasibility.ts).
     const multifamilyExisting = !!ex && (exUnits >= 3 || /apartment|condo|multi-?family|townhouse|triplex|fourplex|housing/i.test(lu))
+    // Rental-multifamily test for the tenant-protection teardown hurdles below.
+    // Floor is exUnits >= 2 (a duplex is already "rental multifamily" for RSO /
+    // Rent-Ordinance purposes), OR the same word-boundaried landUse regex
+    // feasibility.ts uses — NOT bare "multi" (would match "COMM MULTI-USE").
+    const rentalMultifamily =
+      !!ex && (exUnits >= 2 || /apartment|condo|multi-?family|triplex|fourplex|elevator|tenement|\bflats\b/i.test(lu))
 
     if (hasBuilding) {
       // No addsMonths here — the demolition phase is already in the timeline via
@@ -280,6 +305,68 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
           note: 'This parcel already holds multiple homes. Tearing down occupied housing triggers tenant-relocation requirements and demolition review, and replacing it with fewer units runs into “no net loss of housing” rules in many cities. Expect significant added time, and in some places it may not be permitted at all.',
           addsMonths: 6,
         })
+      }
+
+      // ---- Tenant-protection teardown (LA / SF). Distinct from the no-net-loss
+      // rule above: rent-regulated demolition controls fire even when the new
+      // project ADDS units, because the trigger is the loss of *occupied,
+      // rent-controlled* tenancies, not a net unit reduction. We reuse the
+      // feasibility.ts multifamily heuristic (word-boundaried, exUnits>=2 floor). ----
+      const yb = ex?.yearBuilt
+      if (city === 'la' && rentalMultifamily) {
+        // LA RSO covers most rental units in buildings with a certificate of
+        // occupancy on or before Oct 1, 1978; post-RSO buildings are generally
+        // exempt. Source: LAHD, "What is Covered under the RSO"
+        // (housing.lacity.gov/residents/what-is-covered-under-the-rso) — built
+        // on or before 10/1/1978. So suppress only when yearBuilt is KNOWN and
+        // >= 1979; an unknown year must NOT wave the teardown through.
+        if (yb == null || yb < 1979) {
+          // Demolishing occupied RSO units runs the state Ellis Act: a Notice of
+          // Intent to Withdraw, a 120-day notice period (extendable to up to one
+          // year for senior/disabled tenants with 1+ year tenancy), tenant
+          // relocation payments, and multi-year re-rental restrictions. Source:
+          // SF.gov "Evictions Pursuant to the Ellis Act" + LAHD "Removal From
+          // Rental Market" (120 days / up to 1 year). addsMonths: 6 = the
+          // 120-day statutory notice floor (~4 months) plus filing/processing —
+          // a defensible minimum, NOT the senior/disabled 1-year ceiling.
+          hurdles.push({
+            category: 'review',
+            label: 'Rent-control teardown (RSO + Ellis Act)',
+            status: 'likely',
+            note:
+              yb == null
+                ? 'The record shows existing multifamily housing here but no year built. LA’s Rent Stabilization Ordinance (RSO) covers most rental units in buildings with a certificate of occupancy on or before October 1, 1978 — confirm the building’s RSO status. If it is RSO, demolishing occupied units triggers the state Ellis Act: a Notice of Intent to Withdraw, a 120-day tenant notice period (up to one year for senior or disabled tenants), tenant relocation payments, and multi-year re-rental restrictions on the new building.'
+                : 'This parcel’s existing multifamily building predates October 1, 1978, so its rental units are almost certainly covered by LA’s Rent Stabilization Ordinance (RSO). Demolishing occupied RSO units triggers the state Ellis Act: a Notice of Intent to Withdraw, a 120-day tenant notice period (up to one year for senior or disabled tenants), tenant relocation payments, and multi-year re-rental restrictions on the new building.',
+            addsMonths: 6,
+          })
+        }
+      } else if (city === 'sf' && rentalMultifamily) {
+        // SF Rent Ordinance covers rental units in buildings whose first
+        // certificate of occupancy issued on or before June 13, 1979 (the date
+        // rent control passed). Source: SF.gov "Partial Exemption for Newly
+        // Constructed Rental Units" — new-construction exemption applies only if
+        // the first C of O issued AFTER 6/13/1979. SF parcel data (providers/sf.ts)
+        // carries existing.landUse and sometimes existing.units, but NEVER
+        // yearBuilt — so this hurdle is, in practice, always the confirm-language
+        // branch. We still branch on yb defensively in case the field is added.
+        if (yb == null || yb < 1980) {
+          // Demolition also runs Planning Code Section 317: loss of residential
+          // units requires a Conditional Use hearing before the Planning
+          // Commission. Source: SF Planning Code Sec. 317 (codelibrary.amlegal.com)
+          // + sfplanning.org "Dwelling Unit Removal". addsMonths: 6 mirrors the
+          // RSO/Ellis floor (120-day notice + CU hearing lead time); a defensible
+          // minimum, not a ceiling.
+          hurdles.push({
+            category: 'review',
+            label: 'Rent-control teardown (Rent Ordinance + Section 317)',
+            status: 'likely',
+            note:
+              yb == null
+                ? 'The record shows existing multifamily housing here but no year built. SF’s Rent Ordinance covers rental units in buildings with a certificate of occupancy on or before June 13, 1979 — confirm the building’s rent-control status. Demolishing residential units also runs Planning Code Section 317, which requires a Conditional Use hearing before the Planning Commission, plus tenant-relocation and notice protections.'
+                : 'This parcel’s existing multifamily building predates June 13, 1979, so its rental units are almost certainly covered by SF’s Rent Ordinance. Demolishing residential units runs Planning Code Section 317, which requires a Conditional Use hearing before the Planning Commission, plus tenant-relocation and notice protections.',
+            addsMonths: 6,
+          })
+        }
       }
     }
   }
