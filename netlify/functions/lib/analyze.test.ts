@@ -67,6 +67,70 @@ describe('analyze handler', () => {
     })
   })
 
+  describe('input bounds (WO-1.2 hardening)', () => {
+    beforeEach(() => mockParcel())
+    it('rejects an absurd gfa with 400', async () => {
+      const res = await call({ ...baseParams, gfa: '5000001' })
+      expect(res.statusCode).toBe(400)
+      expect(JSON.parse(res.body).code).toBe('BAD_INPUT')
+    })
+    it('rejects non-positive units with 400', async () => {
+      const res = await call({ ...baseParams, units: '0' })
+      expect(res.statusCode).toBe(400)
+    })
+    it('rejects out-of-range stories with 400', async () => {
+      const res = await call({ ...baseParams, stories: '300' })
+      expect(res.statusCode).toBe(400)
+    })
+  })
+
+  describe('discretionary months (the max + parallel combine)', () => {
+    // Boston B-2-65 (family FAR 2.0), commercial → apartment tier baseline 44.
+    // Spine (variance adder) for boston = 6; Article 80 Small (20–50k sf)
+    // adds 4 as a 'review' hurdle; Article 80 Large (50k+) adds 9.
+    beforeEach(() => mockParcel())
+
+    it('as-of-right small project gets the bare lifecycle baseline (44)', async () => {
+      const res = await call(baseParams) // 15k sf on 10k lot, FAR 1.5 ≤ 2.0
+      const body = JSON.parse(res.body)
+      expect(body.feasibility.overall).toBe('AS_OF_RIGHT')
+      expect(body.timeline.months).toBe(44)
+    })
+
+    it('variance path takes MAX(spine, entitlement), not their sum', async () => {
+      // 22k sf → FAR 2.2 (needs relief, spine 6) AND Article 80 Small (4).
+      // Current combine: max(6, 4) = 6 → 44 + 6 = 50. If this ever reads 54,
+      // someone re-introduced naive addition (see WO-5.8 before changing).
+      const res = await call({ ...baseParams, gfa: '22000' })
+      const body = JSON.parse(res.body)
+      expect(body.feasibility.overall).toBe('NEEDS_RELIEF')
+      expect(body.timeline.months).toBe(50)
+    })
+
+    it('an as-of-right large project still pays its entitlement hurdle (Article 80 Large)', async () => {
+      // Big lot so 55k sf stays within FAR: spine 0, entitlement max 9 → 53.
+      vi.restoreAllMocks()
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url)
+        if (u.includes('Zoning')) return new Response(JSON.stringify({ features: [{ attributes: { Name: 'B-2-65' } }] }))
+        if (u.includes('Parcels_24_detailed')) return new Response(JSON.stringify({ features: [{ attributes: { PID: '99', ST_NUM: '1', ST_NAME: 'Test St', LAND_SF: 100000 } }] }))
+        return new Response(JSON.stringify({ features: [] }))
+      })
+      const res = await call({ ...baseParams, gfa: '55000' })
+      const body = JSON.parse(res.body)
+      expect(body.feasibility.overall).toBe('AS_OF_RIGHT')
+      expect(body.hurdles.some((h: { label: string }) => h.label.includes('Article 80 Large'))).toBe(true)
+      expect(body.timeline.months).toBe(53)
+    })
+
+    it('prohibited projects get a zeroed timeline and costs', async () => {
+      const res = await call({ ...baseParams, gfa: '60000' }) // FAR 6 = 3× limit
+      const body = JSON.parse(res.body)
+      expect(body.feasibility.overall).toBe('PROHIBITED')
+      expect(body.costs.total).toBe(0)
+    })
+  })
+
   describe('parcel failures propagate', () => {
     it('returns 502 when zoning upstream rejects', async () => {
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
