@@ -6,6 +6,7 @@ import { ParcelPanel } from '../components/boston/ParcelPanel'
 import { CityIntro } from '../components/boston/CityIntro'
 import { introSeen } from '../components/boston/introSeen'
 import { getCity, isCitySlug, DEFAULT_CITY } from '../config/cities'
+import { quantizeCoord } from '../lib/coords'
 
 interface Selection {
   lat: number
@@ -34,8 +35,10 @@ export default function BostonDashboard() {
   const cmp = params.get('cmp')
 
   const [selected, setSelected] = useState<Selection | null>(null)
+  // Quantize at the source: every downstream URL (parcel fetch, wizard link,
+  // result link, compare encoding) inherits cache-friendly coordinates.
   const handleSelect = useCallback(
-    (lat: number, lng: number) => setSelected({ lat, lng, city }),
+    (lat: number, lng: number) => setSelected({ lat: quantizeCoord(lat), lng: quantizeCoord(lng), city }),
     [city],
   )
 

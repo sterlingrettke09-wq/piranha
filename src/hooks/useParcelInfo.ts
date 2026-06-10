@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ParcelInfo, ParcelError } from '../types/parcel'
+import { quantizeCoord } from '../lib/coords'
 
 type Resolved =
   | { status: 'loaded'; data: ParcelInfo }
@@ -22,8 +23,10 @@ export function useParcelInfo(args: Args | null): State & { retry: () => void } 
   const [retryCount, setRetryCount] = useState(0)
   const [result, setResult] = useState<{ key: string; value: Resolved } | null>(null)
 
-  const lat = args?.lat
-  const lng = args?.lng
+  // Quantized defensively here too: callers that build Args from URL params
+  // (the wizard) bypass the dashboard's click-source quantization.
+  const lat = args ? quantizeCoord(args.lat) : undefined
+  const lng = args ? quantizeCoord(args.lng) : undefined
   const city = args?.city ?? 'boston'
   const key = lat !== undefined && lng !== undefined ? `${city},${lat},${lng},${retryCount}` : null
 

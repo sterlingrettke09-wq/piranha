@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AnalysisResult, AnalysisError, AnalysisInput } from '../types/analysis'
+import { quantizeCoord } from '../lib/coords'
 
 type Resolved =
   | { status: 'loaded'; data: AnalysisResult }
@@ -12,8 +13,8 @@ function toQuery(input: AnalysisInput): string {
   p.set('city', input.city)
   p.set('projectType', input.projectType)
   p.set('funding', input.funding)
-  p.set('lat', String(input.lat))
-  p.set('lng', String(input.lng))
+  p.set('lat', String(quantizeCoord(input.lat)))
+  p.set('lng', String(quantizeCoord(input.lng)))
   p.set('parcelId', input.parcelId)
   p.set('use', input.use)
   p.set('gfa', String(input.gfa))

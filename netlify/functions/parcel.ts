@@ -2,6 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { ParcelError } from '../../src/types/parcel'
 import { getParcelInfo } from './lib/parcel'
 import { clientIp, rateLimited } from './lib/guard'
+import { quantizeCoord } from '../../src/lib/coords'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 
@@ -20,8 +21,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return fail('RATE_LIMITED', 'Too many requests — please wait a moment and try again.', 429)
   }
   const city = event.queryStringParameters?.city ?? 'boston'
-  const lat = Number(event.queryStringParameters?.lat)
-  const lng = Number(event.queryStringParameters?.lng)
+  // Normalize stragglers that bypassed client-side quantization (NaN passes
+  // through and fails validation downstream as before).
+  const lat = quantizeCoord(Number(event.queryStringParameters?.lat))
+  const lng = quantizeCoord(Number(event.queryStringParameters?.lng))
   const r = await getParcelInfo(city, lat, lng)
   if (!r.ok) return fail(r.code, r.message, r.status)
   return {

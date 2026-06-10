@@ -18,6 +18,7 @@ import {
 } from '../../src/config/estimates'
 import { logSearch } from './lib/searchLog'
 import { clientIp, rateLimited } from './lib/guard'
+import { quantizeCoord } from '../../src/lib/coords'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 
@@ -64,8 +65,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     ? (q.projectType as ProjectType)
     : 'new'
   const funding: Funding = FUNDING_TYPES.includes(q.funding as Funding) ? (q.funding as Funding) : 'private'
-  const lat = Number(q.lat)
-  const lng = Number(q.lng)
+  const lat = quantizeCoord(Number(q.lat))
+  const lng = quantizeCoord(Number(q.lng))
   const use = q.use as Use
   const gfa = Number(q.gfa)
 
