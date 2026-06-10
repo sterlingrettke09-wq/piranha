@@ -28,6 +28,21 @@
     "/*.txt",
   ]
 
+# Vite content-hashes every file in /assets, so they are immutable by
+# construction — a changed file gets a new name. Without this, Netlify served
+# them with max-age=0 and browsers re-validated the ~480 kB-gzip mapbox chunk
+# on every visit.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Self-hosted fonts are versioned by filename; safe to cache long.
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # Security headers for every response. The CSP is shaped around the app's
 # actual third parties: Google Fonts (stylesheet + font files) and Mapbox GL
 # (API/tiles/events via fetch, blob: web workers, data:/blob: images,
