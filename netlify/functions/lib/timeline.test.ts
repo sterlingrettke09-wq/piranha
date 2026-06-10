@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveTimeline, buildingTier } from './timeline'
+import { resolveTimeline, buildingTier, measuredFor } from './timeline'
 import type { Feasibility } from './feasibility'
 import type { AnalysisInput } from '../../src/types/analysis'
 
@@ -76,5 +76,59 @@ describe('resolveTimeline', () => {
     const variance = resolveTimeline('boston', project(), feas('variance'), false)
     expect(variance.months).toBe(byRight.months)
     expect(variance.path).toBe('variance')
+  })
+})
+
+describe('measured permit timing', () => {
+  // SF + Seattle landed real data from their open portals (see scripts/permits).
+  // Assert SHAPE, not exact numbers — the figures refresh quarterly and the test
+  // must survive a re-run of the pipeline.
+  const expectMeasuredShape = (m: unknown) => {
+    expect(m).toBeDefined()
+    const v = m as { medianMonths: number; p80Months: number; n: number; vintage: string }
+    expect(typeof v.medianMonths).toBe('number')
+    expect(typeof v.p80Months).toBe('number')
+    expect(v.p80Months).toBeGreaterThanOrEqual(v.medianMonths)
+    expect(v.n).toBeGreaterThanOrEqual(30)
+    expect(typeof v.vintage).toBe('string')
+    expect(v.vintage.length).toBeGreaterThan(0)
+  }
+
+  it('a city present in permitStats → measured is populated for a new build', () => {
+    const t = resolveTimeline('sf', project({ city: 'sf' }), feas('by-right'), false)
+    expectMeasuredShape(t.measured)
+  })
+
+  it('Seattle (also present) → measured is populated', () => {
+    const t = resolveTimeline('seattle', project({ city: 'seattle' }), feas('by-right'), false)
+    expectMeasuredShape(t.measured)
+  })
+
+  it('a city absent from permitStats → measured is undefined', () => {
+    // 'atlantis' is not a real city and will never be in the artifact.
+    const t = resolveTimeline('atlantis', project({ city: 'atlantis' }), feas('by-right'), false)
+    expect(t.measured).toBeUndefined()
+  })
+
+  it('an addition/renovation never gets a measured permit line, even for a present city', () => {
+    const t = resolveTimeline(
+      'sf',
+      project({ city: 'sf', projectType: 'addition', use: 'residential', units: 3 }),
+      feas('by-right'),
+      false,
+    )
+    expect(t.measured).toBeUndefined()
+  })
+
+  it('measured is carried through on the prohibited path too (UI gates on months, not measured)', () => {
+    const t = resolveTimeline('sf', project({ city: 'sf' }), feas('prohibited'), false)
+    expect(t.months).toBe(0)
+    // present + new → measured still resolved; the component only renders it when months > 0.
+    expectMeasuredShape(t.measured)
+  })
+
+  it('measuredFor mirrors the artifact: present cities resolve, unknown cities do not', () => {
+    expect(measuredFor('sf')).toBeDefined()
+    expect(measuredFor('atlantis')).toBeUndefined()
   })
 })

@@ -120,19 +120,43 @@ describe('assessHurdles — historic review body', () => {
 })
 
 describe('assessHurdles — parking', () => {
-  it('always includes a parking note with city-specific guidance', () => {
-    for (const city of ['boston', 'nyc', 'sf', 'chicago', 'seattle']) {
+  const ALL_CITIES = ['boston', 'nyc', 'chicago', 'sf', 'seattle', 'dc', 'austin', 'la', 'denver', 'minneapolis']
+
+  it('every one of the ten cities emits a parking hurdle', () => {
+    for (const city of ALL_CITIES) {
       const hs = assessHurdles(city, parcel({}), project({ city }))
       const p = hs.find((h) => h.category === 'parking')
       expect(p, `expected a parking hurdle for ${city}`).toBeTruthy()
+      expect(p?.label.length, `parking label for ${city}`).toBeGreaterThan(0)
+      expect(p?.note.length, `parking note for ${city}`).toBeGreaterThan(0)
     }
   })
 
-  it('notes NYC and SF have eliminated parking minimums', () => {
-    const nyc = assessHurdles('nyc', parcel({}), project({ city: 'nyc' }))
-    expect(nyc.find((h) => h.category === 'parking')?.note).toMatch(/eliminat|no longer|removed/i)
+  it('the four abolished cities read as abolished and as a cost saver', () => {
+    for (const city of ['minneapolis', 'sf', 'austin', 'denver']) {
+      const p = assessHurdles(city, parcel({}), project({ city })).find((h) => h.category === 'parking')
+      expect(p?.label, city).toMatch(/abolished/i)
+      expect(p?.note, city).toMatch(/cost saver/i)
+    }
+  })
+
+  it('SF still notes minimums were removed citywide', () => {
     const sf = assessHurdles('sf', parcel({}), project({ city: 'sf' }))
-    expect(sf.find((h) => h.category === 'parking')?.note).toMatch(/eliminat|no longer|removed/i)
+    const p = sf.find((h) => h.category === 'parking')
+    // SF abolished citywide — the label says "abolished citywide", the note "removed... citywide".
+    expect(`${p?.label} ${p?.note}`).toMatch(/abolished citywide|minimums citywide|removed/i)
+  })
+
+  it('NYC no longer claims MINIMUMS were eliminated citywide (the old bug)', () => {
+    const nyc = assessHurdles('nyc', parcel({}), project({ city: 'nyc' }))
+    const p = nyc.find((h) => h.category === 'parking')
+    expect(p, 'expected an NYC parking hurdle').toBeTruthy()
+    const text = `${p?.label} ${p?.note}`
+    // The old, wrong copy claimed parking minimums were "eliminated citywide".
+    // The corrected copy scopes elimination to Zone 1 (the Manhattan core).
+    expect(text).not.toMatch(/minimums (were )?eliminated citywide/i)
+    expect(text).not.toMatch(/eliminated (mandatory )?parking minimums citywide/i)
+    expect(p?.note).toMatch(/Zone 1|Manhattan/i)
   })
 })
 

@@ -1,1 +1,18 @@
-{}
+{
+  "sf": {
+    "newConstruction": {
+      "medianMonths": 11.8,
+      "p80Months": 24.4,
+      "n": 165,
+      "vintage": "filed 2022-01-01 onward; computed 2026-06-10; data.sfgov.org Building Permits (permit_type 1,2 = new construction)"
+    }
+  },
+  "seattle": {
+    "newConstruction": {
+      "medianMonths": 6.2,
+      "p80Months": 10.8,
+      "n": 3956,
+      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.seattle.gov Building Permits (permittypedesc = New)"
+    }
+  }
+}

@@ -233,6 +233,18 @@ export default function Methodology() {
               restrictions. These flags tell you where the friction is — and the larger approvals
               (environmental review, large-project review) add time to the timeline estimate above.
             </p>
+            <p>
+              <span className="font-semibold text-piranha-charcoal">Parking minimums.</span> For each
+              city we surface whether off-street parking is still mandated on new housing, read from
+              that city&rsquo;s own zoning ordinance or reform — for example San Francisco
+              (Ordinance 286-18, 2018), Minneapolis (2040 plan, 2021), Austin (2023), and Denver
+              (effective August 2025) have abolished minimums citywide, while Chicago, New York,
+              Seattle, Los Angeles, Boston, and Washington, DC have removed or reduced them near
+              transit but keep them elsewhere. Each figure carries an as-of date. For now this is
+              shown per parcel as context and is{' '}
+              <span className="font-semibold text-piranha-charcoal">not</span> yet priced into the
+              cost model.
+            </p>
           </Section>
 
           <Section n="06" title="Where the data comes from">

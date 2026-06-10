@@ -8,8 +8,26 @@ import {
   projectFactor as PROJECT_FACTOR,
   type BuildingTier,
 } from '../../../src/config/estimates'
+// Empirical permit timings, refreshed offline by scripts/permits/*.mjs. A static
+// committed artifact (esbuild inlines it at bundle time); the function never
+// fetches a city portal at request time. A city is present only when its
+// pipeline produced a trustworthy figure — absent cities show no measured line.
+import permitStats from './data/permitStats.json'
 
 export type { BuildingTier }
+
+/** Empirical new-construction filing→issuance timing for one city. */
+export interface MeasuredPermit {
+  medianMonths: number
+  p80Months: number
+  n: number
+  vintage: string
+}
+
+const PERMIT_STATS = permitStats as Record<
+  string,
+  { newConstruction?: MeasuredPermit } | undefined
+>
 
 /** single ≤1 unit · multi 2–4 · apartment 5+. Commercial & institutional → apartment. */
 export function buildingTier(project: AnalysisInput): BuildingTier {
@@ -25,6 +43,16 @@ export interface TimelineResult {
   path: Feasibility['path']
   tier: BuildingTier
   includesDemolition: boolean
+  /** Empirical filing→issuance permit time for this city's new construction,
+   *  when the open-data pipeline produced one. A SUBSET of `months` (the permit
+   *  leg only); informational, never folded into the estimate. */
+  measured?: MeasuredPermit
+}
+
+/** The measured new-construction permit timing for a city, or undefined when the
+ *  pipeline has no trustworthy figure for it. Exposed for the wiring + tests. */
+export function measuredFor(city: string): MeasuredPermit | undefined {
+  return PERMIT_STATS[city]?.newConstruction
 }
 
 export function resolveTimeline(
@@ -37,8 +65,13 @@ export function resolveTimeline(
   const tier = buildingTier(project)
   const includesDemolition = project.projectType === 'new' && hasExistingBuilding
 
+  // The measured permit timing only applies to ground-up new construction (the
+  // pipeline samples NB/new-construction permits), so it's only attached for
+  // projectType 'new'; additions/renovations get no measured line.
+  const measured = project.projectType === 'new' ? measuredFor(city) : undefined
+
   if (feasibility.path === 'prohibited') {
-    return { months: 0, path: feasibility.path, tier, includesDemolition }
+    return { months: 0, path: feasibility.path, tier, includesDemolition, measured }
   }
 
   const table = LIFECYCLE[city] ?? FALLBACK
@@ -62,5 +95,5 @@ export function resolveTimeline(
     months += Math.min(18, Math.round(((demolitionSqFt - 50000) / 100000) * 3))
   }
 
-  return { months: Math.max(1, months), path: feasibility.path, tier, includesDemolition }
+  return { months: Math.max(1, months), path: feasibility.path, tier, includesDemolition, measured }
 }

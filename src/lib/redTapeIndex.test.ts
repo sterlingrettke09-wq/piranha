@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { computeRedTapeIndex, REFERENCE, type RedTapeConstants } from './redTapeIndex'
+import { computeRedTapeIndex, parkingCell, REFERENCE, type RedTapeConstants } from './redTapeIndex'
 import { lifecycleMonths } from '../config/estimates'
+import { PARKING_RULES } from '../config/parkingRules'
 
 describe('computeRedTapeIndex', () => {
   const ranked = computeRedTapeIndex()
@@ -90,5 +91,35 @@ describe('computeRedTapeIndex', () => {
     // LA applies a residential linkage fee, so it should be > 0.
     const la = ranked.find((r) => r.slug === 'la')!
     expect(la.feePerSqFt).toBeGreaterThan(0)
+  })
+
+  it('exposes parking status + label per city from PARKING_RULES', () => {
+    for (const r of ranked) {
+      const rule = PARKING_RULES[r.slug]
+      expect(rule, `expected a parking rule for ${r.slug}`).toBeTruthy()
+      expect(r.parkingStatus).toBe(rule.status)
+      expect(r.parkingLabel).toBe(parkingCell(rule))
+    }
+  })
+
+  it('does NOT let parking influence the composite score (informational only)', () => {
+    // The composite is months 70% + fees 30%; parking rides alongside untouched.
+    for (const r of ranked) {
+      expect(r.score).toBeCloseTo(r.monthsScore * 0.7 + r.feesScore * 0.3, 6)
+    }
+  })
+})
+
+describe('parkingCell', () => {
+  it('renders abolished cities with their as-of date', () => {
+    expect(parkingCell(PARKING_RULES.denver)).toBe('Abolished (Aug 2025)')
+    expect(parkingCell(PARKING_RULES.sf)).toBe('Abolished (2018)')
+  })
+  it('renders partial cities as "Near transit only"', () => {
+    expect(parkingCell(PARKING_RULES.chicago)).toBe('Near transit only')
+    expect(parkingCell(PARKING_RULES.nyc)).toBe('Near transit only')
+  })
+  it('renders an em-dash when no rule exists', () => {
+    expect(parkingCell(undefined)).toBe('—')
   })
 })

@@ -1,12 +1,24 @@
 import type { AnalysisResult } from '../../../types/analysis'
+import { PARKING_RULES } from '../../../config/parkingRules'
 
 type Parcel = AnalysisResult['parcel']
 
-function Fact({ label, value, note }: { label: string; value: string; note?: string | null }) {
+function Fact({
+  label,
+  value,
+  note,
+  accent,
+}: {
+  label: string
+  value: string
+  note?: string | null
+  /** 'positive' tints the value gold — used for parking-minimum tailwinds. */
+  accent?: 'positive'
+}) {
   return (
     <div className="space-y-1">
       <dt className="text-xs uppercase tracking-[0.12em] text-piranha-charcoal/45">{label}</dt>
-      <dd className="text-piranha-charcoal">
+      <dd className={accent === 'positive' ? 'text-piranha-gold' : 'text-piranha-charcoal'}>
         {value}
         {note && <span className="ml-1.5 text-xs text-piranha-charcoal/45">{note}</span>}
       </dd>
@@ -29,9 +41,10 @@ function farBasisLabel(basis: 'residential' | 'mixed' | 'district' | null | unde
   }
 }
 
-export function SiteFacts({ parcel }: { parcel: Parcel }) {
+export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
   const env = parcel.envelope
-  const facts: { label: string; value: string; note?: string | null }[] = [
+  const parking = PARKING_RULES[city]
+  const facts: { label: string; value: string; note?: string | null; accent?: 'positive' }[] = [
     { label: 'Zoning district', value: parcel.districtCode || '—' },
     {
       label: 'Lot size',
@@ -55,11 +68,19 @@ export function SiteFacts({ parcel }: { parcel: Parcel }) {
     { label: 'Flood zone', value: parcel.floodZone || 'None mapped' },
   ]
   if (parcel.historicDistrict) facts.push({ label: 'Historic district', value: parcel.historicDistrict })
+  if (parking) {
+    facts.push({
+      label: 'Parking minimums',
+      value: parking.headline,
+      note: parking.detail,
+      accent: parking.status === 'abolished' ? 'positive' : undefined,
+    })
+  }
 
   return (
     <dl className="grid grid-cols-2 gap-x-8 gap-y-6 rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-6 sm:grid-cols-3">
       {facts.map((f) => (
-        <Fact key={f.label} label={f.label} value={f.value} note={f.note} />
+        <Fact key={f.label} label={f.label} value={f.value} note={f.note} accent={f.accent} />
       ))}
     </dl>
   )

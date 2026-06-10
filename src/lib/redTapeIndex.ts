@@ -19,7 +19,17 @@ import {
   impactFee as defaultImpactFee,
   type BuildingTier,
 } from '../config/estimates'
+import { PARKING_RULES, type ParkingRule } from '../config/parkingRules'
 import type { Use } from '../types/analysis'
+
+// Compact, table-cell version of a parking headline ("Abolished (2025)" /
+// "Near transit only"). Informational only — NOT folded into the composite
+// score (see computeRedTapeIndex / the /redtape methodology prose).
+export function parkingCell(rule: ParkingRule | undefined): string {
+  if (!rule) return '—'
+  if (rule.status === 'abolished') return `Abolished (${rule.asOf})`
+  return 'Near transit only'
+}
 
 // The fixed reference project the whole index is computed against.
 export const REFERENCE = {
@@ -72,6 +82,10 @@ export interface RankedCity {
   score: number
   /** 1-based rank, ascending by score (1 = least red tape). */
   rank: number
+  /** Parking-minimum status for this city — informational, NOT scored. */
+  parkingStatus: ParkingRule['status'] | null
+  /** Compact table-cell label for the parking column ("Abolished (2025)"). */
+  parkingLabel: string
 }
 
 const MONTHS_WEIGHT = 0.7
@@ -128,5 +142,13 @@ export function computeRedTapeIndex(constants: Partial<RedTapeConstants> = {}): 
   // process months, then slug, so the order is stable and deterministic.
   scored.sort((a, b) => a.score - b.score || a.processMonths - b.processMonths || a.slug.localeCompare(b.slug))
 
-  return scored.map((s, i) => ({ ...s, rank: i + 1 }))
+  return scored.map((s, i) => {
+    const rule = PARKING_RULES[s.slug]
+    return {
+      ...s,
+      rank: i + 1,
+      parkingStatus: rule?.status ?? null,
+      parkingLabel: parkingCell(rule),
+    }
+  })
 }

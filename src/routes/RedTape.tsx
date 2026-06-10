@@ -58,6 +58,14 @@ export default function RedTape() {
               The composite normalizes both to a 0–100 scale across the ten cities, weights months
               at 70 percent and fees at 30 percent, and ranks ascending. Lower is freer to build.
             </p>
+            <p>
+              <span className="font-semibold text-piranha-charcoal">Parking mandate</span> shows
+              whether a city still forces off-street parking on new housing — a flagship reform that
+              can swing project cost — read from each city&rsquo;s own ordinance (see the per-parcel
+              detail in any report). It&rsquo;s shown here for context only and is{' '}
+              <span className="font-semibold text-piranha-charcoal">not</span> folded into the score;
+              the composite remains months and fees alone.
+            </p>
           </section>
         </Reveal>
 
@@ -71,6 +79,7 @@ export default function RedTape() {
                   <th className="px-5 py-3 text-right font-semibold">Process</th>
                   <th className="px-5 py-3 text-right font-semibold">+ Variance</th>
                   <th className="px-5 py-3 text-right font-semibold">Fee / sf</th>
+                  <th className="px-5 py-3 font-semibold">Parking mandate</th>
                   <th className="px-5 py-3 text-right font-semibold">Score</th>
                 </tr>
               </thead>
@@ -87,6 +96,15 @@ export default function RedTape() {
                     </td>
                     <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
                       {fmtFee(r.feePerSqFt)}
+                    </td>
+                    <td
+                      className={`px-5 py-3 ${
+                        r.parkingStatus === 'abolished'
+                          ? 'font-medium text-piranha-gold'
+                          : 'text-piranha-charcoal/75'
+                      }`}
+                    >
+                      {r.parkingLabel}
                     </td>
                     <td className="px-5 py-3 text-right font-semibold tabular-nums text-piranha-charcoal">
                       {fmtScore(r.score)}

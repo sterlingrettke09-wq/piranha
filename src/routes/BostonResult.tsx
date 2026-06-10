@@ -224,7 +224,7 @@ export default function BostonResult() {
 
               <div className="mt-12 space-y-14">
                 <ReportSection n="01" title="The site" kicker="What the public record says about the parcel.">
-                  <SiteFacts parcel={state.data.parcel} />
+                  <SiteFacts parcel={state.data.parcel} city={state.data.project.city} />
                 </ReportSection>
                 {hasExisting(state.data.parcel.existing) && (
                   <ReportSection n="02" title="What’s here today" kicker="What the record shows on the parcel.">
@@ -315,12 +315,13 @@ export default function BostonResult() {
                 >
                   <Timeline
                     timeline={state.data.timeline}
+                    city={state.data.project.city}
                     indeterminate={state.data.feasibility.overall === 'INDETERMINATE'}
                   />
                 </ReportSection>
 
                 <ReportSection n="05" title="The site" kicker="What the public record says about the parcel.">
-                  <SiteFacts parcel={state.data.parcel} />
+                  <SiteFacts parcel={state.data.parcel} city={state.data.project.city} />
                 </ReportSection>
 
                 {hasExisting(state.data.parcel.existing) && (

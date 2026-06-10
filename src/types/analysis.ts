@@ -112,7 +112,15 @@ export interface AnalysisResult {
   feasibility: { overall: CheckStatus; checks: FeasibilityCheck[]; envelopeKnown?: boolean }
   hurdles: Hurdle[]
   costs: { hard: number; soft: number; permit: number; demolition: number; impact: number; total: number; currency: 'USD' }
-  timeline: { months: number; path: ApprovalPath; tier?: 'single' | 'multi' | 'apartment' }
+  timeline: {
+    months: number
+    path: ApprovalPath
+    tier?: 'single' | 'multi' | 'apartment'
+    /** Empirical filing→issuance permit time from the city's open permit data,
+     *  when available for new construction. A SUBSET of `months` (permit leg
+     *  only), shown alongside the full-lifecycle estimate — never replaces it. */
+    measured?: { medianMonths: number; p80Months: number; n: number; vintage: string }
+  }
   narrative: string
   assumptions: Record<string, string>
   sources: Record<string, string>
