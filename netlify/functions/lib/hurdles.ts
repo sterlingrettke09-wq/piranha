@@ -56,7 +56,15 @@ const PUBLIC_FUNDING_NOTE =
 
 // Assess non-zoning regulatory hurdles for a project. Boston is fully modeled;
 // other cities get the shared overlay + private-governance hurdles for now.
-export function assessHurdles(city: string, parcel: ParcelInfo, project: AnalysisInput): Hurdle[] {
+export interface HurdleContext {
+  /** The feasibility approval path — discretionary-only hurdles (ULURP,
+   *  Chicago PD) fire only on the variance path, since they apply to
+   *  discretionary actions, not as-of-right buildings. */
+  path?: 'as_of_right' | 'variance' | 'prohibited'
+}
+
+export function assessHurdles(city: string, parcel: ParcelInfo, project: AnalysisInput, ctx: HurdleContext = {}): Hurdle[] {
+  const discretionary = ctx.path === 'variance'
   const hurdles: Hurdle[] = []
   const units = project.units ?? 0
   const isResidential = project.use === 'residential' || project.use === 'mixed'
@@ -79,6 +87,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     hurdles.push({
       category: 'environmental',
       label: 'Coastal Development Permit',
+      serial: true, // runs IN ADDITION to CEQA/entitlement, not nested within it
       status: 'required',
       note: 'This parcel is in the California Coastal Zone. A Coastal Development Permit (city, and appealable to the Coastal Commission) is required, with its own review — this adds significant time and uncertainty.',
       addsMonths: 9,
@@ -158,7 +167,10 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         note: 'In MIH areas, new residential of 10+ units must include permanently affordable units (~25–30%) or pay in lieu. Confirm whether the site sits in an MIH area.',
       })
     }
-    if (project.gfa >= 50000) {
+    // ULURP applies to DISCRETIONARY actions (rezonings, special permits) —
+    // an as-of-right building of any size never runs it. Previously fired on
+    // raw GFA alone, over-penalizing as-of-right NYC projects by 7 months.
+    if (project.gfa >= 50000 && discretionary) {
       hurdles.push({
         category: 'review',
         label: 'ULURP: Uniform Land Use Review Procedure',
@@ -205,7 +217,9 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         note: 'Chicago’s ARO requires ~20% affordable units (or in-lieu fees) for residential projects of 10+ units that need a zoning change, city land, or city financing.',
       })
     }
-    if (project.gfa >= 50000) {
+    // PD designation is a discretionary action; as-of-right projects under the
+    // existing zoning don't run it (same reasoning as NYC ULURP above).
+    if (project.gfa >= 50000 && discretionary) {
       hurdles.push({
         category: 'review',
         label: 'Planned Development / City Council review',
@@ -216,12 +230,24 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     }
   } else if (city === 'seattle') {
     if (isResidential || isCommercial) {
-      hurdles.push({
-        category: 'affordability',
-        label: 'Mandatory Housing Affordability (MHA)',
-        status: 'likely',
-        note: 'In MHA zones, new development contributes affordable units or pays a fee. Confirm the site is in an MHA zone.',
-      })
+      // seattle.ts fetches the parcel-exact MHA fee area; when present we can
+      // say "this parcel IS in an MHA zone" instead of asking the user to check.
+      const feeArea = parcel.overlays.feeArea
+      hurdles.push(
+        feeArea
+          ? {
+              category: 'affordability',
+              label: 'Mandatory Housing Affordability (MHA)',
+              status: 'required',
+              note: `This parcel is in Seattle's "${feeArea}" MHA area: new development contributes affordable units or pays the MHA fee for that area.`,
+            }
+          : {
+              category: 'affordability',
+              label: 'Mandatory Housing Affordability (MHA)',
+              status: 'likely',
+              note: 'In MHA zones, new development contributes affordable units or pays a fee. Confirm the site is in an MHA zone.',
+            },
+      )
     }
     if (units >= 20 || project.gfa >= 12000) {
       hurdles.push({

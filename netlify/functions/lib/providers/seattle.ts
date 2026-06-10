@@ -35,8 +35,12 @@ function seattleMaxHeightFt(zone: string | null): number | null {
   // uses; the number only caps non-industrial. Don't report the number as the
   // max — return null (no by-right cap) rather than a wrongly-low height.
   if (/\bU\s*\//.test(z)) return null
+  // Seattle writes the base-zone height as the TRAILING number ("NC3-65",
+  // "MIO-105-NC3-65"). Math.max over every number wrongly returned the MIO
+  // institutional-overlay height (105) instead of the by-right base (65) on
+  // layered zones — overstating the envelope for non-institutional projects.
   const nums = (z.match(/\d{2,3}/g) ?? []).map(Number).filter((n) => n >= 25 && n <= 1000)
-  if (nums.length) return Math.max(...nums)
+  if (nums.length) return nums[nums.length - 1]
   if (/\bLR1\b/.test(z)) return 30
   if (/\bLR2\b/.test(z)) return 40
   if (/\bLR3\b/.test(z)) return 50

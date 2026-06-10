@@ -8,7 +8,7 @@ import type { ProjectType, Use } from '../types/analysis'
 // that consumes it) changes. It's appended to /api/analyze URLs as a cache
 // key, so tuned numbers propagate immediately instead of serving stale cached
 // verdicts for up to 24h (+7d stale-while-revalidate).
-export const ESTIMATES_VERSION = 1
+export const ESTIMATES_VERSION = 2
 
 // Human-readable vintage of the cost tables, surfaced on the result page so the
 // data provenance can't silently drift from the figures above. Sourced from the
@@ -70,10 +70,17 @@ export function heightCostFactor(stories: number | null): number {
   return 1.0
 }
 
-// Soft costs (A&E, permits, financing, legal, developer OH) as a share of HARD
+// Soft costs (A&E, permitting consultants, legal, developer OH — NOT financing,
+// which is excluded everywhere, matching the disclaimers) as a share of HARD
 // cost. Industry standard is 20–30% of hard cost; 0.25 is a defensible mid-range
 // blended value. Source: NMHC Housing Affordability Toolkit; Multifamily.loans.
 export const softCostPct = 0.25
+
+// Residential share of GFA assumed for a mixed-use building (ground-floor
+// commercial under residential floors). Used to avoid billing commercial-class
+// impact fees on the residential floors of a mixed project (and by the
+// envelope's unit math).
+export const MIXED_RESIDENTIAL_SHARE = 0.85
 // Nominal/representative permit fees — NOT a sourced per-city fee schedule.
 // Real schedules vary (Chicago is sf-based w/ ~$602 min, DC ~$0.03/cu-ft, etc.),
 // but building-permit fees are rounding-error against multimillion-dollar
@@ -221,8 +228,13 @@ export function impactFee(city: string, use: Use, gfa: number, units: number | n
       // Residential <10 units is citywide-uniform ($5/sf, ≤1,600 sf/unit); 10+
       // units fall under the inclusionary build mandate (no fee). Commercial
       // varies by EHA market area: High $9, Typical $6 — now parcel-exact.
-      if (use === 'residential')
-        return (units ?? 1) >= 10 ? null : { perSqFt: 5, applied: true, label: 'Denver affordable-housing fee' }
+      if (use === 'residential') {
+        // Unit count unknown: we can't tell the <10-unit fee tier from the 10+
+        // inclusionary-mandate tier — surface as informational, don't guess.
+        if (units == null)
+          return { perSqFt: 5, applied: false, label: 'Denver affordable-housing fee — unit count needed to determine the tier' }
+        return units >= 10 ? null : { perSqFt: 5, applied: true, label: 'Denver affordable-housing fee' }
+      }
       if (!commercial) return null
       const rate = feeArea === 'High' ? 9 : 6
       return { perSqFt: rate, applied: true, label: `Denver affordable-housing fee (${feeArea ?? 'Typical'} market)` }

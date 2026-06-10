@@ -48,6 +48,10 @@ export interface Hurdle {
   label: string
   status: HurdleStatus
   note: string
+  /** True when this process runs IN SERIES with the main entitlement (e.g. a
+   *  Coastal Development Permit) — its months add in full instead of being
+   *  folded into the nested max-plus-overlap combine in analyze.ts. */
+  serial?: boolean
   /** Estimated months this hurdle adds to approval, if any. */
   addsMonths?: number
 }

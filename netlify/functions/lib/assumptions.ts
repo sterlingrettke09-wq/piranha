@@ -49,7 +49,7 @@ export function assumptionsSummary(city = 'boston', stories: number | null = nul
     hardCostInstitutional: rate(costPerSqFtByUse.institutional),
     buildingHeightFactor: `${hf.toFixed(2)}× hard cost${stories ? ` (${stories} stories)` : ''}`,
     softCost: `${Math.round(softCostPct * 100)}% of hard cost`,
-    permitFee: `$${PERMIT_BASE_FEE} + $${PERMIT_RATE_PER_1000} per $1,000 of construction value`,
+    permitFee: `$${PERMIT_BASE_FEE} + $${PERMIT_RATE_PER_1000} per $1,000 of hard cost`,
     varianceFiling: `$${VARIANCE_FILING_FEE} when relief required`,
     landCost: 'Not included (construction only)',
     timeline: 'Full life-cycle (design to move-in), estimated by city and building type',

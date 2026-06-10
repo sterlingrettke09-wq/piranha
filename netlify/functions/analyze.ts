@@ -134,7 +134,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     lng,
   })
   const feasibility = assessFeasibility(parcel, project)
-  const hurdles = assessHurdles(city, parcel, project)
+  const hurdles = assessHurdles(city, parcel, project, { path: feasibility.path })
 
   // Full life-cycle timeline (design → permits → site prep → construction → move-in),
   // by city and building type. A demolition hurdle means there's a building to clear,
@@ -171,15 +171,30 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // months, since even worst-case stacked entitlement tops out around there.
   const ENTITLEMENT_CATS = new Set(['review', 'environmental', 'historic'])
   const PARALLEL_CATS = new Set(['labor'])
-  const monthsIn = (cats: Set<string>, combine: (a: number, b: number) => number, seed: number) =>
-    hurdles
-      .filter((h) => cats.has(h.category) && typeof h.addsMonths === 'number')
-      .reduce((m, h) => combine(m, h.addsMonths ?? 0), seed)
   const spine = feasibility.path === 'variance' ? RELIEF_ADD[city] ?? RELIEF_FALLBACK : 0
-  const entitlementMax = monthsIn(ENTITLEMENT_CATS, Math.max, 0)
-  const parallelSum = monthsIn(PARALLEL_CATS, (a, b) => a + b, 0)
-  const discretionaryMonths = Math.min(24, Math.max(spine, entitlementMax) + parallelSum)
+  const entMonths = hurdles
+    .filter((h) => ENTITLEMENT_CATS.has(h.category) && !h.serial && typeof h.addsMonths === 'number')
+    .map((h) => h.addsMonths as number)
+  const entitlementMax = entMonths.reduce((a, b) => Math.max(a, b), 0)
+  const entitlementSum = entMonths.reduce((a, b) => a + b, 0)
+  // Nested-with-partial-overlap: the longest process governs; the others
+  // contribute HALF their months (they overlap the spine but rarely perfectly —
+  // pure max() meant historic + environmental + large-project review on one
+  // site never stacked at all, contradicting the published methodology).
+  const nested = Math.max(spine, entitlementMax) + 0.5 * (entitlementSum - entitlementMax)
+  // Genuinely serial processes (e.g. a Coastal Development Permit) and
+  // parallel-but-additive ones (public-funding/prevailing-wage) add in full.
+  const serialSum = hurdles
+    .filter((h) => h.serial && typeof h.addsMonths === 'number')
+    .reduce((a, h) => a + (h.addsMonths ?? 0), 0)
+  const parallelSum = hurdles
+    .filter((h) => PARALLEL_CATS.has(h.category) && typeof h.addsMonths === 'number')
+    .reduce((a, h) => a + (h.addsMonths ?? 0), 0)
+  const uncapped = Math.round(nested + serialSum + parallelSum)
+  const discretionaryMonths = Math.min(24, uncapped)
   if (timeline.path !== 'prohibited' && timeline.months > 0) timeline.months += discretionaryMonths
+  // Say when the cap bound — a silently-clamped worst case reads as confidence.
+  const capBound = uncapped > 24 && timeline.path !== 'prohibited' && timeline.months > 0
 
   const narrative = buildNarrative(parcel, project, feasibility, estimate, {
     timelineMonths: timeline.months,
@@ -219,6 +234,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
         ? ['Austin zoning reflects the city’s 2019 published layer and may not include recent reforms (e.g. the 2023–24 HOME changes). Verify current zoning with the City of Austin.']
         : []),
       ...(estimate.impactNote ? [estimate.impactNote] : []),
+      ...(capBound
+        ? ['Entitlement time was capped at 24 months in this estimate; heavily contested projects can exceed it.']
+        : []),
     ],
     generatedAt: new Date().toISOString(),
   }

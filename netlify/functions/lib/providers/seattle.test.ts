@@ -31,20 +31,16 @@ describe('getSeattleParcelInfo', () => {
     expect(info.existing?.landUse).toBe('Apartment')
   })
 
-  it('MIO-105-NC3-65: height regex grabs the LARGEST number → 105, NOT the NC3 base height 65', async () => {
-    // NOTE (suspected bug): seattleMaxHeightFt takes Math.max of every 2-3 digit
-    // number in the zone string. For an MIO (Master/Institution Overlay) layered
-    // over a base zone like "MIO-105-NC3-65", the 105 is the MIO institutional
-    // height, while the by-right base height for a non-institutional project is
-    // the NC3-65's 65. The code reports 105, which overstates the by-right cap
-    // for a typical NC3 development. This test PINS that current behavior; it does
-    // not endorse it. See seattle.ts seattleMaxHeightFt (lines ~31-46).
+  it('MIO-105-NC3-65: height is the TRAILING base-zone number (65), not the MIO overlay 105', async () => {
+    // Fixed in Phase 5: the old Math.max over every number reported the MIO
+    // (Major Institution Overlay) height instead of the by-right NC3 base,
+    // overstating the envelope for non-institutional projects on layered zones.
     vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(seattleRoutesMio))
     const res = await getSeattleParcelInfo(LAT, LNG)
     expect(res.ok).toBe(true)
     if (!res.ok) return
     expect(res.info.zoning.districtCode).toBe('MIO-105-NC3-65')
-    expect(res.info.zoning.maxHeightFt).toBe(105)
+    expect(res.info.zoning.maxHeightFt).toBe(65)
   })
 
   it('industrial U/## rule: height is unlimited by-right → maxHeightFt null', async () => {

@@ -90,9 +90,38 @@ describe('assessFeasibility', () => {
     expect(r.checks.find((c) => c.dimension === 'height')?.status).toBe('NEEDS_RELIEF')
   })
 
-  it('flags use needing relief when not in the allowed list', () => {
+  it('PROHIBITS a use with no adjacency to anything allowed (commercial in pure residential)', () => {
+    // WO-5.4: use variances are the hardest relief to get (banned in several
+    // states) — a flat-out use conflict must score WORSE than a FAR overage,
+    // not the old blanket NEEDS_RELIEF.
     const r = assessFeasibility(parcel({ districtCode: 'R-1' }), project({ use: 'commercial', gfa: 5000, heightFt: 30 }))
+    expect(r.checks.find((c) => c.dimension === 'use')?.status).toBe('PROHIBITED')
+  })
+
+  it('keeps an ADJACENT use at NEEDS_RELIEF (mixed proposed where residential is allowed)', () => {
+    const r = assessFeasibility(parcel({ districtCode: 'R-1' }), project({ use: 'mixed', gfa: 5000, heightFt: 30, units: 4 }))
     expect(r.checks.find((c) => c.dimension === 'use')?.status).toBe('NEEDS_RELIEF')
+  })
+
+  it('caps the verdict at INDETERMINATE for a tall proposal with no height limit on record (WO-5.2)', () => {
+    // B-2 resolves FAR/uses from the family letter but has no height token:
+    // use + FAR pass, height is unknown, and the proposal is 600 ft.
+    const r = assessFeasibility(parcel({ districtCode: 'B-2' }), project({ gfa: 5000, heightFt: 600 }))
+    expect(r.checks.find((c) => c.dimension === 'height')?.status).toBe('INDETERMINATE')
+    expect(r.overall).toBe('INDETERMINATE')
+  })
+
+  it('does NOT punish modest heights when the limit is unknown (WO-5.2)', () => {
+    const r = assessFeasibility(parcel({ districtCode: 'B-2' }), project({ gfa: 5000, heightFt: 30 }))
+    expect(r.overall).toBe('AS_OF_RIGHT')
+  })
+
+  it('asks for a unit count instead of firing no-net-loss off a blank field (WO-5.3)', () => {
+    const p: ParcelInfo = { ...parcel(), existing: { landUse: 'Apartment building', units: 12 } }
+    const r = assessFeasibility(p, project({ use: 'residential', gfa: 20000, units: undefined, projectType: 'new', heightFt: 30 }))
+    const housing = r.checks.find((c) => c.dimension === 'housing')
+    expect(housing?.status).toBe('INDETERMINATE')
+    expect(r.overall).not.toBe('PROHIBITED')
   })
 
   it('is indeterminate when district is unknown', () => {

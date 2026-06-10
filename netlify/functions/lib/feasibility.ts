@@ -1,7 +1,8 @@
 import type { ParcelInfo } from '../../../src/types/parcel'
-import type { AnalysisInput, ApprovalPath, CheckStatus, FeasibilityCheck } from '../../../src/types/analysis'
+import type { AnalysisInput, ApprovalPath, CheckStatus, FeasibilityCheck, Use } from '../../../src/types/analysis'
 import { resolveZoningLimits } from './zoningLimits'
 import { ftPerStory } from './assumptions'
+import { avgUnitGrossSqFt } from '../../../src/config/estimates'
 
 const SEVERITY: Record<CheckStatus, number> = {
   AS_OF_RIGHT: 0,
@@ -18,6 +19,28 @@ const SEVERITY: Record<CheckStatus, number> = {
 // doctrine (NY ZR §72-21; area- vs use-variance literature).
 const RELIEF_FACTOR_HEIGHT = 1.5
 const RELIEF_FACTOR_FAR = 1.2
+
+// A proposal taller than this on a parcel whose district carries NO height
+// limit in public data can't honestly be called "as-of-right" — outside
+// downtown cores, by-right envelopes above ~85 ft are rare, and use variances
+// aside, height is the dimension most likely to bite. Below it (houses,
+// triplexes) the missing limit shouldn't punish obviously-modest projects.
+const UNKNOWN_HEIGHT_CONFIDENCE_FT = 85
+
+// Use adjacency: a use that's "next door" to an allowed one (mixed↔residential,
+// mixed↔commercial) is plausible variance/special-permit territory. A use with
+// NO adjacency to anything allowed (a factory or office tower in a pure
+// residential district) needs a USE variance — the hardest relief to get,
+// banned outright in several states — so it scores PROHIBITED, not the old
+// blanket NEEDS_RELIEF (which made a use conflict read as LESS severe than a
+// 1.3× FAR overage). Institutional stays adjacent-to-everything: schools,
+// churches, and clinics are conditionally permitted in most district types.
+const USE_ADJACENT: Record<Use, Use[]> = {
+  residential: ['mixed'],
+  mixed: ['residential', 'commercial'],
+  commercial: ['mixed'],
+  institutional: ['residential', 'commercial', 'mixed'],
+}
 
 // Classify a proposed value against a limit: within → as-of-right, modestly over
 // → relief, grossly over → prohibited. reliefFactor differs by dimension.
@@ -47,7 +70,12 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   } else if (limits.allowedUses.includes(project.use)) {
     checks.push({ dimension: 'use', status: 'AS_OF_RIGHT', proposed: project.use, allowed: limits.allowedUses.join(', '), note: null })
   } else {
-    checks.push({ dimension: 'use', status: 'NEEDS_RELIEF', proposed: project.use, allowed: limits.allowedUses.join(', '), note: 'Proposed use is not listed for this district; a use variance would be required.' })
+    const adjacent = USE_ADJACENT[project.use].some((u) => limits.allowedUses?.includes(u))
+    checks.push(
+      adjacent
+        ? { dimension: 'use', status: 'NEEDS_RELIEF', proposed: project.use, allowed: limits.allowedUses.join(', '), note: 'Proposed use is not listed for this district, but it is close to one that is; a special permit or use variance would be required.' }
+        : { dimension: 'use', status: 'PROHIBITED', proposed: project.use, allowed: limits.allowedUses.join(', '), note: 'Proposed use conflicts with everything this district allows. That takes a use variance — the hardest relief to get, and one several states bar outright — or a rezoning, so it isn’t buildable as proposed.' },
+    )
   }
 
   // FAR — prefer a use-specific limit (e.g. NYC Resid/Comm/Facil FAR) when present.
@@ -97,17 +125,34 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   // wrongly matched commercial labels like "COMM MULTI-USE" and fired no-net-loss.
   const multifamilyExisting =
     exUnits >= 3 || /apartment|condo|multi-?family|triplex|fourplex|elevator|tenement|\bflats\b/i.test(exLu)
-  const proposedResUnits =
-    project.use === 'residential' || project.use === 'mixed' ? (project.units ?? 1) : 0
+  const isResidentialish = project.use === 'residential' || project.use === 'mixed'
+  // A residential project with NO unit count entered must not be treated as
+  // "1 unit proposed" — that fired no-net-loss PROHIBITED off a blank field.
+  // We ask for the number instead (INDETERMINATE), and only run the rule when
+  // we actually know what's being proposed.
+  if (project.projectType === 'new' && multifamilyExisting && isResidentialish && project.units == null) {
+    checks.push({
+      dimension: 'housing',
+      status: 'INDETERMINATE',
+      proposed: 'unit count not entered',
+      allowed: exUnits > 0 ? `${exUnits} existing` : 'existing multifamily',
+      note: 'The record shows existing multifamily housing here. Enter the proposed unit count to check the city’s housing-replacement (no-net-loss) rules.',
+    })
+  }
+  const proposedResUnits = isResidentialish ? (project.units ?? 0) : 0
+  const unitCountProposed = !isResidentialish || project.units != null
   // When the record names multifamily housing but omits a unit count, estimate
   // it from building area so the no-net-loss rule still fires (don't let a
-  // missing number wave through demolishing apartments).
+  // missing number wave through demolishing apartments). Uses the same gross
+  // sf/unit constant as the rest of the engine (1,300) — the old 1,000 net
+  // figure over-counted existing units by ~30% and over-fired the rule.
   const exb = ex?.buildingAreaSqFt ?? 0
   const unitsKnown = exUnits > 0
-  const effectiveExUnits = unitsKnown ? exUnits : exb > 0 ? Math.max(3, Math.round(exb / 1000)) : 3
+  const effectiveExUnits = unitsKnown ? exUnits : exb > 0 ? Math.max(3, Math.round(exb / avgUnitGrossSqFt)) : 3
   if (
     project.projectType === 'new' &&
     multifamilyExisting &&
+    unitCountProposed &&
     proposedResUnits < effectiveExUnits
   ) {
     // Confidence heuristic (NOT a legal threshold — no-net-loss laws like CA
@@ -134,13 +179,21 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   // otherwise-clear verdict to "indeterminate" — it still shows in the checklist.
   // Only when no dimension is decisive does the verdict become indeterminate.
   const decisive = checks.filter((c) => c.status !== 'INDETERMINATE')
-  const overall: CheckStatus =
+  let overall: CheckStatus =
     decisive.length === 0
       ? 'INDETERMINATE'
       : decisive.reduce<CheckStatus>(
           (worst, c) => (SEVERITY[c.status] > SEVERITY[worst] ? c.status : worst),
           'AS_OF_RIGHT',
         )
+  // Tall proposal + no height limit in public data: don't let the machine
+  // verdict read AS_OF_RIGHT (a 600 ft tower on a brownstone block in NYC —
+  // where height is never in PLUTO — previously sailed through on use + FAR).
+  // Modest heights below the confidence bound keep their verdict.
+  const heightUnknown = checks.some((c) => c.dimension === 'height' && c.status === 'INDETERMINATE')
+  if (overall === 'AS_OF_RIGHT' && heightUnknown && effHeight != null && effHeight > UNKNOWN_HEIGHT_CONFIDENCE_FT) {
+    overall = 'INDETERMINATE'
+  }
   const path: ApprovalPath = overall === 'PROHIBITED' ? 'prohibited' : overall === 'NEEDS_RELIEF' ? 'variance' : 'as_of_right'
   // The envelope is "known" when the city's DATA gives us a FAR or height limit —
   // independent of whether the user proposed a value to compare. (Previously this

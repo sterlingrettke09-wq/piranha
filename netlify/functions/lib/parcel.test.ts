@@ -184,7 +184,9 @@ describe('parcel handler — NYC (MapPLUTO)', () => {
     expect(body.zoning.districtCode).toBe('C6-7')
     expect(body.zoning.maxHeightFt).toBeNull()
     expect(body.zoning.maxFAR).toBe(15)
-    expect(body.zoning.farByUse).toEqual({ residential: 10, commercial: 15, institutional: 15, mixed: 15 })
+    // mixed = min(resid, comm): the conservative bound (WO-5.1) — NYC mixed-use
+    // FAR is district-specific and never simply the higher single-use max.
+    expect(body.zoning.farByUse).toEqual({ residential: 10, commercial: 15, institutional: 15, mixed: 10 })
     expect(body.zoning.allowedUses).toContain('commercial')
     expect(body.lot.sizeSqFt).toBe(45800)
     expect(body.overlays.floodZone).toBe('X')

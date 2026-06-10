@@ -69,12 +69,18 @@ describe('assessHurdles — Boston', () => {
 })
 
 describe('assessHurdles — other cities', () => {
-  it('NYC: MIH for 10+ units, ULURP + CEQR for large projects', () => {
-    const hs = assessHurdles('nyc', parcel({}), project({ city: 'nyc', units: 40, gfa: 60000 }))
-    const labels = hs.map((h) => h.label).join(' | ')
-    expect(labels).toMatch(/Mandatory Inclusionary/)
+  it('NYC: MIH for 10+ units; ULURP + CEQR only on the DISCRETIONARY path (WO-5.7)', () => {
+    // ULURP applies to discretionary actions — an as-of-right 60k sf building
+    // never runs it. The old GFA-only trigger over-penalized as-of-right NYC
+    // projects by 7 months.
+    const aor = assessHurdles('nyc', parcel({}), project({ city: 'nyc', units: 40, gfa: 60000 }), { path: 'as_of_right' })
+    expect(aor.map((h) => h.label).join(' | ')).toMatch(/Mandatory Inclusionary/)
+    expect(aor.some((h) => /ULURP/.test(h.label))).toBe(false)
+
+    const disc = assessHurdles('nyc', parcel({}), project({ city: 'nyc', units: 40, gfa: 60000 }), { path: 'variance' })
+    const labels = disc.map((h) => h.label).join(' | ')
     expect(labels).toMatch(/ULURP/)
-    expect(cats(hs)).toContain('environmental')
+    expect(cats(disc)).toContain('environmental')
   })
 
   it('SF: inclusionary + CEQA always flagged', () => {

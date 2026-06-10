@@ -87,8 +87,13 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
   if (resid != null) farByUse.residential = resid
   if (comm != null) farByUse.commercial = comm
   if (facil != null) farByUse.institutional = facil
-  const mixed = Math.max(resid ?? 0, comm ?? 0)
-  if (mixed > 0) farByUse.mixed = mixed
+  // Mixed-use FAR in NYC is district-specific and frequently LOWER than either
+  // single-use max — never max(resid, comm), which overstated the envelope and
+  // let mixed projects needing relief read as-of-right (WO-5.1). min() is the
+  // conservative bound: it can understate (worst case NEEDS_RELIEF instead of
+  // AS_OF_RIGHT), which is the safe failure direction for this product.
+  const mixedComponents = [resid, comm].filter((n): n is number => n != null && n > 0)
+  if (mixedComponents.length > 0) farByUse.mixed = Math.min(...mixedComponents)
   // Headline FAR reflects the residential/commercial as-of-right limit, NOT the
   // community-facility FAR (FacilFAR) — that's higher and applies only to CF uses
   // (schools, hospitals). Including it made R7-2 display "Max FAR 6.5" while the

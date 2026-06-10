@@ -1,6 +1,6 @@
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
-import { impactFee } from '../../../src/config/estimates'
+import { impactFee, MIXED_RESIDENTIAL_SHARE } from '../../../src/config/estimates'
 import {
   costPerSqFtByUse,
   cityCostIndex,
@@ -36,7 +36,9 @@ export function estimateCost(
   opts: CostOpts = {},
 ): CostEstimate {
   const cityIdx = cityCostIndex[project.city] ?? 1.0
-  const stories = project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / ftPerStory(project.use)) : null)
+  // ceil, not round: a 53 ft commercial building IS a 5-story (concrete-tier)
+  // building — rounding down let boundary heights land in the cheaper wood tier.
+  const stories = project.stories ?? (project.heightFt != null ? Math.ceil(project.heightFt / ftPerStory(project.use)) : null)
   // Renovations / ADUs / changes-of-use cost less per sq ft than ground-up new
   // construction. Scale by the same project-scope factor the timeline uses, so
   // cost and schedule stay consistent. (new = 1.0.)
@@ -46,9 +48,15 @@ export function estimateCost(
   )
   const soft = Math.round(hard * softCostPct)
   const demoSf = opts.demolitionSqFt ?? 0
-  // Size-tier the demo rate: small/residential teardowns run cheaper per sf; large
-  // concrete/steel structures cost more (phased demo, hauling). $12 base ≈ mid.
-  const demoRate = demoSf >= 20000 ? 18 : demoSf > 0 && demoSf < 5000 ? 10 : demoCostPerSqFt
+  // Demo rate scales with size: small/residential teardowns run ~$10/sf; large
+  // concrete/steel structures ~$18/sf (phased demo, hauling). Linearly
+  // interpolated between 5k and 20k sf — the old step tiers made one square
+  // foot at the 20k boundary worth $120,000.
+  const demoRate =
+    demoSf <= 0 ? demoCostPerSqFt
+    : demoSf <= 5000 ? 10
+    : demoSf >= 20000 ? 18
+    : 10 + ((demoSf - 5000) / 15000) * 8
   const demolition = demoSf > 0 ? Math.round(demoSf * demoRate * cityIdx) : 0
   const constructionValue = hard
   let permit = Math.round(PERMIT_BASE_FEE + (constructionValue / 1000) * PERMIT_RATE_PER_1000)
@@ -56,7 +64,11 @@ export function estimateCost(
   // Affordable-housing / linkage fee. Baked into the total only when we can verify
   // the trigger (use + size); otherwise surfaced as an informational note.
   const fee = impactFee(project.city, project.use, project.gfa, project.units ?? null, opts.feeArea)
-  const impact = fee && fee.applied ? Math.round(fee.perSqFt * project.gfa) : 0
+  // Mixed-use projects trigger COMMERCIAL-class fees (linkage etc.), which
+  // shouldn't bill the residential floors — apply them to the nonresidential
+  // share of GFA only.
+  const feeGfa = project.use === 'mixed' ? Math.round(project.gfa * (1 - MIXED_RESIDENTIAL_SHARE)) : project.gfa
+  const impact = fee && fee.applied ? Math.round(fee.perSqFt * feeGfa) : 0
   const impactNote =
     fee && !fee.applied
       ? `${fee.label}: roughly $${fee.perSqFt}/sq ft — not included in the total above.`

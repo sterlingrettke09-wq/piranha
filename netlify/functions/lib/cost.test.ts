@@ -83,26 +83,26 @@ describe('estimateCost', () => {
   })
 })
 
-// WO-2.4: pins the demo-rate tiers INCLUDING the boundary cliffs that WO-5.6
-// will replace with interpolation — update these expectations there.
-describe('demolition rate tiers (current cliff behavior)', () => {
+// WO-5.6: the demo rate interpolates linearly between (5k sf, $10) and
+// (20k sf, $18) — the old step tiers made one square foot at the 20k boundary
+// worth $120,000, an instant credibility hit with any real developer.
+describe('demolition rate (interpolated)', () => {
   const demoRate = (sf: number) => {
     const c = estimateCost(project, asOfRight, { demolitionSqFt: sf }).costs.demolition
-    return c / sf // city index 1.0 for parcelId-only project (no city → idx 1)
+    return c / sf // city index 1.0 (no city on the project)
   }
-  it('small (<5,000 sf) teardowns run $10/sf', () => {
-    expect(demoRate(4_999)).toBeCloseTo(10, 3)
+  it('small (≤5,000 sf) teardowns run $10/sf', () => {
+    expect(demoRate(4_999)).toBeCloseTo(10, 2)
+    expect(demoRate(5_000)).toBeCloseTo(10, 2)
   })
-  it('mid-size runs the $12/sf base', () => {
-    expect(demoRate(5_000)).toBeCloseTo(12, 3)
-    expect(demoRate(19_999)).toBeCloseTo(12, 3)
+  it('interpolates between the bounds (12,500 sf → $14/sf)', () => {
+    expect(demoRate(12_500)).toBeCloseTo(14, 2)
   })
-  it('large (≥20,000 sf) runs $18/sf — a $120k cliff at the boundary today', () => {
-    expect(demoRate(20_000)).toBeCloseTo(18, 3)
-    // NOTE: 19,999 sf ≈ $240k vs 20,000 sf = $360k. WO-5.6 interpolates this away.
+  it('large (≥20,000 sf) runs $18/sf with no boundary cliff', () => {
+    expect(demoRate(20_000)).toBeCloseTo(18, 2)
     const below = estimateCost(project, asOfRight, { demolitionSqFt: 19_999 }).costs.demolition
     const above = estimateCost(project, asOfRight, { demolitionSqFt: 20_000 }).costs.demolition
-    expect(above - below).toBeGreaterThan(100_000)
+    expect(above - below).toBeLessThan(100) // continuous, not a $120k step
   })
 })
 
@@ -127,8 +127,10 @@ describe('impact fees per city', () => {
   it('Denver: residential <10 units pays $5/sf; 10+ units pays none (inclusionary mandate); commercial varies by EHA area', () => {
     expect(at({ city: 'denver', use: 'residential', gfa: 8_000, units: 4 }).costs.impact).toBe(40_000)
     expect(at({ city: 'denver', use: 'residential', gfa: 80_000, units: 60 }).costs.impact).toBe(0)
-    // NOTE (WO-5.6): units omitted currently defaults to 1 → fee charged.
-    expect(at({ city: 'denver', use: 'residential', gfa: 8_000 }).costs.impact).toBe(40_000)
+    // WO-5.6: units omitted → tier unknowable → informational note, not a charge.
+    const unknown = at({ city: 'denver', use: 'residential', gfa: 8_000 })
+    expect(unknown.costs.impact).toBe(0)
+    expect(unknown.impactNote).toMatch(/unit count needed/)
     expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'High' }).costs.impact).toBe(90_000)
     expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'Typical' }).costs.impact).toBe(60_000)
   })
