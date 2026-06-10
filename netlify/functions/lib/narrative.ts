@@ -20,6 +20,7 @@ const DIMENSION_LABEL: Record<string, string> = {
   far: 'floor-area ratio (FAR)',
   height: 'height',
   housing: 'existing housing',
+  historic: 'historic district',
 }
 const USE_LABEL: Record<string, string> = {
   residential: 'residential',

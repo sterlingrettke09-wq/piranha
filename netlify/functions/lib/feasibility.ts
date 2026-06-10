@@ -174,6 +174,27 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
     })
   }
 
+  // HISTORIC — tearing down a building in a designated local historic district
+  // is not as-of-right. Demolition needs a discretionary certificate from the
+  // historic commission (Boston: a Certificate of Design Approval), routinely
+  // refused for contributing structures. NEEDS_RELIEF, not PROHIBITED: some
+  // teardowns do clear review, and the conservative direction here is to stop
+  // overstating buildability, not to overstate the bar. Only fires on a
+  // ground-up rebuild ('new') where a building actually stands today.
+  // (An addition in-district is review too, but lighter — left for later.)
+  const district = parcel.overlays.historicDistrict
+  const hasExistingBuilding =
+    (ex?.buildingAreaSqFt ?? 0) > 0 || ex?.yearBuilt != null || (ex?.landUse ?? '') !== ''
+  if (project.projectType === 'new' && district && hasExistingBuilding) {
+    checks.push({
+      dimension: 'historic',
+      status: 'NEEDS_RELIEF',
+      proposed: 'demolish + rebuild',
+      allowed: district,
+      note: `This parcel sits in the ${district}. Tearing down the existing building needs the historic commission’s sign-off — a discretionary approval that is often refused for contributing structures. Expect this to be the project’s hardest gate.`,
+    })
+  }
+
   // Overall reflects the worst DECISIVE check. A single indeterminate dimension
   // (e.g. NYC height, which public data doesn't carry) shouldn't drag an
   // otherwise-clear verdict to "indeterminate" — it still shows in the checklist.

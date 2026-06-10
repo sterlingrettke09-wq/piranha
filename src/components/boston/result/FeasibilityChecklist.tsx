@@ -15,6 +15,7 @@ const DIMENSION_LABEL: Record<FeasibilityCheck['dimension'], string> = {
   far: 'Floor-area ratio (FAR)',
   height: 'Height',
   housing: 'Existing housing',
+  historic: 'Historic district',
 }
 
 const DIMENSION_HINT: Partial<Record<FeasibilityCheck['dimension'], string>> = {

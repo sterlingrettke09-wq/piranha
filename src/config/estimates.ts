@@ -8,7 +8,7 @@ import type { ProjectType, Use } from '../types/analysis'
 // that consumes it) changes. It's appended to /api/analyze URLs as a cache
 // key, so tuned numbers propagate immediately instead of serving stale cached
 // verdicts for up to 24h (+7d stale-while-revalidate).
-export const ESTIMATES_VERSION = 2
+export const ESTIMATES_VERSION = 3
 
 // Human-readable vintage of the cost tables, surfaced on the result page so the
 // data provenance can't silently drift from the figures above. Sourced from the

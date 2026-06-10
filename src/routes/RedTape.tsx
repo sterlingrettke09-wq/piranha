@@ -73,45 +73,54 @@ function StatChips({ city }: { city: RankedCity }) {
 export default function RedTape() {
   const ranked = computeRedTapeIndex()
   const [open, setOpen] = useState<string | null>(null)
+  // Longest total process across the ten cities — sets the full-width bar.
+  const maxMonths = Math.max(...ranked.map((r) => r.lifecycleMonths + r.reliefAddMonths), 1)
 
   return (
     <PageContainer>
       <div className="mx-auto max-w-4xl space-y-14 py-10 sm:py-16">
         <PageHeading eyebrow="The Red Tape Index" title="Ranking ten cities by the cost of permission.">
-          Pick one project — a mid-rise apartment building, about 40,000 square feet, ground-up
-          new construction — and ask the same question of every city we cover: how many months of
-          process, and how much in fees, before you can build it? This is that answer, ranked from
-          least red tape to most. Open any city for the story behind its number.
+          <p className="font-serif text-2xl leading-snug tracking-tight text-piranha-charcoal">
+            One building. Ten cities. Wildly different answers.
+          </p>
+          <p className="mt-5 text-lg leading-relaxed text-piranha-charcoal/70">
+            Take the same project — a 40,000 sq ft apartment building — and ask every city: how
+            long, and how much, before you can build it? Rank by the answer. Tap a city for its
+            story.
+          </p>
         </PageHeading>
 
         <Reveal>
-          <section className="space-y-4 leading-relaxed text-piranha-charcoal/75">
+          <section className="text-sm leading-relaxed text-piranha-charcoal/70">
             <p>
-              Every number below is computed from the same constants as every report we produce —{' '}
+              Computed live from the same engine as every report. No hand-typed numbers.{' '}
               <Link className="text-piranha-burgundy underline underline-offset-2" to="/math">
-                see the methodology
+                See the math
               </Link>
-              . There are no hand-typed figures on this page: change a timeline or a fee in the
-              engine and this ranking reorders itself.
+              .
             </p>
-            <p>
-              <span className="font-semibold text-piranha-charcoal">Months of process</span> is the
-              full by-right life-cycle for an apartment-tier project in that city, plus the time a
-              single dimensional variance typically adds.{' '}
-              <span className="font-semibold text-piranha-charcoal">Fees</span> is the affordable-
-              housing or linkage fee, in dollars per square foot, that this reference project would
-              actually owe — an em-dash where none applies to a residential building of this size.
-              The composite normalizes both to a 0–100 scale across the ten cities, weights months
-              at 70 percent and fees at 30 percent, and ranks ascending. Lower is freer to build.
-            </p>
-            <p>
-              <span className="font-semibold text-piranha-charcoal">Parking mandate</span> shows
-              whether a city still forces off-street parking on new housing — a flagship reform that
-              can swing project cost — read from each city&rsquo;s own ordinance (see the per-parcel
-              detail in any report). It&rsquo;s shown here for context only and is{' '}
-              <span className="font-semibold text-piranha-charcoal">not</span> folded into the score;
-              the composite remains months and fees alone.
-            </p>
+            <details className="tpp-card mt-4 rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-5">
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-piranha-burgundy">
+                How the score works
+              </summary>
+              <ul className="mt-4 space-y-2 text-piranha-charcoal/70">
+                <li>
+                  <span className="font-semibold text-piranha-charcoal">Months</span> — by-right
+                  lifecycle plus typical variance time.
+                </li>
+                <li>
+                  <span className="font-semibold text-piranha-charcoal">Fees</span> — housing or
+                  linkage dollars per sq ft this building would owe.
+                </li>
+                <li>
+                  <span className="font-semibold text-piranha-charcoal">Score</span> — 70% months,
+                  30% fees, 0–100. Lower is freer.
+                </li>
+              </ul>
+              <p className="mt-3 text-xs text-piranha-charcoal/50">
+                Parking is shown for context, never scored.
+              </p>
+            </details>
           </section>
         </Reveal>
 
@@ -122,8 +131,7 @@ export default function RedTape() {
                 <tr className="border-b border-piranha-charcoal/10 text-left text-xs uppercase tracking-[0.12em] text-piranha-charcoal/45">
                   <th className="px-5 py-3 font-semibold">#</th>
                   <th className="px-5 py-3 font-semibold">City</th>
-                  <th className="px-5 py-3 text-right font-semibold">Process</th>
-                  <th className="px-5 py-3 text-right font-semibold">+ Variance</th>
+                  <th className="px-5 py-3 font-semibold">Months of process</th>
                   <th className="px-5 py-3 text-right font-semibold">Fee / sf</th>
                   <th className="px-5 py-3 font-semibold">Parking mandate</th>
                   <th className="px-5 py-3 text-right font-semibold">Score</th>
@@ -144,13 +152,28 @@ export default function RedTape() {
                           isOpen ? 'bg-piranha-bone/60' : ''
                         }`}
                       >
-                        <td className="px-5 py-3 font-serif tabular-nums text-piranha-gold">{r.rank}</td>
-                        <td className="px-5 py-3 font-medium text-piranha-charcoal">{name}</td>
-                        <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
-                          {fmtMonths(r.lifecycleMonths)}
+                        <td className="px-5 py-3 font-serif text-3xl leading-none tabular-nums text-piranha-gold sm:text-4xl">
+                          {r.rank}
                         </td>
-                        <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
-                          {fmtMonths(r.reliefAddMonths)}
+                        <td className="px-5 py-3 font-medium text-piranha-charcoal">{name}</td>
+                        <td className="px-5 py-3">
+                          {(() => {
+                            const total = r.lifecycleMonths + r.reliefAddMonths
+                            const pct = Math.max(6, Math.round((total / maxMonths) * 100))
+                            return (
+                              <div className="flex items-center gap-3">
+                                <div className="h-2 min-w-[60px] flex-1 overflow-hidden rounded-full bg-piranha-charcoal/8">
+                                  <div
+                                    className="h-full rounded-full bg-piranha-burgundy"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className="shrink-0 tabular-nums text-piranha-charcoal/75">
+                                  {fmtMonths(total)}
+                                </span>
+                              </div>
+                            )
+                          })()}
                         </td>
                         <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
                           {fmtFee(r.feePerSqFt)}
@@ -195,7 +218,7 @@ export default function RedTape() {
                       </tr>
                       {isOpen && (
                         <tr className="border-b border-piranha-charcoal/5 last:border-0">
-                          <td colSpan={8} className="bg-piranha-bone/60 px-5 pb-6 pt-1">
+                          <td colSpan={7} className="bg-piranha-bone/60 px-5 pb-6 pt-1">
                             <div id={panelId} className="max-w-2xl">
                               <p className="font-serif text-lg leading-relaxed tracking-tight text-piranha-charcoal">
                                 {storyFor(r, ranked)}

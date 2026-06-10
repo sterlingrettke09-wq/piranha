@@ -23,7 +23,8 @@ export function RealityCheck({ result }: { result: AnalysisResult }) {
   return (
     <section
       aria-label="Reality check"
-      className="tpp-card relative overflow-hidden rounded-2xl bg-piranha-charcoal text-piranha-bone print:border print:border-piranha-charcoal/30 print:bg-white print:text-piranha-charcoal"
+      style={{ background: 'linear-gradient(135deg, #1A1414, #2A1218)' }}
+      className="tpp-card relative overflow-hidden rounded-2xl text-piranha-bone print:border print:border-piranha-charcoal/30 print:!bg-white print:!bg-none print:text-piranha-charcoal"
     >
       {/* Faint gold top rule — a hairline of brand color across the dark band. */}
       <span
@@ -38,11 +39,12 @@ export function RealityCheck({ result }: { result: AnalysisResult }) {
           What the records actually show in {name} — not the model’s estimate.
         </p>
 
-        <div className="mt-6 grid gap-px overflow-hidden rounded-xl bg-piranha-bone/15 sm:grid-cols-2 lg:grid-cols-3 print:gap-4 print:bg-transparent">
+        <div className="mt-6 grid gap-px overflow-hidden rounded-xl bg-piranha-gold/20 sm:grid-cols-2 lg:grid-cols-3 print:gap-4 print:bg-transparent">
           {cards.map((card) => (
             <div
               key={card.id}
-              className="flex flex-col bg-piranha-charcoal p-5 print:rounded-lg print:border print:border-piranha-charcoal/20 print:bg-white"
+              style={{ background: '#231114' }}
+              className="flex flex-col p-5 print:rounded-lg print:border print:border-piranha-charcoal/20 print:!bg-white"
             >
               <p className="text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-piranha-bone/55 print:text-piranha-charcoal/55">
                 {card.kicker}

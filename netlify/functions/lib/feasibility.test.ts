@@ -139,4 +139,35 @@ describe('assessFeasibility', () => {
     const r = assessFeasibility(parcel({}, null), project())
     expect(r.checks.find((c) => c.dimension === 'far')?.status).toBe('INDETERMINATE')
   })
+
+  it('needs relief to demolish in a historic district (existing building + new construction)', () => {
+    const p: ParcelInfo = {
+      ...parcel(),
+      overlays: { historicDistrict: 'Historic Beacon Hill District', floodZone: null },
+      existing: { landUse: 'Single-family residential', yearBuilt: 1899 },
+    }
+    const r = assessFeasibility(p, project({ use: 'residential', gfa: 5000, units: 4, projectType: 'new', heightFt: 40 }))
+    const historic = r.checks.find((c) => c.dimension === 'historic')
+    expect(historic?.status).toBe('NEEDS_RELIEF')
+    expect(r.overall).toBe('NEEDS_RELIEF')
+  })
+
+  it('does not fire the historic check on a vacant lot in a historic district', () => {
+    const p: ParcelInfo = {
+      ...parcel(),
+      overlays: { historicDistrict: 'Historic Beacon Hill District', floodZone: null },
+    }
+    const r = assessFeasibility(p, project({ use: 'residential', gfa: 5000, units: 4, projectType: 'new', heightFt: 40 }))
+    expect(r.checks.find((c) => c.dimension === 'historic')).toBeUndefined()
+  })
+
+  it('does not fire the historic check for an addition (renovation review is lighter)', () => {
+    const p: ParcelInfo = {
+      ...parcel(),
+      overlays: { historicDistrict: 'Historic Beacon Hill District', floodZone: null },
+      existing: { landUse: 'Single-family residential', yearBuilt: 1899 },
+    }
+    const r = assessFeasibility(p, project({ use: 'residential', gfa: 5000, units: 4, projectType: 'addition', heightFt: 40 }))
+    expect(r.checks.find((c) => c.dimension === 'historic')).toBeUndefined()
+  })
 })

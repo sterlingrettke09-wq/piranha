@@ -106,24 +106,24 @@ const FEATURES = [
   {
     n: '01',
     title: 'Every hurdle',
-    body: 'Beyond zoning: historic review, affordability mandates, environmental review, parking rules, prevailing-wage rules, and private covenants, all surfaced for your exact parcel.',
+    body: 'Historic review, affordability mandates, environmental review, parking, prevailing wage, private covenants — for your exact parcel.',
   },
   {
     n: '02',
     title: 'What it costs',
-    body: 'Hard costs, soft costs, permit fees, and the cost of clearing each approval your project triggers. A rough order of magnitude, with every assumption shown.',
+    body: 'Hard costs, soft costs, fees, and the price of clearing each approval. Every assumption shown.',
   },
   {
     n: '03',
     title: 'How long it takes',
-    body: 'The months to a permit on the path your project actually lands on, whether a straight shot or the longer road through special approvals and public review.',
+    body: 'Months to a permit on the path your project actually lands on.',
   },
 ]
 
 const STEPS = [
-  { n: '01', title: 'Pick your parcel', body: 'Drop a pin or search any address, and we pull its zoning and property record.' },
-  { n: '02', title: 'Tell us the plan', body: 'What you want to build: use, size, height, and how it’s funded. A minute, tops. No account, no consultant.' },
-  { n: '03', title: 'See where you stand', body: 'What you’re allowed to build, the approvals it triggers, what they’ll cost, and how long they’ll take.' },
+  { n: '01', title: 'Pick your parcel', body: 'Search any address or drop a pin.' },
+  { n: '02', title: 'Tell us the plan', body: 'Use, size, height, funding. A minute, tops.' },
+  { n: '03', title: 'See where you stand', body: 'What you can build, the approvals, the cost, the time.' },
 ]
 
 // Cities grouped by launch wave, each listed alphabetically.
@@ -158,8 +158,8 @@ export default function Home() {
           </Reveal>
           <Reveal delay={120}>
             <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-piranha-bone/80">
-              Zoning is only the start. A stack of other rules piles on cost, time, and doubt before
-              you break ground.
+              Zoning is only the start. A stack of other rules piles on cost and time before you
+              break ground.
             </p>
           </Reveal>
           <Reveal delay={120}>
@@ -188,7 +188,7 @@ export default function Home() {
         <div className="mx-auto max-w-6xl">
           <Reveal>
             <h2 className="text-center font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
-              Everything between you and a finished building.
+              Every rule. Every fee. Every month. Counted.
             </h2>
           </Reveal>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
@@ -216,7 +216,7 @@ export default function Home() {
               How it works
             </p>
             <h2 className="mt-4 max-w-2xl font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-charcoal">
-              From an address to an answer.
+              Click a parcel. Get the verdict.
             </h2>
           </Reveal>
           <div className="mt-16 grid gap-12 sm:grid-cols-3">
@@ -232,11 +232,10 @@ export default function Home() {
           </div>
           <Reveal delay={120}>
             <p className="mt-12 text-sm leading-relaxed text-piranha-charcoal/65">
-              Weighing two sites? Run a parcel, then{' '}
+              Weighing two sites?{' '}
               <Link to="/map" className="text-piranha-burgundy underline underline-offset-2 hover:text-piranha-charcoal">
-                line a second one up against it
-              </Link>{' '}
-              — same project spec, side by side.
+                Run one, then line a second up against it.
+              </Link>
             </p>
           </Reveal>
         </div>
@@ -262,11 +261,10 @@ export default function Home() {
           </div>
           <Reveal delay={120}>
             <p className="mt-10 text-sm leading-relaxed text-piranha-bone/75">
-              Curious which city asks the least?{' '}
+              Which city asks the least?{' '}
               <Link to="/red-tape" className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone">
-                The Red Tape Index
-              </Link>{' '}
-              ranks all ten by the months and fees a single project carries.
+                The Red Tape Index ranks all ten.
+              </Link>
             </p>
           </Reveal>
         </div>
