@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { HandlerEvent } from '@netlify/functions'
-import { handler } from './parcel-shape'
-import { mockArcgisFetch, featureSetWithGeometry, ARCGIS_ERROR_200 } from './lib/providers/__fixtures__'
+import { handler } from '../parcel-shape'
+import { mockArcgisFetch, featureSetWithGeometry, ARCGIS_ERROR_200 } from './providers/__fixtures__'
 
 // The handler reuses fetchParcelSnap against each city's PARCELS endpoint. We
 // mock that fetch by URL substring. Boston's parcel layer is Parcels_24_detailed.
