@@ -82,3 +82,69 @@ describe('estimateCost', () => {
     expect(v.timeline.path).toBe('variance')
   })
 })
+
+// WO-2.4: pins the demo-rate tiers INCLUDING the boundary cliffs that WO-5.6
+// will replace with interpolation — update these expectations there.
+describe('demolition rate tiers (current cliff behavior)', () => {
+  const demoRate = (sf: number) => {
+    const c = estimateCost(project, asOfRight, { demolitionSqFt: sf }).costs.demolition
+    return c / sf // city index 1.0 for parcelId-only project (no city → idx 1)
+  }
+  it('small (<5,000 sf) teardowns run $10/sf', () => {
+    expect(demoRate(4_999)).toBeCloseTo(10, 3)
+  })
+  it('mid-size runs the $12/sf base', () => {
+    expect(demoRate(5_000)).toBeCloseTo(12, 3)
+    expect(demoRate(19_999)).toBeCloseTo(12, 3)
+  })
+  it('large (≥20,000 sf) runs $18/sf — a $120k cliff at the boundary today', () => {
+    expect(demoRate(20_000)).toBeCloseTo(18, 3)
+    // NOTE: 19,999 sf ≈ $240k vs 20,000 sf = $360k. WO-5.6 interpolates this away.
+    const below = estimateCost(project, asOfRight, { demolitionSqFt: 19_999 }).costs.demolition
+    const above = estimateCost(project, asOfRight, { demolitionSqFt: 20_000 }).costs.demolition
+    expect(above - below).toBeGreaterThan(100_000)
+  })
+})
+
+describe('impact fees per city', () => {
+  const at = (over: Partial<AnalysisInput>, opts?: { feeArea?: string }) =>
+    estimateCost({ ...project, ...over }, asOfRight, opts ?? {})
+
+  it('Boston: commercial ≥50k sf pays linkage; smaller and residential do not', () => {
+    expect(at({ city: 'boston', use: 'commercial', gfa: 50_000 }).costs.impact).toBe(
+      Math.round(23.09 * 50_000),
+    )
+    expect(at({ city: 'boston', use: 'commercial', gfa: 49_999 }).costs.impact).toBe(0)
+    expect(at({ city: 'boston', use: 'residential', gfa: 80_000 }).costs.impact).toBe(0)
+  })
+
+  it('LA: residential always pays $15/sf; nonres only at ≥15k sf', () => {
+    expect(at({ city: 'la', use: 'residential', gfa: 10_000 }).costs.impact).toBe(150_000)
+    expect(at({ city: 'la', use: 'commercial', gfa: 15_000 }).costs.impact).toBe(75_000)
+    expect(at({ city: 'la', use: 'commercial', gfa: 14_999 }).costs.impact).toBe(0)
+  })
+
+  it('Denver: residential <10 units pays $5/sf; 10+ units pays none (inclusionary mandate); commercial varies by EHA area', () => {
+    expect(at({ city: 'denver', use: 'residential', gfa: 8_000, units: 4 }).costs.impact).toBe(40_000)
+    expect(at({ city: 'denver', use: 'residential', gfa: 80_000, units: 60 }).costs.impact).toBe(0)
+    // NOTE (WO-5.6): units omitted currently defaults to 1 → fee charged.
+    expect(at({ city: 'denver', use: 'residential', gfa: 8_000 }).costs.impact).toBe(40_000)
+    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'High' }).costs.impact).toBe(90_000)
+    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'Typical' }).costs.impact).toBe(60_000)
+  })
+
+  it('Seattle and SF fees are informational (applied:false): note set, $0 in total', () => {
+    const sea = at({ city: 'seattle', use: 'residential', gfa: 20_000 }, { feeArea: 'High Areas' })
+    expect(sea.costs.impact).toBe(0)
+    expect(sea.impactNote).toMatch(/Seattle MHA/)
+    const sf = at({ city: 'sf', use: 'commercial', gfa: 60_000 })
+    expect(sf.costs.impact).toBe(0)
+    if (sf.impactNote) expect(sf.impactNote).toMatch(/not included/)
+  })
+
+  it('cities with no codified fee produce neither a charge nor a note', () => {
+    const chi = at({ city: 'chicago', use: 'residential', gfa: 20_000 })
+    expect(chi.costs.impact).toBe(0)
+    expect(chi.impactNote).toBeUndefined()
+  })
+})
