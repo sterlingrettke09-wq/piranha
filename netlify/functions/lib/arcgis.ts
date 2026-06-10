@@ -273,3 +273,21 @@ export const fetchParcelSnap = async (
 
 export const firstAttrs = (fs: FeatureSet) => fs.features?.[0]?.attributes ?? null
 export const firstFeature = (fs: FeatureSet) => (fs.features?.[0] as RawFeature | undefined) ?? null
+
+// Schema-drift canary. Providers coerce field VALUES safely (Number()/String()
+// of undefined → null), so a renamed upstream field doesn't error — it silently
+// nulls a verdict input citywide, forever (NYC has renamed PLUTO fields across
+// versions). This logs when a feature arrives WITHOUT a critical field as a
+// key (absence ≠ null: a present-but-null value is legitimate data).
+export function warnIfMissing(
+  attrs: Record<string, unknown> | null,
+  fields: readonly string[],
+  city: string,
+): void {
+  if (!attrs) return
+  for (const field of fields) {
+    if (!(field in attrs)) {
+      console.log({ event: 'schema_drift', city, field })
+    }
+  }
+}

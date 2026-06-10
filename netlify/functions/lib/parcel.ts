@@ -16,7 +16,7 @@ import {
 import { ENDPOINTS, FIELDS } from '../_endpoints'
 import { mapZoningUse } from './zoningUse'
 import { isGovernmentOwner } from '../../../src/lib/developability'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from './arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from './arcgis'
 import { getNycParcelInfo } from './providers/nyc'
 import { getChicagoParcelInfo } from './providers/chicago'
 import { getSfParcelInfo } from './providers/sf'
@@ -47,6 +47,8 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
 
   const zoning = firstAttrs(zoningR.value)
   const parcel = firstAttrs(parcelR.value)
+  warnIfMissing(zoning, ['Name', 'HeightMax', 'FARMax'], 'boston')
+  warnIfMissing(parcel, ['PID', 'LAND_SF'], 'boston')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

@@ -2,7 +2,7 @@
 // geometry for lot area). Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 
 const BASE = 'https://sfplanninggis.org/arcgiswa/rest/services/PlanningData/MapServer'
@@ -59,6 +59,7 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   }
 
   const pf = firstFeature(parcelR.value)
+  warnIfMissing(pf?.attributes ?? null, ['blklot'], 'sf')
   if (!pf) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

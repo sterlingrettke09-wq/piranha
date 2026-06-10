@@ -8,7 +8,7 @@
 // reproject 4326 normally.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchFeaturesXYSnap, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchFeaturesXYSnap, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { lngLatToUtm15 } from '../geo'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 
@@ -65,6 +65,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   }
 
   const parcel = firstAttrs(parcelR.value)
+  warnIfMissing(parcel, ['PID', 'PARCEL_AREA'], 'minneapolis')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

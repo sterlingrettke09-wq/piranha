@@ -3,7 +3,7 @@
 // 2026-06-01. All three layers accept inSR=4326 point queries.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 
 const BASE = 'https://maps2.dcgis.dc.gov/dcgis/rest/services'
@@ -68,6 +68,8 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
   }
 
   const parcel = firstAttrs(parcelR.value)
+  warnIfMissing(parcel, ['SSL', 'LANDAREA'], 'dc')
+  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['ZONING'], 'dc')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

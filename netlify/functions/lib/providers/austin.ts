@@ -14,7 +14,7 @@
 // point-in-polygon historic layer is published, so historic is left null.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { reverseGeocode } from '../geo'
 
 const PARCELS =
@@ -73,6 +73,8 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
   }
 
   const parcel = firstAttrs(parcelR.value)
+  warnIfMissing(parcel, ['PID_10', 'Shape__Area'], 'austin')
+  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['BASE_ZONE'], 'austin')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

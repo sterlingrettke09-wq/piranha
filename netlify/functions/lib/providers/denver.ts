@@ -3,7 +3,7 @@
 // 2026-06-01. All accept inSR=4326 point queries.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 
 const PARCELS = 'https://denvergov.org/maps/data/Zoning/MapServer/0'
@@ -85,6 +85,8 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   }
 
   const parcel = firstAttrs(parcelR.value)
+  warnIfMissing(parcel, ['SCHEDNUM', 'LAND_AREA'], 'denver')
+  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['ZONE_DISTRICT', 'HEIGHT_STORIES'], 'denver')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

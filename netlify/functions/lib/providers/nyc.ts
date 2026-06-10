@@ -3,7 +3,7 @@
 // and address. Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 
 const MAPPLUTO =
@@ -73,6 +73,7 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
   }
 
   const lot = firstAttrs(plutoR.value)
+  warnIfMissing(lot, ['BBL', 'ZoneDist1', 'ResidFAR', 'LotArea'], 'nyc')
   if (!lot) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

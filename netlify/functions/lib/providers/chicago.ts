@@ -2,7 +2,7 @@
 // (lot area) + Mapbox reverse-geocoded address. Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 
 const ZONING =
@@ -88,6 +88,7 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
   }
 
   const pf = firstFeature(parcelR.value)
+  warnIfMissing(pf?.attributes ?? null, ['PIN10'], 'chicago')
   if (!pf) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

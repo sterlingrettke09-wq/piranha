@@ -256,6 +256,34 @@ describe('parcel handler — resilience', () => {
     expect(body.existing?.buildingAreaSqFt).toBe(3600)
   })
 
+  it('logs a schema_drift event when a critical field is ABSENT from the parcel attrs', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    // LAND_SF removed entirely (renamed upstream), not null — null is real data.
+    const { LAND_SF: _dropped, ...rest } = (
+      bostonRoutes.Parcels_24_detailed.features[0].attributes as Record<string, unknown> & { LAND_SF: number }
+    )
+    void _dropped
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({ ...bostonRoutes, Parcels_24_detailed: { features: [{ attributes: rest }] } }),
+    )
+    const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).toBe(200) // degraded, not broken
+    expect(logSpy.mock.calls.some(([arg]) =>
+      typeof arg === 'object' && arg !== null &&
+      (arg as { event?: string }).event === 'schema_drift' &&
+      (arg as { field?: string }).field === 'LAND_SF',
+    )).toBe(true)
+  })
+
+  it('does NOT log schema_drift on a complete fixture', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(bostonRoutes))
+    await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(logSpy.mock.calls.some(([arg]) =>
+      typeof arg === 'object' && arg !== null && (arg as { event?: string }).event === 'schema_drift',
+    )).toBe(false)
+  })
+
   it('returns 404 when parcels dataset has no feature at point', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
       const u = String(url)

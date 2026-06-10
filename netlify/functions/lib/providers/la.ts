@@ -5,7 +5,7 @@
 // plain lot-area attribute.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt } from '../geo'
 
 const PARCELS =
@@ -73,6 +73,8 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
 
   const feature = firstFeature(parcelR.value)
   const parcel = feature?.attributes ?? null
+  warnIfMissing(parcel, ['APN'], 'la')
+  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['ZONE_CMPLT'], 'la')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }

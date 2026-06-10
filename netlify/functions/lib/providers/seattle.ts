@@ -2,7 +2,7 @@
 // (ADDRESS + SQFTLOT fields). Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
-import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 
 const ORG = 'https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services'
 const ZONING = `${ORG}/Current_Land_Use_Zoning_Detail_2/FeatureServer/0`
@@ -74,6 +74,8 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
   }
 
   const parcel = firstAttrs(parcelR.value)
+  warnIfMissing(parcel, ['PIN', 'SQFTLOT'], 'seattle')
+  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['ZONING'], 'seattle')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
