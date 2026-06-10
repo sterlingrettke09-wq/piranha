@@ -71,6 +71,32 @@ function canonicalFor(url: URL): string {
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
+// Mirror of the route table in src/App.tsx — keep the two in sync. Unknown
+// paths still serve the SPA shell (React renders NotFound) but with HTTP 404,
+// so crawlers stop indexing junk URLs as soft-200s.
+const KNOWN_ROUTES = new Set([
+  '/',
+  '/map',
+  '/start',
+  '/result',
+  '/boston',
+  '/boston/start',
+  '/boston/result',
+  '/ask',
+  '/about',
+  '/math',
+  '/compare',
+  '/request-city',
+  '/cities',
+  '/admin',
+])
+
+export function isKnownRoute(pathname: string): boolean {
+  // Normalize a single trailing slash ("/about/" → "/about").
+  const p = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  return KNOWN_ROUTES.has(p)
+}
+
 // Attribute-order-tolerant replacers. `[^>]*?` between the identifying
 // attribute and `content` tolerates extra attributes and whitespace; a second
 // pattern handles `content` appearing BEFORE the identifying attribute, so a
@@ -114,5 +140,10 @@ export default async function (request: Request, context: { next: () => Promise<
     html = setMeta(html, 'name', 'twitter:description', d)
   }
 
-  return new Response(html, { status: res.status, headers: res.headers })
+  // Real 404 status for unknown SPA routes (the body is still the shell, and
+  // React renders the NotFound page). Without this, every junk URL was a
+  // soft-200 that crawlers happily indexed.
+  const status = res.status === 200 && !isKnownRoute(url.pathname) ? 404 : res.status
+
+  return new Response(html, { status, headers: res.headers })
 }
