@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { handler } from '../parcel'
+import { mockArcgisFetch, ARCGIS_ERROR_200 } from './providers/__fixtures__'
+import { bostonRoutes } from './providers/__fixtures__/boston'
 
 const callHandler = (qs: Record<string, string> = {}) =>
   handler({
@@ -230,6 +232,28 @@ describe('parcel handler — resilience', () => {
     const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
     expect(res.statusCode).toBe(502)
     expect(JSON.parse(res.body).code).toBe('UPSTREAM_ERROR')
+  })
+
+  it('returns 502 (NOT 404) when a required dataset returns HTTP 200 with an ArcGIS error body', async () => {
+    // The signature failure mode of a renamed field / re-indexed layer. If
+    // this ever reads as NO_PARCEL again, a citywide breakage looks identical
+    // to clicking open water. See WO-1.1.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({ ...bostonRoutes, Parcels_24_detailed: ARCGIS_ERROR_200 }),
+    )
+    const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).toBe(502)
+    expect(JSON.parse(res.body).code).toBe('UPSTREAM_ERROR')
+  })
+
+  it('fixture harness happy path matches the inline-mock expectations', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(bostonRoutes))
+    const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
+    expect(res.statusCode).toBe(200)
+    const body = JSON.parse(res.body)
+    expect(body.parcelId).toBe('0304567000')
+    expect(body.zoning.districtCode).toBe('B-2-65')
+    expect(body.existing?.buildingAreaSqFt).toBe(3600)
   })
 
   it('returns 404 when parcels dataset has no feature at point', async () => {

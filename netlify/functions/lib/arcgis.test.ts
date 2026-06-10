@@ -1,7 +1,47 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchParcelSnap, fetchFeaturesXYSnap } from './arcgis'
+import { fetchFeatures, fetchFeaturesXY, fetchParcelSnap, fetchFeaturesXYSnap } from './arcgis'
+import { ARCGIS_ERROR_200 } from './providers/__fixtures__'
 
 afterEach(() => vi.restoreAllMocks())
+
+// ArcGIS reports failures (renamed field, re-indexed layer, throttling) as
+// HTTP 200 with {"error":{...}}. That must surface as a thrown upstream error
+// (-> 502), never be mistaken for an empty result (-> 404 "no parcel").
+describe('200-with-error-JSON bodies are upstream failures, not empty results', () => {
+  it('fetchFeatures throws on an error body', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(ARCGIS_ERROR_200), { status: 200 }),
+    )
+    await expect(fetchFeatures('https://x/MapServer/0', 42, -71, ['PID'])).rejects.toThrow(/arcgis_error/)
+  })
+
+  it('fetchFeaturesXY throws on an error body', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(ARCGIS_ERROR_200), { status: 200 }),
+    )
+    await expect(
+      fetchFeaturesXY('https://x/MapServer/1', 480000, 4980000, 26915, ['PID']),
+    ).rejects.toThrow(/arcgis_error/)
+  })
+
+  it('fetchParcelSnap throws when the EXACT query returns an error body', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(ARCGIS_ERROR_200), { status: 200 }),
+    )
+    await expect(fetchParcelSnap('https://x/MapServer/0', 42, -71, ['PID'])).rejects.toThrow(/arcgis_error/)
+  })
+
+  it('fetchParcelSnap falls back to the valid empty exact result when only the BUFFERED retry errors', async () => {
+    let call = 0
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      call += 1
+      if (call === 1) return new Response(JSON.stringify({ features: [] }))
+      return new Response(JSON.stringify(ARCGIS_ERROR_200), { status: 200 })
+    })
+    const fs = await fetchParcelSnap('https://x/MapServer/0', 42, -71, ['PID'])
+    expect(fs.features).toHaveLength(0)
+  })
+})
 
 // A click that lands inside a parcel returns on the exact-point query; a click
 // that lands on a street/boundary returns nothing exact, so the helper must

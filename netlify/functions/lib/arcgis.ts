@@ -8,6 +8,27 @@ export type ParcelResult =
 
 export type FeatureSet = { features?: Array<{ attributes: Record<string, unknown> }> }
 
+// ArcGIS REST services report failures (malformed query, renamed field,
+// re-indexed layer, throttling) as HTTP **200** with `{"error":{...}}` in the
+// body. Without this check, an error body has no `.features`, reads as "no
+// parcel found" (404), and a citywide upstream breakage becomes invisible —
+// indistinguishable from clicking open water, with nothing in the logs.
+function assertNotArcgisError(data: unknown, url: string): void {
+  if (data && typeof data === 'object' && 'error' in data) {
+    const err = (data as { error: { code?: number; message?: string } }).error
+    throw new Error(
+      `arcgis_error ${url}: ${JSON.stringify({ code: err?.code, message: err?.message }).slice(0, 300)}`,
+    )
+  }
+}
+
+/** Parse an ArcGIS JSON response, rejecting 200-with-error-JSON bodies. */
+async function parseFeatureSet(res: Response, url: string): Promise<FeatureSet> {
+  const data: unknown = await res.json()
+  assertNotArcgisError(data, url)
+  return data as FeatureSet
+}
+
 export const buildQuery = (
   url: string,
   lat: number,
@@ -45,7 +66,7 @@ export const fetchFeatures = async (
   try {
     const res = await fetch(buildQuery(url, lat, lng, fields, returnGeometry, outSR), { signal: ctrl.signal })
     if (!res.ok) throw new Error(`Upstream ${url} returned ${res.status}`)
-    return (await res.json()) as FeatureSet
+    return await parseFeatureSet(res, url)
   } finally {
     clearTimeout(timer)
   }
@@ -112,7 +133,7 @@ export const fetchFeaturesXY = async (
   try {
     const res = await fetch(u.toString(), { signal: ctrl.signal })
     if (!res.ok) throw new Error(`Upstream ${url} returned ${res.status}`)
-    return (await res.json()) as FeatureSet
+    return await parseFeatureSet(res, url)
   } finally {
     clearTimeout(timer)
   }
@@ -152,7 +173,10 @@ export const fetchFeaturesXYSnap = async (
   try {
     const res = await fetch(u.toString(), { signal: ctrl.signal })
     if (!res.ok) return exact
-    return nearestFeatureSet((await res.json()) as FeatureSet, x, y)
+    // An error-JSON body here throws and falls back to the (valid, empty)
+    // exact result — if the service were truly down, the exact query would
+    // already have thrown.
+    return nearestFeatureSet(await parseFeatureSet(res, url), x, y)
   } catch {
     return exact
   } finally {
@@ -199,7 +223,7 @@ export const fetchParcelSnap = async (
   try {
     const res = await fetch(u.toString(), { signal: ctrl.signal })
     if (!res.ok) return exact
-    const data = (await res.json()) as FeatureSet
+    const data = await parseFeatureSet(res, url)
     return selecting ? nearestFeatureSet(data, lng, lat) : data
   } catch {
     return exact
