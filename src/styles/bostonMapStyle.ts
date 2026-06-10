@@ -25,6 +25,52 @@ export const BRAND_OVERRIDES: PaintOverride[] = [
   { layerId: 'road-secondary-tertiary', property: 'line-color', value: '#5C5C5C' },
 ]
 
+// ── Zoning-district overlay (WO-8.1b/c/d) ──────────────────────────────────
+// The dashboard fetches each city's zoning FeatureServer as GeoJSON (viewport
+// envelope, zoom ≥ 14) and colors polygons by district FAMILY so the map reads
+// at a glance without a per-city legend. Four families, one shared palette.
+
+export type ZoningFamily = 'residential' | 'commercial' | 'industrial' | 'other'
+
+export const ZONING_FAMILY_COLORS: Record<ZoningFamily, string> = {
+  // Residential greens, commercial burgundies (brand), industrial grays, else neutral.
+  residential: '#5C8A5A',
+  commercial: BRAND.burgundy,
+  industrial: '#7C7C82',
+  other: '#A89B86',
+}
+
+export const ZONING_FAMILY_LABELS: Record<ZoningFamily, string> = {
+  residential: 'Residential',
+  commercial: 'Commercial / mixed',
+  industrial: 'Industrial',
+  other: 'Other',
+}
+
+// Classify a raw district code (the per-city codeField value) into a family.
+// Deliberately broad and prefix-based: zoning codes vary wildly by city, but the
+// leading letters are remarkably consistent (R/RS/RM = residential, B/C/MU/NC =
+// commercial-ish, M/I/IG/PD-industrial = industrial). Anything unrecognized
+// falls to 'other' (neutral) rather than guessing — the overlay communicates
+// broad strokes, not a legal determination.
+export function classifyZoningFamily(code: string | null | undefined): ZoningFamily {
+  if (!code) return 'other'
+  const c = code.trim().toUpperCase()
+  if (!c) return 'other'
+  // Industrial FIRST, but only on unambiguous prefixes so it never steals a
+  // commercial/mixed code: M followed by a digit (M1/M2/M3 — NOT MX/MU), the
+  // I-districts (I1/I-2/IG/IH/IL/IP), PDR (SF production-distribution-repair,
+  // which must beat the commercial "PD" prefix), or the word industrial.
+  if (/^(M\d|IG|IH|IL|IP|I\d|I-\d|PDR)/.test(c) || c === 'I' || /\bINDUSTR/.test(c)) return 'industrial'
+  // Commercial / mixed / downtown: B, C, MU, NC, MX, D, CM, GB, LB, CC, CB, PD, TOD, OR…
+  if (/^(B\d|C\d|B-|C-|MU|NC|MX|D$|D-|CM|GB|LB|CC|CB|PD|TOD|OR)/.test(c)) return 'commercial'
+  if (/\b(COMMERCIAL|MIXED|DOWNTOWN|OFFICE|BUSINESS)\b/.test(c)) return 'commercial'
+  // Residential: R, RS, RM, RH, RR, SF, RES, UN#, UR#…
+  if (/^(RS|RM|RH|RR|R\d|R-|R$|SF|RES|UN\d|UR\d)/.test(c)) return 'residential'
+  if (/\bRESIDENT/.test(c)) return 'residential'
+  return 'other'
+}
+
 // FUTURE ENHANCEMENT — Boston zoning overlay. No public BPDA raster tile
 // service existed as of 2026-05-28. Probed: services.arcgis.com/sFnw0xNflSi8J0uh
 // (BPDA AGOL org — FeatureServer only, zero MapServers),

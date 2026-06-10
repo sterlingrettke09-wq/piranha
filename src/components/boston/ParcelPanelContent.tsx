@@ -68,6 +68,11 @@ export function ParcelPanelContent(props: Props) {
   }
 
   if (props.status === 'loading') {
+    // WO-8.6c: this branch renders the INSTANT a click lands — useParcelInfo
+    // derives `loading` synchronously from the selection key (no async gap), so
+    // the panel never flashes idle. The first two bars are the address-line
+    // shimmer (eyebrow + headline) so the skeleton reads as "your parcel,
+    // loading," not a generic spinner.
     return (
       <div className="animate-pulse space-y-4 p-7">
         <div className="h-3 w-16 rounded bg-piranha-charcoal/10" />

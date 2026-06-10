@@ -1,7 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { recordReport, togglePin, listReports } from '../lib/recentReports'
+import { AskAssistant } from '../components/AskAssistant'
 import { USES, PROJECT_TYPES, FUNDING_TYPES, type AnalysisInput, type Use, type ProjectType, type Funding } from '../types/analysis'
 import { Reveal } from '../components/Reveal'
 import { VerdictBanner } from '../components/boston/result/VerdictBanner'
@@ -72,7 +74,42 @@ export default function BostonResult() {
   const input = useMemo(() => parseInput(params), [params])
   const state = useAnalysis(input)
   const [copied, setCopied] = useState(false)
+  const [askOpen, setAskOpen] = useState(false)
   useDocumentTitle(state.status === 'loaded' ? state.data.parcel.address : 'Feasibility report')
+
+  // The URL this report lives at — also the dedupe/pin key in recentReports.
+  const reportUrl = window.location.pathname + window.location.search
+
+  // Initialize the pin star from storage on mount (lazy initializer, so no
+  // setState-in-effect). Recording below preserves any existing pin, so this
+  // stays accurate.
+  const [pinned, setPinned] = useState(
+    () => listReports().find((e) => e.url === reportUrl)?.pinned ?? false,
+  )
+
+  // Record this report once it has loaded as a developable site, so the visitor
+  // can return to it from Home / NotFound. Keyed on the URL so re-renders and
+  // refetches don't re-record; running an effect (not inline) keeps it out of
+  // render. Blocked / no-coverage results are intentionally NOT remembered.
+  const loadedDevelopable =
+    state.status === 'loaded' && state.data.developable !== false
+  const recordKey = loadedDevelopable ? reportUrl : null
+  useEffect(() => {
+    if (state.status !== 'loaded' || state.data.developable === false) return
+    recordReport({
+      url: reportUrl,
+      address: state.data.parcel.address,
+      city: state.data.project.city,
+      verdict: state.data.feasibility.overall,
+      totalCost: state.data.costs.total,
+      ts: Date.now(),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordKey])
+
+  function onTogglePin() {
+    setPinned(togglePin(reportUrl))
+  }
 
   function copyLink() {
     navigator.clipboard.writeText(window.location.href).then(
@@ -151,6 +188,34 @@ export default function BostonResult() {
               >
                 Compare another parcel
               </Link>
+            )}
+            {state.data.developable !== false && (
+              <button
+                type="button"
+                onClick={onTogglePin}
+                aria-pressed={pinned}
+                title={pinned ? 'Unpin this report' : 'Pin this report so it stays in your recent list'}
+                className={`inline-flex items-center gap-1.5 transition-colors ${
+                  pinned
+                    ? 'text-piranha-burgundy'
+                    : 'text-piranha-charcoal/60 hover:text-piranha-burgundy'
+                }`}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill={pinned ? 'currentColor' : 'none'}
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                {pinned ? 'Pinned' : 'Pin'}
+              </button>
             )}
             <button
               type="button"
@@ -338,6 +403,47 @@ export default function BostonResult() {
               </div>
 
               <div className="print-hide mt-16">
+                <div className="rounded-xl border border-piranha-charcoal/15 bg-white/40">
+                  <button
+                    type="button"
+                    onClick={() => setAskOpen((o) => !o)}
+                    aria-expanded={askOpen}
+                    className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+                  >
+                    <span>
+                      <span className="block font-serif text-xl tracking-tight text-piranha-charcoal">
+                        Ask about this report
+                      </span>
+                      <span className="mt-0.5 block text-sm text-piranha-charcoal/55">
+                        Variances, special permits, what a step actually means — ask in plain English.
+                      </span>
+                    </span>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className={`shrink-0 text-piranha-charcoal/50 transition-transform ${askOpen ? 'rotate-180' : ''}`}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                  {/* Mount AskAssistant lazily — only when the disclosure is opened —
+                      so the result page doesn't carry its state for every visit. */}
+                  {askOpen && (
+                    <div className="border-t border-piranha-charcoal/10 p-3">
+                      <AskAssistant placeholder="e.g. What's a variance and how long does one take?" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="print-hide mt-12">
                 <NextSteps city={state.data.project.city} />
               </div>
             </>

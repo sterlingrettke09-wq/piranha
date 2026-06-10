@@ -10,6 +10,7 @@ interface LayoutProps {
 }
 
 const navItems = [
+  { to: '/red-tape', label: 'Red Tape Index' },
   { to: '/ask', label: 'Ask' },
   { to: '/about', label: 'About' },
 ]
@@ -142,6 +143,10 @@ export function Layout({ children }: LayoutProps) {
             relevant city department.
           </p>
           <p className="text-xs text-piranha-bone/60">
+            <NavLink to="/red-tape" className="underline underline-offset-2 hover:text-piranha-bone">
+              Red Tape Index
+            </NavLink>
+            <span className="mx-2">·</span>
             <NavLink to="/math" className="underline underline-offset-2 hover:text-piranha-bone">
               Methodology
             </NavLink>

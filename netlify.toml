@@ -56,7 +56,17 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://*.mapbox.com; connect-src 'self' https://*.mapbox.com; worker-src 'self' blob:; child-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    # connect-src hosts: 'self' (the /api functions, incl. /api/parcel-shape),
+    # *.mapbox.com (basemap), and the zoning-overlay FeatureServer hosts the
+    # BROWSER fetches directly for WO-8.1b. Every parcel endpoint is proxied
+    # server-side via /api, so only the client-side zoning hosts are listed:
+    #   *.arcgis.com           — Boston, NYC, Seattle, Austin (Esri-hosted layers)
+    #   gisapps.chicago.gov    — Chicago zoning MapServer/15
+    #   maps2.dcgis.dc.gov     — DC zoning MapServer/24
+    #   sfplanninggis.org      — San Francisco zoning MapServer/3
+    #   maps.lacity.org        — Los Angeles zoning MapServer/71
+    # (Denver/Minneapolis have no client overlay — see cities.ts — so no host.)
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://*.mapbox.com; connect-src 'self' https://*.mapbox.com https://*.arcgis.com https://gisapps.chicago.gov https://maps2.dcgis.dc.gov https://sfplanninggis.org https://maps.lacity.org; worker-src 'self' blob:; child-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 
 [[redirects]]
   from = "/api/*"

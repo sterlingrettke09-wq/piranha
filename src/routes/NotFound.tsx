@@ -1,5 +1,64 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
+import { cityName } from '../config/cities'
+import { listReports, removeReport, type RecentReport } from '../lib/recentReports'
+import { VERDICT } from '../lib/verdictLabels'
+import { formatEstimate } from '../lib/format'
+
+/** "Looking for one of these?" — the recent-reports list on the 404 page
+ *  (WO-8.6e), reusing the same localStorage buffer as Home. Renders nothing
+ *  when empty. */
+function RecentList() {
+  const [reports, setReports] = useState<RecentReport[]>(() => listReports())
+  if (reports.length === 0) return null
+
+  const remove = (url: string) => {
+    removeReport(url)
+    setReports(listReports())
+  }
+
+  return (
+    <div className="mx-auto mt-14 max-w-xl text-left">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-piranha-burgundy">
+        Looking for one of these?
+      </p>
+      <ul className="mt-4 divide-y divide-piranha-charcoal/10 rounded-2xl border border-piranha-charcoal/12 bg-white">
+        {reports.map((r) => (
+          <li key={r.url} className="flex items-center gap-3 px-5 py-3.5">
+            <Link to={r.url} className="min-w-0 flex-1">
+              <p className="truncate font-serif text-base tracking-tight text-piranha-charcoal">
+                {r.address}
+              </p>
+              <p className="mt-0.5 truncate text-sm text-piranha-charcoal/60">
+                {cityName(r.city)} · <span className="text-piranha-burgundy">{VERDICT[r.verdict].short}</span> ·{' '}
+                {formatEstimate(r.totalCost)}
+              </p>
+            </Link>
+            <button
+              type="button"
+              onClick={() => remove(r.url)}
+              aria-label={`Remove ${r.address}`}
+              className="shrink-0 rounded-full p-1 text-piranha-charcoal/30 transition-colors hover:text-piranha-burgundy"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+              </svg>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 text-sm text-piranha-charcoal/60">
+        Or{' '}
+        <Link to="/map" className="text-piranha-burgundy underline underline-offset-2 hover:text-piranha-charcoal">
+          start fresh from the map
+        </Link>
+        .
+      </p>
+    </div>
+  )
+}
 
 export default function NotFound() {
   return (
@@ -24,6 +83,8 @@ export default function NotFound() {
             Analyze a parcel
           </Link>
         </div>
+
+        <RecentList />
       </div>
     </PageContainer>
   )

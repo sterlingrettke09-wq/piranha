@@ -1,8 +1,104 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CinematicIntro } from '../components/CinematicIntro'
 import { Reveal } from '../components/Reveal'
 import { ArrowLink } from '../components/ArrowLink'
-import { CITIES } from '../config/cities'
+import { CITIES, cityName } from '../config/cities'
+import { listReports, removeReport, clearAll, type RecentReport } from '../lib/recentReports'
+import { VERDICT } from '../lib/verdictLabels'
+import { formatEstimate } from '../lib/format'
+
+/** "3h ago" / "2d ago" / "just now" — compact relative time for recent cards. */
+function relativeTime(ts: number): string {
+  const diff = Date.now() - ts
+  const min = Math.floor(diff / 60_000)
+  if (min < 1) return 'just now'
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const day = Math.floor(hr / 24)
+  if (day < 30) return `${day}d ago`
+  return `${Math.floor(day / 30)}mo ago`
+}
+
+/** "Pick up where you left off" — the recent-reports row (WO-8.3). Renders
+ *  nothing when the buffer is empty. Reads localStorage on mount; the ✕ and
+ *  clear-all mutate it and re-render via local state. */
+function RecentReportsRow() {
+  const [reports, setReports] = useState<RecentReport[]>(() => listReports())
+  if (reports.length === 0) return null
+
+  const remove = (url: string) => {
+    removeReport(url)
+    setReports(listReports())
+  }
+  const clear = () => {
+    clearAll()
+    setReports([])
+  }
+
+  return (
+    <section className="bg-piranha-bone px-6 py-16">
+      <div className="mx-auto max-w-5xl">
+        <Reveal>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
+                Pick up where you left off
+              </p>
+              <h2 className="mt-3 font-serif text-[clamp(1.6rem,3vw,2.4rem)] leading-tight tracking-tight text-piranha-charcoal">
+                Reports you’ve run.
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={clear}
+              className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/45 transition-colors hover:text-piranha-burgundy"
+            >
+              Clear all
+            </button>
+          </div>
+        </Reveal>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {reports.map((r) => (
+            <div
+              key={r.url}
+              className="group relative rounded-2xl border border-piranha-charcoal/12 bg-white p-5 transition-colors hover:border-piranha-charcoal/25"
+            >
+              <button
+                type="button"
+                onClick={() => remove(r.url)}
+                aria-label={`Remove ${r.address}`}
+                className="absolute right-3 top-3 rounded-full p-1 text-piranha-charcoal/30 transition-colors hover:text-piranha-burgundy"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                </svg>
+              </button>
+              <Link to={r.url} className="block pr-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-piranha-charcoal/45">
+                  {cityName(r.city)}
+                  {r.pinned ? ' · Pinned' : ''}
+                </p>
+                <p className="mt-2 font-serif text-lg leading-snug tracking-tight text-piranha-charcoal">
+                  {r.address}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-piranha-charcoal/60">
+                  <span className="font-medium text-piranha-burgundy">{VERDICT[r.verdict].short}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{formatEstimate(r.totalCost)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-piranha-charcoal/40">{relativeTime(r.ts)}</span>
+                </div>
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
 
 const DARK = 'bg-[#1a1412]'
 
@@ -102,6 +198,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ── Pick up where you left off (light) — only when non-empty ── */}
+      <RecentReportsRow />
 
       {/* ── How it works (light) ─────────────────────────────────── */}
       <section className="bg-piranha-bone px-6 py-28">

@@ -7,7 +7,15 @@ type State =
   | { status: 'answer'; text: string }
   | { status: 'error'; message: string }
 
-export function AskAssistant() {
+interface AskAssistantProps {
+  /** Override the textarea placeholder (e.g. a report-specific seed prompt).
+   *  Defaults to the general zoning/permitting prompt. */
+  placeholder?: string
+}
+
+export function AskAssistant({
+  placeholder = "e.g. What's the difference between a variance and a special permit?",
+}: AskAssistantProps = {}) {
   const [question, setQuestion] = useState('')
   const [state, setState] = useState<State>({ status: 'idle' })
   const labelId = useId()
@@ -68,7 +76,7 @@ export function AskAssistant() {
           maxLength={1000}
           aria-labelledby={labelId}
           aria-describedby={hintId}
-          placeholder="e.g. What's the difference between a variance and a special permit?"
+          placeholder={placeholder}
           className="w-full resize-y rounded-md border border-piranha-charcoal/20 bg-white px-3 py-2 text-piranha-charcoal focus:border-piranha-burgundy focus:outline-none"
         />
         <div className="flex items-center justify-between">

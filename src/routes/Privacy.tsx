@@ -74,6 +74,11 @@ export default function Privacy() {
               don’t set cookies to track you across the web. There is no account to create
               and no marketing list you’re quietly added to.
             </p>
+            <p>
+              The list of reports you’ve recently run is kept only in your own browser
+              (localStorage). It is never sent to our server, and clearing your browser
+              data removes it.
+            </p>
           </Section>
 
           <Section n="06" title="Questions or deletion">
