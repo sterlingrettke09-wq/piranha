@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AnalysisResult, AnalysisError, AnalysisInput } from '../types/analysis'
 import { quantizeCoord } from '../lib/coords'
+import { ESTIMATES_VERSION } from '../config/estimates'
 
 type Resolved =
   | { status: 'loaded'; data: AnalysisResult }
@@ -8,7 +9,8 @@ type Resolved =
 
 type State = { status: 'idle' } | { status: 'loading' } | Resolved
 
-function toQuery(input: AnalysisInput): string {
+// Exported for tests (cache-key shape is behavior worth pinning).
+export function toQuery(input: AnalysisInput): string {
   const p = new URLSearchParams()
   p.set('city', input.city)
   p.set('projectType', input.projectType)
@@ -21,6 +23,10 @@ function toQuery(input: AnalysisInput): string {
   if (input.units != null) p.set('units', String(input.units))
   if (input.stories != null) p.set('stories', String(input.stories))
   if (input.heightFt != null) p.set('heightFt', String(input.heightFt))
+  // Cache-buster: the CDN caches analyze responses for 24h with the estimate
+  // constants baked in. Bumping ESTIMATES_VERSION changes every cache key, so
+  // a tuned cost model reaches users immediately.
+  p.set('v', String(ESTIMATES_VERSION))
   return p.toString()
 }
 
