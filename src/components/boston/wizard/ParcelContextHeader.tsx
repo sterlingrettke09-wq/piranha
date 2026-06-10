@@ -12,7 +12,7 @@ export function ParcelContextHeader({ status, parcel }: Props) {
         Define your project
       </p>
       {status === 'loading' && (
-        <div className="mt-5 h-9 w-72 max-w-full animate-pulse rounded bg-piranha-charcoal/10" />
+        <div className="mt-5 h-9 w-72 max-w-full tpp-shimmer rounded" />
       )}
       {(status === 'error' || !parcel) && status !== 'loading' && (
         <h1 className="mt-5 font-serif text-[clamp(1.9rem,4vw,2.8rem)] leading-[1.08] tracking-tight text-piranha-charcoal">

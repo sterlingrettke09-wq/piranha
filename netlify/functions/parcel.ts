@@ -1,6 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { ParcelError } from '../../src/types/parcel'
-import { getParcelInfo } from './lib/parcel'
+import { cacheControlFor, getParcelInfo } from './lib/parcel'
 import { clientIp, rateLimited } from './lib/guard'
 import { quantizeCoord } from '../../src/lib/coords'
 
@@ -29,7 +29,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!r.ok) return fail(r.code, r.message, r.status)
   return {
     statusCode: 200,
-    headers: { ...JSON_HEADERS, 'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800' },
+    // Degraded answers (zoning or geocode upstream failed) cache briefly so a
+    // transient outage can't poison the CDN for a day. See cacheControlFor.
+    headers: { ...JSON_HEADERS, 'Cache-Control': cacheControlFor(r.info) },
     body: JSON.stringify(r.info),
   }
 }

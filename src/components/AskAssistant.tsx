@@ -97,7 +97,7 @@ export function AskAssistant({
           arrives, instead of it appearing silently below the fold. */}
       <div aria-live="polite" role="status">
         {state.status === 'loading' && (
-          <div className="mt-4 h-16 animate-pulse rounded-md bg-piranha-charcoal/5">
+          <div className="mt-4 h-16 tpp-shimmer rounded-md">
             <span className="sr-only">Thinking…</span>
           </div>
         )}

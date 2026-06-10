@@ -6,6 +6,7 @@ import { ParcelPanel } from '../components/boston/ParcelPanel'
 import { CityIntro } from '../components/boston/CityIntro'
 import { introSeen } from '../components/boston/introSeen'
 import { getCity, isCitySlug, DEFAULT_CITY } from '../config/cities'
+import { EXAMPLE_PARCELS } from '../config/exampleParcels'
 import { quantizeCoord } from '../lib/coords'
 import { decodeJsonB64 } from '../lib/b64'
 import { useParcelInfo } from '../hooks/useParcelInfo'
@@ -196,6 +197,22 @@ export default function BostonDashboard() {
 
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[26rem] max-w-[calc(100%-2rem)] space-y-2">
         <SearchBar key={city} city={city} onSelect={handleSelect} />
+        {/* No address in mind? One tap runs a verified demo parcel for this
+            city — the fastest path from landing to a real verdict. Hidden the
+            moment anything is selected. */}
+        {!activeSelection && EXAMPLE_PARCELS[city] && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() =>
+                handleSelect(EXAMPLE_PARCELS[city].lat, EXAMPLE_PARCELS[city].lng)
+              }
+              className="tpp-press rounded-full border border-piranha-charcoal/15 bg-piranha-bone/95 px-4 py-1.5 text-xs font-medium text-piranha-charcoal/70 shadow-lg backdrop-blur transition-colors hover:border-piranha-burgundy/40 hover:text-piranha-burgundy"
+            >
+              No address in mind? Try {EXAMPLE_PARCELS[city].label} →
+            </button>
+          </div>
+        )}
         {cmp && (
           <div className="flex items-center gap-2 rounded-full bg-piranha-burgundy px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-piranha-bone shadow-lg">
             <span className="flex-1 text-center">Comparing against {cmpLabel} — pick a second parcel</span>

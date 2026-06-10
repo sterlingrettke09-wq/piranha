@@ -1,7 +1,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { AnalysisError, AnalysisInput, AnalysisResult, Use, ProjectType, Funding } from '../../src/types/analysis'
 import { USES, PROJECT_TYPES, FUNDING_TYPES } from '../../src/types/analysis'
-import { getParcelInfo } from './lib/parcel'
+import { cacheControlFor, getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
 import { assessDevelopability } from '../../src/lib/developability'
 import { assessSiteAdvisory, assessCivicHardBlock } from '../../src/lib/siteFlags'
@@ -279,7 +279,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   return {
     statusCode: 200,
-    headers: { ...JSON_HEADERS, 'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800' },
+    // A verdict computed from a degraded parcel read (zoning/geocode upstream
+    // failed) caches briefly instead of for a day. See cacheControlFor.
+    headers: { ...JSON_HEADERS, 'Cache-Control': cacheControlFor(parcel) },
     body: JSON.stringify(result),
   }
 }

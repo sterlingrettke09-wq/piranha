@@ -97,13 +97,13 @@ export function ParcelPanelContent(props: Props) {
     // shimmer (eyebrow + headline) so the skeleton reads as "your parcel,
     // loading," not a generic spinner.
     return (
-      <div className="animate-pulse space-y-4 p-7">
-        <div className="h-3 w-16 rounded bg-piranha-charcoal/10" />
-        <div className="h-7 w-3/4 rounded bg-piranha-charcoal/10" />
+      <div className="space-y-4 p-7">
+        <div className="tpp-shimmer h-3 w-16 rounded" />
+        <div className="tpp-shimmer h-7 w-3/4 rounded" />
         <div className="h-px w-full bg-piranha-charcoal/10" />
-        <div className="h-20 rounded-xl bg-piranha-charcoal/[0.06]" />
-        <div className="h-20 rounded-xl bg-piranha-charcoal/[0.06]" />
-        <div className="h-12 rounded-full bg-piranha-charcoal/10" />
+        <div className="tpp-shimmer h-20 rounded-xl" />
+        <div className="tpp-shimmer h-20 rounded-xl" />
+        <div className="tpp-shimmer h-12 rounded-full" />
       </div>
     )
   }

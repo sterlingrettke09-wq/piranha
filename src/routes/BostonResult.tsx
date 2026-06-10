@@ -154,10 +154,10 @@ export default function BostonResult() {
     <div className="print-page mx-auto max-w-3xl px-6 pb-24 pt-10">
       {state.status === 'loading' && (
         <div className="space-y-5">
-          <div className="h-5 w-48 animate-pulse rounded bg-piranha-charcoal/10" />
-          <div className="h-12 w-3/4 animate-pulse rounded bg-piranha-charcoal/10" />
-          <div className="h-64 animate-pulse rounded-2xl bg-piranha-charcoal/5" />
-          <div className="h-28 animate-pulse rounded-2xl bg-piranha-charcoal/5" />
+          <div className="h-5 w-48 tpp-shimmer rounded" />
+          <div className="h-12 w-3/4 tpp-shimmer rounded" />
+          <div className="h-64 tpp-shimmer rounded-2xl" />
+          <div className="h-28 tpp-shimmer rounded-2xl" />
         </div>
       )}
 

@@ -1,7 +1,5 @@
 import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageContainer } from '../components/PageContainer'
-import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
 import { getCity } from '../config/cities'
 import { computeRedTapeIndex, REFERENCE, type RankedCity } from '../lib/redTapeIndex'
@@ -13,6 +11,9 @@ import { storyFor } from '../lib/cityStories'
 // the table reorders itself the moment a constant changes; nothing here is
 // hand-typed. Each row expands into a plain-English story (WO-8.7a) and a
 // "Run a parcel in {city}" funnel CTA (WO-8.7b) — also fully computed.
+//
+// This page is the editorial brand, so it gets the dark magazine treatment:
+// charcoal ground, gold rank numerals, bars that draw themselves in on scroll.
 
 const EM_DASH = '—'
 
@@ -60,10 +61,10 @@ function StatChips({ city }: { city: RankedCity }) {
     <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
       {chips.map((c) => (
         <div key={c.label}>
-          <dt className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-piranha-charcoal/45">
+          <dt className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-piranha-bone/40">
             {c.label}
           </dt>
-          <dd className="mt-0.5 font-medium tabular-nums text-piranha-charcoal">{c.value}</dd>
+          <dd className="mt-0.5 font-medium tabular-nums text-piranha-bone/90">{c.value}</dd>
         </div>
       ))}
     </dl>
@@ -77,47 +78,49 @@ export default function RedTape() {
   const maxMonths = Math.max(...ranked.map((r) => r.lifecycleMonths + r.reliefAddMonths), 1)
 
   return (
-    <PageContainer>
-      <div className="mx-auto max-w-4xl space-y-14 py-10 sm:py-16">
-        <PageHeading eyebrow="The Red Tape Index" title="Ranking ten cities by the cost of permission.">
-          <p className="font-serif text-2xl leading-snug tracking-tight text-piranha-charcoal">
+    <div className="bg-piranha-charcoal text-piranha-bone">
+      <div className="mx-auto max-w-4xl space-y-14 px-6 py-14 sm:py-20">
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-piranha-gold">
+            The Red Tape Index
+          </p>
+          <h1 className="mt-4 max-w-3xl font-serif text-[clamp(2.4rem,6vw,4.2rem)] leading-[1.04] tracking-tight">
             One building. Ten cities. Wildly different answers.
+          </h1>
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-piranha-bone/70">
+            Take the same 40,000 sq ft apartment building and ask every city: how long, and how
+            much, before you can build it? Rank by the answer. Tap a city for its story.
           </p>
-          <p className="mt-5 text-lg leading-relaxed text-piranha-charcoal/70">
-            Take the same project — a 40,000 sq ft apartment building — and ask every city: how
-            long, and how much, before you can build it? Rank by the answer. Tap a city for its
-            story.
-          </p>
-        </PageHeading>
+        </header>
 
         <Reveal>
-          <section className="text-sm leading-relaxed text-piranha-charcoal/70">
+          <section className="text-sm leading-relaxed text-piranha-bone/60">
             <p>
               Computed live from the same engine as every report. No hand-typed numbers.{' '}
-              <Link className="text-piranha-burgundy underline underline-offset-2" to="/math">
+              <Link className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone" to="/math">
                 See the math
               </Link>
               .
             </p>
-            <details className="tpp-card mt-4 rounded-2xl border border-piranha-charcoal/10 bg-white/60 p-5">
-              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-piranha-burgundy">
+            <details className="mt-4 rounded-2xl border border-piranha-bone/15 bg-white/5 p-5">
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-piranha-gold">
                 How the score works
               </summary>
-              <ul className="mt-4 space-y-2 text-piranha-charcoal/70">
+              <ul className="mt-4 space-y-2 text-piranha-bone/70">
                 <li>
-                  <span className="font-semibold text-piranha-charcoal">Months</span> — by-right
+                  <span className="font-semibold text-piranha-bone">Months</span> — by-right
                   lifecycle plus typical variance time.
                 </li>
                 <li>
-                  <span className="font-semibold text-piranha-charcoal">Fees</span> — housing or
+                  <span className="font-semibold text-piranha-bone">Fees</span> — housing or
                   linkage dollars per sq ft this building would owe.
                 </li>
                 <li>
-                  <span className="font-semibold text-piranha-charcoal">Score</span> — 70% months,
+                  <span className="font-semibold text-piranha-bone">Score</span> — 70% months,
                   30% fees, 0–100. Lower is freer.
                 </li>
               </ul>
-              <p className="mt-3 text-xs text-piranha-charcoal/50">
+              <p className="mt-3 text-xs text-piranha-bone/45">
                 Parking is shown for context, never scored.
               </p>
             </details>
@@ -125,10 +128,10 @@ export default function RedTape() {
         </Reveal>
 
         <Reveal>
-          <div className="tpp-card overflow-x-auto rounded-2xl border border-piranha-charcoal/10 bg-white/60">
+          <div className="overflow-x-auto rounded-2xl border border-piranha-bone/12 bg-white/[0.03]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-piranha-charcoal/10 text-left text-xs uppercase tracking-[0.12em] text-piranha-charcoal/45">
+                <tr className="border-b border-piranha-bone/12 text-left text-xs uppercase tracking-[0.12em] text-piranha-bone/40">
                   <th className="px-5 py-3 font-semibold">#</th>
                   <th className="px-5 py-3 font-semibold">City</th>
                   <th className="px-5 py-3 font-semibold">Months of process</th>
@@ -141,53 +144,58 @@ export default function RedTape() {
                 </tr>
               </thead>
               <tbody>
-                {ranked.map((r) => {
+                {ranked.map((r, i) => {
                   const name = getCity(r.slug).name
                   const isOpen = open === r.slug
                   const panelId = `story-${r.slug}`
                   return (
                     <Fragment key={r.slug}>
                       <tr
-                        className={`border-b border-piranha-charcoal/5 last:border-0 ${
-                          isOpen ? 'bg-piranha-bone/60' : ''
+                        className={`border-b border-piranha-bone/8 last:border-0 ${
+                          isOpen ? 'bg-white/5' : ''
                         }`}
                       >
                         <td className="px-5 py-3 font-serif text-3xl leading-none tabular-nums text-piranha-gold sm:text-4xl">
                           {r.rank}
                         </td>
-                        <td className="px-5 py-3 font-medium text-piranha-charcoal">{name}</td>
+                        <td className="px-5 py-3 font-medium text-piranha-bone">{name}</td>
                         <td className="px-5 py-3">
                           {(() => {
                             const total = r.lifecycleMonths + r.reliefAddMonths
                             const pct = Math.max(6, Math.round((total / maxMonths) * 100))
                             return (
                               <div className="flex items-center gap-3">
-                                <div className="h-2 min-w-[60px] flex-1 overflow-hidden rounded-full bg-piranha-charcoal/8">
+                                <div className="h-2 min-w-[60px] flex-1 overflow-hidden rounded-full bg-piranha-bone/10">
                                   <div
-                                    className="h-full rounded-full bg-piranha-burgundy"
-                                    style={{ width: `${pct}%` }}
+                                    className="tpp-bar-fill h-full rounded-full"
+                                    style={{
+                                      '--bar-w': `${pct}%`,
+                                      transitionDelay: `${150 + i * 60}ms`,
+                                      background:
+                                        'linear-gradient(90deg, #7A1B2E 0%, #A33148 100%)',
+                                    } as React.CSSProperties}
                                   />
                                 </div>
-                                <span className="shrink-0 tabular-nums text-piranha-charcoal/75">
+                                <span className="shrink-0 tabular-nums text-piranha-bone/75">
                                   {fmtMonths(total)}
                                 </span>
                               </div>
                             )
                           })()}
                         </td>
-                        <td className="px-5 py-3 text-right tabular-nums text-piranha-charcoal/75">
+                        <td className="px-5 py-3 text-right tabular-nums text-piranha-bone/75">
                           {fmtFee(r.feePerSqFt)}
                         </td>
                         <td
                           className={`px-5 py-3 ${
                             r.parkingStatus === 'abolished'
                               ? 'font-medium text-piranha-gold'
-                              : 'text-piranha-charcoal/75'
+                              : 'text-piranha-bone/75'
                           }`}
                         >
                           {r.parkingLabel}
                         </td>
-                        <td className="px-5 py-3 text-right font-semibold tabular-nums text-piranha-charcoal">
+                        <td className="px-5 py-3 text-right font-semibold tabular-nums text-piranha-bone">
                           {fmtScore(r.score)}
                         </td>
                         <td className="px-3 py-3 text-right">
@@ -196,7 +204,7 @@ export default function RedTape() {
                             onClick={() => setOpen(isOpen ? null : r.slug)}
                             aria-expanded={isOpen}
                             aria-controls={panelId}
-                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-piranha-burgundy transition-colors hover:text-piranha-charcoal"
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-piranha-gold transition-colors hover:text-piranha-bone"
                           >
                             {isOpen ? 'Less' : 'Story'}
                             <svg
@@ -217,16 +225,16 @@ export default function RedTape() {
                         </td>
                       </tr>
                       {isOpen && (
-                        <tr className="border-b border-piranha-charcoal/5 last:border-0">
-                          <td colSpan={7} className="bg-piranha-bone/60 px-5 pb-6 pt-1">
+                        <tr className="border-b border-piranha-bone/8 last:border-0">
+                          <td colSpan={7} className="bg-white/5 px-5 pb-6 pt-1">
                             <div id={panelId} className="max-w-2xl">
-                              <p className="font-serif text-lg leading-relaxed tracking-tight text-piranha-charcoal">
+                              <p className="font-serif text-lg leading-relaxed tracking-tight text-piranha-bone">
                                 {storyFor(r, ranked)}
                               </p>
                               <StatChips city={r} />
                               <Link
                                 to={`/map?city=${r.slug}`}
-                                className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-piranha-burgundy px-5 py-2.5 text-sm font-semibold text-piranha-bone transition-colors hover:bg-piranha-charcoal"
+                                className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-piranha-burgundy px-5 py-2.5 text-sm font-semibold text-piranha-bone transition-colors hover:bg-piranha-bone hover:text-piranha-charcoal"
                               >
                                 Run a parcel in {name}
                                 <span aria-hidden="true">→</span>
@@ -244,7 +252,7 @@ export default function RedTape() {
         </Reveal>
 
         <Reveal>
-          <section className="space-y-4 border-t border-piranha-charcoal/15 pt-8 text-sm leading-relaxed text-piranha-charcoal/65">
+          <section className="space-y-4 border-t border-piranha-bone/15 pt-8 text-sm leading-relaxed text-piranha-bone/55">
             <p>
               The reference project: {REFERENCE.label.toLowerCase()}. A lower score means fewer
               months and lighter fees standing between an idea and a building — not that a city is
@@ -254,7 +262,7 @@ export default function RedTape() {
               These are estimates, labeled as estimates, drawn entirely from public data and the
               engine&rsquo;s published constants. Want to see the same math run against a real
               parcel?{' '}
-              <Link className="text-piranha-burgundy underline underline-offset-2" to="/map">
+              <Link className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone" to="/map">
                 Pick an address
               </Link>
               .
@@ -262,6 +270,6 @@ export default function RedTape() {
           </section>
         </Reveal>
       </div>
-    </PageContainer>
+    </div>
   )
 }

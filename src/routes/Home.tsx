@@ -219,17 +219,29 @@ export default function Home() {
               Click a parcel. Get the verdict.
             </h2>
           </Reveal>
-          <div className="mt-16 grid gap-12 sm:grid-cols-3">
-            {STEPS.map((s, i) => (
-              <Reveal key={s.n} delay={i * 120}>
-                <div className="border-t border-piranha-charcoal/15 pt-5">
-                  <span className="font-serif text-xl text-piranha-gold">{s.n}</span>
-                  <h3 className="mt-3 font-semibold text-piranha-charcoal">{s.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-piranha-charcoal/65">{s.body}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+          {/* The three steps share one gold thread that draws itself across as
+              the row reveals — address, plan, verdict are one motion, not
+              three orphaned cards. (tpp-bar-fill animates width on reveal.) */}
+          <Reveal>
+            <div className="relative mt-16">
+              <span
+                aria-hidden="true"
+                className="tpp-bar-fill absolute -top-px left-0 hidden h-[2px] bg-piranha-gold sm:block"
+                style={{ '--bar-w': '100%', transitionDelay: '200ms', transitionDuration: '1.4s' } as React.CSSProperties}
+              />
+              <div className="grid gap-12 sm:grid-cols-3">
+                {STEPS.map((s, i) => (
+                  <Reveal key={s.n} delay={i * 160}>
+                    <div className="border-t border-piranha-charcoal/15 pt-5">
+                      <span className="font-serif text-xl text-piranha-gold">{s.n}</span>
+                      <h3 className="mt-3 font-semibold text-piranha-charcoal">{s.title}</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-piranha-charcoal/65">{s.body}</p>
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+          </Reveal>
           <Reveal delay={120}>
             <p className="mt-12 text-sm leading-relaxed text-piranha-charcoal/65">
               Weighing two sites?{' '}

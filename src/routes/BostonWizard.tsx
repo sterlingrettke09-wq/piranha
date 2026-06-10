@@ -107,6 +107,24 @@ export default function BostonWizard() {
     navigate(`/result?${p.toString()}`)
   }
 
+  // Zero-typing path: a typical small apartment building, straight to the
+  // verdict. The numbers are deliberately modest (a triple-decker-scale infill
+  // project) so the demo reads as realistic in every covered city.
+  function runTypical() {
+    const p = new URLSearchParams()
+    p.set('city', city)
+    p.set('parcelId', parcelId)
+    p.set('projectType', 'new')
+    p.set('funding', 'private')
+    p.set('lat', String(lat))
+    p.set('lng', String(lng))
+    p.set('use', 'residential')
+    p.set('gfa', '7500')
+    p.set('units', '6')
+    p.set('stories', '3')
+    navigate(`/result?${p.toString()}`)
+  }
+
   // One-line recap of what the user has filled so far — only the segments they
   // actually entered (WO-6.3). Shown above the submit button on the last step.
   const summaryBits = [
@@ -134,12 +152,25 @@ export default function BostonWizard() {
 
         <div key={step} className="tpp-fade-in">
           {step === 1 && (
-            <StepType
-              value={projectType}
-              onChange={(t) => setProjectType(t)}
-              funding={funding}
-              onFunding={(f) => setFunding(f)}
-            />
+            <>
+              <StepType
+                value={projectType}
+                onChange={(t) => setProjectType(t)}
+                funding={funding}
+                onFunding={(f) => setFunding(f)}
+              />
+              {/* The zero-typing path. Only on step 1, only before the user has
+                  started describing their own project. */}
+              {projectType === null && (
+                <button
+                  type="button"
+                  onClick={runTypical}
+                  className="mt-6 text-sm text-piranha-charcoal/55 underline decoration-piranha-charcoal/25 underline-offset-4 transition-colors hover:text-piranha-burgundy"
+                >
+                  In a hurry? Run a typical 6-unit, 3-story building →
+                </button>
+              )}
+            </>
           )}
           {step === 2 && <StepUse value={use} onChange={(u) => setUse(u)} />}
           {step === 3 && (

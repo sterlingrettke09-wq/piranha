@@ -319,6 +319,64 @@ body {
   }
 }
 
+/* Brand shimmer for loading skeletons — a warm bone-on-parchment sweep
+   instead of the stock gray pulse. Pair with a height/width/rounded class. */
+@keyframes tpp-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.tpp-shimmer {
+  background: linear-gradient(
+    100deg,
+    rgba(58, 54, 51, 0.07) 40%,
+    rgba(193, 154, 73, 0.13) 50%,
+    rgba(58, 54, 51, 0.07) 60%
+  );
+  background-size: 200% 100%;
+  animation: tpp-shimmer 1.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpp-shimmer {
+    animation: none;
+    background: rgba(58, 54, 51, 0.08);
+  }
+}
+
+/* Red Tape Index bars draw themselves in as the table scrolls into view.
+   Width animates 0 → var(--bar-w) when the wrapping Reveal flips .is-visible;
+   stagger per row via inline transition-delay. Reduced motion: instant. */
+.tpp-bar-fill {
+  width: 0;
+  transition: width 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.is-visible .tpp-bar-fill {
+  width: var(--bar-w, 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpp-bar-fill {
+    width: var(--bar-w, 100%) !important;
+    transition: none;
+  }
+}
+
+/* The verdict stamp: lands like a rubber stamp — oversized and crooked on
+   arrival, then thuds down and settles at a slight permanent tilt. */
+@keyframes tpp-stamp {
+  0% { opacity: 0; transform: scale(2.4) rotate(-16deg); }
+  55% { opacity: 1; transform: scale(0.92) rotate(-4deg); }
+  75% { transform: scale(1.05) rotate(-7deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-6deg); }
+}
+.tpp-stamp {
+  transform: rotate(-6deg);
+  animation: tpp-stamp 0.5s cubic-bezier(0.22, 1.2, 0.36, 1) 0.35s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpp-stamp {
+    animation: none;
+  }
+}
+
 /* Slow ambient drift for the closing CTA fish. */
 @keyframes tpp-drift {
   0% { transform: translate(0, 0) rotate(0deg); }

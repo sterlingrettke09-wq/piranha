@@ -140,6 +140,23 @@ const CITIES: Record<string, CityConfig> = {
 
 export const LIVE_CITIES = Object.keys(CITIES)
 
+// ---- Degraded-response cache control ----
+// Providers fetch zoning/geocode via Promise.allSettled and degrade gracefully:
+// a failed zoning lookup becomes districtCode 'Unknown', a failed geocode
+// becomes address 'Selected location'. That's the right call for ONE response —
+// but freezing it into the CDN for 24h turned a transient GIS outage into a
+// day of "Unknown district" for everyone who clicked that block (observed live
+// in Chicago, 2026-06-10). Degraded answers cache for 5 minutes instead, so
+// the next visitor retries upstream while healthy answers keep the long TTL.
+export const CACHE_OK = 'public, s-maxage=86400, stale-while-revalidate=604800'
+export const CACHE_DEGRADED = 'public, s-maxage=300'
+
+export function cacheControlFor(info: ParcelInfo): string {
+  const degraded =
+    info.zoning.districtCode === 'Unknown' || info.address === 'Selected location'
+  return degraded ? CACHE_DEGRADED : CACHE_OK
+}
+
 export async function getParcelInfo(city: string, lat: number, lng: number): Promise<ParcelResult> {
   const cfg = CITIES[city]
   // An unknown city must NOT silently fall back to Boston's bbox (that yielded a
