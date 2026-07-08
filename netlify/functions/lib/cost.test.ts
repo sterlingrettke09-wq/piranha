@@ -126,15 +126,16 @@ describe('impact fees per city', () => {
     expect(at({ city: 'la', use: 'commercial', gfa: 14_999 }).costs.impact).toBe(0)
   })
 
-  it('Denver: residential <10 units pays $5/sf; 10+ units pays none (inclusionary mandate); commercial varies by EHA area', () => {
-    expect(at({ city: 'denver', use: 'residential', gfa: 8_000, units: 4 }).costs.impact).toBe(40_000)
+  it('Denver: residential <10 units pays $5.12/sf; 10+ units pays none (inclusionary mandate); commercial varies by EHA area', () => {
+    // Rates per the Denver CPD EHA schedule effective 7/1/2026 (annual CPI-U).
+    expect(at({ city: 'denver', use: 'residential', gfa: 8_000, units: 4 }).costs.impact).toBe(Math.round(5.12 * 8_000))
     expect(at({ city: 'denver', use: 'residential', gfa: 80_000, units: 60 }).costs.impact).toBe(0)
     // WO-5.6: units omitted → tier unknowable → informational note, not a charge.
     const unknown = at({ city: 'denver', use: 'residential', gfa: 8_000 })
     expect(unknown.costs.impact).toBe(0)
     expect(unknown.impactNote).toMatch(/unit count needed/)
-    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'High' }).costs.impact).toBe(90_000)
-    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'Typical' }).costs.impact).toBe(60_000)
+    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'High' }).costs.impact).toBe(Math.round(9.21 * 10_000))
+    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'Typical' }).costs.impact).toBe(Math.round(6.14 * 10_000))
   })
 
   it('Seattle and SF fees are informational (applied:false): note set, $0 in total', () => {

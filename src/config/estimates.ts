@@ -8,7 +8,7 @@ import type { ProjectType, Use } from '../types/analysis'
 // that consumes it) changes. It's appended to /api/analyze URLs as a cache
 // key, so tuned numbers propagate immediately instead of serving stale cached
 // verdicts for up to 24h (+7d stale-while-revalidate).
-export const ESTIMATES_VERSION = 6
+export const ESTIMATES_VERSION = 7
 
 // Human-readable vintage of the cost tables, surfaced on the result page so the
 // data provenance can't silently drift from the figures above. Sourced from the
@@ -206,16 +206,19 @@ export const reliefAddMonthsFallback = 6
 // it is the published MEDIUM-tier rate, stated as such below — not an average or
 // guess. Seattle is informational-only and uses representative midpoints. Boston
 // ($23.09), Denver, and SF ($85.90 large office) are exact published rates.
-// Sources (re-verified 2026-06-10 against primary fee schedules):
+// Sources (re-verified 2026-07-07 against primary fee schedules):
 //   • Boston BPDA development linkage — $23.09/sf other-commercial ≥50k sf
-//     (2023 ordinance, phased; lab $30.78). VERIFIED.
+//     (2023 ordinance, phased; lab $30.78). VERIFIED current (no FY27 change).
 //   • LA City Planning AHLF "Updated Fee Schedule Effective July 1, 2025"
 //     (Table per LAMC §19.18; CPI-adjusted each 7/1). Tiers Low/Medium/Medium-
 //     High/High: residential 6+ units $10.32/$12.90/$15.47/$23.20; nonresidential
-//     $3.86/$5.16/n-a/$6.44. We bill the MEDIUM tier below.
-//   • Denver CPD Affordable Housing (Linkage) Fee schedule, current 7/1/2025
-//     column: ≤9-unit residential ≤1,600 sf/unit $5.00/sf; commercial typical
-//     $6.00, high $9.00. VERIFIED exact.
+//     $3.86/$5.16/n-a/$6.44. We bill the MEDIUM tier below. WATCH: LAMC mandates
+//     a 7/1/2026 CPI bump but no 2026 schedule is published yet (checked
+//     2026-07-07) — the 2025 memo remains the latest official rates; re-check
+//     planning.lacity.gov for the 2026 memo.
+//   • Denver CPD Affordable Housing (Linkage) Fee schedule, current 7/1/2026
+//     column (annual CPI-U): ≤9-unit residential ≤1,600 sf/unit $5.12/sf;
+//     commercial typical $6.14, high $9.21. VERIFIED exact.
 //   • Seattle SDCI MHA "Adjusted Payment Calculation Amounts" (Ch. 23.58B/C),
 //     3/1/2026 column. Residential by area/M-M1-M2 ranges $10.78–$50.46;
 //     commercial $7.87–$32.66. Midpoints below are informational. VERIFIED.
@@ -247,18 +250,19 @@ export function impactFee(city: string, use: Use, gfa: number, units: number | n
         ? { perSqFt: 5.16, applied: true, label: 'LA affordable-housing linkage fee (nonres ≥ 15k sf; Medium market area)' }
         : null
     case 'denver': {
-      // Residential <10 units is citywide-uniform ($5/sf, ≤1,600 sf/unit); 10+
+      // Residential <10 units is citywide-uniform ($5.12/sf, ≤1,600 sf/unit); 10+
       // units fall under the inclusionary build mandate (no fee). Commercial
-      // varies by EHA market area: High $9, Typical $6 — now parcel-exact.
+      // varies by EHA market area: High $9.21, Typical $6.14 — parcel-exact.
+      // Rates per the CPD schedule effective 7/1/2026 (annual CPI-U adjustment).
       if (use === 'residential') {
         // Unit count unknown: we can't tell the <10-unit fee tier from the 10+
         // inclusionary-mandate tier — surface as informational, don't guess.
         if (units == null)
-          return { perSqFt: 5, applied: false, label: 'Denver affordable-housing fee — unit count needed to determine the tier' }
-        return units >= 10 ? null : { perSqFt: 5, applied: true, label: 'Denver affordable-housing fee' }
+          return { perSqFt: 5.12, applied: false, label: 'Denver affordable-housing fee — unit count needed to determine the tier' }
+        return units >= 10 ? null : { perSqFt: 5.12, applied: true, label: 'Denver affordable-housing fee' }
       }
       if (!commercial) return null
-      const rate = feeArea === 'High' ? 9 : 6
+      const rate = feeArea === 'High' ? 9.21 : 6.14
       return { perSqFt: rate, applied: true, label: `Denver affordable-housing fee (${feeArea ?? 'Typical'} market)` }
     }
     case 'seattle': {

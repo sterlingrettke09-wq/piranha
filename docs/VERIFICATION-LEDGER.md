@@ -74,3 +74,15 @@ the attempt recorded.
 | Seattle design review suspended/voluntary per CB 121048 (passed 2025-09-26), pending permanent HB 1293 rules expected 2026 | seattle.gov/sdci/codes/changes-to-code/2025-design-review-program-changes (fetched 2026-06-10) | VERIFIED — added as status:'info' hurdle, no months |
 | Example demo parcels (10 cities) resolve to real addresses + districts | Live /api/parcel probes, one per city (2026-06-10) | VERIFIED — coords + labels in src/config/exampleParcels.ts |
 | Chicago prod returned districtCode "Unknown" at multiple points while the city's ArcGIS answered correctly direct | Live probes of thepiranhaproject.com + gisapps.chicago.gov (2026-06-10) | DIAGNOSED as CDN-cached degraded responses → cacheControlFor() now caps degraded TTL at 300s |
+
+## July 2026 fee-rollover re-verification (2026-07-07)
+
+| Claim | Source | Status |
+| --- | --- | --- |
+| Denver EHA schedule effective 7/1/2026 (annual CPI-U, ~+2.4%): ≤9-unit residential ≤1,600 sf/unit $5.12/sf; commercial Typical $6.14 / High $9.21 | denvergov.org CPD "EHA Ordinance and Affordable Housing Fee" (fetched 2026-07-07) | STALE → FIXED — estimates.ts updated $5.00/$6.00/$9.00 → $5.12/$6.14/$9.21; cost.test.ts expectations updated |
+| LA AHLF: LAMC §19.18 mandates a 7/1 CPI bump, but NO 2026 schedule is published — the May 29, 2025 Director's memo (Medium res $12.90, nonres $5.16) remains the latest official rates | planning.lacity.gov AHLF memo (downloaded 2026-07-07); Drupal search + URL probes found no 2026 memo | VERIFIED current-as-published — WATCH note added to source comment; re-check planning.lacity.gov |
+| Boston linkage $23.09/sf other-commercial (lab $30.78) still current; no FY2027 adjustment announced | bostonplans.org/projects/standards/linkage (fetched 2026-07-07) | VERIFIED unchanged |
+| Seattle MHA rates: SDCI "Adjusted Payment Calculation Amounts" latest column runs 3/1/2026–2/28/2027 — the schedule in use | seattle.gov SDCI MHA_rates.pdf (fetched 2026-07-07) | VERIFIED unchanged |
+| SF Jobs-Housing Linkage: Impact Fee Register (rates eff. 1/1/2026, v. 11/25/2025) Table 413.5A — office ≥50k gsf $85.90, <50k $77.30, lab $47.35 | sfplanning.org Impact_Fee_Schedule.pdf (fetched 2026-07-07) | VERIFIED unchanged |
+
+Net changes: ESTIMATES_VERSION 6 → 7 (Denver rates changed; cache-buster bumped).
