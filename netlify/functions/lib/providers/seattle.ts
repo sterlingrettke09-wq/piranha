@@ -3,6 +3,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { resolveSeattle } from '../zoning/seattle'
 
 const ORG = 'https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services'
 const ZONING = `${ORG}/Current_Land_Use_Zoning_Detail_2/FeatureServer/0`
@@ -102,7 +103,14 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
       subdistrict: null,
       article: null,
       maxHeightFt: seattleMaxHeightFt(zone),
-      maxFAR: null,
+      // SMC 23.47A.013 Table A publishes NC/C FAR as a function of the
+      // height-limit suffix, and lib/zoning/seattle.ts already encodes it —
+      // resolveZoningLimits layers it in, so the ENVELOPE was always correct.
+      // This field was left null anyway, so /api/parcel and the UI reported "no
+      // FAR" for a parcel whose floor area had been computed from FAR 4.5.
+      // Surfacing the same sourced value keeps the response self-consistent.
+      // Returns null outside NC/C (LR/MR/HR and SM have their own tables).
+      maxFAR: resolveSeattle(zone).far,
       allowedUses: usesForZone(zone),
     },
     lot: {
