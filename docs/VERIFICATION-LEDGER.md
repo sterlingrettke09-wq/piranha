@@ -907,3 +907,61 @@ per-field, per-consumer check, not a grep.
 Recording the negative result and the refinement together, because "the audit
 came back clean" on its own would be misleading: the audit came back clean AND
 its premise was too narrow to cover the four known instances.
+
+---
+
+## 2026-08-04 — A FALSE PROVENANCE CLAIM WAS SHIPPING. Corrected in text.
+
+Found while cherry-picking a disclosure. Two user-facing strings attributed the
+cost base rates to RSMeans:
+
+- `COST_DATA_VINTAGE = 'RSMeans 2026 base rates · 2021 city cost indices'`
+- Methodology page: "Base rate by use (U.S. national average, **RSMeans 2026**)"
+
+`costPerSqFtByUse` has **no verified derivation**. The "RSMeans 2026" comment on
+it was an unsupported attribution, and it had been promoted into a user-facing
+provenance claim. The city-index half of that string is genuinely sourced
+(verified figure-by-figure against the free 2021 CCI for all 15 cities); the
+base-rate half was not.
+
+> **A number that is merely plausible must not be published wearing a source's
+> name.** This is rule 3 (a citation on one input launders the derivation) at
+> its worst: the composite string carried one true half and one false half, and
+> the true half made the whole thing read as sourced.
+
+Corrected to state that base rates are internal estimates of unverified
+provenance, that city indices are the RSMeans 2021 CCI, and that independent
+industry figures for market-grade buildings run higher.
+
+### Also disclosed: sitework
+
+The cost model has no sitework term at all. Previously undisclosed, so the total
+**read as a complete construction cost**. That is the one failure mode worse
+than a wrong number — every other known gap is either labelled (the FAR
+fallback) or does not move the total. Now named explicitly, including that it
+can be a significant share of a real budget.
+
+### The sentence that must survive verbatim
+
+> **The old constants sit nearer typical-market than my correction did, but that
+> is coincidence, not evidence.**
+
+An unsourced number landing closer to reality than a sourced one is a fact about
+luck, not about method. The temptation to read it as vindication for leaving
+`340` alone is real and must be refused: it is an unsourced number that happens
+to be less wrong today, with no reason to expect that holds.
+
+### Verification of the cherry-pick itself
+
+Disclosure-only was **verified, not asserted** — the failure mode being guarded
+against is a "text-only" change quietly dragging a constant with it:
+
+- diff vs the merge commit: 3 files, all text (`analyze.ts`, `estimates.ts`
+  string + comment, `Methodology.tsx` paragraph)
+- `cost.ts`, `assumptions.ts`, `envelope.ts`, `defaultSpec.ts`: **zero diff**
+- no numeric constant changed anywhere in `estimates.ts`
+- hard-cost formula: **byte-identical to `origin/main`**
+
+Caveat stated rather than hidden: `cost.ts` as a whole DOES differ from
+`origin/main` — Philadelphia's 1% Development Impact Tax, which arrived with the
+city-expansion commit and belongs to the `impact` line, not the hard-cost line.

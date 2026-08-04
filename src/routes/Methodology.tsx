@@ -171,7 +171,13 @@ export default function Methodology() {
               This is construction cost. It does not include land or acquisition, which in the
               priciest markets often costs more than the building itself.
             </p>
-            <p className="pt-2 font-semibold text-piranha-charcoal">Base rate by use (U.S. national average, RSMeans 2026)</p>
+            <p className="pt-2 font-semibold text-piranha-charcoal">Base rate by use (U.S. national average)</p>
+            <p className="text-sm text-piranha-charcoal/70">
+              These base rates are internal estimates. We have not been able to verify where they
+              were derived from, so we do not attribute them to a published cost source. Independent
+              industry figures for comparable buildings run higher than these for a market-grade
+              finish specification. Treat them as a rough floor, not a quote.
+            </p>
             <Table head={['Use', '$ / sq ft']} rows={useRows} />
             <p className="pt-2 font-semibold text-piranha-charcoal">City construction index</p>
             <p>

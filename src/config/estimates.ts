@@ -11,10 +11,17 @@ import type { ProjectType, Use } from '../types/analysis'
 export const ESTIMATES_VERSION = 8
 
 // Human-readable vintage of the cost tables, surfaced on the result page so the
-// data provenance can't silently drift from the figures above. Sourced from the
-// comments on costPerSqFtByUse (RSMeans 2026 building models) and cityCostIndex
-// (RSMeans City Cost Index, 2021 location factors).
-export const COST_DATA_VINTAGE = 'RSMeans 2026 base rates · 2021 city cost indices'
+// data provenance can't silently drift from the figures above.
+//
+// ⚠️ CORRECTED 2026-08-04. This previously read "RSMeans 2026 base rates · 2021
+// city cost indices", which was FALSE for the first half and shipped to users.
+// The city cost indices ARE sourced — verified figure-by-figure against the
+// free 2021 RSMeans City Cost Index for all 15 cities. The BASE RATES are not:
+// costPerSqFtByUse has no verified derivation, and the "RSMeans 2026" comment on
+// it was an unsupported attribution rather than a citation. A number that is
+// merely plausible must not be published wearing a source's name.
+export const COST_DATA_VINTAGE =
+  'Base rates: internal estimates, provenance unverified · City indices: RSMeans City Cost Index, 2021'
 
 export type BuildingTier = 'single' | 'multi' | 'apartment'
 

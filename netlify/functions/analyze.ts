@@ -40,6 +40,16 @@ const MAX_HEIGHT_FT = 1_600
 const DISCLAIMERS = [
   'Estimates only. Not legal, engineering, or financial advice.',
   'Construction cost only — excludes land, financing, and tax credits or other incentives.',
+  // Site preparation is excluded by construction, not by oversight: the cost
+  // model has no sitework term at all. Without this line the total READS as a
+  // complete construction cost, and the user forms a belief the figure does not
+  // support. That is the one failure mode worse than a wrong number — every
+  // other known gap here is either labelled or does not move the total.
+  'Excludes site preparation — excavation, grading, soil remediation, retaining walls, and utility connections. These vary too much by site to estimate from public data and can be a significant share of a real budget.',
+  // The base $/sf rates carry no verified derivation. Saying so is not optional
+  // while the same report corrects a FAR disclosure: disclosing one limitation
+  // and not the other is inconsistent in the direction that flatters the tool.
+  'Base construction rates are internal estimates with unverified provenance, scaled by RSMeans 2021 city cost indices. Independent industry figures for market-grade buildings run higher. Treat the total as a rough floor.',
   'Verify zoning, fees, and permitting with the city before relying on these figures.',
 ]
 
