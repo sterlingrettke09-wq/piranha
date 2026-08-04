@@ -86,3 +86,783 @@ the attempt recorded.
 | SF Jobs-Housing Linkage: Impact Fee Register (rates eff. 1/1/2026, v. 11/25/2025) Table 413.5A — office ≥50k gsf $85.90, <50k $77.30, lab $47.35 | sfplanning.org Impact_Fee_Schedule.pdf (fetched 2026-07-07) | VERIFIED unchanged |
 
 Net changes: ESTIMATES_VERSION 6 → 7 (Denver rates changed; cache-buster bumped).
+
+## Cost-model defects found during the city expansion (2026-08-03)
+
+| Claim | Source | Status |
+| --- | --- | --- |
+| `buildingTier()` (single/multi/apartment) is computed and consulted ONLY by timeline.ts; cost.ts never reads it, so a detached house and a 200-unit tower share one $/sf | Code read of `netlify/functions/lib/cost.ts` (hard = gfa × costPerSqFtByUse[use] × cityIdx × heightCostFactor × scope) | CONFIRMED — unfixed. Direction known (detached SF biased HIGH, since the constant is sourced-as mid-rise multifamily); magnitude NOT established |
+| `PARKING_RULES` reaches hurdles/redTapeIndex/realityCheck/SiteFacts but never cost.ts — parking is classified and never priced | grep of consumers; `cost.ts` has no parking term | CONFIRMED — unfixed. Same defect shape as tier |
+| No sitework/excavation term exists anywhere in the cost engine | `total = hard + soft + permit + demolition + impact`; zero matches for sitework/excavation | CONFIRMED — unfixed. Biases LOW on infill, 0 to -15%, magnitude depends on the $/sf composition |
+| Soft-cost double-count with RSMeans-embedded A&E | Premise from Gordian Square Foot Estimating Manual (25% GC + 7% A&E); constants came from rsmeans.com/resources/cost-to-build-an-office, which was fetched and carries NO methodology note | UNQUANTIFIED, bounded 0-7%. NOT established — do not cut softCostPct in isolation |
+| `costPerSqFtByUse.commercial` $390 is the arithmetic midpoint of RSMeans' published $208-574 range (2.76x spread) for 5-10 story office | rsmeans.com/resources/cost-to-build-an-office (fetched 2026-08-03) | CONFIRMED — the base constant's precision is far below the errors being chased around it |
+| Whether the $208-574 range is national or spans cities (i.e. whether applying CCI double-counts geography) | Source page has no methodology note | UNRESOLVED |
+| `heightCostFactor` is flat 1.0 up to 4 stories, so it cannot distinguish stick-frame Type V from a 4-story podium — the real cost discontinuity is construction TYPE, not story count | Code read of `heightFactorTiers` | CONFIRMED — unfixed; wrong axis |
+
+Net: no constant was changed. Sequence agreed — source per-tier constants FIRST, then wire tier and rework the height axis on construction type.
+
+### RSMeans licensing — cleared 2026-08-03
+
+| Claim | Source | Status |
+| --- | --- | --- |
+| Gordian/RSMeans user agreement restricts using RSMeans Data "as a component of or as a basis for any material or product offered for sale, license or distribution," and grants use "solely for Customer's internal business purposes" | RSMeansOnlineUserAgreement.pdf §209-212, §642-648 (extracted 2026-08-03) | ACCURATE AS QUOTED — but resolved, see below |
+| Use of RSMeans-derived constants in this product is cleared | Owner consultation with counsel AND directly with RSMeans, 2026-08-03 | CLEARED — the earlier "do not obtain a trial or licence" recommendation is RETRACTED and must not be re-derived from the clause text alone |
+| Clearance scope | As understood 2026-08-03 | A future Data Online subscription is a separate instrument; this clearance does not automatically extend to it |
+
+### RSMeans free-document findings (2026-08-03) — step 1 partial, no account required
+
+| Claim | Source | Status |
+| --- | --- | --- |
+| RSMeans applies a **Project Size Modifier**: Size Factor = project area ÷ typical size for the building type; Size Factor < 0.50 → cost multiplier **1.1**, > 3.5 → **0.90** | [2024 Square Foot Project Size Modifiers PDF](https://www.rsmeans.com/media/wysiwyg/quarterly_updates/2024-Square-Foot-Project-Size-Modifiers.pdf) (fetched, extracted) | VERIFIED — **missing entirely from our cost model** (defect 5) |
+| Typical project sizes: Multi-Family Housing 53,600 sf · Office 21,000 sf · Schools 69,900 sf · Retail 22,000 sf · Mixed Use 29,800 sf | same | VERIFIED |
+| **Median Total Project Costs**: Multi-Family Housing $258 · Office $263 · Schools $279 · Mixed Use $415 · Retail $210 · Warehouses $155 · Hospitals $465 | same | VERIFIED AS QUOTED — materially BELOW our constants (residential 340, commercial 390). **NOT directly substitutable**: this table is "Total Project Costs" (reported actuals), whose composition may differ from the Square Foot models our constants claim to come from. Composition question still open. |
+| The size-modifier worked example states results are "based on national average costs" | same | Supports (does not prove) that the SF base is national and CCI applies on top — Q2 still needs the two-run test |
+| The tier axis exists as **distinct RSMeans models**: M.010 Apartment 1-3 Story, M.020 Apartment 4-7 Story, M.030 Apartment 8-24 Story | [2020 Square Foot Costs TOC](https://www.rsmeans.com/media/wysiwyg/2020-SQFT-TOC.pdf) | VERIFIED — confirms cost varies BETWEEN models, not continuously within one (capture-sheet item E) |
+| **Residential Models are a separate section with Building Classes** (quality tiers), distinct from the commercial model set | same TOC | VERIFIED — confirms capture-sheet A1; the detached tier and quality-class axis both exist |
+
+Still requires the estimator (account): fee percentages, what each fee computes on, before/after, assembly breakdown, additives list, and the SF-vs-national ratio.
+
+### RSMeans public model pages — A and B measured, C blocked (2026-08-03)
+
+Route: `rsmeans.com/model-pages/<slug>`, free, no account. All figures "National, US".
+
+| Claim | Source | Status |
+| --- | --- | --- |
+| **Apartment 4-7 Story**: bare $145.01 → contractor 25% $36.25 → architectural 7% $12.69 → **total $193.94** | [model page](https://www.rsmeans.com/model-pages/apartment-4-7-story) | VERIFIED |
+| **Apartment 1-3 Story**: bare $146.52 → 25% $36.63 → 7% $12.82 → **total $195.97** | [model page](https://www.rsmeans.com/model-pages/apartment-1-3-story) | VERIFIED |
+| **Office 5-10 Story**: bare $159.35 → 25% $39.84 → 6% $11.95 → **total $211.14** | [model page](https://www.rsmeans.com/model-pages/office-5-10-story) | VERIFIED |
+| **Hospital 4-8 Story**: bare $217.13 → 25% → 9% → total $295.85 | [model page](https://www.rsmeans.com/model-pages/hospital-4-8-story) | VERIFIED |
+| ~~Fees apply **IN PARALLEL on the bare subtotal**, not compounded~~ | ~~Arithmetic: 146.52 + 36.63 + 12.82 = 195.97~~ | ⚠️ **RETRACTED 2026-08-04 — THIS LINE WAS WRONG.** See the correction row below and the B entry dated 2026-08-04. |
+| Fees **COMPOUND**: `total = bare × (1 + contractor) × (1 + architectural)` | Perturbation test on the live estimator (2026-08-04), plus the four rows above | **CORRECTED.** For commercial that IS the 33.75% case (1.25 × 1.07), not 32%. **The four model rows above already contained the proof and it was misread:** on Apartment 4-7, the architectural addend $12.69 = 7% of the contractor-inclusive $181.26, NOT 7% of bare $145.01 (which would be $10.15). Same on all four — Apt 1-3 $12.82 = 7% × 183.15; Office $11.95 = 6% × 199.19; Hospital 295.85 = 217.13 × 1.25 × 1.09. Parallel application would have given Apt 4-7 a total of $191.41 against the published $193.94. **`a + b + c = total` is consistent with both structures and discriminates neither** — the sum was treated as evidence when it carried none. |
+| **Architectural fee varies by building type**: 6% office · 7% apartment · 9% hospital | four model pages | VERIFIED — there is no single "7%"; the inherited Penn State figure is the apartment value |
+| ~~**Our constants are ~2.3× a sourced national figure.**~~ residential 340 vs 145.01 = ~~+134.5%~~; commercial 390 vs 159.35 = ~~+144.7%~~ | model pages + this file's own comment | ⚠️ **RE-SIZED 2026-08-04.** The finding stands in direction; the magnitude was computed against the wrong basis. See correction row. |
+| **Our constants are ~1.9× the correct like-for-like figure.** Against `bare × 1.25` (the mapping decided 2026-08-04 — GC O&P belongs in `hard`, A&E does not): residential **340 vs 181.26 = +87.6%**; commercial **390 vs 199.19 = +95.8%** | model pages, mapping decision 2026-08-04 | **CORRECTED — this is the headline finding.** The earlier +134.5% compared our constants against BARE, stranding contractor O&P in no term at all. The engine is `total = hard + soft + permit + demolition + impact` and the soft comment defines soft as "A&E, permitting consultants, legal, developer OH" — so A&E is in `soft` and must be out of `hard`, while GC O&P has no other home and must be in `hard`. That makes `bare × 1.25` the only value consistent with the engine's own decomposition: $143.98-style bare figures strand O&P, fee-inclusive totals double-count A&E. **The substitution caveat still applies — this sizes the error, it does not supply the replacement.** |
+| Four constants show no common derivation method — spread −12% to +48% against medians, one inverting | 2024 Size Modifier medians vs `costPerSqFtByUse` | VERIFIED — a composition difference would give a consistent offset; this does not. The constants were selected, not derived |
+| **No sitework/site-preparation line** in the model breakdown; model states "no basement included" | hospital-4-8-story page | VERIFIED — affirmative evidence for defect 3, not inference |
+| **Union vs open shop** is a real dimension: Apartment 1-3 union bare $146.52 vs open shop $131.58 = **1.114** | model pages | VERIFIED — unmodelled. May underlie the CCI installation column; if a city-selected model also sets labor basis, CCI on top could double-count |
+| Cost varies **between** models (story bands are model boundaries: apartment 1-3 / 4-7 / 8-24; office 1 / 2-4 / 5-10 / 11-20), not continuously within one | [model index](https://www.rsmeans.com/model-pages) | VERIFIED — settles capture item E. Rebuild axis is construction type; story count becomes a classifier input |
+| `institutional` maps to "Civic, educational, healthcare" (wizard label) but the code comment says "schools/civic; healthcare is materially higher" | `StepUse.tsx` vs `estimates.ts` | **INCONSISTENCY — genuine bug.** The bucket spans Schools $279 → Hospitals $465 → Student Union $660. The earlier "+61% vs schools" was a mis-mapping, not an error in the constant |
+
+**RETRACTION — tier premium direction.** This ledger previously recorded that
+small-scale infill is biased HIGH because a mid-rise constant is applied to
+stick-frame construction. **That direction is retracted.** Apartment 1-3 Story
+($195.97) costs *more* than Apartment 4-7 Story ($193.94) — economy of scale
+roughly cancels the construction-type premium. **The defect stands** (cost.ts
+still ignores tier); **the direction does not.** For DETACHED housing it remains
+open — separate data set, own fee page, no transfer assumed.
+
+**PATTERN TO WATCH — fourth occurrence this thread.** Plausible mechanism →
+correct-sounding direction → no measurement → survives several rounds → dies on
+contact with a source. Instances: (1) "$340/$390 double-count soft costs at 25%";
+(2) "the two errors roughly cancel"; (3) "detached is biased high"; (4) "the
+triplex needs a size modifier". Expect this when sourcing the remaining
+constants — a mechanism that sounds airtight is not a measurement.
+
+**STILL BLOCKED — needs the estimator (account required, owner to run):**
+- **C — geography.** Model pages are static "National, US" with no location
+  control and no city URL variant. The CCI double-count question is untested.
+  Run the city variant **at the same labor basis** as the national run.
+- **Residential fee treatment.** No detached/residential model page exists on the
+  public route (verified against the full model index — the only "house" matches
+  are courthouse / funeral-home / fraternity-sorority-house). The Residential data
+  set has its own Architect/Designer Fees page (TOC p.62); its structure is unverified.
+- **A1 — detached tier constant.** Same reason.
+
+**PATTERN — fifth variant, and the hardest to catch.** The four instances above
+were premises inherited from *documents*. The tier-premium claim was not: it came
+from an interlocutor reasoning aloud from construction type (Type V vs Type III,
+no elevator, no rated corridors), and was accepted because the mechanism sounded
+sound. It survived several rounds and multiple file edits before a measurement
+killed it.
+
+This variant recurs specifically in collaborative work, and neither party has a
+reliable detector for it — a confident, mechanically-plausible assertion from a
+trusted counterpart reads exactly like a sourced finding. The mitigation is the
+same as everywhere else in this thread and applies symmetrically: **direction is
+not evidence.** A claim with no measurement is logged as an OPEN QUESTION, not a
+finding — including when it comes from the person reviewing the work.
+
+**CAVEAT ON THE +134.5% — do not convert it into a substitution.** That figure
+compares our constant against ONE model, ONE configuration, at national average.
+It is strong evidence that 340 is badly wrong and weak evidence about what the
+correct value is. The replacement constants must come from the estimator's model
+set matched to our own tier definitions, at a geography basis resolved by C — not
+from lifting $145.01 across. This is recorded in the `estimates.ts` DEFECTS block
+as well as here, because the code comment is what gets read at tuning time.
+
+**PATTERN — the asymmetry, and the stronger rule it implies.** The mitigation
+recorded above ("log it as an open question") was written symmetric. It is not
+symmetric in practice, and the difference matters:
+
+The assistant's reasoning is checked continuously — 570 tests, a type checker,
+and sources that can be re-fetched and re-read. The reviewer's reasoning is
+checked only when the assistant pushes back, or when a document happens to land
+on it. Here that took four rounds, and it was *fast* only because the estimator
+model pages surfaced. On a claim where no document is coming, an incorrect
+mechanism argued aloud could survive indefinitely.
+
+**So the operative rule is stronger than "log as an open question": a mechanism
+argued aloud earns NO DIRECTION in the ledger until something measures it.** Not
+a weaker direction. Not a hedged one. None. Writing "biased high (magnitude
+unknown)" is what let the tier-premium claim into two files and propagate to a
+third entry; "direction unmeasured" would have kept it out entirely.
+
+---
+
+## 2026-08-03 — C RESOLVED BY MEASUREMENT. The CCI multiply is structurally
+## sound and numerically wrong for housing.
+
+Run on RSMeans Data Online (trial account, owner-operated). Model: **Apartment,
+1-3 Story with Brick Veneer / Reinforced Concrete**; 22,500 sf, 3 stories,
+10.00 ft story height, no basement, **Standard Union**, Release **Year 2018**.
+All 15 cities swept on that one model with every other input held fixed.
+
+**On the release.** The Release control offers a group labelled "Current
+Quarter" containing exactly one member: "Year 2018". Verified identical across
+three cost-data sets (Commercial New Construction, Residential New
+Construction, Facilities Maintenance) and against the Square Foot Estimator's
+own release `<select>`, which has n=1. On this account **Current Quarter IS
+Year 2018** — the sweep below is the current-quarter data, not a stale
+alternative to it. Additional quarters are a subscription entitlement.
+An earlier claim in this thread that Search Data "offers Current Quarter" as a
+selectable newer release was wrong: that was a collapsible group header read as
+an option. Corrected here.
+
+### The sweep — national average $192.57/SF
+
+| City | RSMeans ZIP group | $/SF | ratio | our CCI | offset |
+|---|---|---|---|---|---|
+| New York | 100-102 | 273.77 | 1.422 | 1.32 | +7.70% |
+| San Francisco | 940-941 | 257.12 | 1.335 | 1.30 | +2.71% |
+| San Jose | 951 | 245.66 | 1.276 | 1.27 | +0.45% |
+| Chicago | 606-608 | 242.47 | 1.259 | 1.20 | +4.93% |
+| Boston | 020-022, 024 | 229.52 | 1.192 | 1.14 | +4.55% |
+| Philadelphia | 190-191 | 227.52 | 1.181 | 1.16 | +1.85% |
+| Los Angeles | 900-902 | 223.39 | 1.160 | 1.12 | +3.58% |
+| San Diego | 919-921 | 214.83 | 1.116 | 1.09 | +2.35% |
+| Minneapolis | 553-555 | 206.75 | 1.074 | 1.07 | +0.34% |
+| Seattle | 980-981, 987 | 202.24 | 1.050 | 1.07 | −1.85% |
+| Washington DC | 200-205 | 178.92 | 0.929 | 0.95 | −2.20% |
+| Denver | 800-802 | 167.66 | 0.871 | 0.91 | −4.33% |
+| Nashville | 370-372 | 160.11 | 0.831 | 0.89 | −6.58% |
+| Miami | 330-332, 340 | 152.40 | 0.791 | 0.85 | −6.89% |
+| Austin | 786-787 | 151.17 | 0.785 | 0.83 | −5.42% |
+
+**What passed.** Location applies on top of a national base — the ratio tracks
+the CCI in direction and rough magnitude at all 15 cities. The multiply
+structure in `cost.ts` is NOT broken and is NOT a partial application. The
+original worry (double-count / partial application) is dead.
+
+**What failed.** The offsets are not noise and not a rounding miss. They **trend**
+with the index level — high-cost cities read *above* our CCI, low-cost cities
+read *below* — spanning +7.70% (NYC) to −6.89% (Miami), a 14.6-point band.
+
+**"Trend", not "monotonic" — the distinction is load-bearing.** The column has
+real inversions: San Jose 1.27 → +0.45% sits below Chicago 1.20 → +4.93%;
+Boston 1.14 → +4.55% exceeds Philadelphia 1.16 → +1.85%; Miami 0.85 → −6.89%
+is further off than Austin 0.83 → −5.42%. If the offsets *were* monotonic in
+the index, a single rescaling transform (a corrective exponent) would fix them.
+With scatter this size the residual is **per-city**, so the only repair that
+works is a per-family index table. An earlier draft of this entry said
+"monotonic" and would have invited the wrong fix.
+
+**A retracted argument — do not reuse it.** This entry originally justified
+excluding vintage as follows: *"ratios are dimensionless (city ÷ national on
+the same release), so vintage escalation cancels out entirely."* **That is
+wrong.** Vintage cancels *within* the sweep — city A against city B at one
+release. It does not cancel in the comparison actually being made, which is
+2018-release city factors against **2021**-vintage CCI values. That comparison
+spans three years of relative drift, and the 14.6-point band could in principle
+be drift rather than mix. The ratio construction rules out nothing here.
+
+What actually rules drift out is the **office control** in the next section:
+office matches our CCI to 0.3% *at the same 2018 release*. Three years of drift
+large enough to open a 14.6-point band would have displaced office too. It
+didn't. The conclusion survives — but the office run is doing the work that was
+mistakenly attributed to the ratio construction, and the bad version of the
+argument would license the same move in a case where no control exists.
+
+### The decisive test — same release, second model family
+
+Vintage was eliminated by construction, not by argument: a second model run at
+the **same** release, wall type, and labor basis. Office, 5-10 Story;
+national average **$204.53/SF**.
+
+| | Apartment 1-3 | Office 5-10 | our CCI |
+|---|---|---|---|
+| New York | 1.422 | 1.319 | 1.32 |
+| Austin | 0.785 | 0.832 | 0.83 |
+| **spread (NYC ÷ Austin)** | **1.811** | **1.585** | **1.590** |
+
+Two model families, identical geography inputs, identical vintage, and the
+city factors differ by 10.2 points in NYC and 4.7 in Austin. **Mix is the
+dominant cause — strong, not proven.**
+
+Residual caveat, logged deliberately: office matching our CCI to 0.3% could
+also be two effects offsetting (drift in one direction, mix in the other,
+netting near zero). That is unlikely but not excluded by anything measured
+here. Confidence: moderate-high that mix dominates. This is a finding, not a
+proof, and it does not license a numerical substitution on its own.
+
+**NYC carries a known alternative explanation — flagged, then checked.** NYC is
+the largest offset (+7.70%, nearly triple the next city) and sits exactly where
+this thread previously found a geography-definition ambiguity: RSMeans' CCI
+entry "New York 100-102" is Manhattan ZIPs, while an estimator's "New York"
+could resolve to a metro aggregate or a different borough weighting. If the two
+"New York"s were different geographies, the offset would be a definition
+mismatch masquerading as mix — and it is the strongest-looking data point in
+the table. See the geography-resolution check below before citing it.
+
+The third column is the finding that matters for this codebase: our composite
+CCI's geographic spread (1.590) matches the **office** model's (1.585) to 0.3%,
+and under-disperses the **apartment** model's (1.811) by 14%. `cityCostIndex`
+is applied identically to every entry in `costPerSqFtByUse`, so the tool
+currently prices housing geography on what is effectively a commercial mix —
+and housing is the dominant use case.
+
+**Resolved BY EVIDENCE:** the multiply is valid; a single composite factor per
+city is the wrong instrument; the correct factor is model-family-specific.
+**NOT resolved:** what the replacement values should be. The sweep above is one
+model at one configuration — per the +134.5% caveat, it is strong evidence the
+current column is wrong and weak evidence about the right column. Nothing in
+`estimates.ts` was changed on the strength of it.
+
+### Geography-resolution check — NYC confound ruled out
+
+Listed every New York State entry the estimator offers:
+
+> ALBANY (120-122) · BINGHAMTON (137-139) · **BRONX (104)** · **BROOKLYN (112)** ·
+> BUFFALO (140-142) · ELMIRA (148-149) · **FAR ROCKAWAY (116)** · **FLUSHING (113)** ·
+> GLENS FALLS (128) · HICKSVILLE (115,117,118) · **JAMAICA (114)** · JAMESTOWN (147) ·
+> KINGSTON (124) · **LONG ISLAND CITY (111)** · MONTICELLO (127) · MOUNT VERNON (105) ·
+> NEW ROCHELLE (108) · **NEW YORK (100-102)** · NIAGARA FALLS (143) · PLATTSBURGH (129) ·
+> POUGHKEEPSIE (125-126) · **QUEENS (110)** · RIVERHEAD (119) · ROCHESTER (144-146) ·
+> SCHENECTADY (123) · **STATEN ISLAND (103)** · SUFFERN (109) · SYRACUSE (130-132) ·
+> UTICA (133-135) · WATERTOWN (136) · WHITE PLAINS (106) · YONKERS (107)
+
+Every borough is a separate entry with its own ZIP group. "NEW YORK (100-102)"
+is Manhattan only — same definition and same label as the CCI row that
+`estimates.ts` cites for `nyc: 1.32` (100-102 = 132.2). The `estimates.ts`
+comment already names Brooklyn 112 = 133.1 and Queens 110 = 131.8 as distinct
+rows, i.e. the two sources share one taxonomy. **No metro aggregation and no
+borough reweighting. The +7.70% offset is mix, not a definition mismatch.**
+
+Worth repeating for any city where the estimator offers several nearby entries;
+NY was the case with both the largest offset and the highest prior risk.
+
+### RELEASE = 2018: a downgrade to this account's value, not an erratum
+
+Filed initially as a correction. It is materially more than that.
+
+1. **Any $/sf constant sourced from this account is 2018 vintage.** Closing the
+   drift problem was one of the reasons to run the trial; that reason is gone.
+   2018 is eight years stale and **older than the 2021 CCI table already
+   treated here as the weak link**. If a level is sourced from this account it
+   must carry the release in the type — not a comment — and vintage stays OPEN.
+2. **The trial's remaining value is structure, not levels.** Fee treatment,
+   model boundaries, assembly composition, and the family dispersion
+   differential are structural properties that do not decay. Use it for those.
+   Do not let a 2018 level become a 2026 constant by quiet promotion.
+
+**Candidate synthesis for the CCI problem, logged as DERIVED not sourced:**
+take the *shape* from the 2018 sweep (the apartment-vs-office dispersion ratio)
+and apply it to the 2021 levels already held. Family dispersion reflects labor
+share and should be far more stable across vintages than absolute index levels,
+so this yields a per-family index without importing 2018 levels. Confidence:
+moderate. It is a defensible construction, not a measurement, and anything
+built this way must be labelled derived at the point of use. Decision deferred
+until B and A1 are read.
+
+### Incidental, captured in the same sitting
+
+- **A1 is accessible.** `optionBuildingCategory` = Commercial New Construction /
+  Commercial Renovation / **Residential New Construction**. The residential
+  data set is reachable on this account. (`buildingQualityType` within
+  Commercial is Commercial / Institutional / Industrial — no residential there;
+  it lives one level up, which is why earlier probing missed it.)
+- **Labor Type and Location are independent controls** in the estimate header.
+  The coupling question is answered: they are not coupled. Whole sweep ran at
+  Standard Union.
+- **Boston's RSMeans group is "020-022, 024".** The `estimates.ts` comment cites
+  024 alone — inside the group, so narrow but not wrong.
+- Division 1 carries **ARCHITECTURAL FEES** and **CONSTRUCTION MANAGEMENT FEES**
+  as line items priced per Project. Not yet read; relevant to B and to soft costs.
+
+**Pattern note — no new instance.** C was called ambiguous in advance and the
+capture sheet pre-committed to treating a near-miss as a mix mismatch rather
+than a rounding pass. It came back near-miss and was a mix mismatch. Writing the
+interpretation down *before* the number arrived is what kept +2.87% from being
+eyeballed into a pass, and is worth repeating for A and B.
+
+---
+
+## 2026-08-04 — B RESOLVED BY MEASUREMENT. Fees COMPOUND, and the residential
+## family is not the commercial one. Both halves correct earlier entries.
+
+### B1. What the fees compute on — measured, not inferred
+
+The capture sheet named this "the line that matters most" and said to read it off
+rather than infer it. Read off, by perturbation, on the residential model
+(Average 2 Story, Brick Veneer - Wood Frame, 2,000 sf living area, national
+average, Release Year 2018):
+
+| Contractor | Architectural | Total building cost | $/SF |
+|---|---|---|---|
+| 15.00% | 0 | $220,262.07 | 110.13 |
+| 15.00% | 10.00% | **$242,288.28** | 121.14 |
+| 0 | 0 | **$191,532.24** | **95.77** |
+
+Predictions computed *before* the second run:
+- compounding → 220,262.07 × 1.10 = **242,288.28**
+- parallel on bare → 191,532.23 × 1.25 = 239,415.29
+
+The measurement returned 242,288.28, exact to the cent. The both-zero run
+returned 191,532.24 against a predicted 191,532.23 (one cent, rounding).
+
+> **`total = bare × (1 + contractorFee) × (1 + architecturalFee)`**
+
+**THIS CORRECTS AN EARLIER FINDING IN THIS THREAD.** B was previously recorded
+as resolved for commercial with fees applying "in parallel on the bare
+subtotal", from the public model page decomposition 146.52 + 36.63 + 12.82 =
+195.97. That reading was wrong. The same figures are exactly sequential:
+146.52 × 1.25 = 183.15, × 1.07 = 195.97. Parallel application would have given
+193.41. The three addends summing to the total is consistent with BOTH
+structures and therefore discriminates neither — the decomposition was
+over-read. The perturbation test discriminates; the addition never could.
+
+Consequence, and it is the case the capture sheet explicitly flagged: for
+commercial, 25% + 7% is **not** 32%. It is 1.25 × 1.07 = **1.3375 → 33.75%**.
+
+### B2. The two families carry different fee treatment — confirmed
+
+Read directly off the estimator's own default fields, both families:
+
+| | Commercial (Apartment 1-3) | Residential (Average 2 Story) |
+|---|---|---|
+| `ContractorFees` | **25.00%** | **15.00%** |
+| `ArchitecturalFees` | **7.00%** | **0** |
+| `UserFees` | 0 | 0 |
+| Labor basis | Standard Union | **Residential** (RES wage rate) |
+| Priced per | gross floor area | **living area** |
+| Geometry input | exterior wall system | **perimeter (L.F.)** |
+| Total fee load | **×1.3375** | **×1.15** |
+
+**The per-family fee lookup is now required by measurement, not designed for a
+hypothesis.** A single fee rule across families would misprice by 18.75
+percentage points and would silently attribute a design fee to detached housing
+that RSMeans ships at zero.
+
+Residential architectural fees are not a per-type default at all. They are a
+**range** published as Division 1 line items — minimum **4.90%**, maximum
+**16.00%** (plus alteration adders: +50% for work to $500k, +25% over $500k) —
+and the estimator ships the field at 0, leaving the choice to the estimator's
+user. Commercial, by contrast, pre-populates a type-specific point value.
+
+### B3. Construction Management — a separate family, and the tool must choose
+
+CM fees exist in the residential set as their own Division 1 line family,
+scaled by project value rather than by building type:
+
+| Construction management fees | Rate |
+|---|---|
+| for work to $100,000 | 10.00% |
+| for work to $250,000 | 9.00% |
+| for work to $1,000,000 | 6.00% |
+
+**Additive or alternative: the estimator does not decide.** Its fee fields are
+contractor / architectural / user only — there is no CM field. So CM is not
+applied by default and is not modelled as an addition to the architectural fee.
+Anyone wanting CM-at-risk must enter it in User Fees, which means **our tool has
+to state which delivery method it assumes.** Design-bid-build (architectural
+fee, GC markup) and CM-at-risk (CM fee on project value) are different stacks,
+and the current model implicitly assumes the former by having no CM concept.
+Logged as an OPEN DECISION, not a defect, pending a product call.
+
+### B4. What this does to A1 — the gate held
+
+The prediction that B gates A1 was correct and the failure mode was exactly the
+one named: a residential "bare" figure is not bare in the same sense as a
+commercial one.
+
+- Commercial Apartment 1-3, national, 2018: **$192.57/SF is fee-INCLUSIVE at
+  33.75%.** Bare = 192.57 / 1.3375 = **$143.98/SF** of gross floor area.
+- Residential Average 2 Story, national, 2018: **$110.13/SF is fee-inclusive at
+  15% with NO design fee.** Bare = **$95.77/SF** of living area.
+
+Pulling A1 before B would have compared a 33.75%-loaded GFA number against a
+15%-loaded living-area number and filed the difference as a tier effect. The
+whole 15-city sweep in the previous entry is fee-inclusive at 33.75% and must
+be normalised before any level is lifted from it. (Ratios in that entry are
+unaffected — a constant multiplier cancels.)
+
+**Still open, and it decides how A1 gets filed:** what `costPerSqFtByUse` is
+meant to represent. `cost.ts` computes `hard` and adds soft/permit/demolition/
+impact separately, which implies the constants are hard cost — GC O&P included,
+design fee excluded. That maps to bare × 1.25 = **$179.97/SF** for the
+apartment model, and to neither $143.98 nor $192.57. Do not lift any of the
+three until that mapping is decided explicitly.
+
+**Vintage stamp applies to every level above: Release Year 2018.**
+
+---
+
+## 2026-08-04 — Mapping decided, denominator resolved, and a THIRD family
+## divergence found. A1 is still not safe to pull.
+
+### The mapping — `costPerSqFtByUse` is `bare × 1.25`
+
+DECIDED (product call, reasoning recorded so it survives without the thread):
+
+`cost.ts` computes `total = hard + soft + permit + demolition + impact`, and the
+soft-cost comment defines soft as "A&E, permitting consultants, legal, developer
+OH". **A&E is explicitly in `soft`, so the architectural fee must be OUT of
+`hard` or it is counted twice** — that is the double-count this thread has been
+circling from the start, and this is where it resolves. Contractor O&P has no
+home in any other term, so it must be IN `hard`.
+
+- `$143.98` (bare) would strand GC O&P in no term at all.
+- `$192.57` (fee-inclusive) would double-count A&E against `soft`.
+- **`bare × 1.25 = $179.97/SF` is the only value consistent with the engine's
+  own decomposition.**
+
+**Normalization is part of the capture from now on, and it differs by family:**
+
+| Family | From estimator total | To `hard` basis |
+|---|---|---|
+| Commercial | ÷ 1.3375 | × 1.25 |
+| Residential | ÷ 1.15 | × 1.25 |
+
+Do not do this arithmetic in your head at tuning time. It is written here
+because that is when it will otherwise be got wrong.
+
+### Denominator — RESOLVED in code. `gfa` is GROSS.
+
+Traced the derivation rather than assuming:
+
+- `envelope.ts`: `maxFloorAreaSqFt = Math.round(far * lot)`. FAR is a
+  gross-floor-area measure in zoning code, so the envelope is gross.
+- `defaultSpec.ts`: `gfa = quantizeGfa(env.maxFloorAreaSqFt * 0.85)`, fallback
+  `parcel.lot.sizeSqFt * 1.0` (a 1.0-FAR equivalent). Still gross.
+- `estimates.ts`: `avgUnitGrossSqFt = 1300`, whose own comment grosses up from a
+  ~1,000 sf NET unit at ~75% efficiency. The codebase already reasons in gross
+  and already carries a net-to-gross factor.
+
+**Consequence — the mismatch is scoped to A1 and only A1.** The existing
+constants derive from commercial models priced per gross floor area, so their
+basis MATCHES `gfa`. The detached residential constant is priced per **living
+area**, so it does NOT. Living area excludes garage, unfinished basement and
+mechanical space (the model carries Basement as a separate parameter, i.e.
+outside the priced area), and typically stairwells and wall thickness.
+
+**The gross-to-living ratio was NOT measured and is NOT estimated here.** The
+estimator publishes only living area for this family, so the ratio is not
+obtainable from this source. Per the standing rule, no direction and no
+magnitude is recorded. A1 cannot produce a usable constant until this is
+sourced elsewhere or the tool decides to price detached housing on a living-area
+input instead of `gfa`.
+
+### THIRD family divergence — wage basis is STRUCTURALLY LOCKED
+
+Checked because the fee and denominator mismatches suggested a pattern. It is a
+pattern:
+
+| | Commercial | Residential |
+|---|---|---|
+| `sqftLaborId` options | Standard Union, Open Shop | **Residential — ONE option** |
+
+The residential family **cannot be run at Standard Union.** The labor basis is
+not a shared axis the two families happen to be set differently on; it is
+locked per family and not selectable.
+
+**This damages the candidate per-family index construction.** The 15-city
+dispersion measured in the previous entry came from Apartment 1-3 at *Standard
+Union*. It is a union-market dispersion. Applying it to a detached constant
+priced at the *Residential* wage rate mixes two labor markets, and this source
+offers no way to size that error — the control run that would settle it cannot
+be constructed. The shape-from-2018 / levels-from-2021 proposal must carry this
+caveat explicitly; it is a second unquantified gap stacked on the first.
+
+**Three instances now: fee treatment, denominator, wage basis.** Every one is
+two conventions sharing one column in `costPerSqFtByUse`. Assume more exist and
+check before pulling, not after.
+
+### CLOSED — Construction Management (product decision)
+
+The tool assumes **design-bid-build by omission** and that assumption is KEPT.
+Rationale: a CM axis requires a delivery-method question users cannot answer at
+the stage this tool serves, and the 6–10% CM scaling is smaller than the
+uncertainty already in the base rate. To be **disclosed on the Methodology page
+as a stated assumption, not modelled as a variable.** Logged closed.
+
+### Soft-cost defect (defect 3) — CLOSED WITH A NUMBER. The number is ZERO.
+
+The defect was: `costPerSqFtByUse` may already embed contractor O&P and A&E, in
+which case `softCostPct = 0.25` (documented as "A&E, permitting consultants,
+legal, developer OH") double-counts A&E. It has been carried as a bounded but
+unquantified 0–7% for several rounds.
+
+**Under the mapping decided today it closes at exactly zero overlap, by
+construction:**
+
+- `hard = bare × 1.25` — bare construction plus GC overhead & profit. Contains
+  **no** design fee.
+- `soft = 0.25 × hard` — A&E, permitting consultants, legal, developer OH.
+- The architectural fee appears in `soft` and nowhere else. **No overlap.**
+
+That is what makes the mapping the right one rather than merely a defensible
+one: it is the choice that makes the two terms disjoint.
+
+**⚠️ NON-DISCRIMINATING — do not cite this as support for 0.25.** It was
+tempting to note that RSMeans' 7% architectural fee inside our 25% soft bucket
+leaves ~18 points for permitting consultants, legal and developer OH, and call
+that a passing cross-check. **It is not a test.** Almost any soft-cost figure
+between roughly 15% and 40% would leave a "plausible" remainder for three
+unpriced categories. A check that cannot reject has no power to confirm, and
+this one cannot reject. It is recorded here ONLY so that it is not
+re-discovered later and mistaken for evidence. **`softCostPct = 0.25` remains
+sourced exactly as it was — an industry-standard 20–30% mid-range pick — and is
+NOT corroborated by anything in this thread.**
+
+**Scope limit, stated precisely.** The zero applies to the CORRECTED structure —
+i.e. once `costPerSqFtByUse` is actually set to `bare × 1.25`. For the constants
+in the code TODAY (340/390/365/450), the overlap remains **unknown**, because
+those constants have no known derivation and therefore no known composition.
+This is not a hedge: an unsourced constant cannot be decomposed, and claiming a
+figure for its A&E content would be exactly the mechanism-without-measurement
+error this ledger keeps recording.
+
+`estimates.ts` DEFECTS block intentionally NOT edited yet — it describes the
+code's current state, and the constants have not moved. It gets updated in the
+same commit that moves them, not before.
+
+---
+
+## READING RULE — sums don't discriminate, ratios do
+
+Logged separately from the pattern line because it is a different failure and
+will recur independently.
+
+The "fees apply in parallel" error was **not** caused by missing data. The
+discriminating evidence was already in this ledger, in the row that stated the
+wrong conclusion. Apartment 4-7 was recorded as
+`bare $145.01 → contractor 25% $36.25 → architectural 7% $12.69 → total $193.94`.
+That `$12.69` is 7% of **$181.26** (the contractor-inclusive subtotal), not 7%
+of **$145.01** (bare, which would be $10.15). The refutation was one division
+away and sat unexamined for rounds.
+
+What went wrong is a specific reading habit: **`a + b + c = total` was treated
+as evidence of parallel application.** It is not evidence of anything. A
+sequential structure also produces addends that sum to the total — that is what
+addends do. The sum is consistent with every structure and therefore
+discriminates none of them.
+
+> **Rule: when checking how a total is composed, never verify by addition.
+> Verify by taking the RATIO of each addend to its candidate base.** The sum
+> tests arithmetic; only the ratio tests structure.
+
+This is distinct from the mechanism-without-measurement pattern. There, no
+measurement existed. Here the measurement existed, was recorded, and was
+misread — which is harder to catch, because the entry looked sourced and
+carried a VERIFIED status.
+
+Corollary applied 2026-08-04: the perturbation test that settled B did work
+precisely because it was designed to discriminate — two structures, two
+different predicted numbers, computed before the run. Prefer that shape.
+
+### DEFECT 6 (new) — the 0.75 net-to-gross factor is PICKED, in the main path
+
+`estimates.ts:596-600`:
+
+```
+// Gross residential area per dwelling unit (incl. circulation/common area) —
+// used to estimate how many units a buildable envelope implies. The median
+// multifamily NET unit is ~1,000 sf (Statista 2023); at ~75% net-to-gross
+// efficiency that grosses up to ~1,300 sf/unit.
+export const avgUnitGrossSqFt = 1300
+```
+
+**The 1,000 sf net figure is sourced (Statista 2023). The 0.75 is not.** It is
+asserted as "~75% net-to-gross efficiency" with no citation, and 1300 is simply
+`1000 / 0.75 = 1333` rounded. The sourced half lends the unsourced half an
+appearance of provenance it does not have — the same shape as the `costPerSqFtByUse`
+comments that read as attributed but were selected.
+
+**This is not a side path.** `avgUnitGrossSqFt` drives:
+- `envelope.ts` → `maxUnits`
+- `defaultSpec.ts` → `units` on every auto-generated spec
+- and `units` feeds `impactFee(...)` and the unit-triggered hurdles (e.g. Boston
+  Article 80 Small Project Review at 15+ dwelling units).
+
+So a picked efficiency factor propagates into fee dollars and into whether a
+regulatory hurdle fires at all.
+
+Recorded as OPEN. No direction, no magnitude — real net-to-gross efficiency
+varies with building form (double-loaded corridor vs point access block vs
+walk-up) and 0.75 may well be reasonable. That is exactly why it needs a source
+rather than a defence.
+
+Noted for the record: this was found because the denominator work sent us to
+read that comment closely. It had been sitting in the main path unexamined.
+
+---
+
+## 2026-08-04 — AUSTIN C. Legal standing confirmed, and a live defect found in
+## shipped Austin output.
+
+### Legal standing — CONFIRMED IN EFFECT, no injunction
+
+Checked because the task said "confirm legal standing" and Austin's land
+development code has a history of being invalidated on protest-rights grounds
+(the 14th Court of Appeals upheld invalidation of two Council LDC votes in 2022).
+
+City of Austin Development Services, "HOME Amendments" (fetched 2026-08-04):
+- **Phase 1** adopted 2023-12-07 (Ord. 20231207-001); applications from 2024-02-05
+- **Phase 2** adopted 2024-05-16; citywide applications from 2024-11-16
+- Site Plan Lite & Infill Plat adopted 2025-03-06; applications from 2025-06-16
+
+Both phases are in effect. No suspension, injunction, or adverse ruling appears
+on the City's own status page. Recorded as VERIFIED-IN-EFFECT as of 2026-08-04.
+Re-check before relying on it — this is the kind of fact that changes by
+litigation, not by schedule.
+
+### The rules — sourced from the Phase 1 ordinance summary
+
+AIA Austin, "HOME Initiative Phase I Ordinance Summary + FAQ" (summarising
+Ord. 20231207-001), read directly:
+
+**Subchapter F is ENTIRELY WAIVED** for any site using the Duplex, Two-Unit
+Residential, or Three-Unit Residential Use — verbatim: *"No tent, no additional
+documentation and review time, no extra Gross Floor Area definition, no
+exemption calculations, no sidewalk articulation."*
+
+It is replaced, **only inside the Subchapter F boundary**, by a FAR gradient.
+Outside that boundary there is *no* FAR restriction and the 2–3 units are still
+allowed. FAR maxima are **the greater of the ratio or the floor value**:
+
+| | Two units | Three units |
+|---|---|---|
+| **Total** | **0.55 or 3,200 SF** | **0.65 or 4,350 SF** |
+| Any single new unit | 0.4 or 2,300 SF | 0.4 or 2,300 SF |
+| Any two new units | — | 0.55 or 3,200 SF |
+
+Gross Floor Area here is the base LDC definition **minus the parking/loading
+exclusions** — garages COUNT toward FAR; unenclosed porches do not.
+
+**Single-family is untouched.** Verbatim FAQ: *"What changes do I need to make
+if I'm designing or building a single-family home under Subchapter F? Nothing
+at all. Proceed as before."* Subchapter F's own cap is **0.40 FAR** (confirmed
+by the ordinance summary's reference to "the area above Subchapter F's 0.40
+FAR"), plus the sloped tent envelope from 15 ft at the side setback. The City's
+HOME page states Subchapter F's **32 ft** height restriction still applies to
+single-family use, against the 35 ft base-zone height.
+
+### The boundary IS published and point-queryable — verified live
+
+`services.arcgis.com/0L95CJ0VTaxqcmED/.../PLANNINGCADASTRE_residential_design_standards/FeatureServer/0`
+(duplicate of the older `McMansion` layer — identical SHAPE_AREA
+2,057,091,911.87; prefer the named one).
+
+Returns `ZONING_OVERLAY_NAME: 'RESIDENTIAL DESIGN STANDARDS'`,
+`SOURCE_DOCUMENT: 'LDC/25-2-Subchapter F'`, `ZONING_STATUS: 'APPROVED'`.
+
+Discrimination verified across five points — this is a real boundary, not a
+citywide blanket:
+
+| Point | Inside |
+|---|---|
+| Hyde Park (30.3070, -97.7300) | 1 |
+| Downtown (30.2672, -97.7431) | 1 |
+| Far north (30.4400, -97.6800) | 0 |
+| Far southwest (30.2200, -97.8800) | 0 |
+| Northeast edge (30.3500, -97.6400) | 0 |
+
+### THE DEFECT — Austin SF parcels currently assume FAR 1.0
+
+`austin.ts` has `'SF-1'|'SF-2'|'SF-3': { h: 35, f: null }`. `f: null` →
+`envelope.ts` returns `maxFloorAreaSqFt: null` → `defaultSpec.ts` falls through
+to `parcel.lot.sizeSqFt * 1.0`, **a 1.0-FAR assumption**, on Austin's most
+common residential zones.
+
+Real by-right limits inside the Subchapter F boundary are 0.40 (single-family)
+to 0.65 (three units). The error runs BOTH ways because of the floor value:
+
+| Lot | We report today | Actual 3-unit by-right | Error |
+|---|---|---|---|
+| 7,000 sf | 7,000 sf | max(0.65×7000, 4350) = **4,550** | **+54% overstated** |
+| 3,000 sf | 3,000 sf | max(0.65×3000, 4350) = **4,350** | −31% understated |
+
+The existing provider comment says the 2019 zoning snapshot means "limits may
+understate today's buildable envelope". For units and lot size that is right.
+**For floor area it is backwards** — we overstate on any lot above ~6,700 sf.
+
+### Encoding note — `max(ratio × lot, floorSqFt)` is not expressible today
+
+`envelope.ts` computes `maxFloorAreaSqFt = Math.round(far * lot)`. There is no
+floor-allowance concept. Two ways to carry it:
+
+1. Austin supplies an *effective* FAR — `max(0.65, 4350/lot)` — since
+   `lot × max(0.65, 4350/lot) ≡ max(0.65×lot, 4350)` exactly. No shared-code
+   change, but `zoning.maxFAR` would then display a derived number (1.45 on a
+   3,000 sf lot) that appears nowhere in the LDC. **Rejected — that is a
+   computed value wearing the label of a code citation.**
+2. Add an optional floor-area allowance to the zoning limits and apply
+   `Math.max(far * lot, floor)`. Shared change, small, and "greater of ratio or
+   floor value" is a genuine and reusable LDC construct. **Chosen.**
+
+**Headline regime decision:** the envelope reports the **3-unit by-right
+maximum** (0.65 / 4,350), not the single-family 0.40. Rationale: `envelope.ts`'s
+own docstring states its purpose is "what does this parcel allow?" — and under
+HOME, three units are allowed by right on SF-1/2/3. Reporting 0.40 would
+describe one program choice, not the parcel's allowance.
+
+### CORRECTION to the encoding decision above — the 3-unit ruling was WRONG
+
+The entry above chose to report the 3-unit by-right maximum, reasoning from
+`envelope.ts`'s "what does this parcel allow?" docstring. **That was wrong on
+two counts and is superseded by what was built.**
+
+**1. It collapsed a conditional established one paragraph earlier.** The FAR
+gradient applies ONLY inside the Subchapter F boundary. Outside it there is no
+FAR limit at all. Encoding `max(0.65 × lot, 4350)` citywide would have imposed a
+cap the LDC does not impose — on every Austin parcel outside the boundary — and
+it would have read as a citation.
+
+**2. It made the envelope conditional on a program the user has not chosen.**
+0.40 (single-family) and 0.65 (three units) are ALTERNATIVES, not a floor and a
+ceiling. Reporting only the largest assumes a three-unit build, and that flows
+into `maxUnits`, impact fees and the unit-triggered hurdles. On the 7,000 sf
+Hyde Park lot it would claim 4,550 sf where single-family allows 2,800 — trading
+a 54% overstatement for a 63% one for anyone not building three units.
+
+### BUILT (2026-08-04) — all 582 tests pass, build and lint clean
+
+- `parcel.ts`: `zoning.farFloorSqFt` (the "greater of ratio or floor value"
+  allowance) and `zoning.farUnconstrained` (a KNOWN absence of FAR).
+  `envelope.farBasis` gains `'unconstrained'`; `envelope.floorAreaFromAllowance`
+  records when the floor governed.
+- `envelope.ts`: applies `max(far × lot, farFloorSqFt)`. An allowance is a floor
+  under a cap, **never a cap of its own** — it cannot manufacture a limit on an
+  unconstrained parcel. Test asserts exactly that.
+- `austin.ts`: fetches the Subchapter F boundary in the existing fan-out and
+  resolves SF-1/2/3 in two branches. **Inside → single-family base case (0.40 /
+  32 ft). Outside → `farUnconstrained`, no number.** A FAILED boundary fetch is
+  NOT treated as "outside" — that would report "no FAR limit" on the strength of
+  a network error; it falls back to base-zone limits with FAR unresolved.
+- `ParcelPanelContent.tsx`: renders the unconstrained case explicitly ("No
+  floor-area ratio limit applies here — size is governed by height, setbacks and
+  lot coverage instead") rather than showing nothing, because silence reads as
+  missing data and invites the reader to assume a cap.
+- Stale-data comment in `austin.ts` corrected: it said limits "may understate",
+  which is right for units and lot size and **backwards for floor area**.
+
+**STILL OPEN — product ruling requested.** The headline inside the boundary is
+the single-family base case. `AUSTIN_HOME_FAR` carries the sourced 2-unit
+(0.55 / 3,200) and 3-unit (0.65 / 4,350) gradients ready to use. Whether the
+envelope should show the base case, the chosen-program alternative, or the full
+set of alternatives is a product decision and is NOT resolved by a docstring.
+
+**DEFECT 7 (new, global — found while fixing Austin).** `defaultSpec.ts` falls
+back to `parcel.lot.sizeSqFt * 1.0` whenever the envelope yields no floor area.
+That is an unsourced FAR-1.0 assumption and it is **not Austin-specific** — it
+fires for every city on every parcel with unresolved or unconstrained FAR. Austin
+merely made it visible. Recorded OPEN; no direction or magnitude claimed.
