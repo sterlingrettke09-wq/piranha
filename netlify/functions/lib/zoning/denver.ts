@@ -27,7 +27,25 @@
 export interface DistrictLimits {
   far: number | null
   heightFt: number | null
+  /** TRUE where the DZC imposes no FAR on this district at all — a KNOWN
+   *  absence. Distinct from `far: null` alone, which this file also uses for
+   *  "unresolved" (Former Chapter 59, unrecognised codes). Without this flag
+   *  both states collapse and `defaultSpec` falls back to an unsourced FAR-1.0
+   *  assumption on every Denver parcel. See docs/plans/2026-08-04-far-unconstrained-sweep.md */
+  farUnconstrained?: boolean
 }
+
+// The form-based districts below are height/setback/bulk-plane governed with no
+// FAR anywhere in the DZC — sourced to Articles 3–9 (Neighborhood Context
+// chapters) building-form standards, verified 2026-06-10 and re-confirmed for
+// this classification 2026-08-04. This is the "known absence" case.
+const FORM_BASED: Pick<DistrictLimits, 'far' | 'farUnconstrained'> = {
+  far: null,
+  farUnconstrained: true,
+}
+
+// Unresolved: we could not establish whether a FAR applies. NOT the same claim.
+const FAR_UNRESOLVED: Pick<DistrictLimits, 'far' | 'farUnconstrained'> = { far: null }
 
 export const DENVER_FT_PER_STORY = 12
 
@@ -43,31 +61,31 @@ function ft(stories: number): number {
 
 export const DENVER_LIMITS: Record<string, DistrictLimits> = {
   // Suburban / Urban single- & two-unit (letter or low-story suffix), ~2.5 st.
-  'U-SU-A': { far: null, heightFt: 30 }, // single-unit, ~2.5 stories / 30 ft
-  'U-SU-B': { far: null, heightFt: 30 },
-  'U-TU-B': { far: null, heightFt: 30 }, // two-unit
-  'E-SU-D': { far: null, heightFt: 30 },
-  'S-SU-D': { far: null, heightFt: 30 },
+  'U-SU-A': { ...FORM_BASED, heightFt: 30 }, // single-unit, ~2.5 stories / 30 ft
+  'U-SU-B': { ...FORM_BASED, heightFt: 30 },
+  'U-TU-B': { ...FORM_BASED, heightFt: 30 }, // two-unit
+  'E-SU-D': { ...FORM_BASED, heightFt: 30 },
+  'S-SU-D': { ...FORM_BASED, heightFt: 30 },
   // Urban row-house / residential-office.
-  'U-RH-2.5': { far: null, heightFt: ft(2.5) }, // 2.5 stories → 30 ft
-  'U-RH-3A': { far: null, heightFt: ft(3) },
-  'U-RO-3': { far: null, heightFt: ft(3) },
+  'U-RH-2.5': { ...FORM_BASED, heightFt: ft(2.5) }, // 2.5 stories → 30 ft
+  'U-RH-3A': { ...FORM_BASED, heightFt: ft(3) },
+  'U-RO-3': { ...FORM_BASED, heightFt: ft(3) },
   // Mixed-use / main-street families (story suffix governs height).
-  'U-MX-2': { far: null, heightFt: ft(2) },
-  'U-MX-3': { far: null, heightFt: ft(3) },
-  'U-MS-3': { far: null, heightFt: ft(3) },
-  'U-MS-5': { far: null, heightFt: ft(5) },
-  'G-MU-3': { far: null, heightFt: ft(3) },
-  'G-MU-5': { far: null, heightFt: ft(5) },
-  'G-RH-3': { far: null, heightFt: ft(3) },
-  'C-MX-5': { far: null, heightFt: ft(5) },
-  'C-MX-8': { far: null, heightFt: ft(8) },
-  'C-MX-12': { far: null, heightFt: ft(12) },
-  'C-MS-5': { far: null, heightFt: ft(5) },
-  'C-RX-5': { far: null, heightFt: ft(5) },
-  'S-MX-3': { far: null, heightFt: ft(3) },
-  'S-MX-5': { far: null, heightFt: ft(5) },
-  'S-MX-8': { far: null, heightFt: ft(8) },
+  'U-MX-2': { ...FORM_BASED, heightFt: ft(2) },
+  'U-MX-3': { ...FORM_BASED, heightFt: ft(3) },
+  'U-MS-3': { ...FORM_BASED, heightFt: ft(3) },
+  'U-MS-5': { ...FORM_BASED, heightFt: ft(5) },
+  'G-MU-3': { ...FORM_BASED, heightFt: ft(3) },
+  'G-MU-5': { ...FORM_BASED, heightFt: ft(5) },
+  'G-RH-3': { ...FORM_BASED, heightFt: ft(3) },
+  'C-MX-5': { ...FORM_BASED, heightFt: ft(5) },
+  'C-MX-8': { ...FORM_BASED, heightFt: ft(8) },
+  'C-MX-12': { ...FORM_BASED, heightFt: ft(12) },
+  'C-MS-5': { ...FORM_BASED, heightFt: ft(5) },
+  'C-RX-5': { ...FORM_BASED, heightFt: ft(5) },
+  'S-MX-3': { ...FORM_BASED, heightFt: ft(3) },
+  'S-MX-5': { ...FORM_BASED, heightFt: ft(5) },
+  'S-MX-8': { ...FORM_BASED, heightFt: ft(8) },
 }
 
 /**
@@ -88,7 +106,8 @@ export function resolveDenver(
   zone: string | null | undefined,
   opts: { formerChapter59?: boolean } = {},
 ): DistrictLimits {
-  if (!zone) return { far: null, heightFt: null }
+  // No zone supplied — nothing was resolved. NOT a known absence.
+  if (!zone) return { ...FAR_UNRESOLVED, heightFt: null }
   const z = zone.trim().toUpperCase()
 
   // Documentation-snapshot hit (exact match) — keeps the static table and the
@@ -97,16 +116,24 @@ export function resolveDenver(
 
   // Former Chapter 59 (pre-2010 recode) trailing numbers are class codes, not
   // story counts — never read a height from them.
-  if (opts.formerChapter59) return { far: null, heightFt: null }
+  //
+  // ⚠️ MUST STAY UNRESOLVED, NOT "unconstrained". Chapter 59 was a conventional
+  // Euclidean code that DID impose FAR in some districts, and we do not carry
+  // that table. Marking these form-based would assert a known absence we have
+  // not established — precisely the failure this sweep exists to prevent.
+  if (opts.formerChapter59) return { ...FAR_UNRESOLVED, heightFt: null }
 
-  // Trailing numeric stories token (e.g. G-MU-3, C-MX-5, U-RH-2.5).
+  // Trailing numeric stories token (e.g. G-MU-3, C-MX-5, U-RH-2.5). A parseable
+  // stories suffix identifies a post-2010 form-based district: height-governed,
+  // no FAR (DZC Arts. 3–9).
   const m = z.match(/-(\d+(?:\.\d+)?)$/)
   if (m) {
     const n = Number(m[1])
-    if (n >= 1 && n <= 60) return { far: null, heightFt: ft(n) }
+    if (n >= 1 && n <= 60) return { ...FORM_BASED, heightFt: ft(n) }
   }
   // Single/two-unit or row-house letter-suffix districts cap at ~2.5 st / 30 ft.
-  if (/-(SU|TU)-/.test(z) || /-RH-/.test(z)) return { far: null, heightFt: 30 }
+  if (/-(SU|TU)-/.test(z) || /-RH-/.test(z)) return { ...FORM_BASED, heightFt: 30 }
 
-  return { far: null, heightFt: null }
+  // Unrecognised code — unresolved, and it must not be flagged as unconstrained.
+  return { ...FAR_UNRESOLVED, heightFt: null }
 }
