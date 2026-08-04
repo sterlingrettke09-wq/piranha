@@ -866,3 +866,44 @@ back to `parcel.lot.sizeSqFt * 1.0` whenever the envelope yields no floor area.
 That is an unsourced FAR-1.0 assumption and it is **not Austin-specific** — it
 fires for every city on every parcel with unresolved or unconstrained FAR. Austin
 merely made it visible. Recorded OPEN; no direction or magnitude claimed.
+
+---
+
+## 2026-08-04 — FETCHED-BUT-UNREAD AUDIT. Negative result, and the reason matters.
+
+Run because the same failure had recurred four times (Boston City Hall OWNER,
+tier, parking, Minneapolis Built Form FAR): the provider holds the data and the
+engine ignores it. Mechanical sweep of every field named in a `fetchFeatures` /
+`fetchParcelSnap` / `fetchWhere` call against every reference elsewhere in the
+same provider.
+
+**6 hits across 14 providers. On inspection, ZERO are defects.**
+
+| Provider | Unread field | Verdict |
+|---|---|---|
+| miami | `FLR` | **Correct.** Not a numeric floor-lot ratio — a letter suffix (A/B/blank) selecting a Miami 21 Article 4 row, redundant with `M21_ZONE` (T6-24**A** vs T6-24**B**). Verified against the live layer: 36 distinct zones, FLR ∈ {A, B, blank}. The module comment already said so. |
+| seattle | `OVERLAY` | **Correct for FAR.** Checked whether it identifies the Station Area Overlay (which would select SMC 23.47A.013 Table B, higher FAR than the Table A we use). It does not: `SA` appears only on Industrial/Maritime zones (UI, MML), and NC/C parcels carry only MP/NG/PN/RG/SG/SS. Table A stands, as the module documents. |
+| sandiego | `asr_total` | **Correct omission.** California is a Prop 13 frozen-assessment state, so an assessor total is not a market proxy. `assessedValue` is documented for full-market states only. Fetching it is mild waste; not surfacing it is right. |
+| sanjose | `AREATYPE`, `DESCRIPTION` | Benign — auxiliary descriptors on the historic/height layers. |
+| nashville | `LUCode` | Benign — redundant with `LUDesc`, which is read. |
+| la | `FID` | Benign — ArcGIS internal. |
+
+### Why the audit missed the thing it was built to find
+
+Minneapolis Built Form is the motivating case, and **this sweep would not have
+caught it.** The provider fetches `Abbrv` and *does* read it — for HEIGHT. What
+it never does is read it for FAR.
+
+So the real defect class is not *fetched but unread*. It is:
+
+> **fetched, and read for one purpose, while a second purpose that the same
+> field answers goes to null.**
+
+That is invisible to a presence/absence sweep, because the field is present in
+both the fetch and the body. Detecting it needs the inverse question — for each
+NULL the engine emits, does any already-fetched field bear on it? — which is a
+per-field, per-consumer check, not a grep.
+
+Recording the negative result and the refinement together, because "the audit
+came back clean" on its own would be misleading: the audit came back clean AND
+its premise was too narrow to cover the four known instances.
