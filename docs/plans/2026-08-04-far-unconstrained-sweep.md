@@ -156,3 +156,51 @@ code-derived floor area. Two different unknowns, not one.
 **Remaining per-city work is now research, not code** — establishing, with a
 quoted code section, which districts truly have no FAR. Unknown-by-default
 still governs: unresearched stays `null`.
+
+---
+
+## MINNEAPOLIS — UNRESOLVED, and the reason is the valuable part (2026-08-04)
+
+Left `null` under the discipline rule. Three findings, each of which would have
+caused a wrong encoding:
+
+**1. Municode Chapter 546 is NOT the live district set.** Ch. 546 publishes
+R1, R1A, R2, R2B, R3–R6 with clean FAR values (0.5-or-2,500-sq-ft for the low
+density districts; multifamily 1.0 / 1.5 / 2.0 / 3.0 for R3/R4/R5/R6). Those
+were read and verified — and they are **useless**, because the live GIS
+publishes an entirely different set:
+
+> `Land_Use_Code` ∈ UN1-3 · CM1-4 · DT1-2 · PR1-2 · RM1-3 · TR1
+
+Minneapolis comprehensively rezoned. Encoding the Ch. 546 values would have
+matched **zero parcels**, or worse, silently mismatched had any code overlapped.
+Reading the code without checking it against the live data is the trap here.
+
+**2. FAR lives in the BUILT FORM overlay, not the base district.** Per the City:
+"Built Form Districts govern issues such as building height, floor area ratio
+(FAR), lot size and setbacks." The provider **already fetches that layer** and
+already maps it for HEIGHT (`MPLS_BUILT_FORM_FT`) — it simply never reads FAR
+from it. Same shape as the Boston City Hall bug: the data is in hand and unused.
+
+Live built-form values: BFI1-3 (Interior) · BFC3/4/6 + BFC50 (Corridor/Core) ·
+BFT10/15/20/30A/30B (Transit) · BFPR (Production) · BFPA (Parks).
+
+**3. The FAR is two-dimensional plus a premium system — which is why it is not
+encoded here.** From the City's Built Form Districts Handbook (Oct 2023):
+- Interior 1 and Interior 2: max FAR **0.5**, but with a second column reading
+  "All other districts: 1.4" — i.e. the FAR depends on the BASE zoning district
+  underneath the overlay, not the overlay alone.
+- Interior 3: Two-family 0.6 · Three-family 0.7 · "All other districts: 1.6".
+- Corridor/Transit/Production districts publish a **Base FAR** plus premiums:
+  max 2–3 premiums at 0.3 (C3), 0.4 (C4), 0.65 (C6), 0.75 (PR), 0.8 and 1.0
+  (Transit tiers) each.
+
+So FAR = f(built form district × primary zoning district) + premium count. The
+authoritative source is **Table 540-2** (Ch. 540, Built Form Overlay Districts),
+which did not linearize from the handbook PDF and whose Municode node ID was not
+found by guess (a wrong guess, not proof of absence — see CLAUDE.md rule 8).
+
+**To finish:** read Table 540-2 and Table 540-3 directly, encode as a
+(builtForm, primaryZoning) → base FAR matrix, and treat premiums as
+alternatives (they are earned, not by-right) — the `farAlternatives` construct
+built for Austin already fits that shape.
