@@ -965,3 +965,33 @@ against is a "text-only" change quietly dragging a constant with it:
 Caveat stated rather than hidden: `cost.ts` as a whole DOES differ from
 `origin/main` — Philadelphia's 1% Development Impact Tax, which arrived with the
 city-expansion commit and belongs to the `impact` line, not the hard-cost line.
+
+---
+
+## STANDING RULE — only outside measurement finds real defects
+
+This session's complete record of what actually caught something:
+
+| Instrument | Defect found |
+|---|---|
+| External cost benchmark (Cumming) | `CONTRACTOR_OH_P.residential` applied to multifamily — 8.7% understatement; and a fully traceable chain that had moved *further* from reality than the untraceable constant it replaced |
+| Live GIS distinct-value query | Minneapolis publishes UN1-3/CM1-4/DT1-2/PR1-2/RM1-3/TR1, not the R1-R6 of Municode Ch. 546 — encoding the researched chapter would have matched **zero** parcels |
+| Live field-value query | Miami `FLR` is a letter suffix (A/B/blank), not a floor-lot ratio |
+| "Is this text true in its NEW home?" | a disclaimer accurate on the cost branch and false on `main` — and beneath it, `COST_DATA_VINTAGE`, a live user-facing provenance claim that was half false |
+
+**Found by internal verification: nothing.** 651 tests green throughout, type
+checker clean, linter clean. Each of these errors was internally consistent on
+both sides of a boundary — a name that matched, a field that existed, a sentence
+that had once been true.
+
+> **Rule: internal checks verify that the code does what you said. Only an
+> outside measurement checks whether what you said is true. External validation
+> is required before any level change or provenance claim ships.**
+
+Two corollaries earned the hard way this session:
+
+1. **Traceability is not accuracy.** A chain of individually sourced steps is
+   validated only by its output against a number obtained outside the chain.
+2. **Disclosure copy is code.** It makes claims; claims can be wrong in a new
+   context even when they were right in the old one. Never move explanatory text
+   between contexts without re-checking it against where it lands.

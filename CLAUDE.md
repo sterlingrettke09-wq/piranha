@@ -80,6 +80,28 @@ It tells the reader which way to correct and they correct into the error.
 guessed proves your guess was wrong, not that the resource is absent. Read
 indexes, not guessed paths.
 
+**9. Every check that has ever found a real defect here compared the system to
+something OUTSIDE it.** Not one was caught by internal verification.
+
+| What found it | What it caught |
+|---|---|
+| External cost benchmark | a data-set mapping bug (`1.15` vs `1.25`); and a *more traceable* chain that had drifted further from reality |
+| Live GIS field query | Minneapolis — a zoning chapter that would have matched **zero** parcels |
+| Live field-value query | Miami `FLR` is a letter suffix, not a floor-lot ratio |
+| Asking "is this text true *here*?" | a disclaimer true of one branch, false of the branch it was being copied to — and, underneath it, a live user-facing provenance claim that was half false |
+
+The test suite, the type checker and the linter found **none** of them, and could
+not have: each error was internally consistent on both sides of a boundary.
+
+> **External validation is a required step before any level change or provenance
+> claim ships — not a thing done on request.** Internal checks verify that the
+> code does what you said. Only an outside measurement checks whether what you
+> said is true.
+
+Corollary: **disclosure copy is code.** It makes claims, and a claim can be true
+in one file and false in another. Never move explanatory text between contexts
+without re-checking it against the context it lands in.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
