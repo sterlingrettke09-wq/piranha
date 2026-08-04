@@ -49,6 +49,8 @@ const DISTRICT_RULES: { re: RegExp; cat: SiteAdvisoryCategory; label?: string }[
   { re: /^mio\b|^mio-/i, cat: 'civic', label: 'a major-institution site (hospital or university)' }, // Seattle
   { re: /^cmp-/i, cat: 'university', label: 'a campus (university or hospital)' }, // Denver
   { re: /^pf\b|^pf-/i, cat: 'civic', label: 'a public-facilities site' }, // Los Angeles
+  // San Jose zones civic land Public/Quasi-Public — City Hall itself reads PQP.
+  { re: /^pqp\b|^pqp-/i, cat: 'civic', label: 'a public or quasi-public site' },
 ]
 
 // --- Signal 3: curated marquee venues (city, centroid, radius, category) ---
@@ -99,6 +101,31 @@ const LANDMARKS: Landmark[] = [
   // NYC — MSG/Grand Central usually caught by land use, listed as a backstop
   { city: 'nyc', lat: 40.7505, lng: -73.9934, radiusM: 200, cat: 'venue', label: 'Madison Square Garden' },
   { city: 'nyc', lat: 40.7527, lng: -73.9772, radiusM: 200, cat: 'transit', label: 'Grand Central Terminal' },
+  // San Jose — arena, university, museums
+  { city: 'sanjose', lat: 37.3327, lng: -121.9010, radiusM: 240, cat: 'venue', label: 'the SAP Center' },
+  { city: 'sanjose', lat: 37.3352, lng: -121.8811, radiusM: 450, cat: 'university', label: 'San Jose State University' },
+  { city: 'sanjose', lat: 37.3327, lng: -121.8901, radiusM: 200, cat: 'museum', label: 'the Tech Interactive' },
+  { city: 'sanjose', lat: 37.3120, lng: -121.8770, radiusM: 300, cat: 'hospital', label: 'Santa Clara Valley Medical Center' },
+  // San Diego — ballpark, campuses, museums, medical
+  { city: 'sandiego', lat: 32.7073, lng: -117.1566, radiusM: 260, cat: 'venue', label: 'Petco Park' },
+  { city: 'sandiego', lat: 32.8801, lng: -117.2340, radiusM: 900, cat: 'university', label: 'UC San Diego' },
+  { city: 'sandiego', lat: 32.7757, lng: -117.0719, radiusM: 600, cat: 'university', label: 'San Diego State University' },
+  { city: 'sandiego', lat: 32.7341, lng: -117.1446, radiusM: 220, cat: 'museum', label: 'the San Diego Zoo' },
+  { city: 'sandiego', lat: 32.7554, lng: -117.1660, radiusM: 300, cat: 'hospital', label: 'the UC San Diego Medical Center' },
+  // Miami — arena, stadium, campuses, museums
+  { city: 'miami', lat: 25.7814, lng: -80.1870, radiusM: 240, cat: 'venue', label: 'the Kaseya Center' },
+  { city: 'miami', lat: 25.7781, lng: -80.2197, radiusM: 300, cat: 'venue', label: 'loanDepot park' },
+  { city: 'miami', lat: 25.7482, lng: -80.2601, radiusM: 500, cat: 'university', label: 'the University of Miami' },
+  { city: 'miami', lat: 25.7906, lng: -80.1873, radiusM: 200, cat: 'museum', label: 'the Perez Art Museum Miami' },
+  { city: 'miami', lat: 25.7907, lng: -80.1949, radiusM: 400, cat: 'hospital', label: 'the Jackson Memorial / UM medical campus' },
+  // Philadelphia — stadium complex, campuses, and the art museum
+  { city: 'philadelphia', lat: 39.9008, lng: -75.1675, radiusM: 260, cat: 'venue', label: 'Lincoln Financial Field' },
+  { city: 'philadelphia', lat: 39.9061, lng: -75.1665, radiusM: 260, cat: 'venue', label: 'Citizens Bank Park' },
+  { city: 'philadelphia', lat: 39.9012, lng: -75.172, radiusM: 240, cat: 'venue', label: 'the Wells Fargo Center' },
+  { city: 'philadelphia', lat: 39.9656, lng: -75.181, radiusM: 220, cat: 'museum', label: 'the Philadelphia Museum of Art' },
+  { city: 'philadelphia', lat: 39.9522, lng: -75.1932, radiusM: 600, cat: 'university', label: 'the University of Pennsylvania' },
+  { city: 'philadelphia', lat: 39.9812, lng: -75.1554, radiusM: 500, cat: 'university', label: 'Temple University' },
+  { city: 'philadelphia', lat: 39.9496, lng: -75.1817, radiusM: 300, cat: 'hospital', label: 'the Hospital of the University of Pennsylvania' },
   // DC — covered by the USECODE provider tweak, listed as a backstop
   { city: 'dc', lat: 38.873, lng: -77.0074, radiusM: 280, cat: 'venue', label: 'Nationals Park' },
   { city: 'dc', lat: 38.8981, lng: -77.0209, radiusM: 220, cat: 'venue', label: 'Capital One Arena' },
@@ -221,6 +248,45 @@ const CIVIC_BLOCKS: CivicBlock[] = [
   { city: 'seattle', lat: 47.6145, lng: -122.349, radiusM: 160, label: 'the Seattle Public Schools headquarters' },
   // Military installations
   { city: 'austin', lat: 30.287, lng: -97.755, radiusM: 800, label: 'Camp Mabry' },
+  // --- San Jose (added with the city, 2026-08-03) ---
+  // San Jose publishes no owner or assessor data at all, so the owner gate is
+  // unavailable and this curated list is the primary civic defence.
+  { city: 'sanjose', lat: 37.3382, lng: -121.8863, radiusM: 180, label: 'San Jose City Hall' },
+  { city: 'sanjose', lat: 37.3376, lng: -121.8949, radiusM: 200, label: 'the Santa Clara County Superior Court' },
+  { city: 'sanjose', lat: 37.3300, lng: -121.8900, radiusM: 200, label: 'the Dr. Martin Luther King Jr. Library' },
+  { city: 'sanjose', lat: 37.3639, lng: -121.9289, radiusM: 2200, label: 'San Jose Mineta International Airport' },
+  { city: 'sanjose', lat: 37.3300, lng: -121.8880, radiusM: 200, label: 'the San Jose Convention Center' },
+  { city: 'sanjose', lat: 37.3160, lng: -121.8830, radiusM: 500, label: 'Kelley Park' },
+  // --- San Diego (added with the city, 2026-08-03) ---
+  // San Diego publishes no owner name, so the curated list carries more weight
+  // here; the city-owned-land layer catches only CITY parcels, not county /
+  // state / federal / port / school-district land.
+  { city: 'sandiego', lat: 32.7157, lng: -117.1625, radiusM: 180, label: 'San Diego City Hall' },
+  { city: 'sandiego', lat: 32.7180, lng: -117.1690, radiusM: 200, label: 'the San Diego County Administration Center' },
+  { city: 'sandiego', lat: 32.7157, lng: -117.1573, radiusM: 170, label: 'the San Diego Central Courthouse' },
+  { city: 'sandiego', lat: 32.7338, lng: -117.1470, radiusM: 1400, label: 'Balboa Park' },
+  { city: 'sandiego', lat: 32.7336, lng: -117.1897, radiusM: 2500, label: 'San Diego International Airport' },
+  { city: 'sandiego', lat: 32.6850, lng: -117.1500, radiusM: 1800, label: 'Naval Base San Diego' },
+  { city: 'sandiego', lat: 32.7080, lng: -117.1750, radiusM: 900, label: 'Naval Air Station North Island' },
+  { city: 'sandiego', lat: 32.7130, lng: -117.1660, radiusM: 200, label: 'the San Diego Central Library' },
+  // --- Miami (added with the city, 2026-08-03) ---
+  { city: 'miami', lat: 25.7743, lng: -80.1937, radiusM: 170, label: 'Miami City Hall' },
+  { city: 'miami', lat: 25.7776, lng: -80.1959, radiusM: 200, label: 'the Miami-Dade County Courthouse' },
+  { city: 'miami', lat: 25.7784, lng: -80.1878, radiusM: 200, label: 'Bayfront Park' },
+  { city: 'miami', lat: 25.7907, lng: -80.1867, radiusM: 220, label: 'Museum Park' },
+  { city: 'miami', lat: 25.7959, lng: -80.2870, radiusM: 2500, label: 'Miami International Airport' },
+  { city: 'miami', lat: 25.7281, lng: -80.2417, radiusM: 200, label: 'Miami City Hall (Dinner Key)' },
+  // --- Philadelphia (added with the city, 2026-08-03) ---
+  // Philadelphia's assessor layer has no owner record for many civic parcels, so
+  // the owner gate alone does not catch them.
+  { city: 'philadelphia', lat: 39.9524, lng: -75.1636, radiusM: 170, label: 'Philadelphia City Hall' },
+  { city: 'philadelphia', lat: 39.9489, lng: -75.15, radiusM: 260, label: 'Independence National Historical Park' },
+  { city: 'philadelphia', lat: 39.952, lng: -75.152, radiusM: 150, label: 'the U.S. Courthouse' },
+  { city: 'philadelphia', lat: 39.9566, lng: -75.182, radiusM: 220, label: '30th Street Station' },
+  { city: 'philadelphia', lat: 39.9601, lng: -75.171, radiusM: 150, label: 'the Free Library of Philadelphia' },
+  { city: 'philadelphia', lat: 39.8744, lng: -75.2424, radiusM: 2500, label: 'Philadelphia International Airport' },
+  { city: 'philadelphia', lat: 39.99, lng: -75.21, radiusM: 1500, label: 'Fairmount Park' },
+  { city: 'philadelphia', lat: 39.9683, lng: -75.1727, radiusM: 200, label: 'Eastern State Penitentiary' },
   // More airports (in-city; others like SFO/SeaTac/MSP/Reagan sit outside the
   // city bbox and already return no-coverage)
   { city: 'chicago', lat: 41.786, lng: -87.7524, radiusM: 1500, label: 'Midway International Airport' },

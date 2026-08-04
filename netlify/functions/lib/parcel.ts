@@ -10,6 +10,11 @@ import {
   LA_BBOX,
   DENVER_BBOX,
   MINNEAPOLIS_BBOX,
+  PHILADELPHIA_BBOX,
+  MIAMI_BBOX,
+  SAN_DIEGO_BBOX,
+  SAN_JOSE_BBOX,
+  NASHVILLE_BBOX,
   type Bbox,
   type ParcelInfo,
 } from '../../../src/types/parcel'
@@ -26,6 +31,11 @@ import { getAustinParcelInfo } from './providers/austin'
 import { getLaParcelInfo } from './providers/la'
 import { getDenverParcelInfo } from './providers/denver'
 import { getMinneapolisParcelInfo } from './providers/minneapolis'
+import { getPhiladelphiaParcelInfo } from './providers/philadelphia'
+import { getMiamiParcelInfo } from './providers/miami'
+import { getSanDiegoParcelInfo } from './providers/sandiego'
+import { getSanJoseParcelInfo } from './providers/sanjose'
+import { getNashvilleParcelInfo } from './providers/nashville'
 import { computeEnvelope } from './envelope'
 
 export type { ParcelResult }
@@ -136,6 +146,11 @@ const CITIES: Record<string, CityConfig> = {
   la: { bbox: LA_BBOX, label: 'Los Angeles', provider: getLaParcelInfo },
   denver: { bbox: DENVER_BBOX, label: 'Denver', provider: getDenverParcelInfo },
   minneapolis: { bbox: MINNEAPOLIS_BBOX, label: 'Minneapolis', provider: getMinneapolisParcelInfo },
+  philadelphia: { bbox: PHILADELPHIA_BBOX, label: 'Philadelphia', provider: getPhiladelphiaParcelInfo },
+  miami: { bbox: MIAMI_BBOX, label: 'Miami', provider: getMiamiParcelInfo },
+  sandiego: { bbox: SAN_DIEGO_BBOX, label: 'San Diego', provider: getSanDiegoParcelInfo },
+  sanjose: { bbox: SAN_JOSE_BBOX, label: 'San Jose', provider: getSanJoseParcelInfo },
+  nashville: { bbox: NASHVILLE_BBOX, label: 'Nashville', provider: getNashvilleParcelInfo },
 }
 
 export const LIVE_CITIES = Object.keys(CITIES)
