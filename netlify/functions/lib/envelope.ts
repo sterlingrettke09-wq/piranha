@@ -51,6 +51,19 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
     floorAreaFromAllowance = true
   }
 
+  // Other programs the code allows, sized against this lot. ALTERNATIVES to the
+  // headline, not a range around it — the headline stays the base case so it
+  // never assumes a program the user hasn't chosen, and these show what else is
+  // legally available. Same greater-of-ratio-or-floor rule as the headline.
+  const alternatives =
+    lot != null && lot > 0
+      ? info.zoning.farAlternatives?.map((a) => ({
+          label: a.label,
+          maxFloorAreaSqFt: Math.round(Math.max(a.far * lot, a.floorSqFt ?? 0)),
+          ...(a.source ? { source: a.source } : {}),
+        }))
+      : undefined
+
   const maxHeightFt = limits.maxHeightFt
   // Floor-to-floor height is use-aware: residential/mixed envelopes pack ~11 ft
   // floors, a district (commercial-style) envelope ~13 ft. With no FAR basis but
@@ -80,5 +93,6 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
     allowedUses: limits.allowedUses,
     farBasis,
     ...(floorAreaFromAllowance ? { floorAreaFromAllowance: true } : {}),
+    ...(alternatives && alternatives.length > 0 ? { alternatives } : {}),
   }
 }

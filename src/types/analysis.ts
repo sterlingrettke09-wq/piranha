@@ -95,7 +95,14 @@ export interface AnalysisResult {
       maxStories: number | null
       maxUnits: number | null
       allowedUses: string[] | null
-      farBasis: 'residential' | 'mixed' | 'district' | null
+      /** 'unconstrained' = the code imposes no FAR here (an ANSWER); null = we
+       *  could not resolve one (a GAP). Both carry a null floor area, so the UI
+       *  must not render them the same. Mirrors ParcelInfo['envelope']. */
+      farBasis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null
+      floorAreaFromAllowance?: boolean
+      /** Other programs the code allows — alternatives to the headline, not a
+       *  range around it. */
+      alternatives?: Array<{ label: string; maxFloorAreaSqFt: number; source?: string }>
     }
     existing?: {
       landUse?: string | null

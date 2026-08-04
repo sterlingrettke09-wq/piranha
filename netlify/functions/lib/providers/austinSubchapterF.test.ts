@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { austinSfLimits, isAustinSubchapterFZone, AUSTIN_HOME_FAR } from './austin'
+import { austinSfLimits, isAustinSubchapterFZone, AUSTIN_HOME_FAR, austinHomeAlternatives } from './austin'
 import { computeEnvelope } from '../envelope'
 import type { ParcelInfo } from '../../../../src/types/parcel'
 
@@ -120,5 +120,53 @@ describe('envelope — the defect this replaces', () => {
     )
     // Previously f:null → envelope null → defaultSpec fell back to lot * 1.0 = 7,000.
     expect(env.maxFloorAreaSqFt).toBe(2800)
+  })
+})
+
+describe('Austin HOME alternatives — surfaced, and only where the gradient applies', () => {
+  it('offers 2- and 3-unit alternatives INSIDE the Subchapter F boundary', () => {
+    const alts = austinHomeAlternatives('SF-3', true)
+    expect(alts).toHaveLength(2)
+    expect(alts?.[0]).toMatchObject({ label: '2 units (HOME)', far: 0.55, floorSqFt: 3200 })
+    expect(alts?.[1]).toMatchObject({ label: '3 units (HOME)', far: 0.65, floorSqFt: 4350 })
+  })
+
+  it('offers NONE outside the boundary — there is no FAR limit to alternate from', () => {
+    expect(austinHomeAlternatives('SF-3', false)).toBeUndefined()
+  })
+
+  it('offers none for non-Subchapter-F zones', () => {
+    expect(austinHomeAlternatives('MF-3', true)).toBeUndefined()
+  })
+})
+
+describe('envelope — alternatives are sized greater-of-ratio-or-floor', () => {
+  it('sizes a 7,000 sf lot: base 2,800 with 3-unit alternative 4,550', () => {
+    const env = computeEnvelope(
+      parcel(
+        { maxFAR: 0.4, farAlternatives: austinHomeAlternatives('SF-3', true) },
+        7000,
+      ),
+      'austin',
+    )
+    expect(env.maxFloorAreaSqFt).toBe(2800) // headline stays the base case
+    expect(env.alternatives?.map((a) => a.maxFloorAreaSqFt)).toEqual([3850, 4550])
+  })
+
+  it('applies the floor value on a small lot', () => {
+    // 0.65 * 3000 = 1,950 < 4,350 floor.
+    const env = computeEnvelope(
+      parcel({ maxFAR: 0.4, farAlternatives: austinHomeAlternatives('SF-3', true) }, 3000),
+      'austin',
+    )
+    expect(env.alternatives?.[1].maxFloorAreaSqFt).toBe(4350)
+  })
+
+  it('emits no alternatives when lot size is unknown', () => {
+    const env = computeEnvelope(
+      parcel({ maxFAR: 0.4, farAlternatives: austinHomeAlternatives('SF-3', true) }, null),
+      'austin',
+    )
+    expect(env.alternatives).toBeUndefined()
   })
 })

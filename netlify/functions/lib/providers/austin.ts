@@ -129,6 +129,29 @@ export function austinSfLimits(base: string | null, insideSubchapterF: boolean):
   return { maxHeightFt: r.heightFt, maxFAR: r.far, farFloorSqFt: r.floorSqFt, farUnconstrained: false }
 }
 
+/**
+ * The HOME programs available ALONGSIDE the single-family base case, as
+ * floor-area alternatives. Only inside the Subchapter F boundary, where the
+ * gradient applies; outside it there is no FAR limit and no alternative to
+ * express. Each is `max(ratio * lot, floorSqFt)`, per "the greater of the ratio
+ * or the floor value".
+ *
+ * These are ALTERNATIVES to the 0.40 base case, not a ceiling above it — the
+ * user picks one program. Surfacing them is what keeps the conservative
+ * headline from making Austin look more restrictive than it is.
+ */
+export function austinHomeAlternatives(
+  base: string | null,
+  insideSubchapterF: boolean,
+): NonNullable<ParcelInfo['zoning']['farAlternatives']> | undefined {
+  if (!isAustinSubchapterFZone(base) || !insideSubchapterF) return undefined
+  const SRC = 'Austin HOME Phase 1, Ord. 20231207-001'
+  return [
+    { label: '2 units (HOME)', far: AUSTIN_HOME_FAR.twoUnit.far, floorSqFt: AUSTIN_HOME_FAR.twoUnit.floorSqFt, source: SRC },
+    { label: '3 units (HOME)', far: AUSTIN_HOME_FAR.threeUnit.far, floorSqFt: AUSTIN_HOME_FAR.threeUnit.floorSqFt, source: SRC },
+  ]
+}
+
 // Austin base-zone prefix → use vocabulary.
 function usesForZone(base: string | null): string[] | null {
   if (!base) return null
@@ -200,6 +223,9 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
       allowedUses: usesForZone(base),
       ...(sf?.farFloorSqFt != null ? { farFloorSqFt: sf.farFloorSqFt } : {}),
       ...(sf?.farUnconstrained ? { farUnconstrained: true } : {}),
+      ...(subFOk && austinHomeAlternatives(base, insideSubchapterF)
+        ? { farAlternatives: austinHomeAlternatives(base, insideSubchapterF) }
+        : {}),
     },
     lot: {
       sizeSqFt: Number.isFinite(areaSqFt) && areaSqFt > 0 ? Math.round(areaSqFt) : null,

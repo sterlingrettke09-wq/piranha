@@ -231,7 +231,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     costs: estimate.costs,
     timeline,
     narrative,
-    assumptions: assumptionsSummary(city, project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / ftPerStory(use)) : null)),
+    assumptions: assumptionsSummary(
+      city,
+      project.stories ?? (project.heightFt != null ? Math.round(project.heightFt / ftPerStory(use)) : null),
+      project.gfaBasis,
+    ),
     sources: parcel.sources,
     disclaimers: [
       ...DISCLAIMERS,

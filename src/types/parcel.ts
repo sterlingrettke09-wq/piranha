@@ -29,6 +29,17 @@ export interface ParcelInfo {
      *  (floor area is governed by height/setbacks/coverage instead) from
      *  "we don't know the FAR", which `maxFAR: null` alone conflates. */
     farUnconstrained?: boolean
+    /** Other programs the code allows, each with its own FAR — ALTERNATIVES to
+     *  the headline `maxFAR`, not a range around it. The user picks one.
+     *  Austin: one house at 0.40, or three units at 0.65 under HOME.
+     *  computeEnvelope sizes these against the lot; same
+     *  greater-of-ratio-or-floor rule as `farFloorSqFt`. */
+    farAlternatives?: Array<{
+      label: string
+      far: number
+      floorSqFt?: number | null
+      source?: string
+    }>
   }
   lot: {
     sizeSqFt: number | null
@@ -59,6 +70,18 @@ export interface ParcelInfo {
      *  allowance rather than the ratio (small-lot case). Lets the UI cite the
      *  right half of a "greater of X or Y SF" rule. */
     floorAreaFromAllowance?: boolean
+    /** Other programs the code allows on this parcel, each with its own floor
+     *  area. These are ALTERNATIVES to the headline, not a range around it —
+     *  the headline is the base case (assuming no program the user hasn't
+     *  chosen) and these are what becomes available under a different one.
+     *  Austin: 0.40 FAR as one house, or 0.65 for three units under HOME. */
+    alternatives?: Array<{
+      /** Short program label, e.g. "3 units (HOME)". */
+      label: string
+      maxFloorAreaSqFt: number
+      /** Where the alternative comes from, e.g. "Austin HOME, 2024". */
+      source?: string
+    }>
   }
   overlays: {
     historicDistrict: string | null

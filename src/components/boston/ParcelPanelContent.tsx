@@ -199,6 +199,19 @@ export function ParcelPanelContent(props: Props) {
                 )}
               </p>
             )}
+            {env.alternatives?.map((alt) => (
+              // ALTERNATIVES, not a range. The headline above is the base case
+              // (assumes no program the user hasn't chosen); these are what
+              // becomes available under a different one. Showing them is what
+              // keeps a conservative headline from making the parcel look more
+              // restricted than the code actually leaves it.
+              <p key={alt.label} className="text-sm text-piranha-charcoal/70">
+                or <span className="font-medium tabular-nums">{alt.maxFloorAreaSqFt.toLocaleString()}</span> sq ft
+                {' as '}
+                {alt.label}
+                {alt.source && <span className="text-piranha-charcoal/45"> · {alt.source}</span>}
+              </p>
+            ))}
             {env.maxFloorAreaSqFt == null && env.farBasis === 'unconstrained' && (
               // A known absence, not a gap. Saying nothing here would read as
               // missing data and invite the reader to assume a cap exists.
