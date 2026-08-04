@@ -16,6 +16,13 @@ export interface AnalysisInput {
   lng: number
   use: Use
   gfa: number
+  /** Where `gfa` came from. 'envelope' = derived from a published zoning limit.
+   *  'assumed-far-1.0' = NO floor-area limit was resolvable, so lot area was
+   *  used as a stand-in — an unsourced assumption, not a code limit, and it
+   *  must be disclosed wherever the resulting numbers are shown. Usually this
+   *  means the city's FAR exists but isn't published in GIS (San Diego, San
+   *  Jose, Nashville), not that the district is unconstrained. */
+  gfaBasis?: 'envelope' | 'assumed-far-1.0'
   units?: number
   stories?: number
   heightFt?: number
