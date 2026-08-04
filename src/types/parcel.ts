@@ -18,6 +18,17 @@ export interface ParcelInfo {
       mixed?: number
       institutional?: number
     }
+    /** Floor-area ALLOWANCE in square feet, for codes that cap floor area at
+     *  "the greater of the ratio or a fixed floor value" — e.g. Austin's HOME
+     *  FAR gradient, "0.65 or 4,350 SF". Small lots are governed by the floor
+     *  value, not the ratio, so `far * lot` alone understates them.
+     *  Applied as max(maxFAR * lot, farFloorSqFt). */
+    farFloorSqFt?: number | null
+    /** TRUE when the code imposes no FAR limit here at all — a KNOWN absence,
+     *  not a missing lookup. Distinguishes "this instrument does not bind"
+     *  (floor area is governed by height/setbacks/coverage instead) from
+     *  "we don't know the FAR", which `maxFAR: null` alone conflates. */
+    farUnconstrained?: boolean
   }
   lot: {
     sizeSqFt: number | null
@@ -35,9 +46,19 @@ export interface ParcelInfo {
     maxUnits: number | null
     allowedUses: string[] | null
     /** Which FAR drove the headline floor area: the residential per-use FAR, the
-     *  mixed-use per-use FAR, the district maxFAR, or null when no FAR applied.
-     *  Lets the UI label the envelope so the number isn't read as use-agnostic. */
-    farBasis: 'residential' | 'mixed' | 'district' | null
+     *  mixed-use per-use FAR, the district maxFAR, 'unconstrained' when the code
+     *  imposes NO FAR here, or null when the FAR is simply unknown.
+     *  Lets the UI label the envelope so the number isn't read as use-agnostic.
+     *
+     *  'unconstrained' vs null matters: both carry maxFloorAreaSqFt: null, but
+     *  'unconstrained' means "FAR does not bind — height/setbacks/coverage do",
+     *  while null means "we could not resolve a FAR". Never render them the
+     *  same; the first is an answer, the second is a gap. */
+    farBasis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null
+    /** Set when the headline floor area came from the code's fixed floor
+     *  allowance rather than the ratio (small-lot case). Lets the UI cite the
+     *  right half of a "greater of X or Y SF" rule. */
+    floorAreaFromAllowance?: boolean
   }
   overlays: {
     historicDistrict: string | null
@@ -162,6 +183,41 @@ export const MINNEAPOLIS_BBOX: Bbox = {
   west: -93.33,
   north: 45.05,
   east: -93.19,
+}
+
+export const PHILADELPHIA_BBOX: Bbox = {
+  south: 39.86,
+  west: -75.29,
+  north: 40.14,
+  east: -74.95,
+}
+
+export const MIAMI_BBOX: Bbox = {
+  south: 25.70,
+  west: -80.32,
+  north: 25.86,
+  east: -80.14,
+}
+
+export const SAN_DIEGO_BBOX: Bbox = {
+  south: 32.53,
+  west: -117.29,
+  north: 33.11,
+  east: -116.90,
+}
+
+export const SAN_JOSE_BBOX: Bbox = {
+  south: 37.12,
+  west: -122.06,
+  north: 37.47,
+  east: -121.59,
+}
+
+export const NASHVILLE_BBOX: Bbox = {
+  south: 35.97,
+  west: -87.06,
+  north: 36.41,
+  east: -86.51,
 }
 
 export function isInBbox(bbox: Bbox, lat: number, lng: number): boolean {

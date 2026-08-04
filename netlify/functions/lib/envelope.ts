@@ -16,7 +16,7 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   const residFar = info.zoning.farByUse?.residential
   const mixedFar = info.zoning.farByUse?.mixed
   let far: number | null
-  let farBasis: 'residential' | 'mixed' | 'district' | null
+  let farBasis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null
   if (residFar != null) {
     far = residFar
     farBasis = 'residential'
@@ -26,11 +26,30 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   } else if (limits.maxFAR != null) {
     far = limits.maxFAR
     farBasis = 'district'
+  } else if (info.zoning.farUnconstrained) {
+    // The code imposes no FAR here. That is an ANSWER, not a gap: floor area is
+    // governed by height/setbacks/coverage instead. Deliberately does NOT
+    // invent a ratio — reporting one would be a cap the code never imposed.
+    far = null
+    farBasis = 'unconstrained'
   } else {
     far = null
     farBasis = null
   }
-  const maxFloorAreaSqFt = far != null && lot != null && lot > 0 ? Math.round(far * lot) : null
+
+  // Some codes cap floor area at "the greater of the ratio or a fixed floor
+  // value" (Austin HOME: "0.65 or 4,350 SF"). On small lots the floor governs,
+  // so far * lot alone understates them. Only applies where a FAR actually
+  // binds — an allowance is a floor under a cap, not a cap of its own, so it
+  // must never manufacture a limit on an unconstrained parcel.
+  const farFloor = info.zoning.farFloorSqFt
+  const ratioArea = far != null && lot != null && lot > 0 ? Math.round(far * lot) : null
+  let maxFloorAreaSqFt = ratioArea
+  let floorAreaFromAllowance = false
+  if (ratioArea != null && farFloor != null && farFloor > ratioArea) {
+    maxFloorAreaSqFt = Math.round(farFloor)
+    floorAreaFromAllowance = true
+  }
 
   const maxHeightFt = limits.maxHeightFt
   // Floor-to-floor height is use-aware: residential/mixed envelopes pack ~11 ft
@@ -60,5 +79,6 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
     maxUnits,
     allowedUses: limits.allowedUses,
     farBasis,
+    ...(floorAreaFromAllowance ? { floorAreaFromAllowance: true } : {}),
   }
 }

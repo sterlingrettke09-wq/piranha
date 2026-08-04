@@ -28,7 +28,9 @@ function Fact({
 
 // Labels which FAR drove the envelope's headline floor area, so the figure reads
 // as use-specific rather than a single use-agnostic cap (WO-5.5).
-function farBasisLabel(basis: 'residential' | 'mixed' | 'district' | null | undefined): string | null {
+function farBasisLabel(
+  basis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null | undefined,
+): string | null {
   switch (basis) {
     case 'residential':
       return '(residential FAR)'
