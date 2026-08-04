@@ -27,6 +27,11 @@
 export interface DistrictLimits {
   far: number | null
   heightFt: number | null
+  /** Story count the CODE states (Denver encodes it as the trailing token:
+   *  C-MX-5 → 5). Carried so consumers never re-derive it from feet — doing so
+   *  divides by a DIFFERENT floor-to-floor constant and drifts. Measured
+   *  2026-08-04: C-MX-12 came back as 13 stories, C-MX-16 as 17, C-MX-20 as 21. */
+  stories?: number | null
   /** TRUE where the DZC imposes no FAR on this district at all — a KNOWN
    *  absence. Distinct from `far: null` alone, which this file also uses for
    *  "unresolved" (Former Chapter 59, unrecognised codes). Without this flag
@@ -59,33 +64,42 @@ function ft(stories: number): number {
   return Math.round(stories * DENVER_FT_PER_STORY)
 }
 
+/** A form-based district at `n` stories. Carries BOTH the story count the code
+ *  states and the derived height, so no consumer ever has to divide feet back
+ *  into stories. Every table entry must go through this — a hand-written
+ *  `{ heightFt: ft(12) }` silently drops `stories`, which is exactly how
+ *  C-MX-12 kept publishing 13 stories after the resolver branches were fixed. */
+function storeys(n: number): DistrictLimits {
+  return { ...FORM_BASED, heightFt: ft(n), stories: n }
+}
+
 export const DENVER_LIMITS: Record<string, DistrictLimits> = {
   // Suburban / Urban single- & two-unit (letter or low-story suffix), ~2.5 st.
-  'U-SU-A': { ...FORM_BASED, heightFt: 30 }, // single-unit, ~2.5 stories / 30 ft
-  'U-SU-B': { ...FORM_BASED, heightFt: 30 },
-  'U-TU-B': { ...FORM_BASED, heightFt: 30 }, // two-unit
-  'E-SU-D': { ...FORM_BASED, heightFt: 30 },
-  'S-SU-D': { ...FORM_BASED, heightFt: 30 },
+  'U-SU-A': storeys(2.5), // single-unit, ~2.5 stories / 30 ft
+  'U-SU-B': storeys(2.5),
+  'U-TU-B': storeys(2.5), // two-unit
+  'E-SU-D': storeys(2.5),
+  'S-SU-D': storeys(2.5),
   // Urban row-house / residential-office.
-  'U-RH-2.5': { ...FORM_BASED, heightFt: ft(2.5) }, // 2.5 stories → 30 ft
-  'U-RH-3A': { ...FORM_BASED, heightFt: ft(3) },
-  'U-RO-3': { ...FORM_BASED, heightFt: ft(3) },
+  'U-RH-2.5': storeys(2.5), // 2.5 stories → 30 ft
+  'U-RH-3A': storeys(3),
+  'U-RO-3': storeys(3),
   // Mixed-use / main-street families (story suffix governs height).
-  'U-MX-2': { ...FORM_BASED, heightFt: ft(2) },
-  'U-MX-3': { ...FORM_BASED, heightFt: ft(3) },
-  'U-MS-3': { ...FORM_BASED, heightFt: ft(3) },
-  'U-MS-5': { ...FORM_BASED, heightFt: ft(5) },
-  'G-MU-3': { ...FORM_BASED, heightFt: ft(3) },
-  'G-MU-5': { ...FORM_BASED, heightFt: ft(5) },
-  'G-RH-3': { ...FORM_BASED, heightFt: ft(3) },
-  'C-MX-5': { ...FORM_BASED, heightFt: ft(5) },
-  'C-MX-8': { ...FORM_BASED, heightFt: ft(8) },
-  'C-MX-12': { ...FORM_BASED, heightFt: ft(12) },
-  'C-MS-5': { ...FORM_BASED, heightFt: ft(5) },
-  'C-RX-5': { ...FORM_BASED, heightFt: ft(5) },
-  'S-MX-3': { ...FORM_BASED, heightFt: ft(3) },
-  'S-MX-5': { ...FORM_BASED, heightFt: ft(5) },
-  'S-MX-8': { ...FORM_BASED, heightFt: ft(8) },
+  'U-MX-2': storeys(2),
+  'U-MX-3': storeys(3),
+  'U-MS-3': storeys(3),
+  'U-MS-5': storeys(5),
+  'G-MU-3': storeys(3),
+  'G-MU-5': storeys(5),
+  'G-RH-3': storeys(3),
+  'C-MX-5': storeys(5),
+  'C-MX-8': storeys(8),
+  'C-MX-12': storeys(12),
+  'C-MS-5': storeys(5),
+  'C-RX-5': storeys(5),
+  'S-MX-3': storeys(3),
+  'S-MX-5': storeys(5),
+  'S-MX-8': storeys(8),
 }
 
 /**
@@ -129,10 +143,10 @@ export function resolveDenver(
   const m = z.match(/-(\d+(?:\.\d+)?)$/)
   if (m) {
     const n = Number(m[1])
-    if (n >= 1 && n <= 60) return { ...FORM_BASED, heightFt: ft(n) }
+    if (n >= 1 && n <= 60) return storeys(n)
   }
   // Single/two-unit or row-house letter-suffix districts cap at ~2.5 st / 30 ft.
-  if (/-(SU|TU)-/.test(z) || /-RH-/.test(z)) return { ...FORM_BASED, heightFt: 30 }
+  if (/-(SU|TU)-/.test(z) || /-RH-/.test(z)) return storeys(2.5)
 
   // Unrecognised code — unresolved, and it must not be flagged as unconstrained.
   return { ...FAR_UNRESOLVED, heightFt: null }

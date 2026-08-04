@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveDenver, DENVER_LIMITS } from './denver'
+import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY } from './denver'
 
 // Defect-7 sweep, Denver. The DZC is form-based: Articles 3-9 govern by height,
 // setbacks and bulk plane, with no FAR. That is a KNOWN ABSENCE and must be
@@ -67,5 +67,40 @@ describe('Denver — the two null states stay distinguishable', () => {
     for (const z of ['C-MX-5', 'B-3', 'garbage', '', 'U-SU-A']) {
       expect(resolveDenver(z).far, z).toBeNull()
     }
+  })
+})
+
+// ── Story count must come from the code, never from dividing feet ──
+// Denver's module multiplied stories by 12 ft; the envelope divided by 11 ft.
+// The two do not cancel: C-MX-12 published 13 stories, C-MX-16 → 17, C-MX-20 → 21.
+// Measured 2026-08-04. See CLAUDE.md rule 12.
+describe('Denver — stories are stated, not re-derived', () => {
+  it.each([['U-MX-3',3],['C-MX-5',5],['C-MX-8',8],['C-MX-12',12]])(
+    '%s carries stories=%s from the curated table', (z, n) => {
+      expect(resolveDenver(z as string).stories).toBe(n)
+    })
+
+  it.each([['C-MX-16',16],['C-MX-20',20],['G-MU-7',7]])(
+    '%s carries stories=%s from the trailing-token branch', (z, n) => {
+      expect(resolveDenver(z as string).stories).toBe(n)
+    })
+
+  it('EVERY curated entry carries a story count', () => {
+    // The regression that survived the first fix: pattern branches were patched
+    // and the curated table was not, so exact-match codes kept drifting.
+    for (const [code, lim] of Object.entries(DENVER_LIMITS)) {
+      expect(lim.stories, code).toBeGreaterThan(0)
+    }
+  })
+
+  it('height and stories stay consistent with the module constant', () => {
+    for (const [code, lim] of Object.entries(DENVER_LIMITS)) {
+      expect(Math.round((lim.stories as number) * DENVER_FT_PER_STORY), code).toBe(lim.heightFt)
+    }
+  })
+
+  it('unresolved codes carry NO story count', () => {
+    expect(resolveDenver('B-3', { formerChapter59: true }).stories ?? null).toBeNull()
+    expect(resolveDenver('NOT-A-ZONE').stories ?? null).toBeNull()
   })
 })

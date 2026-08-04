@@ -33,6 +33,16 @@ function denverMaxHeightFt(zone: string | null, heightStories: unknown, descript
   return resolveDenver(zone, { formerChapter59: isFormerChapter59(description) }).heightFt
 }
 
+// Story count the code states. Denver encodes it as the trailing token and the
+// live layer carries it in HEIGHT_STORIES — the provider already HAS this number
+// and was throwing it away by converting to feet, after which the envelope
+// divided by a different constant and drifted (C-MX-12 published 13 stories).
+function denverMaxStories(zone: string | null, heightStories: unknown, description?: unknown): number | null {
+  const s = Number(heightStories)
+  if (Number.isFinite(s) && s > 0) return s
+  return resolveDenver(zone, { formerChapter59: isFormerChapter59(description) }).stories ?? null
+}
+
 // Whether the DZC imposes NO FAR on this district (a known absence) as opposed
 // to us simply not resolving one. Both previously surfaced as `maxFAR: null`,
 // which made defaultSpec fall back to an unsourced FAR-1.0 assumption on every
@@ -138,6 +148,9 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       maxFAR: null,
       allowedUses: usesForZone(code),
       ...(denverFarUnconstrained(code, zoning?.ZONE_DESCRIPTION) ? { farUnconstrained: true } : {}),
+      ...(denverMaxStories(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION) != null
+        ? { maxStories: denverMaxStories(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION) }
+        : {}),
     },
     lot: {
       sizeSqFt: Number.isFinite(land) && land > 0 ? Math.round(land) : null,

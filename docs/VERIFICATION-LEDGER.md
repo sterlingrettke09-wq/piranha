@@ -1064,3 +1064,76 @@ unsourced constant and a contradicted story count underneath it.
   measuring the instrument instead of the system.
 
 Both promoted to CLAUDE.md as rules 10 and 11; the unit round-trip as rule 12.
+
+---
+
+## 2026-08-04 — THE ft/story SWEEP. Miami was not the only one.
+
+Run because Miami proved the class and `FT_PER_STORY = 11` sits in the envelope,
+applied to every city. Three constants were live, none agreeing:
+
+| Constant | Value | Provenance |
+|---|---|---|
+| `FT_PER_STORY` (envelope, all cities) | **11** | "CRE floor-to-floor design standards (AdventuresinCRE)" — a design convention, not a code |
+| `DENVER_FT_PER_STORY` | **12** | its own comment: "the code does not fix a single ft/story, so this is a labeled estimate" |
+| `MIAMI_MAX_FT_PER_STORY` | **14** | Miami 21 Article 1 — the only one with a code citation, added today |
+
+**Only two cities convert stories → feet.** Every other city states height in
+feet directly (from GIS or from a code table), so the shared 11 is used only to
+derive a story count for display, never to produce a height.
+
+### Second instance found — Denver
+
+Same round-trip as Miami, smaller magnitude and therefore harder to notice:
+
+| Zone | Code says | Published |
+|---|---|---|
+| C-MX-5 | 5 | 5 ✓ |
+| C-MX-8 | 8 | 8 ✓ |
+| **C-MX-12** | **12** | **13** ⚠ |
+| **C-MX-16** | **16** | **17** ⚠ |
+| **C-MX-20** | **20** | **21** ⚠ |
+
+Correct below 12 stories purely because `floor(n × 12 / 11)` happens to round
+back. The error appears exactly where the buildings are tallest — the same
+scaling property as Miami, which is why neither was visible in ordinary use.
+
+### The fix, and the regression inside the fix
+
+First pass patched the two pattern-matching branches of `resolveDenver` and
+**left the curated `DENVER_LIMITS` table alone**. C-MX-16 and C-MX-20 (trailing
+token) came right; **C-MX-12 stayed at 13**, because it is an exact-match entry
+written by hand as `{ ...FORM_BASED, heightFt: ft(12) }` — which silently drops
+the story count.
+
+Caught only by re-running the check through `computeEnvelope` rather than
+re-reading the diff. **A partial fix to a class of error looks exactly like a
+complete one from the code.**
+
+Restructured so the shape cannot recur: every entry now goes through a single
+`storeys(n)` helper that emits height AND stories together. 26 entries
+converted; no hand-written `{ heightFt: ... }` remains. Two tests enforce it —
+every curated entry carries a story count, and stories × constant equals the
+stored height.
+
+### Verdicts on the other two flags from the null inventory
+
+**Seattle `NR` — NOT a defect.** Seattle publishes exactly one NR string
+(`'NR'`, no suffix). `seattleMaxHeightFt` finds no 2–3 digit token and returns
+`null`; `resolveSeattle('NR')` returns `{far: null, heightFt: null}`. It fails
+to **nothing**, not to garbage — the safe direction. NR is 9.3% of zoning
+polygons (land-area share NOT measured — the layer exposes no area field, and no
+direction is claimed for how count relates to area). Classified
+`published-not-fetched`: SMC 23.44 sets NR standards.
+
+**San Jose `PQP` — NOT a defect. My flag was wrong on both counts.**
+- The civic hard block DOES fire: `assessCivicHardBlock({city:'sanjose', …})`
+  returns `{label: 'San Jose City Hall'}`.
+- `PQP` is in `siteFlags.ts` `DISTRICT_RULES` as a **soft advisory**, deliberately
+  not in `developability.ts` as a hard block — PQP covers schools, libraries,
+  parks and utilities, and hard-blocking all of it would violate the standing
+  convention against broadening a block-regex without proving it cannot catch a
+  legitimate private parcel.
+
+So `PQP` does **not** scope a larger read-mapped-and-wrong sweep. Negative
+result, recorded so it is not re-investigated.
