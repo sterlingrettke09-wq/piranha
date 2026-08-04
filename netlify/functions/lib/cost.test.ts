@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { estimateCost } from './cost'
-import { costPerSqFtByUse, cityCostIndex, heightCostFactor } from '../../../src/config/estimates'
+import { costPerSqFtByUse, cityCostIndex, heightCostFactor, MIXED_RESIDENTIAL_SHARE } from '../../../src/config/estimates'
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
 
@@ -136,6 +136,27 @@ describe('impact fees per city', () => {
     expect(unknown.impactNote).toMatch(/unit count needed/)
     expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'High' }).costs.impact).toBe(Math.round(9.21 * 10_000))
     expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'Typical' }).costs.impact).toBe(Math.round(6.14 * 10_000))
+  })
+
+  it('Philadelphia: mandatory 1% Development Impact Tax on residential construction', () => {
+    // Phila. Code Ch. 19-4400 — 1% of construction cost, residential only,
+    // over $15,000 of value. Asserted as a RELATIONSHIP to hard cost so the
+    // expectation survives future cost-index tuning.
+    const res = at({ city: 'philadelphia', use: 'residential', gfa: 6_000, units: 4 })
+    expect(res.costs.impact).toBe(Math.round(res.costs.hard * 0.01))
+    expect(res.impactNote).toMatch(/Development Impact Tax/i)
+
+    // Non-residential is exempt.
+    const com = at({ city: 'philadelphia', use: 'commercial', gfa: 40_000 })
+    expect(com.costs.impact).toBe(0)
+
+    // Mixed-use is taxed on the residential share only, not the whole building.
+    const mix = at({ city: 'philadelphia', use: 'mixed', gfa: 40_000, units: 30 })
+    expect(mix.costs.impact).toBe(Math.round(mix.costs.hard * MIXED_RESIDENTIAL_SHARE * 0.01))
+
+    // Below the $15,000 construction-value floor, no tax.
+    const tiny = at({ city: 'philadelphia', use: 'residential', gfa: 20 })
+    expect(tiny.costs.impact).toBe(0)
   })
 
   it('Seattle and SF fees are informational (applied:false): note set, $0 in total', () => {

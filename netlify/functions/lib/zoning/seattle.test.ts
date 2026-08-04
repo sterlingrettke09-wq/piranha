@@ -82,3 +82,22 @@ describe('SEATTLE_FAR static table stays in lock-step with resolveSeattle', () =
     }
   })
 })
+
+// The parcel response must carry the same sourced FAR the envelope was built
+// from. Previously the provider hard-coded maxFAR: null while
+// resolveZoningLimits layered the table in behind it, so /api/parcel reported
+// "no FAR" for a lot whose floor area came from FAR 4.5.
+describe('Seattle NC/C FAR — values match SMC 23.47A.013 Table A', () => {
+  it.each([
+    ['NC3-30', 2.5], ['NC2-40', 3.0], ['NC1-55', 3.75], ['NC3-65', 4.5],
+    ['C1-75', 5.5], ['C2-85', 5.75], ['NC3-95', 6.25], ['C1-145', 7], ['NC3-200', 8.25],
+  ])('%s → FAR %s', (zone, far) => {
+    expect(resolveSeattle(zone as string).far).toBe(far)
+  })
+
+  it('returns null outside NC/C (LR/MR/HR and SM have their own tables)', () => {
+    for (const z of ['LR2', 'MR', 'HR', 'SM-U-85', 'IG1 U/85', 'SF 5000']) {
+      expect(resolveSeattle(z).far, z).toBeNull()
+    }
+  })
+})

@@ -16,6 +16,13 @@ export interface AnalysisInput {
   lng: number
   use: Use
   gfa: number
+  /** Where `gfa` came from. 'envelope' = derived from a published zoning limit.
+   *  'assumed-far-1.0' = NO floor-area limit was resolvable, so lot area was
+   *  used as a stand-in — an unsourced assumption, not a code limit, and it
+   *  must be disclosed wherever the resulting numbers are shown. Usually this
+   *  means the city's FAR exists but isn't published in GIS (San Diego, San
+   *  Jose, Nashville), not that the district is unconstrained. */
+  gfaBasis?: 'envelope' | 'assumed-far-1.0'
   units?: number
   stories?: number
   heightFt?: number
@@ -88,7 +95,14 @@ export interface AnalysisResult {
       maxStories: number | null
       maxUnits: number | null
       allowedUses: string[] | null
-      farBasis: 'residential' | 'mixed' | 'district' | null
+      /** 'unconstrained' = the code imposes no FAR here (an ANSWER); null = we
+       *  could not resolve one (a GAP). Both carry a null floor area, so the UI
+       *  must not render them the same. Mirrors ParcelInfo['envelope']. */
+      farBasis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null
+      floorAreaFromAllowance?: boolean
+      /** Other programs the code allows — alternatives to the headline, not a
+       *  range around it. */
+      alternatives?: Array<{ label: string; maxFloorAreaSqFt: number; source?: string }>
     }
     existing?: {
       landUse?: string | null

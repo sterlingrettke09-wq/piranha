@@ -39,13 +39,30 @@ export function buildDefaultSpec(parcel: ParcelInfo, city: string): AnalysisInpu
 
   // GFA basis, in priority order: 85% of the by-right floor-area envelope, then
   // a 1.0-FAR-equivalent fall back on lot size, then nothing.
+  //
+  // ⚠️ DEFECT 7 — the fallback is an ASSUMPTION, not a code limit, and it must
+  // travel labelled. `lot.sizeSqFt * 1.0` is an unsourced FAR-1.0 guess. It
+  // fires wherever the envelope yields no floor area, which the 2026-08-04
+  // sweep found is MOST parcels in several cities — and for a reason that
+  // matters: San Diego, San Jose and Nashville all have real FARs in their
+  // zoning codes that simply are not published in GIS. So this path is usually
+  // covering a MISSING LOOKUP, not a district that genuinely has no FAR.
+  //
+  // Emitting it unlabelled let a guess reach cost, unit counts and impact fees
+  // indistinguishable from a code-derived number. `gfaBasis` makes the two
+  // separable downstream so the UI can disclose it. Deliberately NOT removed:
+  // returning null here would leave those parcels with no estimate at all, and
+  // a disclosed assumption beats both a silent one and a blank screen.
   let gfa: number | null = null
+  let gfaBasis: 'envelope' | 'assumed-far-1.0' | null = null
   if (env && env.maxFloorAreaSqFt != null && env.maxFloorAreaSqFt > 0) {
     gfa = quantizeGfa(env.maxFloorAreaSqFt * 0.85)
+    gfaBasis = 'envelope'
   } else if (parcel.lot.sizeSqFt != null && parcel.lot.sizeSqFt > 0) {
     gfa = quantizeGfa(parcel.lot.sizeSqFt * 1.0)
+    gfaBasis = 'assumed-far-1.0'
   }
-  if (gfa === null) return null
+  if (gfa === null || gfaBasis === null) return null
 
   // Units only mean something for residential/mixed projects. Mixed buildings
   // give roughly 85% of their floor area to the residential program.
@@ -69,6 +86,7 @@ export function buildDefaultSpec(parcel: ParcelInfo, city: string): AnalysisInpu
     lng,
     use,
     gfa,
+    gfaBasis,
     units,
     stories,
   }

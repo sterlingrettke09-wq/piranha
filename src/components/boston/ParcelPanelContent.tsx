@@ -35,7 +35,13 @@ type Props =
 
 // Labels the FAR that drove the headline floor area, so the number reads as
 // use-specific rather than a single use-agnostic cap (WO-5.5).
-function farBasisLabel(basis: 'residential' | 'mixed' | 'district' | null | undefined): string | null {
+// 'unconstrained' never reaches here with a floor area — it means no FAR binds,
+// so there is no number to label. It is rendered separately (see below) because
+// "the code sets no FAR limit" is an ANSWER and must not look like the silence
+// of a failed lookup.
+function farBasisLabel(
+  basis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null | undefined,
+): string | null {
   switch (basis) {
     case 'residential':
       return '(residential FAR)'
@@ -191,6 +197,27 @@ export function ParcelPanelContent(props: Props) {
                     {farBasisLabel(env.farBasis)}
                   </span>
                 )}
+              </p>
+            )}
+            {env.alternatives?.map((alt) => (
+              // ALTERNATIVES, not a range. The headline above is the base case
+              // (assumes no program the user hasn't chosen); these are what
+              // becomes available under a different one. Showing them is what
+              // keeps a conservative headline from making the parcel look more
+              // restricted than the code actually leaves it.
+              <p key={alt.label} className="text-sm text-piranha-charcoal/70">
+                or <span className="font-medium tabular-nums">{alt.maxFloorAreaSqFt.toLocaleString()}</span> sq ft
+                {' as '}
+                {alt.label}
+                {alt.source && <span className="text-piranha-charcoal/45"> · {alt.source}</span>}
+              </p>
+            ))}
+            {env.maxFloorAreaSqFt == null && env.farBasis === 'unconstrained' && (
+              // A known absence, not a gap. Saying nothing here would read as
+              // missing data and invite the reader to assume a cap exists.
+              <p className="text-sm text-piranha-charcoal/70">
+                No floor-area ratio limit applies here — size is governed by height,
+                setbacks and lot coverage instead.
               </p>
             )}
             {(() => {

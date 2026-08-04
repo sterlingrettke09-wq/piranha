@@ -28,7 +28,9 @@ function Fact({
 
 // Labels which FAR drove the envelope's headline floor area, so the figure reads
 // as use-specific rather than a single use-agnostic cap (WO-5.5).
-function farBasisLabel(basis: 'residential' | 'mixed' | 'district' | null | undefined): string | null {
+function farBasisLabel(
+  basis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null | undefined,
+): string | null {
   switch (basis) {
     case 'residential':
       return '(residential FAR)'
@@ -58,8 +60,28 @@ export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
             note: farBasisLabel(env.farBasis),
           },
         ]
-      : []),
-    { label: 'Max FAR', value: parcel.maxFAR != null ? parcel.maxFAR.toFixed(2) : 'Not in public data' },
+      : env?.farBasis === 'unconstrained'
+        ? [
+            {
+              label: 'Max floor area',
+              value: 'No FAR limit',
+              note: 'governed by height, setbacks and lot coverage',
+            },
+          ]
+        : []),
+    {
+      label: 'Max FAR',
+      // "The code imposes no FAR here" is an ANSWER; "Not in public data" is a
+      // GAP. Printing the gap wording for an unconstrained district states the
+      // wrong thing — it tells the reader we failed to look something up when
+      // in fact we established the limit does not exist.
+      value:
+        parcel.maxFAR != null
+          ? parcel.maxFAR.toFixed(2)
+          : env?.farBasis === 'unconstrained'
+            ? 'No FAR limit applies'
+            : 'Not in public data',
+    },
     {
       label: 'Max height',
       value: parcel.maxHeightFt != null ? `${parcel.maxHeightFt} ft` : 'Not in public data',

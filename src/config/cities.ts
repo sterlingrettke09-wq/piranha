@@ -9,6 +9,11 @@ import {
   LA_BBOX,
   DENVER_BBOX,
   MINNEAPOLIS_BBOX,
+  PHILADELPHIA_BBOX,
+  MIAMI_BBOX,
+  SAN_DIEGO_BBOX,
+  SAN_JOSE_BBOX,
+  NASHVILLE_BBOX,
   type Bbox,
 } from '../types/parcel'
 
@@ -66,6 +71,25 @@ export const CITIES: City[] = [
     // (Built-Form districts carry the FAR/height), not a single district-code
     // layer the family classifier maps cleanly. Skipped per spec; the provider
     // still resolves limits server-side.
+    zoningLayer: undefined },
+  { slug: 'philadelphia', stateLabel: 'Philadelphia, PA', name: 'Philadelphia', live: true, center: [-75.1635, 39.9526], zoom: 12.6, bbox: PHILADELPHIA_BBOX, permitName: 'Philadelphia Licenses & Inspections', permitUrl: 'https://www.phila.gov/departments/department-of-licenses-and-inspections/', tagline: 'Rowhouses, and room to build.', landmark: [-75.1652, 39.9524],
+    // Philadelphia's Zoning_BaseDistricts is AGOL-hosted (CORS-open like the
+    // other services.arcgis.com layers) and it is one of only two cities
+    // publishing real FAR/height, so the client overlay is worth enabling.
+    zoningLayer: { url: 'https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services/Zoning_BaseDistricts/FeatureServer/0', codeField: 'long_code' } },
+  { slug: 'miami', stateLabel: 'Miami, FL', name: 'Miami', live: true, center: [-80.1918, 25.7743], zoom: 12.6, bbox: MIAMI_BBOX, permitName: 'City of Miami Building Department', permitUrl: 'https://www.miami.gov/Government/Departments-Organizations/Building', tagline: 'Building on the water\u2019s edge.', landmark: [-80.1918, 25.7743],
+    // Miami 21 Primary Zoning is served from gis.miami.gov (NOT gis.miamigov.com,
+    // which times out). Server-side only for now; enabling a client overlay would
+    // require adding the host to the netlify.toml CSP connect-src.
+    zoningLayer: undefined },
+  { slug: 'sandiego', stateLabel: 'San Diego, CA', name: 'San Diego', live: true, center: [-117.1611, 32.7157], zoom: 12.4, bbox: SAN_DIEGO_BBOX, permitName: 'San Diego Development Services', permitUrl: 'https://www.sandiego.gov/development-services', tagline: 'Sun, surf, and a 30-foot ceiling.', landmark: [-117.1611, 32.7157],
+    // Server-side only: webmaps.sandiego.gov would need a CSP connect-src entry.
+    zoningLayer: undefined },
+  { slug: 'sanjose', stateLabel: 'San Jose, CA', name: 'San Jose', live: true, center: [-121.8863, 37.3382], zoom: 12.4, bbox: SAN_JOSE_BBOX, permitName: 'San Jose Planning, Building & Code Enforcement', permitUrl: 'https://www.sanjoseca.gov/your-government/departments-offices/planning-building-code-enforcement', tagline: 'The valley\u2019s capital, still low-rise.', landmark: [-121.8863, 37.3382],
+    // Server-side only: geo.sanjoseca.gov would need a CSP connect-src entry.
+    zoningLayer: undefined },
+  { slug: 'nashville', stateLabel: 'Nashville, TN', name: 'Nashville', live: true, center: [-86.7816, 36.1627], zoom: 12.2, bbox: NASHVILLE_BBOX, permitName: 'Metro Nashville Codes & Building Safety', permitUrl: 'https://www.nashville.gov/departments/codes', tagline: 'Boomtown, building fast.', landmark: [-86.7816, 36.1627],
+    // Server-side only: maps.nashville.gov would need a CSP connect-src entry.
     zoningLayer: undefined },
 ]
 

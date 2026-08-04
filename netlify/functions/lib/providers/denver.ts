@@ -21,13 +21,24 @@ const EHA = 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/
 // height from the code's trailing stories token — with the "Former Chapter 59"
 // guard preserved so a legacy class-code number isn't misread as stories.
 // maxFAR stays null (Denver's form-based code has no FAR — see that module).
+function isFormerChapter59(description?: unknown): boolean {
+  return /former chapter 59/i.test(String(description ?? ''))
+}
+
 function denverMaxHeightFt(zone: string | null, heightStories: unknown, description?: unknown): number | null {
   const stories = Number(heightStories)
   if (Number.isFinite(stories) && stories > 0) return Math.round(stories * DENVER_FT_PER_STORY)
   // Legacy "Former Chapter 59" zones (B-3, O-1, R-X…) put a district CLASS in the
   // trailing number, NOT a story count — don't fabricate a height from it.
-  const formerChapter59 = /former chapter 59/i.test(String(description ?? ''))
-  return resolveDenver(zone, { formerChapter59 }).heightFt
+  return resolveDenver(zone, { formerChapter59: isFormerChapter59(description) }).heightFt
+}
+
+// Whether the DZC imposes NO FAR on this district (a known absence) as opposed
+// to us simply not resolving one. Both previously surfaced as `maxFAR: null`,
+// which made defaultSpec fall back to an unsourced FAR-1.0 assumption on every
+// Denver parcel. Former-Chapter-59 and unrecognised codes stay unresolved.
+function denverFarUnconstrained(zone: string | null, description?: unknown): boolean {
+  return resolveDenver(zone, { formerChapter59: isFormerChapter59(description) }).farUnconstrained === true
 }
 
 // Denver code (ZONE_DISTRICT, e.g. "U-SU-A", "G-MU-3", "C-MX-5", "D-C") →
@@ -126,6 +137,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       maxHeightFt,
       maxFAR: null,
       allowedUses: usesForZone(code),
+      ...(denverFarUnconstrained(code, zoning?.ZONE_DESCRIPTION) ? { farUnconstrained: true } : {}),
     },
     lot: {
       sizeSqFt: Number.isFinite(land) && land > 0 ? Math.round(land) : null,

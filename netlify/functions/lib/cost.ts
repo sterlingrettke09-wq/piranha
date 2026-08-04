@@ -1,6 +1,6 @@
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
-import { impactFee, MIXED_RESIDENTIAL_SHARE } from '../../../src/config/estimates'
+import { impactFee, MIXED_RESIDENTIAL_SHARE, constructionTax, CONSTRUCTION_TAX_MIN_VALUE } from '../../../src/config/estimates'
 import {
   costPerSqFtByUse,
   cityCostIndex,
@@ -68,11 +68,21 @@ export function estimateCost(
   // shouldn't bill the residential floors — apply them to the nonresidential
   // share of GFA only.
   const feeGfa = project.use === 'mixed' ? Math.round(project.gfa * (1 - MIXED_RESIDENTIAL_SHARE)) : project.gfa
-  const impact = fee && fee.applied ? Math.round(fee.perSqFt * feeGfa) : 0
-  const impactNote =
-    fee && !fee.applied
-      ? `${fee.label}: roughly $${fee.perSqFt}/sq ft — not included in the total above.`
-      : undefined
+  const linkage = fee && fee.applied ? Math.round(fee.perSqFt * feeGfa) : 0
+  // Percentage-of-construction-cost development taxes (Philadelphia's 1%
+  // Development Impact Tax) can't be expressed per sq ft, so they're computed
+  // against construction value and added to the same impact line. For mixed-use
+  // the tax is residential-only, so it applies to the residential share.
+  const tax = constructionTax(project.city, project.use)
+  const taxMin = CONSTRUCTION_TAX_MIN_VALUE[project.city] ?? 0
+  const taxableValue = project.use === 'mixed' ? Math.round(hard * MIXED_RESIDENTIAL_SHARE) : hard
+  const constructionTaxAmt =
+    tax && taxableValue > taxMin ? Math.round(taxableValue * tax.pct) : 0
+  const impact = linkage + constructionTaxAmt
+  const notes: string[] = []
+  if (fee && !fee.applied) notes.push(`${fee.label}: roughly $${fee.perSqFt}/sq ft — not included in the total above.`)
+  if (constructionTaxAmt > 0 && tax) notes.push(`Includes the ${tax.label}.`)
+  const impactNote = notes.length > 0 ? notes.join(' ') : undefined
   const total = hard + soft + permit + demolition + impact
   return {
     costs: { hard, soft, permit, demolition, impact, total, currency: 'USD' },

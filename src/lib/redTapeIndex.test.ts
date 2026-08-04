@@ -2,14 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { computeRedTapeIndex, parkingCell, REFERENCE, type RedTapeConstants } from './redTapeIndex'
 import { lifecycleMonths } from '../config/estimates'
 import { PARKING_RULES } from '../config/parkingRules'
+import { CITIES } from '../config/cities'
 
 describe('computeRedTapeIndex', () => {
   const ranked = computeRedTapeIndex()
 
-  it('includes all 10 cities exactly once', () => {
-    expect(ranked).toHaveLength(10)
+  // Count is derived from the city registry, not hard-coded, so adding a city
+  // doesn't require editing this assertion — it just has to stay complete.
+  it('includes every city exactly once', () => {
+    expect(ranked).toHaveLength(CITIES.length)
     const slugs = new Set(ranked.map((r) => r.slug))
-    expect(slugs.size).toBe(10)
+    expect(slugs.size).toBe(CITIES.length)
     // Cross-check against the source-of-truth timeline table.
     for (const slug of Object.keys(lifecycleMonths)) {
       expect(slugs.has(slug)).toBe(true)

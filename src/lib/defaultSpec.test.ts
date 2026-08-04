@@ -135,3 +135,52 @@ describe('buildDefaultSpec', () => {
     expect(spec.units).toBe(1)
   })
 })
+
+// ---- Defect 7: the FAR-1.0 fallback must travel labelled ----
+// The 2026-08-04 sweep found most null FARs are MISSING LOOKUPS (San Diego,
+// San Jose and Nashville publish no FAR in GIS though their codes have one),
+// not districts that genuinely lack a FAR. So this path usually covers a gap,
+// and an unlabelled guess reaching cost/units/fees is the defect.
+describe('buildDefaultSpec — gfaBasis labels the assumption', () => {
+  const base = {
+    address: 'x', parcelId: 'p', coordinates: [-97.7, 30.3] as [number, number],
+    zoning: { districtCode: 'R-1', subdistrict: null, article: null, maxHeightFt: 40, maxFAR: null, allowedUses: ['residential'] },
+    lot: { sizeSqFt: 10000, lotType: null },
+    overlays: { historicDistrict: null, floodZone: null },
+    sources: {}, fetchedAt: '2026-08-04T00:00:00.000Z',
+  }
+
+  it("marks 'envelope' when a published floor-area limit drove the number", () => {
+    const spec = buildDefaultSpec(
+      { ...base, envelope: { maxFloorAreaSqFt: 20000, maxHeightFt: 40, maxStories: 3, maxUnits: 13, allowedUses: ['residential'], farBasis: 'district' } } as never,
+      'boston',
+    )
+    expect(spec?.gfaBasis).toBe('envelope')
+  })
+
+  it("marks 'assumed-far-1.0' when NO floor-area limit was resolvable", () => {
+    const spec = buildDefaultSpec(
+      { ...base, envelope: { maxFloorAreaSqFt: null, maxHeightFt: 40, maxStories: 3, maxUnits: null, allowedUses: ['residential'], farBasis: null } } as never,
+      'sandiego',
+    )
+    expect(spec?.gfaBasis).toBe('assumed-far-1.0')
+    expect(spec?.gfa).toBe(10000) // lot * 1.0 — the guess, now labelled
+  })
+
+  it('labels the assumption for an UNCONSTRAINED district too', () => {
+    // Even a known absence of FAR does not make lot * 1.0 a code-derived number.
+    const spec = buildDefaultSpec(
+      { ...base, envelope: { maxFloorAreaSqFt: null, maxHeightFt: 60, maxStories: 5, maxUnits: null, allowedUses: ['residential'], farBasis: 'unconstrained' } } as never,
+      'denver',
+    )
+    expect(spec?.gfaBasis).toBe('assumed-far-1.0')
+  })
+
+  it('the two bases are always distinguishable', () => {
+    const fromEnv = buildDefaultSpec(
+      { ...base, envelope: { maxFloorAreaSqFt: 20000, maxHeightFt: 40, maxStories: 3, maxUnits: 13, allowedUses: ['residential'], farBasis: 'district' } } as never, 'boston')
+    const fromLot = buildDefaultSpec(
+      { ...base, envelope: { maxFloorAreaSqFt: null, maxHeightFt: 40, maxStories: 3, maxUnits: null, allowedUses: ['residential'], farBasis: null } } as never, 'sandiego')
+    expect(fromEnv?.gfaBasis).not.toBe(fromLot?.gfaBasis)
+  })
+})

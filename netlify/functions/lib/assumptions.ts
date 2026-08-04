@@ -37,11 +37,28 @@ export const timelineMonthsByPath = {
   prohibited: 0,
 } as const
 
-export function assumptionsSummary(city = 'boston', stories: number | null = null): Record<string, string> {
+export function assumptionsSummary(
+  city = 'boston',
+  stories: number | null = null,
+  // Where the project's floor area came from. 'assumed-far-1.0' means NO
+  // floor-area limit was resolvable for the district and lot area was used as a
+  // stand-in — an unsourced assumption that drives cost, unit counts and impact
+  // fees. It has to be visible: an undisclosed guess is indistinguishable from
+  // a code-derived figure, which is the whole defect.
+  gfaBasis?: 'envelope' | 'assumed-far-1.0',
+): Record<string, string> {
   const idx = cityCostIndex[city] ?? 1.0
   const rate = (n: number) => `$${Math.round(n * idx)}/sf`
   const hf = heightCostFactor(stories)
   return {
+    ...(gfaBasis === 'assumed-far-1.0'
+      ? {
+          floorAreaBasis:
+            'ASSUMED — this district publishes no floor-area ratio, so lot area was used as a stand-in. Not a code limit; treat the size (and every figure derived from it) as a placeholder.',
+        }
+      : gfaBasis === 'envelope'
+        ? { floorAreaBasis: 'Derived from the published zoning limit for this district' }
+        : {}),
     cityCostIndex: `${idx.toFixed(2)}× U.S. national average`,
     hardCostResidential: rate(costPerSqFtByUse.residential),
     hardCostCommercial: rate(costPerSqFtByUse.commercial),

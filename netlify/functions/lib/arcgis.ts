@@ -72,6 +72,40 @@ export const fetchFeatures = async (
   }
 }
 
+// Attribute lookup against a NON-SPATIAL table (or a layer queried by key rather
+// than location). Philadelphia needs two of these: the OPA assessor join on `pin`
+// (its parcel geometry layer carries no lot size) and the ZoningCodeCharacteristics
+// table keyed on district code. Same timeout discipline as fetchFeatures, and it
+// likewise performs no retry — callers treat a miss as "field not available"
+// rather than a hard failure.
+export const fetchWhere = async (
+  url: string,
+  where: string,
+  fields: readonly string[],
+  timeoutMs = 6000,
+  resultRecordCount = 1,
+): Promise<FeatureSet> => {
+  const base = url.endsWith('/') ? url.slice(0, -1) : url
+  const u = new URL(base + '/query')
+  u.searchParams.set('where', where)
+  u.searchParams.set('outFields', fields.join(','))
+  u.searchParams.set('returnGeometry', 'false')
+  u.searchParams.set('resultRecordCount', String(resultRecordCount))
+  u.searchParams.set('f', 'json')
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(u.toString(), { signal: ctrl.signal })
+    if (!res.ok) throw new Error(`Upstream ${url} returned ${res.status}`)
+    return await parseFeatureSet(res, url)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** Single-quote escape for values interpolated into an ArcGIS where clause. */
+export const sqlQuote = (v: string) => `'${v.replace(/'/g, "''")}'`
+
 // Snap helpers (the REQUIRED parcel/zoning fetches) get a shared time budget
 // and one retry. Rationale: Netlify kills functions at 10s; the old behavior
 // let exact (6s) + buffered (6s) run sequentially = 12s worst case (Chicago's

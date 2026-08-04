@@ -28,6 +28,21 @@
 //   boston      — Boston Planning Dept. policy (2021); minimums eliminated for
 //                 income-restricted affordable housing and reduced near transit;
 //                 most districts still set ratios.
+//   philadelphia — Bill 250524 (signed June 2025); residential parking
+//                 minimums removed in CMX-4/CMX-5 (Center City, University
+//                 City, North Broad). Minimums remain in other districts.
+//   nashville   — Minimums eliminated inside the Urban Zoning Overlay (2022,
+//                 old minimums became maximums); downtown never had them.
+//                 Metro Code Ch. 17.20 minimums remain outside the UZO.
+//   sanjose     — Parking & TDM Standards Ordinance (Council 12/6/2022, eff.
+//                 spring 2023) removed minimums citywide from Zoning Ordinance
+//                 Ch. 20.90; supersedes AB 2097 locally. TDM added in exchange.
+//   sandiego    — CA AB 2097 (2023) statewide half-mile-of-transit exemption,
+//                 plus the city's own Transit Priority Area removal for
+//                 multifamily. Minimums remain outside those areas.
+//   miami       — Miami 21 retains minimums; TOD/Transit Corridor reductions in
+//                 T4/T5/T6 plus a 20% transit-proximity reduction (city
+//                 guidelines rev. 4/29/2025). Citywide elimination only proposed.
 //   dc          — DC 2016 zoning regulations; eliminated downtown, cut roughly
 //                 in half near frequent transit; minimums remain elsewhere.
 
@@ -111,5 +126,40 @@ export const PARKING_RULES: Record<string, ParkingRule> = {
     detail:
       'Washington, DC’s 2016 zoning regulations eliminated parking minimums downtown and cut them roughly in half near frequent transit. Minimums remain in the rest of the city.',
     asOf: '2016',
+  },
+  nashville: {
+    status: 'partial',
+    headline: 'None required in the Urban Zoning Overlay or downtown',
+    detail:
+      'Metro eliminated parking minimums inside the Urban Zoning Overlay in 2022 and converted the old minimums into maximums; downtown has never had parking requirements at all. The UZO runs roughly from East Nashville to I-440 and Hillwood to South Nashville. Minimums under Metro Code Ch. 17.20 still apply outside it.',
+    asOf: '2022',
+  },
+  sanjose: {
+    status: 'abolished',
+    headline: 'No parking minimums — abolished citywide (2023)',
+    detail:
+      'San Jose removed off-street parking minimums citywide when the Council adopted the Parking and Transportation Demand Management Standards Ordinance in December 2022 (effective spring 2023) — the largest US city to do so. Transportation-demand-management requirements were added in exchange. No parking is required for any project.',
+    asOf: '2023',
+  },
+  sandiego: {
+    status: 'partial',
+    headline: 'None required near transit (AB 2097 + city Transit Priority Areas)',
+    detail:
+      'Two rules stack. San Diego Ordinance O-21057 (March 2019) set zero minimum parking for multifamily housing in Transit Priority Areas, and O-21041 (Jan 2022) removed minimums for many commercial uses there. Statewide, California AB 2097 (Jan 2023) independently bars any minimum within a half mile of a major transit stop. Parking is market-determined across the transit-served majority of the city.',
+    asOf: '2023',
+  },
+  miami: {
+    status: 'partial',
+    headline: 'Reduced near transit and in TOD areas; minimums remain elsewhere',
+    detail:
+      'Miami 21 still sets parking minimums, but reductions apply in Transit Oriented Development areas and Transit Corridors in the T4, T5 and T6 transects, and a 20% reduction is available near Metrorail, Metromover, and Transit Corridor bus stops. A broader elimination along transit corridors was proposed in 2025 but is not adopted citywide.',
+    asOf: '2025',
+  },
+  philadelphia: {
+    status: 'partial',
+    headline: 'Eliminated for housing in CMX-4/CMX-5; minimums remain elsewhere',
+    detail:
+      'Bill 250524, signed June 2025, removed the on-site parking requirement for new residential development in the CMX-4 and CMX-5 districts — mainly Center City, University City, and North Broad — replacing a ratio of three spaces per ten dwelling units. Minimums still apply in the rest of the city.',
+    asOf: '2025',
   },
 }
