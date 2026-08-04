@@ -1137,3 +1137,56 @@ direction is claimed for how count relates to area). Classified
 
 So `PQP` does **not** scope a larger read-mapped-and-wrong sweep. Negative
 result, recorded so it is not re-investigated.
+
+---
+
+## 2026-08-04 — MINNEAPOLIS: the `fetched-not-mapped` instance, partly closed.
+
+The null inventory's only `fetched-not-mapped` entry. The provider fetched the
+Built Form overlay, read it for HEIGHT, and never read it for FAR.
+
+### Source
+
+City of Minneapolis **Built Form Districts Handbook** (Oct 2023), Interior 1 / 2
+/ 3 district pages, read from the primary PDF. The handbook reproduces Table
+540-2. Text extraction did not linearise the multi-column tables — the pages
+were read as images instead.
+
+### The shape nobody would guess
+
+**FAR = f(built form overlay × use × PRIMARY zoning district).** The handbook's
+"UN, RM" column keys on the *primary* zoning code, not the overlay, so **both
+layers are required to resolve one number**. That is why the resolver takes two
+arguments and why a single-layer lookup could never have worked.
+
+| Built form | 1-3 unit dwellings | Other uses |
+|---|---|---|
+| Interior 1 | **0.5** | UN/RM 0.5 · others 1.4. **4+ units not allowed** |
+| Interior 2 | **0.5** | UN/RM 0.8 · others 1.4 |
+| Interior 3 | **SF 0.5 · 2-fam 0.6 · 3-fam 0.7** | 4+ units UN/RM 1.4 · others 1.6 · cluster 0.7 |
+
+Interior 3 is the only Interior district that gives two- and three-unit
+dwellings **more** floor area than a single-family house as-of-right — which is
+precisely the reform this tool exists to make visible. It is encoded as
+`farAlternatives`, so the headline stays the single-family base case and the
+alternatives sit beneath it (the Austin pattern, reused unchanged).
+
+### Verified live
+
+A real BFI3 + UN2 parcel now returns **3,002 sq ft** as a single-family house,
+with alternatives of two-family 3,602 · three-family 4,202 · cluster 4,202 ·
+**4+ units 8,404**. Same lot, 2.8× the floor area under a different program.
+
+### Scope limit, stated rather than papered over
+
+Only Interior 1/2/3 are encoded — 3 of 14 built form districts. Corridor
+(BFC3/4/6), Core 50, Transit (BFT10/15/20/30A/30B), Production and Parks publish
+a **Base FAR plus an earned premium system** (2-3 premiums at 0.3 / 0.4 / 0.65 /
+0.75 / 0.8 / 1.0 depending on district). Those base figures did not linearise and
+are NOT guessed: those districts return null and stay `published-not-fetched`.
+Premiums are earned rather than by-right, so when they are read they belong in
+`farAlternatives`, never in the headline.
+
+A test asserts every unread district returns null, and a second asserts the
+superseded Chapter 546 codes (R1/R2B/R4/R6) resolve to nothing — so the trap
+that would have matched zero parcels cannot be re-entered silently.

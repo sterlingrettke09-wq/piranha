@@ -8,6 +8,7 @@
 // reproject 4326 normally.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
+import { resolveMinneapolisFar } from '../zoning/minneapolis'
 import { fetchFeatures, fetchFeaturesXYSnap, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { lngLatToUtm15 } from '../geo'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
@@ -86,6 +87,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   const address = !rawAddress || /pending|unknown|^0\b/i.test(rawAddress) ? 'Selected location' : rawAddress
   const area = Number(parcel.PARCEL_AREA)
   const code = zoning?.Land_Use_Code ? String(zoning.Land_Use_Code) : null
+  const mplsFar = resolveMinneapolisFar(formAbbrv, code)
 
   // Park boundary → mark as public open space so the developability gate blocks
   // it (the zoning layer reports a normal residential code over parkland).
@@ -123,7 +125,14 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
       subdistrict: null,
       article: zoning?.Land_Use ? String(zoning.Land_Use) : null,
       maxHeightFt,
-      maxFAR: null,
+      // FAR lives in the BUILT FORM overlay, not the base district — and it
+      // depends on BOTH layers (the handbook's "UN, RM" column keys on the
+      // primary zoning code). The overlay was already fetched for height and
+      // never read for FAR; see lib/zoning/minneapolis.ts.
+      maxFAR: mplsFar.maxFAR,
+      ...(mplsFar.alternatives.length > 0
+        ? { farAlternatives: mplsFar.alternatives.map((a) => ({ ...a, source: 'Minneapolis Built Form Districts Handbook, Oct 2023' })) }
+        : {}),
       allowedUses: usesForZone(code),
     },
     lot: {

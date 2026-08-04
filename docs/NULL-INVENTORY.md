@@ -40,7 +40,7 @@ confirmed instance.
 | seattle | NR | null | `published-not-fetched` — our module covers NC/C (SMC 23.47A.013). **NR is Seattle's renamed single-family zone** and is not handled at all |
 | dc | RF-1 | null (height=35 resolves) | `published-not-fetched` — DC zoning regs publish FAR by district; we carry none |
 | miami | T6-80-O | null (height=960 ⚠) | `published-not-fetched` — Miami 21 Article 4 Table 2 is a separate document, not yet read |
-| minneapolis | CM2 | null (height=84 resolves) | **`fetched-not-mapped`** — FAR lives in the Built Form overlay, which the provider ALREADY fetches and already reads for height |
+| minneapolis | CM2 | Interior 1/2/3 **RESOLVED**; Corridor/Transit/Core/Production still null | `fetched-not-mapped` **PARTLY CLOSED 2026-08-04** — Interior 1/2/3 now read from the Built Form overlay the provider already fetched. Corridor/Transit/Core/Production/Parks remain `published-not-fetched` (base FAR + earned premium system, Table 540-2 unread) |
 | sanjose | PQP | null | `not-published` — "No FAR anywhere in San Jose's public GIS" (provider comment, verified) |
 | nashville | DTC | null | `not-published` — "publishes neither height nor FAR in GIS"; Metro Code Title 17 text only |
 | sandiego | — | probe returned NO_PARCEL | probe location bad (city landmark, not a parcel). FAR itself is `published-not-fetched` — LDC tables, not in GIS |
