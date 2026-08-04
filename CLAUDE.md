@@ -102,6 +102,29 @@ Corollary: **disclosure copy is code.** It makes claims, and a claim can be true
 in one file and false in another. Never move explanatory text between contexts
 without re-checking it against the context it lands in.
 
+**10. A single probe is not evidence.** A transient failure under concurrent
+load is indistinguishable from a defect, and the incentive to report it
+immediately is strongest exactly when it looks urgent. Chicago returned
+`districtCode: Unknown` once during a 15-city batch and resolved to `B3-2` on
+three consecutive isolated re-probes — reporting the first result would have
+cost a session chasing a regression that did not exist. **Re-probe in isolation
+before recording any live failure.**
+
+**11. Measure the pipeline, not your probe.** Three times now a measurement has
+described the instrument rather than the system: a grep that matched only
+literal nulls (missing Philadelphia's 17 and Boston entirely); a resolver called
+with `maxFAR: null` that bypassed every provider-side FAR lookup and reported
+"11/65 resolved"; and a guessed URL whose 404 was read as absence. **Exercise
+the real entry point.** If the answer would change depending on which layer you
+called, you measured the layer.
+
+**12. Never convert through a unit the code does not use.** Miami 21 regulates
+in STORIES. The module multiplied 80 stories by an unsourced 12 ft/story, then
+the envelope divided 960 ft by a *different* 11 ft/story constant and published
+**87 stories for a district whose code says 80**. Two conversions, two
+constants, neither cancelling. Carry the figure the code states; derive only at
+the last possible moment, and never round-trip.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

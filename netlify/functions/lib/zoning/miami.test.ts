@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { resolveMiami, miamiUsesForZone, MIAMI_FT_PER_STORY } from './miami'
+import { resolveMiami, miamiUsesForZone, MIAMI_MAX_FT_PER_STORY } from './miami'
 
 // Zone codes and Bldg_Height values below are verbatim from a full sweep of the
 // live Miami 21 Primary Zoning layer (36 distinct zones, 2026-08-03).
 describe('resolveMiami — T6 (Urban Core), the only zones with published heights', () => {
   it('reads max stories from the layer and converts to feet', () => {
-    expect(resolveMiami('T6-48A-O', '48')).toEqual({ heightFt: 48 * MIAMI_FT_PER_STORY, stories: 48, maxFAR: null })
+    expect(resolveMiami('T6-48A-O', '48')).toEqual({ heightFt: 48 * MIAMI_MAX_FT_PER_STORY, stories: 48, maxFAR: null })
     expect(resolveMiami('T6-8-L', '8').stories).toBe(8)
     expect(resolveMiami('T6-80-O', '80').stories).toBe(80)
     expect(resolveMiami('T6-12-R', '12').stories).toBe(12)
@@ -51,5 +51,20 @@ describe('miamiUsesForZone', () => {
     expect(miamiUsesForZone('CI-HD')).toEqual(['institutional'])
     expect(miamiUsesForZone('D3')).toContain('commercial')
     expect(miamiUsesForZone(null)).toBeNull()
+  })
+})
+
+describe('Miami 21 story height — sourced, and the round-trip is gone', () => {
+  it('uses the 14 ft maximum Story height Miami 21 Article 1 defines', () => {
+    // Was 12, borrowed from the Denver module. Unsourced and wrong.
+    expect(MIAMI_MAX_FT_PER_STORY).toBe(14)
+  })
+
+  it('reports the EXACT story count the code states, not a derived one', () => {
+    // T6-80 means 80 stories. Previously: 80 x 12 = 960 ft, then the envelope
+    // divided 960 by 11 ft and published 87 stories for an 80-story district.
+    const r = resolveMiami('T6-80-O', '80')
+    expect(r.stories).toBe(80)
+    expect(r.heightFt).toBe(80 * 14)
   })
 })

@@ -995,3 +995,72 @@ Two corollaries earned the hard way this session:
 2. **Disclosure copy is code.** It makes claims; claims can be wrong in a new
    context even when they were right in the old one. Never move explanatory text
    between contexts without re-checking it against where it lands.
+
+---
+
+## 2026-08-04 — MIAMI: a wrong number, shipped, reading as computed.
+
+Taken first over Minneapolis on the correct criterion: **Minneapolis emits a
+labelled gap; Miami emitted an authoritative-looking number that was wrong.**
+Same category as the sitework omission and the false RSMeans string — the user
+forms a belief the figure does not support.
+
+### What was wrong — two defects, the second worse
+
+**1. The constant was borrowed from another city.** `MIAMI_FT_PER_STORY = 12`,
+whose own comment read *"the same mid-range convention the Denver module uses
+for its story-based code."* An unsourced constant lifted from a different
+jurisdiction's module and applied to Miami parcels. Miami 21 Article 1 states
+it outright:
+
+> "A Story is a Habitable level within a Building of a maximum **fourteen (14)
+> feet** in Height from finished floor to finished floor."
+> "Building Height is the vertical extent of a Building measured in **Stories**."
+
+**2. The round-trip published a wrong story count.** Far worse, because it
+contradicts the code directly:
+
+```
+T6-80  → 80 stories (code)
+       × 12 ft/story  (miami.ts, unsourced)   = 960 ft
+       ÷ 11 ft/story  (envelope, FT_PER_STORY) =  87 stories   ← PUBLISHED
+```
+
+**The tool told users an 80-story district allowed 87 stories.** Two conversions
+through two different unsourced constants, neither cancelling. No null, no test
+failure, no type error — the archetype of *read, mapped, and wrong*.
+
+### Fix
+
+- `MIAMI_MAX_FT_PER_STORY = 14`, sourced to Article 1 and labelled as the
+  code's **maximum**, so a height in feet is an implied ceiling rather than a
+  published limit.
+- `zoning.maxStories` added: a provider can state the story count the code
+  states, and `computeEnvelope` uses it directly instead of re-deriving.
+- Live re-probe: T6-80-O now reports **80 stories** (was 87) and 1,120 ft
+  (80 × 14, code-implied ceiling).
+
+Miami's FAR remains `published-not-fetched` — Article 4 Table 2 is a separate
+document, still unread. That is a gap and is recorded as one.
+
+### The instrument that found it
+
+Not a test. The **null inventory** — running the real pipeline against a real
+parcel per city and reading the output. 960 ft was flagged because it was the
+largest number the tool emits anywhere, and pulling that thread found an
+unsourced constant and a contradicted story count underneath it.
+
+### Also caught this session, before either became a finding
+
+- **A single probe is not evidence.** Chicago returned `districtCode: Unknown`
+  once under concurrent batch load; three isolated re-probes all return `B3-2`.
+  Reporting the first result would have raised a live-regression alarm on a
+  shipped city that was working correctly.
+- **Measure the pipeline, not your probe.** The first null-inventory attempt
+  called `resolveZoningLimits` with `maxFAR: null`, bypassing every
+  provider-side resolver (`resolveSfFar`, `austinSfLimits`, `laLimits`, PLUTO
+  `farByUse`, `resolveMiami`, `parseMaxFAR`) and reported "11/65 resolved". The
+  real figure is 7 of 15 cities emitting a genuine answer. Third instance of
+  measuring the instrument instead of the system.
+
+Both promoted to CLAUDE.md as rules 10 and 11; the unit round-trip as rule 12.

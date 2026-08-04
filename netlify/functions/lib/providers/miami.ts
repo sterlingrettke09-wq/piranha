@@ -122,6 +122,9 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
       article: zoning?.Transect_Desc ? String(zoning.Transect_Desc).trim() : null,
       maxHeightFt: limits.heightFt,
       maxFAR: limits.maxFAR,
+      // The code states stories exactly; passing it through stops the
+      // envelope re-deriving a story count from feet with a different constant.
+      ...(limits.stories != null ? { maxStories: limits.stories } : {}),
       allowedUses: miamiUsesForZone(zone),
     },
     lot: { sizeSqFt: lotSqFt, lotType: null },

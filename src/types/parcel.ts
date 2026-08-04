@@ -29,6 +29,11 @@ export interface ParcelInfo {
      *  (floor area is governed by height/setbacks/coverage instead) from
      *  "we don't know the FAR", which `maxFAR: null` alone conflates. */
     farUnconstrained?: boolean
+    /** Max stories where the CODE regulates in stories rather than feet (Miami
+     *  21, Denver). When set, the envelope uses it directly instead of deriving
+     *  a story count from height — deriving round-trips through two different
+     *  floor-to-floor constants and does not come back to the same number. */
+    maxStories?: number | null
     /** Other programs the code allows, each with its own FAR — ALTERNATIVES to
      *  the headline `maxFAR`, not a range around it. The user picks one.
      *  Austin: one house at 0.40, or three units at 0.65 under HOME.

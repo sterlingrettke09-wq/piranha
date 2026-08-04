@@ -70,7 +70,17 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   // a known height, default to residential 11 ft — the conservative (taller
   // story count) read, matching the parcel-describing intent of this envelope.
   const storyUse: 'residential' | 'commercial' = farBasis === 'district' ? 'commercial' : 'residential'
-  const maxStories = maxHeightFt != null ? Math.floor(maxHeightFt / ftPerStory(storyUse)) : null
+  // Prefer a story count the CODE states directly. Deriving it from height
+  // round-trips through two different floor-to-floor constants — Miami's module
+  // multiplied 80 stories by 12 ft, then this line divided 960 ft by 11 ft and
+  // produced 87 stories for a district whose code says 80. A stated figure is
+  // exact; a derived one carries both constants' error.
+  const maxStories =
+    info.zoning.maxStories != null && info.zoning.maxStories > 0
+      ? info.zoning.maxStories
+      : maxHeightFt != null
+        ? Math.floor(maxHeightFt / ftPerStory(storyUse))
+        : null
 
   const allowsResidential =
     !!limits.allowedUses?.includes('residential') || !!limits.allowedUses?.includes('mixed')

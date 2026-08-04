@@ -17,10 +17,20 @@
 //    read from the primary table, T4/T5/D/CI/CS return null → "not in public
 //    data" rather than a guessed limit.
 
-/** Floor-to-floor feet used to convert Miami 21 story counts to height. Miami 21
- *  sets minimum floor heights by function rather than a single figure; 12 ft is
- *  the same mid-range convention the Denver module uses for its story-based code. */
-export const MIAMI_FT_PER_STORY = 12
+/** Maximum floor-to-floor feet per Story, from Miami 21 itself.
+ *
+ *  Article 1 (Definitions): "A Story is a Habitable level within a Building of a
+ *  maximum fourteen (14) feet in Height from finished floor to finished floor."
+ *  Article 1 also defines Building Height as "the vertical extent of a Building
+ *  measured in Stories" — the code regulates STORIES, and a height in feet is
+ *  therefore a DERIVED ceiling, not a published limit.
+ *
+ *  ⚠️ CORRECTED 2026-08-04. This was 12, described in its own comment as "the
+ *  same mid-range convention the Denver module uses" — i.e. a constant borrowed
+ *  from a different city's code and applied to Miami parcels. Unsourced, and
+ *  wrong: Miami 21 states 14. The error scaled with story count, so it was
+ *  largest exactly where the tool is most visible (T6-80 → an 80-story tower). */
+export const MIAMI_MAX_FT_PER_STORY = 14
 
 /** T3 (Sub-Urban) flat-roof maximum, stated in feet by Article 5 §5.3.2(e). */
 const T3_MAX_HEIGHT_FT = 25
@@ -49,7 +59,10 @@ export function resolveMiami(zone: string | null | undefined, bldgHeight?: strin
     const fromCode = m ? Number(m[1]) : NaN
     const stories = Number.isFinite(fromField) && fromField > 0 ? fromField : Number.isFinite(fromCode) && fromCode > 0 ? fromCode : null
     if (stories == null) return none
-    return { heightFt: Math.round(stories * MIAMI_FT_PER_STORY), stories, maxFAR: null }
+    // Height in feet is the code-implied CEILING (stories × the 14 ft maximum
+    // Story height), not a published limit. `stories` is the exact figure the
+    // code states and is what downstream consumers should prefer.
+    return { heightFt: Math.round(stories * MIAMI_MAX_FT_PER_STORY), stories, maxFAR: null }
   }
 
   // T3: exact, stated in feet by the code itself.
