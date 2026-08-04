@@ -4,6 +4,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
+import { resolveSfFar } from '../zoning/sf'
 
 const BASE = 'https://sfplanninggis.org/arcgiswa/rest/services/PlanningData/MapServer'
 const ZONING = `${BASE}/3`
@@ -88,6 +89,7 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   if (!street) address = (await reverseGeocode(lat, lng)) ?? 'Selected location'
 
   const zone = zoning?.zoning ? String(zoning.zoning) : null
+  const far = resolveSfFar(zone)
 
   const info: ParcelInfo = {
     address,
@@ -98,7 +100,19 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
       subdistrict: zoning?.districtname ? String(zoning.districtname) : null,
       article: null,
       maxHeightFt, // from the Height Districts layer (gen_hght)
-      maxFAR: null, // SF residential is largely form-based (height/bulk), not FAR
+      // SF Planning Code §124 (supplement 2026 S-96, read 2026-08-04). The old
+      // comment here — "SF residential is largely form-based, not FAR" — was
+      // right in substance but unsourced, and left maxFAR null WITHOUT the
+      // unconstrained flag, so a residential parcel read as a data gap rather
+      // than the answer §124(b) actually gives.
+      maxFAR: far.maxFAR,
+      ...(far.residentialExempt ? { farUnconstrained: true } : {}),
+      // The exemption is per-USE: the same RH-1 lot has no residential FAR but
+      // a 1.8 non-residential one. Recording it keeps a commercial project on
+      // that parcel from inheriting the residential answer.
+      ...(far.residentialExempt && far.nonResidentialFAR != null
+        ? { farByUse: { commercial: far.nonResidentialFAR } }
+        : {}),
       allowedUses: usesForGen(zoning?.gen != null ? String(zoning.gen) : null),
     },
     lot: {
