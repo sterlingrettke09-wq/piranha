@@ -1335,7 +1335,13 @@ the expensive one, so it should be asked first every time:
 > **Does the source publish the value we compute?**
 
 Recorded because the ordering is not obvious — joint dependency is the more
-interesting failure and the less common one.
+interesting failure, so it is the one you reach for first.
+
+**⚠️ CAVEAT — the tally is CONFOUNDED BY SEARCH ORDER.** Q1 was asked first in
+every city, so it got first crack at each codebase; any defect findable by
+either question scores as a Q1 hit. **This is evidence about which question to
+ask FIRST, not about which failure mode is more common.** Do not restate it as a
+base rate.
 
 ### Sweep status
 
