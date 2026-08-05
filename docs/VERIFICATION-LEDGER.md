@@ -1190,3 +1190,56 @@ Premiums are earned rather than by-right, so when they are read they belong in
 A test asserts every unread district returns null, and a second asserts the
 superseded Chapter 546 codes (R1/R2B/R4/R6) resolve to nothing — so the trap
 that would have matched zero parcels cannot be re-entered silently.
+
+---
+
+## 2026-08-04 — DEFECT 6, and the ft/story constant: checked for DELETION first.
+
+Twice this session the right answer was to stop making a claim rather than
+justify it (the Miami and Denver round-trips). So before hunting a defensible
+efficiency ratio, both constants were checked for whether they need to exist.
+
+**Both do. Neither is display-only.** Traced, not assumed:
+
+`ftPerStory` / `FT_PER_STORY = 11`
+- `defaultSpec.stories` → `cost.ts` → `heightCostFactor(stories)`. The tier step
+  at 4→5 stories is **12%**, so the constant can move published cost.
+- `feasibility.ts:102` converts stories→height for the height check, which
+  decides **AS_OF_RIGHT vs NEEDS_RELIEF**.
+- Display (Map, ParcelPanel, Compare).
+
+`avgUnitGrossSqFt = 1300`
+- `defaultSpec.units` → `impactFee(...)` → **FEE DOLLARS**
+- `envelope.maxUnits` → published unit count
+- `analyze.ts` demolition sq ft (units × this) → **demolition cost**
+- `feasibility.ts:151` effective existing units → **housing/affordability checks**
+- `narrative.ts` existing floor area
+
+### So the fix is exposure, not deletion — and not a fake citation either
+
+**`estimates.ts` comments corrected.** The `avgUnitGrossSqFt` comment previously
+read as sourced because the ~1,000 sf net unit cites Statista. It now states
+plainly that **the ~75% efficiency is asserted with no source**, and that 1300 is
+just `1000 / 0.75` rounded — rule 3, named in place rather than left to be
+rediscovered. `FT_PER_STORY` is now labelled a **design convention, not a zoning
+code**, with its two substantive consumers listed.
+
+**Both surfaced in the assumptions panel**, with the weak half named in the
+user-facing text rather than buried in a comment. A user who gets a unit count
+can now see the number that produced it and that half of it is assumed.
+
+**`envelope.storiesBasis: 'stated' | 'derived'`** added. A story count the code
+states and one obtained by dividing a published height by an unsourced
+convention render identically; only one is a fact about the code. Miami and
+Denver now report `stated`; cities publishing only feet report `derived`. A test
+asserts a stated count is never overridden by a derivable height — the exact bug
+that produced 87 and 13.
+
+### Defect 6 status
+
+**OPEN, but no longer laundering.** The constant remains unsourced; what changed
+is that it no longer *reads* as sourced, and its influence on fee dollars is
+disclosed where the fees are shown. Closing it needs either a sourced
+net-to-gross efficiency or a per-city density the zoning publishes — San Jose's
+`PDDENSITY` (units/acre) is the one candidate seen so far, and is per-city, not
+a global substitute.

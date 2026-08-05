@@ -59,6 +59,10 @@ export interface ParcelInfo {
     maxFloorAreaSqFt: number | null
     maxHeightFt: number | null
     maxStories: number | null
+    /** Whether `maxStories` is what the CODE states, or what we got by dividing
+     *  a published height by an unsourced floor-to-floor convention. Only one
+     *  of those is a fact about the code, and they render identically. */
+    storiesBasis?: 'stated' | 'derived'
     maxUnits: number | null
     allowedUses: string[] | null
     /** Which FAR drove the headline floor area: the residential per-use FAR, the

@@ -93,6 +93,7 @@ export interface AnalysisResult {
       maxFloorAreaSqFt: number | null
       maxHeightFt: number | null
       maxStories: number | null
+      storiesBasis?: 'stated' | 'derived'
       maxUnits: number | null
       allowedUses: string[] | null
       /** 'unconstrained' = the code imposes no FAR here (an ANSWER); null = we

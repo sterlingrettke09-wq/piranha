@@ -244,10 +244,21 @@ export const MIXED_RESIDENTIAL_SHARE = 0.85
 export const PERMIT_BASE_FEE = 100 // flat building-permit filing fee (USD)
 export const PERMIT_RATE_PER_1000 = 10 // $ per $1,000 of construction value
 export const VARIANCE_FILING_FEE = 600 // variance filing + intake (USD)
-// Floor-to-floor height (ft), incl. structure. 11 ft is the residential standard
-// (9–11 ft typical); commercial/office runs ~13 ft. FT_PER_STORY is the residential
-// default (used for the use-agnostic envelope); ftPerStory(use) is use-aware for
-// cost/feasibility. Source: CRE floor-to-floor design standards (AdventuresinCRE).
+// Floor-to-floor height (ft), incl. structure. 11 ft residential, ~13 ft
+// commercial. Source: CRE floor-to-floor design standards (AdventuresinCRE) —
+// a DESIGN CONVENTION, not a zoning code.
+//
+// ⚠️ This is an assumption that reaches substantive output, not a display
+// nicety. Verified 2026-08-04:
+//   • defaultSpec.stories → cost.ts heightCostFactor(stories) — the tier step
+//     at 4→5 stories is 12%, so the constant can move published cost.
+//   • feasibility.ts converts stories→height for the height check, which
+//     decides AS_OF_RIGHT vs NEEDS_RELIEF.
+//
+// Where a CODE states stories directly, carry that instead and never round-trip
+// (CLAUDE.md rule 12) — `zoning.maxStories` exists for exactly this, and Miami
+// and Denver now use it. This constant is the fallback for cities that publish
+// only feet, and `envelope.storiesBasis` marks when it was used.
 export const FT_PER_STORY = 11
 export function ftPerStory(use: Use): number {
   return use === 'residential' ? 11 : 13
@@ -601,7 +612,23 @@ export function impactFee(city: string, use: Use, gfa: number, units: number | n
 }
 
 // Gross residential area per dwelling unit (incl. circulation/common area) —
-// used to estimate how many units a buildable envelope implies. The median
-// multifamily NET unit is ~1,000 sf (Statista 2023); at ~75% net-to-gross
-// efficiency that grosses up to ~1,300 sf/unit.
+// used to estimate how many units a buildable envelope implies.
+//
+// ⚠️ DEFECT 6 — HALF-SOURCED, AND THE SOURCED HALF LAUNDERS THE OTHER.
+// The ~1,000 sf median multifamily NET unit is cited (Statista 2023). The
+// ~75% net-to-gross efficiency that turns it into 1,300 is **asserted, with no
+// source**, and 1300 is simply 1000 / 0.75 rounded. A citation on one input of
+// a two-input derivation makes the whole composite read as sourced — see
+// CLAUDE.md rule 3. Stated plainly here so the comment stops doing that.
+//
+// NOT DELETABLE — checked 2026-08-04 rather than assumed. It reaches:
+//   • defaultSpec.units → impactFee(...)          → FEE DOLLARS
+//   • envelope.maxUnits                            → published unit count
+//   • analyze.ts demolitionSqFt (units × this)     → demolition cost
+//   • feasibility.ts effectiveExUnits              → housing/affordability checks
+//   • narrative.ts existing floor area
+// Real net-to-gross varies with building form (double-loaded corridor vs point
+// access block vs walk-up), so 0.75 may well be reasonable — which is exactly
+// why it needs a source rather than a defence. Surfaced in the assumptions
+// panel so a user can see the number that produced their unit count.
 export const avgUnitGrossSqFt = 1300

@@ -70,6 +70,14 @@ export function assumptionsSummary(
     varianceFiling: `$${VARIANCE_FILING_FEE} when relief required`,
     landCost: 'Not included (construction only)',
     timeline: 'Full life-cycle (design to move-in), estimated by city and building type',
-    feetPerStory: `${FT_PER_STORY} ft residential / 13 ft commercial`,
+    // Both of these reach substantive output, not just display — so both are
+    // shown with their weak half named rather than left in a code comment.
+    feetPerStory:
+      `${FT_PER_STORY} ft residential / 13 ft commercial — a design convention, not a zoning code. ` +
+      `Used only where a city publishes height in feet; where the code states stories, that figure is used directly.`,
+    unitSize:
+      `${avgUnitGrossSqFt} sq ft gross per dwelling unit — used to convert floor area into a unit count. ` +
+      `Derived from a ~1,000 sq ft median unit (Statista 2023) at an ASSUMED ~75% net-to-gross efficiency; ` +
+      `the efficiency figure is not sourced. Unit counts drive per-unit impact fees.`,
   }
 }

@@ -75,12 +75,17 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   // multiplied 80 stories by 12 ft, then this line divided 960 ft by 11 ft and
   // produced 87 stories for a district whose code says 80. A stated figure is
   // exact; a derived one carries both constants' error.
-  const maxStories =
-    info.zoning.maxStories != null && info.zoning.maxStories > 0
-      ? info.zoning.maxStories
-      : maxHeightFt != null
-        ? Math.floor(maxHeightFt / ftPerStory(storyUse))
-        : null
+  const statedStories = info.zoning.maxStories != null && info.zoning.maxStories > 0
+  const maxStories = statedStories
+    ? (info.zoning.maxStories as number)
+    : maxHeightFt != null
+      ? Math.floor(maxHeightFt / ftPerStory(storyUse))
+      : null
+  // 'stated' = the code says this many stories. 'derived' = we divided a
+  // published height by an unsourced floor-to-floor convention. Both render as
+  // a story count, and only one of them is a fact about the code.
+  const storiesBasis: 'stated' | 'derived' | null =
+    maxStories == null ? null : statedStories ? 'stated' : 'derived'
 
   const allowsResidential =
     !!limits.allowedUses?.includes('residential') || !!limits.allowedUses?.includes('mixed')
@@ -99,6 +104,7 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
     maxFloorAreaSqFt,
     maxHeightFt,
     maxStories,
+    ...(storiesBasis ? { storiesBasis } : {}),
     maxUnits,
     allowedUses: limits.allowedUses,
     farBasis,

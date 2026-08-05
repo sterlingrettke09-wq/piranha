@@ -149,3 +149,41 @@ describe('computeEnvelope — null propagation', () => {
     expect(env.farBasis).toBe('district')
   })
 })
+
+// ── storiesBasis: a stated story count is a fact; a derived one is an assumption ──
+describe('envelope — storiesBasis marks derived story counts', () => {
+  const base = {
+    address: 'x', parcelId: 'p', coordinates: [-97.7, 30.3] as [number, number],
+    lot: { sizeSqFt: 10000, lotType: null },
+    overlays: { historicDistrict: null, floodZone: null },
+    sources: {}, fetchedAt: '2026-08-04T00:00:00.000Z',
+  }
+  const z = (o: Record<string, unknown>) => ({
+    districtCode: 'X', subdistrict: null, article: null,
+    maxHeightFt: null, maxFAR: null, allowedUses: ['residential'], ...o,
+  })
+
+  it("marks 'stated' when the code supplies the story count", () => {
+    const env = computeEnvelope({ ...base, zoning: z({ maxStories: 80, maxHeightFt: 1120 }) } as never, 'miami')
+    expect(env.maxStories).toBe(80)
+    expect(env.storiesBasis).toBe('stated')
+  })
+
+  it("marks 'derived' when we divided a published height by the convention", () => {
+    const env = computeEnvelope({ ...base, zoning: z({ maxHeightFt: 200 }) } as never, 'boston')
+    expect(env.storiesBasis).toBe('derived')
+    expect(env.maxStories).toBe(18) // 200 / 11
+  })
+
+  it('omits the basis entirely when there is no story count at all', () => {
+    const env = computeEnvelope({ ...base, zoning: z({}) } as never, 'boston')
+    expect(env.maxStories).toBeNull()
+    expect(env.storiesBasis).toBeUndefined()
+  })
+
+  it('a stated count is NEVER overridden by a derivable height', () => {
+    // The Miami/Denver bug: both present, the code's figure must win.
+    const env = computeEnvelope({ ...base, zoning: z({ maxStories: 12, maxHeightFt: 144 }) } as never, 'denver')
+    expect(env.maxStories).toBe(12) // not floor(144/11) = 13
+  })
+})

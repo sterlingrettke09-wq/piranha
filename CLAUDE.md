@@ -125,6 +125,21 @@ the envelope divided 960 ft by a *different* 11 ft/story constant and published
 constants, neither cancelling. Carry the figure the code states; derive only at
 the last possible moment, and never round-trip.
 
+**13. Some fields resolve only from TWO layers jointly.** Minneapolis FAR needs
+the built-form overlay for the row AND the primary zoning code for the column —
+no single-layer lookup returns a correct number, and the provider held both
+while reading one. A joint dependency is invisible to both the fetched-but-unread
+grep and the null inventory. The sweep question is: **for each field the engine
+reads, does resolving it correctly require another field it also reads?**
+
+**14. Convert a caught error into an impossible state, not a comment.** After the
+Denver story-count bug, all 26 curated entries were routed through one
+`storeys(n)` helper that emits height and stories together, with a test asserting
+every entry carries a story count — a hand-written `{ heightFt: ft(12) }` can no
+longer silently drop it. Same move as the test asserting the superseded
+Minneapolis Chapter 546 codes resolve to nothing. A comment documents a mistake;
+a structure prevents it.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
