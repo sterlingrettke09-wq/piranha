@@ -20,6 +20,14 @@
 // Unlike the other sweep questions this one is mechanically runnable and
 // re-runnable when a city republishes. Run it with:
 //   npx vite-node scripts/enumerate-parser-domains.ts
+//
+// ⚠️ 2026-08-05: the first version of this script read `.maxFAR` / `.maxHeightFt`
+// off resolvers that return `{ far, heightFt }`. Every value came back
+// `undefined`, so Chicago reported 1,528 unhandled classes and NYC 203 — both
+// entirely false, and both reported as findings before being caught. That is
+// CLAUDE.md rule 11 (measure the pipeline, not your probe) committed by the very
+// script written to enforce it. `scripts/` is now inside the typecheck so a
+// nonexistent property is a build error rather than a silent `undefined`.
 
 import { resolveDenver } from '../netlify/functions/lib/zoning/denver'
 import { resolveMiami } from '../netlify/functions/lib/zoning/miami'
@@ -74,7 +82,7 @@ const TARGETS: Target[] = [
     city: 'chicago', what: 'zone class → residential base FAR',
     url: 'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/15',
     field: 'ZONE_CLASS', scopedTo: 'residential districts only',
-    handled: (v) => resolveChicago(v).maxFAR != null,
+    handled: (v) => resolveChicago(v).far != null,
   },
   {
     city: 'sf', what: 'zoning code → §124 FAR',
@@ -85,7 +93,7 @@ const TARGETS: Target[] = [
     city: 'nyc', what: 'zoning district → limits',
     url: 'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0',
     field: 'ZoneDist1', scopedTo: 'PLUTO supplies FAR numerically; this is the curated table',
-    handled: (v) => resolveNyc(v).maxFAR != null || resolveNyc(v).maxHeightFt != null,
+    handled: (v) => resolveNyc(v).far != null || resolveNyc(v).heightFt != null,
   },
   {
     city: 'philadelphia', what: 'free-text MaxFAR',

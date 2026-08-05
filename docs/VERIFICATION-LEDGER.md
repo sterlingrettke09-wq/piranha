@@ -1610,3 +1610,81 @@ four tests were the same shape from an earlier session.
 carelessness; it is about what a test *is*. An assertion that something is
 absent, unparseable, or inapplicable encodes an interpretation, and the better
 the reasoning is written down, the more it costs to overturn.
+
+---
+
+## 2026-08-05 — RULE 11, COMMITTED BY THE SCRIPT WRITTEN TO ENFORCE RULE 11
+
+`scripts/enumerate-parser-domains.ts` exists to catch parsers whose input domain
+is narrower than the source's real output — the LA qualifier defect class. It did
+this:
+
+```ts
+handled: (v) => resolveChicago(v).maxFAR != null   // DistrictLimits is { far, heightFt }
+handled: (v) => resolveNyc(v).maxFAR != null       // there is no maxFAR property
+```
+
+`.maxFAR` is `undefined` on every input, so **every value scored unhandled**. The
+script reported **Chicago 1,528 unhandled (100%)** and **NYC 203 unhandled
+(100%)**, and both were carried into a report as findings before anyone ran a
+resolver by hand.
+
+The instrument was broken in the exact way the instrument was built to detect.
+
+### What Chicago actually is
+
+| | count | |
+|---|---|---|
+| resolves | **63** | the full by-right ladder — B, C, DC/DR/DS/DX, M, RM, RS, RT |
+| PD / PMD | 1,457 | site-specific planned developments — **no by-right FAR exists** |
+| POS-1/2/3, T | 4 | parks, open space, transportation — likewise |
+| **real defect** | **3** | `RM4.5`, `RM4-.5`, `RM5.5` |
+
+The last row is a genuine find and is the class the script was for. Chicago's GIS
+spells one district three ways: `RM-4.5` (470 parcels) resolved, `RM4.5` (8) and
+`RM4-.5` (1) did not — and **the ordinance itself writes it unhyphenated**
+(`§17-2-0304-A FAR table (RM4.5 = 1.70)`, quoted in our own source comment), so
+neither spelling is the typo. Fixed by a hyphen-stripped index consulted for the
+residential lookup only; the hyphen is semantic in B/C/D/M, where `B3-2` splits
+on it. 14 parcels, but it failed CLOSED (null → INDETERMINATE), not open.
+
+### Why nothing caught it
+
+`tsconfig.app.json` includes `src`; `tsconfig.node.json` includes `vite.config.ts`.
+**`scripts/` and `netlify/` were typechecked only incidentally, through imports.**
+A standalone script could read any property name it liked and get `undefined`.
+
+Structural fix, not a comment (rule 14): `tsconfig.scripts.json` now covers both
+directories, wired into the project references. Verified by reintroducing the
+exact bug —
+
+```
+scripts/enumerate-parser-domains.ts(85,39):
+  error TS2339: Property 'maxFAR' does not exist on type 'DistrictLimits'.
+```
+
+That error would have fired the moment the line was written.
+
+### The cost of a wrong instrument is not the wrong number
+
+The backlog in `NULL-INVENTORY.md` listed **"chicago (B/C/D/M classes) — research
++ a table"** as `published-not-fetched`. B/C/D/M were already resolving. A
+measurement error had bought research that was not needed, and it would have been
+paid for in a later session by someone trusting the doc. **A broken instrument
+misdirects work long after it stops being run.**
+
+### Also caught, and NOT resolved
+
+- **An unstable probe reads as an upstream defect.** Philadelphia's inventory
+  coordinate `39.97, -75.17` returned `NO_PARCEL` on two of three *isolated*
+  re-probes and a valid RSA-5 parcel on the third — it sat off a parcel edge. Now
+  derived from a `DOR_Parcel` centroid. Rule 10 in the other direction: a single
+  success is not evidence either.
+- **Philadelphia's 20 blank MaxFAR districts — OPEN.** 13 of 36 districts publish
+  a numeric FAR, 3 publish prose with a different denominator (`RMX-1/2`: "150% /
+  250% of District Area (excluding streets)" is not a FAR), and 20 publish
+  nothing — every RSA/RSD rowhouse district plus `RM-1`, while `RM-2/3/4` carry
+  0.7/1.5/3.5. Whether that is a stated absence (occupied-area control, cf. the
+  table's `MinPercent`) or an unfilled column decides whether those parcels get a
+  verdict. **Not resolvable from the table**, and inferring it from the shape of
+  the data is the mechanism-without-a-measurement rule 1 forbids. Needs §14-701.

@@ -110,13 +110,26 @@ three consecutive isolated re-probes — reporting the first result would have
 cost a session chasing a regression that did not exist. **Re-probe in isolation
 before recording any live failure.**
 
-**11. Measure the pipeline, not your probe.** Three times now a measurement has
+**11. Measure the pipeline, not your probe.** Four times now a measurement has
 described the instrument rather than the system: a grep that matched only
 literal nulls (missing Philadelphia's 17 and Boston entirely); a resolver called
 with `maxFAR: null` that bypassed every provider-side FAR lookup and reported
-"11/65 resolved"; and a guessed URL whose 404 was read as absence. **Exercise
-the real entry point.** If the answer would change depending on which layer you
-called, you measured the layer.
+"11/65 resolved"; a guessed URL whose 404 was read as absence; and
+`enumerate-parser-domains.ts` reading `.maxFAR` off a resolver returning
+`{ far, heightFt }` — `undefined` on every input, so it reported Chicago 1,528
+unhandled and NYC 203 unhandled when Chicago in fact resolves 63 classes.
+**Exercise the real entry point.** If the answer would change depending on which
+layer you called, you measured the layer.
+
+The fourth was committed *by the script written to enforce this rule*, which is
+the point: a checking tool is code, and nothing was checking it. `scripts/` and
+`netlify/` sat outside the typecheck (`tsconfig.app.json` includes only `src`),
+so a nonexistent property was a silent `undefined` rather than a build error.
+`tsconfig.scripts.json` now covers both — verified by reintroducing the bug and
+watching `tsc` reject it. And note the second-order cost: the false result had
+already put "chicago — research + a table" in the backlog for work that was
+**already done**. A broken instrument misdirects effort long after you stop
+running it.
 
 **12. Never convert through a unit the code does not use.** Miami 21 regulates
 in STORIES. The module multiplied 80 stories by an unsourced 12 ft/story, then

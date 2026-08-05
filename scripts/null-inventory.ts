@@ -27,7 +27,11 @@ import { EXAMPLE_PARCELS } from '../src/config/exampleParcels'
  *  a real parcel — a city landmark is often a street or a plaza (San Diego's
  *  first probe returned NO_PARCEL for exactly that reason). */
 const EXTRA: Record<string, [number, number]> = {
-  philadelphia: [39.97, -75.17],
+  // Derived from a DOR_Parcel centroid, not guessed. The previous point
+  // (39.97, -75.17) returned NO_PARCEL on two of three isolated re-probes and a
+  // valid RSA-5 parcel on the third — an unstable probe reads as an upstream
+  // defect when it is really a coordinate sitting off a parcel edge.
+  philadelphia: [39.9208, -75.23192],
   miami: [25.7743, -80.1918],
   sandiego: [32.7157, -117.1611],
   sanjose: [37.3382, -121.8863],
@@ -142,9 +146,34 @@ stand and the lot-area figure is a placeholder under a stated absence.
 
 | Reason | Cities | What it needs |
 |---|---|---|
-| \`published-not-fetched\` | chicago (B/C/D/M classes) · dc · seattle (NR + non-NC/C) · miami (Art. 4 Table 2) · sandiego (LDC tables) | research + a table |
+| \`published-not-fetched\` | dc · seattle (NR + non-NC/C) · miami (Art. 4 Table 2) · sandiego (LDC tables) | research + a table |
 | \`fetched-not-mapped\` | minneapolis (Corridor/Transit/Core/Production — base FAR + earned premiums) | wiring, once Table 540-2 is read |
 | \`not-published\` | sanjose · nashville | code-text extraction, or it stays null |
+
+### Open rule-5 question: Philadelphia's blank MaxFAR districts
+
+The city's \`ZoningCodeCharacteristics\` table carries 36 districts. 13 publish a
+numeric FAR, 3 publish prose the parser cannot reduce to a number (\`RMX-1\` and
+\`RMX-2\` say "150% / 250% of District Area (excluding streets)" — a different
+denominator, not a FAR; \`CMX-1\` defers to adjacent districts), and **20 publish
+no value at all** — including every RSA/RSD rowhouse district and \`RM-1\`, while
+\`RM-2/3/4\` carry 0.7 / 1.5 / 3.5.
+
+Whether those 20 blanks are a stated absence (the code governs them by occupied
+area instead — the table's own \`MinPercent\` field) or an unfilled column is
+**unresolved, and it is not resolvable by reading this table.** It matters:
+\`unconstrained\` restores an AS_OF_RIGHT verdict, \`null\` withholds one. Deciding
+it from the shape of the data would be exactly the mechanism-without-a-
+measurement that rule 1 forbids. It needs §14-701 itself.
+
+**Chicago is NOT on that list, and the reason is worth recording.** It was, on the
+strength of an enumeration reporting 1,528 unhandled zone classes. That number was
+an artifact: the script read \`.maxFAR\` off a resolver returning \`{ far, heightFt }\`,
+so every value scored unhandled. Chicago resolves **63 classes** — the full by-right
+B/C/D/M/RM/RS/RT ladder. Of the remainder, 1,457 are PD/PMD planned developments
+with no by-right FAR (a stated absence) and 5 are POS/T parks, open space and
+transportation (likewise). A backlog entry sized off a broken instrument is the
+most expensive kind of wrong — it buys research nobody needed.
 
 ## Method
 

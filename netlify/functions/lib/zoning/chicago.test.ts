@@ -106,3 +106,50 @@ describe('CHICAGO_BASE_FAR is still exported for the provider', () => {
     expect(CHICAGO_BASE_FAR['RM-4.5']).toBe(1.7)
   })
 })
+
+// Chicago's GIS spells the same residential district three ways. `RM-4.5` (470
+// parcels) resolved; `RM4.5` (8) and `RM4-.5` (1) fell through to a null FAR and
+// then to the lot-area placeholder — a gap where the answer was knowable.
+//
+// Found by scripts/enumerate-parser-domains.ts against the live layer, which is
+// the only thing that could have found it: no null is *wrong* here, no test
+// covered a spelling nobody knew existed, and the value is a legal string for
+// the field. Same class as the LA qualifier defect.
+describe('punctuation variants of a residential class resolve to the same FAR', () => {
+  it.each([
+    ['RM4.5', 1.7],
+    ['RM4-.5', 1.7],
+    ['RM5.5', 2.5],
+    ['rm4.5', 1.7],
+  ])('%s → FAR %s', (zone, far) => {
+    expect(resolveChicago(zone).far).toBe(far)
+  })
+
+  it('agrees with the canonical hyphenated spelling', () => {
+    expect(resolveChicago('RM4.5')).toEqual(resolveChicago('RM-4.5'))
+    expect(resolveChicago('RM5.5')).toEqual(resolveChicago('RM-5.5'))
+  })
+
+  // The normalization is only safe while stripping hyphens keeps every
+  // residential key distinct. Adding a district that collides would silently
+  // publish one district's FAR for another — so the collision is a test
+  // failure, not a comment (rule 14).
+  it('no two residential districts collide once hyphens are stripped', () => {
+    const stripped = Object.keys(CHICAGO_BASE_FAR).map((k) => k.replace(/-/g, ''))
+    expect(new Set(stripped).size).toBe(stripped.length)
+  })
+
+  // The hyphen is SEMANTIC for B/C/D/M — "B3-2" splits on it. Stripping there
+  // would turn a suffix into part of the prefix.
+  it('does not disturb B/C/D/M, where the hyphen separates prefix from suffix', () => {
+    expect(resolveChicago('B3-2').far).toBe(2.2)
+    expect(resolveChicago('DX-7').far).toBe(7)
+    expect(resolveChicago('B32').far).toBeNull()
+  })
+
+  // PD/PMD/POS/T carry no by-right FAR. Null is the ANSWER, not a lookup miss,
+  // and normalization must not invent one for them.
+  it.each(['PD 1024', 'PMD13', 'POS-1', 'POS-2', 'T'])('%s still resolves to no FAR', (zone) => {
+    expect(resolveChicago(zone).far).toBeNull()
+  })
+})

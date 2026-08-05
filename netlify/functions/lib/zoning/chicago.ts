@@ -97,6 +97,24 @@ const M_FAR_BY_SUFFIX: Record<string, number> = {
 // M-district height is governed by setback/use context rather than a single
 // published per-suffix figure, so M height is null.
 
+// Chicago's GIS publishes the same residential district under more than one
+// punctuation: `RM-4.5` (470 parcels), `RM4.5` (8) and `RM4-.5` (1) are all
+// §17-2-0304-A's RM4.5 — and the ordinance itself writes it UNHYPHENATED (see
+// the citation on 'RM-4.5' above), so neither spelling is the typo.
+//
+// The hyphen is cosmetic in a residential class name because the intensity is
+// IN the name; it is SEMANTIC in B/C/D/M, where "B3-2" splits on it. So this
+// index is consulted for the residential lookup ONLY, and never reaches the
+// B/C/D/M regex below. No residential key collides with another once stripped
+// (asserted by test) and none collides with a B/C/D/M class, which all begin
+// with a different letter.
+//
+// Found by scripts/enumerate-parser-domains.ts — the same parser-domain class
+// as the LA qualifier defect: the source emits a form the parser never knew.
+const BASE_FAR_BY_UNHYPHENATED: Record<string, number> = Object.fromEntries(
+  Object.entries(CHICAGO_BASE_FAR).map(([k, v]) => [k.replace(/-/g, ''), v]),
+)
+
 /**
  * Resolve Chicago FAR + height for a zone class string (e.g. "B3-2", "DX-5",
  * "RM-5", "M1-2"). Returns { far: null, heightFt: null } when the district is
@@ -110,6 +128,12 @@ export function resolveChicago(zone: string | null | undefined): DistrictLimits 
   // RT-4…), not a separate dash suffix — look them up directly.
   if (z in CHICAGO_BASE_FAR) {
     return { far: CHICAGO_BASE_FAR[z], heightFt: null }
+  }
+
+  // Same district, different punctuation — see BASE_FAR_BY_UNHYPHENATED.
+  const unhyphenated = z.replace(/-/g, '')
+  if (unhyphenated in BASE_FAR_BY_UNHYPHENATED) {
+    return { far: BASE_FAR_BY_UNHYPHENATED[unhyphenated], heightFt: null }
   }
 
   // B/C/D/M classes: split "<prefix><digit?>-<suffix>" → prefix letter + suffix.
