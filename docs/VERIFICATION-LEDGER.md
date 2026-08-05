@@ -1295,3 +1295,57 @@ it resolved from all the inputs the rule requires.** Rule 13's sweep is the only
 instrument that asks the second question.
 
 NYC, Austin, LA and Philadelphia remain to be audited against the same question.
+
+### Rule 13 sweep — NYC audited. Three negatives, one minor.
+
+Three questions, cheapest first, per the sharpened rule: **if the source states
+it, read it — deriving a stated value is always wrong, even when the derivation
+is sound.**
+
+**Q1 — does PLUTO publish a value we derive?** NYC publishes no permitted height
+and no permitted story maximum, so there is nothing derived to displace. The
+fields that *look* substitutable (`NumFloors`, `BldgArea`, `UnitsTotal`) are the
+**existing built** values, and the provider already maps them to `existing.*`,
+not to permitted limits. **That is the confusion this check was designed to
+find, and it is not present.** Negative.
+
+**Q2 — joint dependency?** 103 fields; 20 unfetched and plausibly FAR-relevant.
+Two checked:
+- **`ManuFAR` — NEGATIVE.** Measured: M1-4 has `CommFAR 2 / ManuFAR 2`; M1-5 has
+  `5 / 5`. `CommFAR` already carries the manufacturing figure. Lead closed.
+- **`SplitZone` / `ZoneDist2-4` — MINOR, open.** 19,979 lots of 856,614 (2.3%)
+  are split-zoned and we report only `ZoneDist1` as the district. Sampled split
+  lots carry a single PLUTO `ResidFAR` and both districts agreed in every sample
+  (C2-8/C4-6 → 10; C6-4/C6-2A → 10), so the **FAR is not wrong — the district
+  LABEL is incomplete**. A disclosure gap, materially less severe than Boston's
+  wrong story count. Logged, not fixed.
+
+**Q3 — field semantics.** `num()` rejects zero (`n > 0`), so PLUTO's
+`ResidFAR: 0` on manufacturing districts becomes null rather than a 0-sq-ft
+envelope. Verified live: an M2-1 lot returns `farByUse {commercial: 2, mixed: 2}`
+with no residential entry and `maxUnits: null`. Negative.
+
+### The sharpened rule, and why it outranks rule 13's own question
+
+Four instances of *the source states it, we derived it* — Miami, Denver, Boston,
+and (as a near-miss) the envelope's own story derivation. **One** instance of a
+true joint dependency (Minneapolis). The cheap question has a 4:1 hit rate over
+the expensive one, so it should be asked first every time:
+
+> **Does the source publish the value we compute?**
+
+Recorded because the ordering is not obvious — joint dependency is the more
+interesting failure and the less common one.
+
+### Sweep status
+
+| City | Q1 published-but-derived | Q2 joint dependency | Q3 semantics |
+|---|---|---|---|
+| boston | **DEFECT — `NumFloorsMax`, fixed** | not audited | not audited |
+| nyc | negative | minor (`SplitZone`, 2.3%) | negative |
+| austin | known two-branch, built for | known, built for | not audited |
+| **la** | **NOT AUDITED** | **NOT AUDITED** | **NOT AUDITED** |
+| **philadelphia** | **NOT AUDITED** | **NOT AUDITED** | **NOT AUDITED** |
+
+LA and Philadelphia remain. Recorded explicitly so the sweep is not read as
+complete.
