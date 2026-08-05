@@ -1,75 +1,75 @@
 # Null inventory — what the tool actually knows
 
-**Measured live 2026-08-04** by calling `getParcelInfo` against one real parcel
-per city (the published example parcels where they exist, city landmarks for the
-five new cities) and reading what the engine emitted.
+**GENERATED, not hand-written.** Run `npx vite-node scripts/null-inventory.ts --write`.
+Every entry below was verified live on the date shown.
+
+A hand-maintained version of this file drifted from the system inside a single
+session: Chicago sat recorded as unresolved while `B3-2` resolves, San Diego's
+probe coordinate was a landmark rather than a parcel, and Philadelphia's RM
+districts started resolving once the FAR parser was corrected. **The inventory
+determines what work is worth doing, so a stale entry misdirects the backlog** —
+the same failure as measuring your probe instead of the pipeline (rule 11), one
+level up.
 
 **This is the artifact that says whether the tool is fit to ship — not the test
-count.** 651 tests pass regardless of whether a city resolves a FAR or invents
-one. Only this table distinguishes an honest null from a bug.
+count.** 709 tests pass whether a city resolves a FAR or assumes one.
 
-## How to read it
+## Verified 2026-08-05
 
-Every null carries a reason code, because the four have completely different fix
-costs and completely different honesty implications — and to a user they all
-currently render the same:
+| City | District probed | Outcome | Verdict | What it means |
+|---|---|---|---|---|
+| boston | `MFR/LS` | **RESOLVED** | NEEDS_RELIEF | FAR 2 from published data |
+| nyc | `R6B` | **RESOLVED** | NEEDS_RELIEF | FAR 2 from published data |
+| chicago | `B3-2` | **RESOLVED** | AS_OF_RIGHT | FAR (per-use) from published data |
+| sf | `NCD-24TH-NOE-VALLEY` | **UNCONSTRAINED (an answer)** | NEEDS_RELIEF | code affirmatively imposes no FAR; lot area is a placeholder |
+| seattle | `NR` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| dc | `RF-1` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| austin | `MF-4` | **RESOLVED** | AS_OF_RIGHT | FAR 0.75 from published data |
+| la | `C2-1-O` | **RESOLVED** | AS_OF_RIGHT | FAR 1.5 from published data |
+| denver | `G-MU-5` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
+| minneapolis | `CM2` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| philadelphia | `RSA-5` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| miami | `T6-80-O` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| sandiego | `CCPD-ER` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| sanjose | `PQP` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| nashville | `DTC` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 
-| Code | Meaning | Fix cost |
+**5 resolved from published data · 2 unconstrained (an answer) · 8 gaps · 0 probe failures.**
+
+## What a "gap" costs the user, post fail-closed audit
+
+A gap no longer produces a confident claim. On `assumed-far-1.0`:
+
+- **Verdict is withheld** — INDETERMINATE, not AS_OF_RIGHT. The tool will not
+  assert legal permission derived from a size the code never stated.
+- **Size-triggered required hurdles are downgraded to `info`**, with the doubt
+  named rather than the hurdle deleted.
+- **Cost and timeline are still produced**, disclosed at the assumptions panel.
+  They claim what building that much would cost, not what the code allows.
+
+`assumed-unconstrained` is NOT a gap: the code affirmatively imposes no FAR
+(SF Planning Code §124(b), Denver's form-based DZC), so verdicts and hurdles
+stand and the lot-area figure is a placeholder under a stated absence.
+
+## Known remaining gaps, by fix cost
+
+| Reason | Cities | What it needs |
 |---|---|---|
-| `not-published` | The jurisdiction does not publish it in any machine-readable form | High — needs code-text extraction, or it stays null forever |
-| `published-not-fetched` | It exists in the city's code or GIS; we don't retrieve it | Medium — research + a table |
-| `fetched-not-mapped` | **We already pull a layer that answers it and don't read it** | Low — wiring |
-| `deliberately-conservative` | We could emit a number but choose a safer one | Zero — this is correct behaviour, recorded so it isn't "fixed" by mistake |
+| `published-not-fetched` | chicago (B/C/D/M classes) · dc · seattle (NR + non-NC/C) · miami (Art. 4 Table 2) · sandiego (LDC tables) | research + a table |
+| `fetched-not-mapped` | minneapolis (Corridor/Transit/Core/Production — base FAR + earned premiums) | wiring, once Table 540-2 is read |
+| `not-published` | sanjose · nashville | code-text extraction, or it stays null |
 
-`fetched-not-mapped` is the one to hunt: it is a shipped defect where the tool
-displays sourced intelligence next to a number that ignores it. Minneapolis is a
-confirmed instance.
+## Method
 
-## Live result
-
-| City | District probed | FAR outcome | Reason code |
-|---|---|---|---|
-| boston | MFR/LS | **RESOLVED** far=2 | — |
-| nyc | R6B | **RESOLVED** far=2 (residential basis) | — |
-| austin | MF-4 | **RESOLVED** far=0.75 | — |
-| la | C2-1-O | **RESOLVED** far=1.5 | — |
-| philadelphia | CMX-5 | **RESOLVED** far=12 | — |
-| sf | NCD-24TH-NOE-VALLEY | **UNCONSTRAINED** (an ANSWER — §124(b)) | — |
-| denver | G-MU-5 | **UNCONSTRAINED** (an ANSWER — DZC form-based) | — |
-| chicago | B3-2 | null | `published-not-fetched` — `chicagoBaseFAR` covers residential only; B/C/D/M districts return null though the Zoning Ordinance sets FAR for them |
-| seattle | NR | null | `published-not-fetched` — our module covers NC/C (SMC 23.47A.013). **NR is Seattle's renamed single-family zone** and is not handled at all |
-| dc | RF-1 | null (height=35 resolves) | `published-not-fetched` — DC zoning regs publish FAR by district; we carry none |
-| miami | T6-80-O | null (height=960 ⚠) | `published-not-fetched` — Miami 21 Article 4 Table 2 is a separate document, not yet read |
-| minneapolis | CM2 | Interior 1/2/3 **RESOLVED**; Corridor/Transit/Core/Production still null | `fetched-not-mapped` **PARTLY CLOSED 2026-08-04** — Interior 1/2/3 now read from the Built Form overlay the provider already fetched. Corridor/Transit/Core/Production/Parks remain `published-not-fetched` (base FAR + earned premium system, Table 540-2 unread) |
-| sanjose | PQP | null | `not-published` — "No FAR anywhere in San Jose's public GIS" (provider comment, verified) |
-| nashville | DTC | null | `not-published` — "publishes neither height nor FAR in GIS"; Metro Code Title 17 text only |
-| sandiego | — | probe returned NO_PARCEL | probe location bad (city landmark, not a parcel). FAR itself is `published-not-fetched` — LDC tables, not in GIS |
-
-**Score: 7 of 15 cities emit a real FAR answer** (5 resolved + 2 correctly
-unconstrained). 7 are gaps. 1 probe needs a better coordinate.
-
-## Flags raised by this run
-
-- **⚠️ Miami height 960 ft.** `T6-80-O` × 12 ft/story = 960. Miami 21 does allow
-  80 stories in that transect, so it may be literally correct, but it is the
-  largest number the tool emits anywhere and it has never been checked against a
-  real building. Verify before trusting.
-- **Seattle `NR`.** Seattle renamed its single-family zones to Neighborhood
-  Residential. Our FAR module and quite possibly our height parser were written
-  against the old names. Worth a dedicated check.
-- **San Jose `PQP`** at the city landmark is a public/quasi-public parcel — the
-  civic hard-block should be catching this location. Verify.
-- **Chicago transient failure.** The first batch run returned
-  `districtCode: Unknown` for a parcel that resolves to B3-2 on three consecutive
-  isolated probes. A concurrent-load fetch failure, not a defect — but it means
-  **a single probe is not evidence**, and any future inventory must re-probe
-  before recording a gap.
-
-## Method note — the first attempt at this was wrong
-
-The first pass called `resolveZoningLimits` with `maxFAR: null` and reported
-"11/65 resolved". That measures only the fallback layer: most cities resolve FAR
-**inside the provider** (`resolveSfFar`, `austinSfLimits`, `laLimits`, NYC's
-PLUTO `farByUse`, `resolveMiami`, Philadelphia's `parseMaxFAR`), all of which
-that probe bypassed. Same failure as the earlier grep count — it measured the
-probe, not the pipeline. **An inventory must exercise the real entry point.**
+- One real parcel per city; published example parcels where they exist.
+- **Each probe retried up to 3× in isolation** before a failure is recorded
+  (rule 10 — Chicago returned `Unknown` once under concurrent load and resolved
+  to `B3-2` on three consecutive isolated re-probes).
+- Exercises the REAL entry point (`getParcelInfo` → `computeEnvelope` →
+  `buildDefaultSpec` → `assessFeasibility`). An earlier attempt called
+  `resolveZoningLimits` with `maxFAR: null`, bypassed every provider-side
+  resolver, and reported "11/65 resolved" — it measured the probe, not the
+  pipeline.
+- A single probed parcel does not characterise a whole city. This table says
+  what the pipeline returned for one real address, which is enough to separate
+  "resolves" from "falls back" and not enough to quantify coverage.

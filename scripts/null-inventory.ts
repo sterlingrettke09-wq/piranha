@@ -1,0 +1,171 @@
+// Regenerate docs/NULL-INVENTORY.md from LIVE probes.
+//
+// WHY THIS IS A SCRIPT AND NOT A DOCUMENT
+// The inventory is a measurement of the system, and a hand-written one drifts
+// from it. Within a single session (2026-08-04 → 05) three entries went stale:
+// Chicago was recorded unresolved while B3-2 resolves, San Diego's probe
+// coordinate was a landmark rather than a parcel, and Philadelphia's RM
+// districts began resolving once the FAR parser was fixed.
+//
+// That matters more than it sounds. The inventory determines what work is worth
+// doing — a wrong entry misdirects the whole backlog. It is the same failure as
+// measuring your probe instead of the pipeline (CLAUDE.md rule 11), one level up.
+//
+// Every entry carries the timestamp it was verified. An inventory without
+// timestamps cannot tell you which parts of it you still trust.
+//
+//   npx vite-node scripts/null-inventory.ts          # print
+//   npx vite-node scripts/null-inventory.ts --write  # rewrite the doc
+
+import { writeFileSync } from 'node:fs'
+import { getParcelInfo } from '../netlify/functions/lib/parcel'
+import { buildDefaultSpec } from '../src/lib/defaultSpec'
+import { assessFeasibility } from '../netlify/functions/lib/feasibility'
+import { EXAMPLE_PARCELS } from '../src/config/exampleParcels'
+
+/** Probe points for cities without a published example parcel. Chosen to land on
+ *  a real parcel — a city landmark is often a street or a plaza (San Diego's
+ *  first probe returned NO_PARCEL for exactly that reason). */
+const EXTRA: Record<string, [number, number]> = {
+  philadelphia: [39.97, -75.17],
+  miami: [25.7743, -80.1918],
+  sandiego: [32.7157, -117.1611],
+  sanjose: [37.3382, -121.8863],
+  nashville: [36.1627, -86.7816],
+}
+
+const CITIES = [
+  'boston', 'nyc', 'chicago', 'sf', 'seattle', 'dc', 'austin', 'la',
+  'denver', 'minneapolis', 'philadelphia', 'miami', 'sandiego', 'sanjose', 'nashville',
+]
+
+interface Row {
+  city: string
+  district: string
+  farBasis: string
+  gfaBasis: string
+  verdict: string
+  outcome: string
+  note: string
+}
+
+/** Rule 10: a single probe is not evidence. Retry in isolation before recording
+ *  a failure — Chicago returned `Unknown` once under concurrent batch load and
+ *  resolved to B3-2 on three consecutive isolated re-probes. */
+async function probe(city: string, lat: number, lng: number, attempts = 3) {
+  let last: unknown = null
+  for (let i = 0; i < attempts; i++) {
+    const r = await getParcelInfo(city, lat, lng)
+    if (r.ok && r.info.zoning.districtCode !== 'Unknown') return r
+    last = r
+    await new Promise((res) => setTimeout(res, 400))
+  }
+  return last as Awaited<ReturnType<typeof getParcelInfo>>
+}
+
+;(async () => {
+  const stamp = new Date().toISOString().slice(0, 10)
+  const rows: Row[] = []
+
+  for (const city of CITIES) {
+    const ex = EXAMPLE_PARCELS[city]
+    const [lat, lng] = ex ? [ex.lat, ex.lng] : EXTRA[city]
+    const r = await probe(city, lat, lng)
+    if (!r || !r.ok) {
+      rows.push({ city, district: '—', farBasis: '—', gfaBasis: '—', verdict: '—',
+        outcome: 'PROBE FAILED', note: 'not a pass — re-run before trusting' })
+      continue
+    }
+    const env = r.info.envelope
+    const spec = buildDefaultSpec(r.info, city)
+    const verdict = spec ? assessFeasibility(r.info, spec).overall : 'n/a'
+    const farBasis = env?.farBasis ?? 'null'
+    const gfaBasis = spec?.gfaBasis ?? 'no-spec'
+
+    const outcome =
+      gfaBasis === 'envelope' ? 'RESOLVED'
+      : gfaBasis === 'assumed-unconstrained' ? 'UNCONSTRAINED (an answer)'
+      : 'GAP — verdict withheld'
+    const note =
+      gfaBasis === 'envelope' ? `FAR ${r.info.zoning.maxFAR ?? '(per-use)'} from published data`
+      : gfaBasis === 'assumed-unconstrained' ? 'code affirmatively imposes no FAR; lot area is a placeholder'
+      : 'no FAR resolvable; cost/timeline still estimated and disclosed'
+
+    rows.push({ city, district: String(r.info.zoning.districtCode).slice(0, 22), farBasis, gfaBasis, verdict, outcome, note })
+  }
+
+  const resolved = rows.filter((r) => r.gfaBasis === 'envelope').length
+  const unc = rows.filter((r) => r.gfaBasis === 'assumed-unconstrained').length
+  const gaps = rows.filter((r) => r.gfaBasis === 'assumed-far-1.0').length
+  const failed = rows.filter((r) => r.outcome === 'PROBE FAILED').length
+
+  const md = `# Null inventory — what the tool actually knows
+
+**GENERATED, not hand-written.** Run \`npx vite-node scripts/null-inventory.ts --write\`.
+Every entry below was verified live on the date shown.
+
+A hand-maintained version of this file drifted from the system inside a single
+session: Chicago sat recorded as unresolved while \`B3-2\` resolves, San Diego's
+probe coordinate was a landmark rather than a parcel, and Philadelphia's RM
+districts started resolving once the FAR parser was corrected. **The inventory
+determines what work is worth doing, so a stale entry misdirects the backlog** —
+the same failure as measuring your probe instead of the pipeline (rule 11), one
+level up.
+
+**This is the artifact that says whether the tool is fit to ship — not the test
+count.** 709 tests pass whether a city resolves a FAR or assumes one.
+
+## Verified ${stamp}
+
+| City | District probed | Outcome | Verdict | What it means |
+|---|---|---|---|---|
+${rows.map((r) => `| ${r.city} | \`${r.district}\` | **${r.outcome}** | ${r.verdict} | ${r.note} |`).join('\n')}
+
+**${resolved} resolved from published data · ${unc} unconstrained (an answer) · ${gaps} gaps · ${failed} probe failures.**
+
+## What a "gap" costs the user, post fail-closed audit
+
+A gap no longer produces a confident claim. On \`assumed-far-1.0\`:
+
+- **Verdict is withheld** — INDETERMINATE, not AS_OF_RIGHT. The tool will not
+  assert legal permission derived from a size the code never stated.
+- **Size-triggered required hurdles are downgraded to \`info\`**, with the doubt
+  named rather than the hurdle deleted.
+- **Cost and timeline are still produced**, disclosed at the assumptions panel.
+  They claim what building that much would cost, not what the code allows.
+
+\`assumed-unconstrained\` is NOT a gap: the code affirmatively imposes no FAR
+(SF Planning Code §124(b), Denver's form-based DZC), so verdicts and hurdles
+stand and the lot-area figure is a placeholder under a stated absence.
+
+## Known remaining gaps, by fix cost
+
+| Reason | Cities | What it needs |
+|---|---|---|
+| \`published-not-fetched\` | chicago (B/C/D/M classes) · dc · seattle (NR + non-NC/C) · miami (Art. 4 Table 2) · sandiego (LDC tables) | research + a table |
+| \`fetched-not-mapped\` | minneapolis (Corridor/Transit/Core/Production — base FAR + earned premiums) | wiring, once Table 540-2 is read |
+| \`not-published\` | sanjose · nashville | code-text extraction, or it stays null |
+
+## Method
+
+- One real parcel per city; published example parcels where they exist.
+- **Each probe retried up to 3× in isolation** before a failure is recorded
+  (rule 10 — Chicago returned \`Unknown\` once under concurrent load and resolved
+  to \`B3-2\` on three consecutive isolated re-probes).
+- Exercises the REAL entry point (\`getParcelInfo\` → \`computeEnvelope\` →
+  \`buildDefaultSpec\` → \`assessFeasibility\`). An earlier attempt called
+  \`resolveZoningLimits\` with \`maxFAR: null\`, bypassed every provider-side
+  resolver, and reported "11/65 resolved" — it measured the probe, not the
+  pipeline.
+- A single probed parcel does not characterise a whole city. This table says
+  what the pipeline returned for one real address, which is enough to separate
+  "resolves" from "falls back" and not enough to quantify coverage.
+`
+
+  if (process.argv.includes('--write')) {
+    writeFileSync('docs/NULL-INVENTORY.md', md)
+    console.log(`wrote docs/NULL-INVENTORY.md — ${resolved} resolved · ${unc} unconstrained · ${gaps} gaps · ${failed} failed`)
+  } else {
+    console.log(md)
+  }
+})()
