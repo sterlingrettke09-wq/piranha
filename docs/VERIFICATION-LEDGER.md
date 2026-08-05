@@ -2129,3 +2129,57 @@ extractor used, by construction.
 **And the checker must never repair what it finds.** A checker that fixes becomes
 a builder with extra context and inherits the same blind spot. Report-only is
 what makes the separation real — it is why Denver's do-nothing fix was caught.
+
+---
+
+## 2026-08-05 — Permit timing: four cities cannot be measured, and that is the finding
+
+Filing→issuance is now measured from the city's own open data for **11 of 15
+cities**. In **Boston, DC, Minneapolis and San Jose it is not measurable at all** —
+those four publish only issue-side dates. That is a fact about municipal data
+transparency, not a defect in this pipeline.
+
+What makes it a result rather than a shrug: **four independent agents each found
+the tempting substitute and rejected it with a measurement.**
+
+| city | substitute available | why it was refused |
+|---|---|---|
+| dc | `CREATED_DATE` | identical ETL stamp on every 2022 row; moves each refresh |
+| dc | `LASTMODIFIEDDATE` | post-dates issuance — wrong sign |
+| minneapolis | `completeDate` | falls AFTER `issueDate` in **409 of 409** sampled records |
+| sanjose | `FINALDATE` | final inspection — same trap |
+| boston | none | only `issued_date`/`expiration_date`; confirmed 3 independent ways |
+
+Every one of those would have produced a plausible number in the right units.
+Absence was established by asking whether the schema has a SLOT for an
+application date — not whether a row was blank.
+
+**The filters are already written** for DC, Minneapolis and San Jose
+(`PERMIT_SUBTYPE_NAME = 'NEW BUILDING'`, `workType = 'New'`,
+`WORKDESCRIPTION = 'New Construction'`). If a city adds the field, this is a
+config change, not research. Recorded in NULL-INVENTORY.md as `not-published` so
+nobody redoes it.
+
+### Third instance of the same asymmetry, fixed the same way
+
+Four cities with no measured timing beside eleven that have one reads, in Compare,
+as those four being *faster* rather than *unmeasured*. Same shape as the hurdle
+count and the cost basis. `CITIES_WITH_MEASURED_PERMITS` now drives an `est`
+marker, and a test reads `permitStats.json` and asserts the list matches it
+exactly — verified by adding a fake twelfth city and watching it fail.
+
+### Not yet done: the eleven successes have NOT had this scrutiny
+
+The four failures were interrogated *because* they failed. A city that HAS an
+application-date field could still have one meaning pre-application meeting,
+counter intake, or resubmission-after-rejection — each of which shortens the
+interval, i.e. **fails in the flattering direction**. Chicago's 1.0-month and
+Nashville's 1.1-month medians for ground-up new construction are exactly that
+shape. An adversarial audit of all eleven is running; until it returns, those
+figures are corroborated by nothing but their own extraction.
+
+Two latent bugs found in our own committed scripts and NOT yet fixed:
+`scripts/permits/boston.mjs` filters `worktype='ERECT'` alone, and 54% of that
+slice is Certificates of Occupancy — it never emitted a wrong number only because
+the missing date halted it first. `scripts/permits/nyc.mjs` admits plumbing and
+equipment sub-permits and slices by issuance year rather than filing year.

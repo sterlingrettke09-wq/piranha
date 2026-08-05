@@ -135,3 +135,33 @@ export const CITIES_WITH_SPECIFIC_HURDLES = ['boston', 'chicago', 'la', 'nyc', '
 export function hasCitySpecificHurdles(slug: string): boolean {
   return (CITIES_WITH_SPECIFIC_HURDLES as readonly string[]).includes(slug)
 }
+
+/**
+ * Cities whose timeline includes an EMPIRICAL filing→issuance permit measurement
+ * pulled from the city's own open-data portal, rather than only a lifecycle
+ * estimate.
+ *
+ * The other four — Boston, DC, Minneapolis, San Jose — publish NO application
+ * date at all, so filing→issuance is not a metric we failed to compute but one
+ * their data cannot support. Each was checked by asking whether the schema has a
+ * SLOT for an application date, not whether one row was blank, and each tempting
+ * substitute was tested and rejected (DC's CREATED_DATE is an identical ETL stamp
+ * on every row; Minneapolis's completeDate lands after issueDate in 409 of 409
+ * sampled records; San Jose's FINALDATE is final inspection).
+ *
+ * This exists for the same reason `CITIES_WITH_SPECIFIC_HURDLES` does. Compare
+ * renders cities side by side, and a city with no measured line reads as faster
+ * or simpler rather than unmeasured — absence of a finding rendering as a finding
+ * of absence, in the direction that flatters. Third instance of that shape.
+ *
+ * Kept honest by a test that reads permitStats.json and asserts this list matches
+ * it exactly, so measuring a twelfth city cannot silently leave the list stale.
+ */
+export const CITIES_WITH_MEASURED_PERMITS = [
+  'austin', 'chicago', 'denver', 'la', 'miami', 'nashville',
+  'nyc', 'philadelphia', 'sandiego', 'seattle', 'sf',
+] as const
+
+export function hasMeasuredPermitTiming(slug: string): boolean {
+  return (CITIES_WITH_MEASURED_PERMITS as readonly string[]).includes(slug)
+}

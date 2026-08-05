@@ -6,7 +6,7 @@ import type { AnalysisInput, AnalysisResult, CheckStatus } from '../types/analys
 import { decodeJsonB64 } from '../lib/b64'
 import { VERDICT } from '../lib/verdictLabels'
 import { formatEstimate } from '../lib/format'
-import { hasCitySpecificHurdles } from '../config/cities'
+import { hasCitySpecificHurdles, hasMeasuredPermitTiming } from '../config/cities'
 
 function decode<T>(s: string | null): T | null {
   if (!s) return null
@@ -81,7 +81,28 @@ export default function Compare() {
       ),
     },
     { label: 'Construction cost', render: (d) => <span className="tabular-nums">{usd(d.costs.total)}</span> },
-    { label: 'Timeline', render: (d) => <span className="tabular-nums">{d.timeline.months > 0 ? `${d.timeline.months} mo` : 'N/A'}</span> },
+    {
+      // Eleven cities carry a measured filing→issuance permit leg from their own
+      // open-data portal; four publish no application date at all, so their
+      // timeline is estimate-only. Unmarked, the difference reads as one city
+      // being faster than another when it is really one being unmeasured —
+      // absence of a finding rendering as a finding of absence, same as the
+      // hurdle count above.
+      label: 'Timeline',
+      render: (d) => {
+        if (d.timeline.months <= 0) return <span className="tabular-nums">N/A</span>
+        return hasMeasuredPermitTiming(d.project.city) ? (
+          <span className="tabular-nums">{d.timeline.months} mo</span>
+        ) : (
+          <span
+            className="tabular-nums text-piranha-charcoal/70"
+            title="Estimated. This city publishes no permit application date, so the filing-to-issuance leg cannot be measured from its open data — unlike cities showing a measured figure."
+          >
+            {d.timeline.months} mo<span className="ml-1 align-super text-[0.65em]">est</span>
+          </span>
+        )
+      },
+    },
     {
       // A bare count read across cities invites the comparison "DC needs fewer
       // approvals than Boston". For cities whose specific mandates we have not

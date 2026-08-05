@@ -151,6 +151,31 @@ stand and the lot-area figure is a placeholder under a stated absence.
 | \`fetched-not-mapped\` | minneapolis (Corridor/Transit/Core/Production — base FAR + earned premiums) | wiring, once Table 540-2 is read |
 | \`not-published\` | sanjose · nashville | code-text extraction, or it stays null |
 
+### Permit timing: \`not-published\` in four cities, and the queries are already written
+
+Filing→issuance is measured from the city's own open-data portal for **11 of 15
+cities**. It is NOT measurable in **Boston, DC, Minneapolis and San Jose** — those
+four publish only issue-side dates. This is a fact about municipal data
+transparency, not a gap in this pipeline, and it is the kind of thing a user of
+this tool would want to know.
+
+Absence was established the right way — by asking whether the schema has a SLOT
+for an application date, not whether a row was blank — and every tempting
+substitute was tested and rejected rather than assumed unusable:
+
+| city | what it publishes | substitute tested and rejected |
+|---|---|---|
+| boston | \`issued_date\`, \`expiration_date\` | none available; confirmed 3 ways (datastore schema, raw CSV header, full row dump) |
+| dc | \`ISSUE_DATE\` across all 8 year layers | \`CREATED_DATE\` is an identical ETL stamp on every row; \`LASTMODIFIEDDATE\` post-dates issuance |
+| minneapolis | \`issueDate\`, \`completeDate\` | \`completeDate\` falls AFTER \`issueDate\` in **409 of 409** sampled records — the far side of the leg |
+| sanjose | \`ISSUEDATE\`, \`FINALDATE\` | \`FINALDATE\` is final inspection — same trap |
+
+**Do not re-do the filter work.** In DC, Minneapolis and San Jose the
+new-construction filter is already identified and correct
+(\`PERMIT_SUBTYPE_NAME = 'NEW BUILDING'\`, \`workType = 'New'\`,
+\`WORKDESCRIPTION = 'New Construction'\`). If any of those cities adds an
+application date, this becomes a config change, not research.
+
 ### Highest-ranked open item: DC's RA and MU provenance
 
 **44 DC districts publish a FAR whose only source is a code comment.** Subtitles

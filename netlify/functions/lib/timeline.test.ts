@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { resolveTimeline, buildingTier, measuredFor } from './timeline'
 import type { Feasibility } from './feasibility'
 import type { AnalysisInput } from '../../src/types/analysis'
+import { CITIES_WITH_MEASURED_PERMITS, hasMeasuredPermitTiming } from '../../../src/config/cities'
 
 const project = (over: Partial<AnalysisInput> = {}): AnalysisInput => ({
   city: 'boston',
@@ -146,4 +147,33 @@ describe('measured permit timing', () => {
     expect(measuredFor('sf')).toBeDefined()
     expect(measuredFor('atlantis')).toBeUndefined()
   })
+})
+
+// Rule 14: the coverage claim shown to users must be impossible to falsify by
+// forgetting to update it. CITIES_WITH_MEASURED_PERMITS drives Compare's
+// "estimated" marker; if a twelfth city is measured and the list is not updated,
+// that city keeps being labelled an estimate — and the reverse omission would
+// label an unmeasured city as measured, which is worse.
+describe('the published measured-permit coverage list matches the data', () => {
+  it('equals exactly the cities carrying a newConstruction measurement', async () => {
+    const stats = (await import('./data/permitStats.json')).default as Record<
+      string,
+      { newConstruction?: unknown } | undefined
+    >
+    const measured = Object.entries(stats)
+      .filter(([, v]) => v?.newConstruction)
+      .map(([k]) => k)
+      .sort()
+    expect(measured).toEqual([...CITIES_WITH_MEASURED_PERMITS].sort())
+  })
+
+  // These four publish only issue-side dates. If one of them ever appears in
+  // permitStats.json, either the city started publishing an application date
+  // (good — update the list) or something substituted a wrong pair of dates.
+  it.each(['boston', 'dc', 'minneapolis', 'sanjose'])(
+    '%s has no measured timing — its city publishes no application date',
+    (city) => {
+      expect(hasMeasuredPermitTiming(city)).toBe(false)
+    },
+  )
 })
