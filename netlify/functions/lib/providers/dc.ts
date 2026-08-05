@@ -24,7 +24,7 @@ const DC_LIMITS: Record<string, { h: number | null; f: number | null }> = {
   'MU-4': { h: 50, f: 2.5 }, 'MU-5': { h: 70, f: 3.5 }, 'MU-6': { h: 90, f: 4.0 },
   'MU-7': { h: 65, f: 5.0 }, 'MU-8': { h: 70, f: 6.5 }, 'MU-9': { h: 90, f: 6.0 }, 'MU-10': { h: 90, f: 6.0 },
 }
-function dcLimits(code: string | null): { h: number | null; f: number | null } {
+export function dcLimits(code: string | null): { h: number | null; f: number | null } {
   if (!code) return { h: null, f: null }
   const base = code.toUpperCase().trim().split('/')[0].trim()
   // Georgetown overlay caps at 35 ft.

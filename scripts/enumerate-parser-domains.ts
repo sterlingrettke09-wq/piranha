@@ -38,6 +38,7 @@ import { resolveSfFar } from '../netlify/functions/lib/zoning/sf'
 import { resolveNyc } from '../netlify/functions/lib/zoning/nyc'
 import { parseMaxFAR, parseMaxHeightFt } from '../netlify/functions/lib/zoning/philadelphia'
 import { parseSanJoseHeightFt } from '../netlify/functions/lib/providers/sanjose'
+import { dcLimits } from '../netlify/functions/lib/providers/dc'
 
 interface Target {
   city: string
@@ -83,6 +84,12 @@ const TARGETS: Target[] = [
     url: 'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/15',
     field: 'ZONE_CLASS', scopedTo: 'residential districts only',
     handled: (v) => resolveChicago(v).far != null,
+  },
+  {
+    city: 'dc', what: 'ZR16 district → FAR (2016 Zoning Regulations, Title 11 DCMR)',
+    url: 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCOZ/Zone_Mapservice/MapServer/24',
+    field: 'ZR16', scopedTo: 'curated R/RF/RA/MU families; D and NC vary by sub-area',
+    handled: (v) => dcLimits(v).f != null,
   },
   {
     city: 'sf', what: 'zoning code → §124 FAR',

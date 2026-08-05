@@ -1688,3 +1688,80 @@ misdirects work long after it stops being run.**
   table's `MinPercent`) or an unfilled column decides whether those parcels get a
   verdict. **Not resolvable from the table**, and inferring it from the shape of
   the data is the mechanism-without-a-measurement rule 1 forbids. Needs §14-701.
+
+---
+
+## 2026-08-05 — DC, all four sweep questions. One negative, one real gap, one open.
+
+### Q2 (rule 13 / the Minneapolis hazard): NEGATIVE — and it was worth checking
+
+DC's zoning was comprehensively rewritten in 2016 and the district names changed,
+which is exactly the shape of the Minneapolis Chapter 546 trap. The `Specific
+Zone` layer carries **both** vocabularies as separate columns — `ZR58` (1958
+regulations) and `ZR16` (2016) — plus `Zoning`, `Zone_District`, `ZR16_Original`
+and `Zoning_Status`. The provider reads `Zoning ?? ZONING ?? ZR16`.
+
+Measured across all 977 polygons: **`Zoning` === `ZR16` on 974**, and differs from
+`ZR58` on 850 (87%). The provider is reading the 2016 vocabulary. **No defect.**
+
+The 3 disagreements are recorded, not resolved: `MU-10`/`ZR16 null`,
+`MU-5B`/`PDR-1` (different zone families), `MU-2`/`MU-3A` (FAR 6.0 vs 1.0). 0.3%
+of polygons, and which column is authoritative is not answerable from the layer.
+
+### Q1: DC publishes no FAR numerically — but it publishes a SOURCE
+
+`Zone_Description` is prose ("Permits moderate density mixed use development").
+There is no FAR field, so the curated table is the right shape. What the layer
+*does* carry is `Zoning_Web_URL` — an authoritative per-district DCOZ handbook
+link (`handbook.dcoz.dc.gov/pages/residential-flat-rf-zones#RF-1`) sitting in a
+layer we already fetch. That is a per-district citation for numbers currently
+carrying only a Subtitle reference in a code comment.
+
+### Q3: coverage is 44 of 171, not "DC has no FAR"
+
+| | count | |
+|---|---|---|
+| FAR resolved | 44 | RF-4/5, RA-1…5, MU-1…10 and overlay variants |
+| height only, no FAR | 21 | R-1A/R-1B/R-2/R-3, RF-1/2/3 + overlays |
+| neither | 106 | ARTS, BF, CG, D-*, HE, **MU-11…14**, NHR, NMU, PDR, StE, W … |
+
+`MU-11`–`MU-14` are live districts absent from a table that stops at MU-10, and
+the lettered-parent fallback (`MU-7A` → `MU-7`) does not reach them.
+
+### Q4: `f: null` means two different things in one table — NOT FIXED
+
+```ts
+'RF-1': { h: 35, f: null },   // Subtitle D § 303.1 — the code imposes no FAR
+'D-4' : (absent)              // "vary by sub-area/street and are left null"
+```
+
+The first is a stated ABSENCE, the second is a GAP, and DC renders them
+identically — the exact rule-5 distinction that `farBasis: 'unconstrained'` was
+built for on SF and Denver, never applied here.
+
+**Deliberately not fixed.** Flipping 21 districts to `unconstrained` converts
+INDETERMINATE verdicts into AS_OF_RIGHT — the tool asserting legal permission —
+on the strength of a citation in one of our own code comments. Rule 15 is
+specifically about trusting a well-written internal rationale: the comment cites
+Subtitle D § 303.1, and checking whether that section says what the comment says
+it says is the whole job. The handbook URL above is where that check starts.
+
+### Found on the way: hurdle coverage is asymmetric and undisclosed
+
+Only **6 of 15 cities** carry city-specific regulatory hurdles — boston, chicago,
+la, nyc, seattle, sf. DC, austin, denver, minneapolis, philadelphia, miami,
+sandiego, sanjose and nashville get the generic set only. Measured through
+`assessHurdles`, the spread is 2–7 hurdles per city.
+
+None of the five standing disclaimers says the hurdle list may be incomplete, or
+that coverage varies by city. **The hurdle list is the "Regulation" half of this
+tool's thesis**, and Compare puts cities side by side — so a city we have not
+encoded reads as a city with fewer requirements. That is a coverage artifact
+presented as a finding about the world.
+
+Concretely, DC's `IZ_Designation` (inclusionary zoning) is published per polygon
+— 43 of 977 carry `IZ+` or `IZ+ Exempt` — and the provider does not fetch it,
+while Boston's IDP, NYC's MIH and SF's inclusionary requirement are all encoded.
+
+Whether to add a completeness disclaimer, and how far to close the coverage gap,
+is a PRODUCT decision and goes to the user rather than into an unattended fix.
