@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parseMaxHeightFt, parseMaxFAR } from './philadelphia'
+import { phlFarUnconstrained, PHL_NO_FAR_DISTRICTS } from './philadelphia'
 
 // Philadelphia publishes MaxHeight/MaxFAR in ZoningCodeCharacteristics as FREE
 // TEXT, not numbers. The parser returns a number ONLY for unambiguous forms;
@@ -159,4 +160,61 @@ describe('Philadelphia MaxFAR — "% of Lot Area" IS the FAR expression', () => 
     ]
     for (const [raw, exp] of published) expect(parseMaxFAR(raw), raw).toBe(exp)
   })
+})
+
+// Philadelphia publishes no MaxFAR for 20 of 36 districts. Ten of those are a
+// stated absence — the code's dimensional table has no FAR row — and the rest
+// are unread. Rendering both as null made every RSA/RSD rowhouse parcel, the
+// most common in the city, withhold a verdict it did not need to withhold.
+//
+// Verified against the Philadelphia Zoning Code Base Districts Quick Guide
+// (Dept. of Planning and Development, Feb 2026). Structural tell: Table 14-701-1
+// has no FAR row at all, and Table 14-701-2's combined "Max. Height / FAR" cell
+// holds a height only for RM-1 while RM-2/3/4 hold percentages of lot area.
+describe('Philadelphia stated FAR absences', () => {
+  it.each(['RSD-1', 'RSD-2', 'RSD-3', 'RSA-1', 'RSA-2', 'RSA-3', 'RSA-4', 'RSA-5', 'RTA-1', 'RTA-2', 'RM-1'])(
+    '%s is a stated absence with a cited table',
+    (d) => {
+      expect(phlFarUnconstrained(d)).toBe(true)
+      expect(PHL_NO_FAR_DISTRICTS[d]).toMatch(/14-701/)
+    },
+  )
+
+  // These carry a blank MaxFAR too, but their pages were NOT read. An absence is
+  // only an answer once someone has looked, so they must keep failing closed.
+  it.each(['CMX-2', 'CMX-2.5', 'CA-1', 'CA-2', 'I-P', 'SP-INS', 'SP-ENT', 'SP-STA', 'SP-PO-A', 'SP-AIR'])(
+    '%s stays a GAP — blank, but unverified',
+    (d) => {
+      expect(phlFarUnconstrained(d)).toBe(false)
+    },
+  )
+
+  // Districts that publish a FAR must never be marked absent.
+  it.each(['RM-2', 'RM-3', 'RM-4', 'CMX-3', 'CMX-5', 'I-1'])('%s publishes a FAR, so it is not an absence', (d) => {
+    expect(phlFarUnconstrained(d)).toBe(false)
+  })
+
+  it('is case- and whitespace-insensitive', () => {
+    expect(phlFarUnconstrained(' rsa-5 ')).toBe(true)
+    expect(phlFarUnconstrained(null)).toBe(false)
+  })
+
+  // Re-asserting the corrected interpretation against the source that settled
+  // it, because rule 15's lesson was that a well-argued wrong reading survives.
+  // The Quick Guide diagrams label these literally "FAR = 70% of Lot Area" etc.
+  it.each([
+    ['70% of Lot Area', 0.7],
+    ['150% of Lot Area', 1.5],
+    ['350% of Lot Area', 3.5],
+  ] as const)('%s parses as FAR %s', (raw, far) => {
+    expect(parseMaxFAR(raw)).toBe(far)
+  })
+
+  // RMX measures across a whole district, which cannot be applied to one parcel.
+  it.each(['150% of District Area (excluding streets)', '250% of District Area\r\n(excluding streets)'])(
+    'rejects the district-wide denominator: %s',
+    (raw) => {
+      expect(parseMaxFAR(raw)).toBeNull()
+    },
+  )
 })

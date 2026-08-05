@@ -8,8 +8,14 @@
 //
 // The catch: both columns are FREE TEXT authored for humans, not numbers. Observed
 // forms include conditional limits ("60 if abutting a Residential district;
-// otherwise no limit"), percentages against a different denominator ("70% of Lot
-// Area" = lot coverage, not FAR), bonus tiers, and whole paragraphs of prose.
+// otherwise no limit"), percentages against a denominator that is not one parcel
+// ("150% of District Area (excluding streets)" — RMX master-plan districts),
+// bonus tiers, and whole paragraphs of prose.
+//
+// NOTE: this paragraph used to cite `"70% of Lot Area" = lot coverage, not FAR`
+// as its example, which is FALSE and stayed here for a while after the parser
+// below was corrected — a retracted claim surviving three lines above its own
+// retraction. Disclosure copy is code; it goes stale the same way.
 //
 // These parsers therefore follow the same rule as src/lib/developability.ts: return
 // a number ONLY when the value is unambiguous. Everything else degrades to null, so
@@ -94,4 +100,57 @@ export function parseMaxFAR(raw: string | null | undefined): number | null {
   // (16 with the Center City bonus). Anything at or above 100 is a data error.
   if (!Number.isFinite(far) || far <= 0 || far > 100) return null
   return far
+}
+
+/**
+ * Districts where Philadelphia's code imposes NO floor-area ratio — an ANSWER,
+ * not a missing lookup (rule 5). Without this, a blank `MaxFAR` cell is
+ * indistinguishable from a district we simply failed to resolve, and both fall
+ * to defaultSpec's lot-area placeholder with the verdict withheld.
+ *
+ * VERIFIED 2026-08-05 against the Philadelphia Zoning Code Base Districts Quick
+ * Guide (Dept. of Planning and Development, February 2026), which reproduces the
+ * dimensional tables. The structural tell is the same one that settled DC:
+ *
+ *   · **Table 14-701-1** ("Lower Density Residential Districts") — covering RSD,
+ *     RSA and RTA — has NO floor-area-ratio row at all. Its rows are Min. Lot
+ *     Width, Min. Lot Area, Max. Occupied Area, setbacks, yards, Max. Height and
+ *     Building Types. Density is controlled by occupied area (30–80% depending
+ *     on district) plus a 38 ft height cap (RTA-2: 35 ft / 3 stories).
+ *
+ *   · **Table 14-701-2** ("Higher Density Residential Districts") DOES carry
+ *     floor-area ratio, in a combined row headed "Max. Height / FAR (Floor Area
+ *     Ratio)". For RM-1 that cell holds a height only — "38 ft. [5]" — while
+ *     RM-2/3/4 hold "70% / 150% / 350% of Lot Area". RM-1 is instead governed by
+ *     Max. Occupied Area (75% intermediate / 80% corner) and a Dwelling Unit
+ *     Density rule (360 sq ft of lot area per unit for the first 1,440 sq ft,
+ *     480 sq ft per unit beyond).
+ *
+ * So the FAR row exists exactly where FAR applies, and RM-1's cell is where the
+ * absence is visible rather than merely unstated.
+ *
+ * DELIBERATELY NOT INCLUDED: the commercial, industrial and special-purpose
+ * districts that also carry a blank `MaxFAR` (CMX-2, CMX-2.5, CA-1, CA-2, I-P,
+ * SP-INS, SP-ENT, SP-STA, SP-PO-A, SP-PO-P, SP-AIR). Those pages were not read,
+ * so their blanks stay GAPS. An absence is only an answer once someone has
+ * looked.
+ */
+export const PHL_NO_FAR_DISTRICTS: Record<string, string> = {
+  'RSD-1': 'Table 14-701-1 — no FAR row; 35% occupied area, 38 ft',
+  'RSD-2': 'Table 14-701-1 — no FAR row; 35% occupied area, 38 ft',
+  'RSD-3': 'Table 14-701-1 — no FAR row; 30% occupied area, 38 ft',
+  'RSA-1': 'Table 14-701-1 — no FAR row; 30% occupied area, 38 ft',
+  'RSA-2': 'Table 14-701-1 — no FAR row; 40% occupied area, 38 ft',
+  'RSA-3': 'Table 14-701-1 — no FAR row; 50% occupied area, 38 ft',
+  'RSA-4': 'Table 14-701-1 — no FAR row; 50% occupied area, 38 ft',
+  'RSA-5': 'Table 14-701-1 — no FAR row; 75%/80% occupied area, 38 ft',
+  'RTA-1': 'Table 14-701-1 — no FAR row; 50% occupied area, 38 ft',
+  'RTA-2': 'Table 14-701-1 — no FAR row; 75%/80% occupied area, 35 ft / 3 stories',
+  'RM-1': 'Table 14-701-2 — "Max. Height / FAR" cell holds 38 ft only; density by occupied area + dwelling-unit density',
+}
+
+/** True when the code affirmatively imposes no FAR on this district. */
+export function phlFarUnconstrained(district: string | null | undefined): boolean {
+  if (!district) return false
+  return String(district).trim().toUpperCase() in PHL_NO_FAR_DISTRICTS
 }

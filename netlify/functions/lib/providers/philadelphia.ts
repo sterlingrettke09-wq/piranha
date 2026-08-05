@@ -24,7 +24,7 @@ import {
 } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { polygonAreaSqFt } from '../geo'
-import { parseMaxHeightFt, parseMaxFAR } from '../zoning/philadelphia'
+import { parseMaxHeightFt, parseMaxFAR, phlFarUnconstrained } from '../zoning/philadelphia'
 
 // Pennsylvania State Plane South (EPSG:2272), units = US survey feet. Parcel
 // geometry is requested in this SR so a shoelace area is already in square feet.
@@ -171,6 +171,11 @@ export async function getPhiladelphiaParcelInfo(lat: number, lng: number): Promi
       article: null,
       maxHeightFt: parseMaxHeightFt(chars?.MaxHeight as string | null | undefined),
       maxFAR: parseMaxFAR(chars?.MaxFAR as string | null | undefined),
+      // A blank MaxFAR is TWO states. For the residential districts whose
+      // dimensional table has no FAR row at all, it is a stated absence (see
+      // PHL_NO_FAR_DISTRICTS); everywhere else it is an unresolved lookup and
+      // must keep failing closed.
+      ...(phlFarUnconstrained(code) ? { farUnconstrained: true } : {}),
       allowedUses: usesForZone(code),
     },
     lot: { sizeSqFt: lotSqFt, lotType: null },

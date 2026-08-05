@@ -28,13 +28,13 @@ count.** 709 tests pass whether a city resolves a FAR or assumes one.
 | la | `C2-1-O` | **RESOLVED** | AS_OF_RIGHT | FAR 1.5 from published data |
 | denver | `G-MU-5` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
 | minneapolis | `CM2` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
-| philadelphia | `RM-1` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| philadelphia | `RM-1` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
 | miami | `T6-80-O` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 | sandiego | `CCPD-ER` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 | sanjose | `PQP` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 | nashville | `DTC` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 
-**5 resolved from published data · 3 unconstrained (an answer) · 7 gaps · 0 probe failures.**
+**5 resolved from published data · 4 unconstrained (an answer) · 6 gaps · 0 probe failures.**
 
 ## What a "gap" costs the user, post fail-closed audit
 

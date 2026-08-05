@@ -1861,3 +1861,51 @@ manufacture a stated absence either.
 
 0.3% of polygons, and the cheapest possible fix: the provider already fetched
 both columns and was reading one.
+
+---
+
+## 2026-08-05 — Philadelphia §14-701, and a retraction that outlived its retraction
+
+Ten of Philadelphia's twenty blank-`MaxFAR` districts are now verified stated
+absences, against the Zoning Code Base Districts Quick Guide (Dept. of Planning
+and Development, February 2026).
+
+Same structural tell as DC — **the FAR row exists exactly where FAR applies**:
+
+- **Table 14-701-1** (Lower Density: RSD, RSA, RTA) has **no FAR row at all**.
+  Rows are lot width, lot area, Max. Occupied Area, setbacks, yards, Max. Height,
+  Building Types. Density is occupied area (30–80%) plus a 38 ft cap.
+- **Table 14-701-2** (Higher Density: RM) has a combined row headed **"Max.
+  Height / FAR (Floor Area Ratio)"**. For **RM-1** that cell holds `38 ft. [5]`
+  — a height and nothing else — while RM-2/3/4 hold `70% / 150% / 350% of Lot
+  Area`. RM-1 is governed by occupied area plus a dwelling-unit-density rule
+  (360 sq ft of lot per unit to 1,440 sq ft, 480 beyond).
+
+RSD-1/2/3, RSA-1…5, RTA-1/2 and RM-1 now carry `farUnconstrained`. **RSA-5 is
+the most common district in Philadelphia**, and it was withholding a verdict it
+never needed to withhold. The other ten blanks — CMX-2, CMX-2.5, CA-1, CA-2,
+I-P, SP-* — stay GAPS: those pages were not read, and an absence is only an
+answer once someone has looked.
+
+### The corrected reading, confirmed from outside
+
+The Quick Guide diagrams label the RM cells literally `FAR = 70% of Lot Area`,
+`= 150% of Lot Area`, `= 350% of Lot Area`. The rule-15 correction — that
+`"70% of Lot Area"` IS the FAR expression, not lot coverage — is right, and is
+now confirmed against the source rather than argued. RMX's `"% of District Area
+(excluding streets)"` is genuinely a different denominator (master-plan
+districts) and stays rejected.
+
+### A retracted claim survived three lines above its own retraction
+
+The module header still read `percentages against a different denominator ("70%
+of Lot Area" = lot coverage, not FAR)` — the exact claim the parser below had
+already retracted at length, sitting in the file's opening summary. Anyone
+reading the header to learn what the module does would have re-learned the false
+version.
+
+Rule 9's corollary says disclosure copy is code. This adds the failure mode:
+**a correction applied at the point of the defect does not propagate to the
+summary that describes it**, and summaries are what get read first. Fixing the
+line is trivial; noticing it required reading the file for a different reason
+entirely.
