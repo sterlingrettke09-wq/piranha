@@ -111,3 +111,27 @@ export function getCity(slug: string): City {
 export function cityName(slug: string): string {
   return CITIES.find((c) => c.slug === slug)?.name ?? slug
 }
+
+/**
+ * Cities for which city-SPECIFIC regulatory hurdles are encoded (inclusionary
+ * mandates, large-project review, environmental review, local labour rules…).
+ *
+ * Every other city still gets the generic set — historic review, flood, permit
+ * fees, demolition — so its hurdle list is a FLOOR, not a complete account of
+ * what that city requires.
+ *
+ * This exists because Compare renders "Approvals to clear" as a bare count side
+ * by side. Without the distinction, a city we have not encoded reads as a city
+ * with fewer requirements, which is a coverage artifact presented as a finding
+ * about the world — in the direction that flatters the tool. Same failure class
+ * as rendering a missing FAR lookup as an absent FAR limit (rule 5).
+ *
+ * Kept honest by a test that reads the `city === '…'` branches out of
+ * `hurdles.ts` and asserts they match this list exactly, so encoding a new city
+ * without updating it fails the suite rather than silently mislabelling.
+ */
+export const CITIES_WITH_SPECIFIC_HURDLES = ['boston', 'chicago', 'la', 'nyc', 'seattle', 'sf'] as const
+
+export function hasCitySpecificHurdles(slug: string): boolean {
+  return (CITIES_WITH_SPECIFIC_HURDLES as readonly string[]).includes(slug)
+}

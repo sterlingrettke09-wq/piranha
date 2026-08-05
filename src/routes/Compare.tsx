@@ -6,6 +6,7 @@ import type { AnalysisInput, AnalysisResult, CheckStatus } from '../types/analys
 import { decodeJsonB64 } from '../lib/b64'
 import { VERDICT } from '../lib/verdictLabels'
 import { formatEstimate } from '../lib/format'
+import { hasCitySpecificHurdles } from '../config/cities'
 
 function decode<T>(s: string | null): T | null {
   if (!s) return null
@@ -81,7 +82,25 @@ export default function Compare() {
     },
     { label: 'Construction cost', render: (d) => <span className="tabular-nums">{usd(d.costs.total)}</span> },
     { label: 'Timeline', render: (d) => <span className="tabular-nums">{d.timeline.months > 0 ? `${d.timeline.months} mo` : 'N/A'}</span> },
-    { label: 'Approvals to clear', render: (d) => <span className="tabular-nums">{d.hurdles.length}</span> },
+    {
+      // A bare count read across cities invites the comparison "DC needs fewer
+      // approvals than Boston". For cities whose specific mandates we have not
+      // encoded, the count is a FLOOR and the difference is our coverage, not
+      // the city's rules — so the number is marked rather than left to be read
+      // as complete.
+      label: 'Approvals to clear',
+      render: (d) =>
+        hasCitySpecificHurdles(d.project.city) ? (
+          <span className="tabular-nums">{d.hurdles.length}</span>
+        ) : (
+          <span
+            className="tabular-nums text-piranha-charcoal/70"
+            title="At least this many. City-specific requirements (inclusionary housing, large-project review) are not yet encoded for this city, so this is a floor — not a complete list."
+          >
+            {d.hurdles.length}+<span className="ml-1 align-super text-[0.65em]">partial</span>
+          </span>
+        ),
+    },
     {
       label: 'Most you can build',
       render: (d) => {

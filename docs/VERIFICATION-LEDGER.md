@@ -1765,3 +1765,87 @@ while Boston's IDP, NYC's MIH and SF's inclusionary requirement are all encoded.
 
 Whether to add a completeness disclaimer, and how far to close the coverage gap,
 is a PRODUCT decision and goes to the user rather than into an unattended fix.
+
+---
+
+## 2026-08-05 — DC's three-state split, verified against Title 11 itself
+
+The earlier entry recorded DC's `f: null` conflation and declined to fix it,
+reasoning that flipping districts to `unconstrained` would assert legal
+permission on the strength of our own code comment. Half right: the hesitation
+was correct, the conclusion was not. **The fix is making the states
+distinguishable, which does not require deciding any particular district.**
+Classifying is a separate step, and it needs a source.
+
+So both were done, in that order.
+
+### The source
+
+`Zoning_Web_URL` — an authoritative per-district DCOZ handbook link, already in
+the layer the provider fetches — led to the DC Office of Zoning's published PDFs
+of Title 11. The handbook pages are JS-rendered and returned nothing; the
+Subtitle PDFs are the primary text.
+
+Note the near-miss: an automated read of the Subtitle E PDF reported "no FAR
+limits are stated for RF-1, RF-2, or RF-3" **while also reporting that it could
+not extract the text**. That is a failed instrument producing the answer we were
+hoping for — rule 16 exactly, and it would have been accepted as confirmation if
+the same conclusion had not then been reached from the document itself.
+
+### What the code actually says
+
+The structural tell is that **the FAR section exists exactly where FAR applies**:
+
+| | sections | FAR section? |
+|---|---|---|
+| Subtitle D ch. 3 — R-1-A, R-1-B, R-2, R-3 | 300–310 | **none** |
+| Subtitle E ch. 3/4/5 — RF-1, RF-2, RF-3 | 300/400/500–308/408/508 | **none** — the parallel slot is "MAXIMUM NUMBER OF DWELLING UNITS" |
+| Subtitle E ch. 6 — RF-4, RF-5 | 600–608 | **§ 602 "FAR AND MAXIMUM NUMBER OF DWELLING UNITS"** |
+
+> **Subtitle D § 303.1** — "The maximum permitted building height, not including
+> the penthouse, in the R-1-A, R-1-B, R-2, and R-3 zones shall not exceed forty
+> feet (40 ft.) and the number of stories shall not exceed three (3) stories."
+
+> **Subtitle E § 602.1** — "The maximum permitted floor area ratio (FAR) for all
+> buildings and structures in the RF-4 and RF-5 zones shall be 1.8."
+
+§ 602.1 confirms the existing table's 1.8 for RF-4/RF-5 to the digit. Both
+sections also state STORY COUNTS the table was discarding — 3 for R zones and
+RF-4, 4 for RF-5 — now carried directly rather than derived by dividing feet by
+an 11 ft/story constant the code never uses (rule 12).
+
+### Where it stopped, and why that is the finding
+
+The split classified **5 of 171** live districts as verified stated absences —
+not the 21 the first pass implied. Two mechanisms removed the difference:
+
+- The **Georgetown** override returns a height cap and must not inherit a
+  no-FAR claim from its base zone.
+- **Overlay suffixes** (`R-1A/FH`, `RF-1/CAP`, `R-3/NO`) are a base zone plus a
+  Subtitle C/W overlay we have not read. The base zone's verified absence is a
+  fact about the base zone; whether an overlay can impose a floor-area limit
+  where the base imposes none is unresolved. Withheld — 12 districts that a
+  looser reading would have converted to AS_OF_RIGHT.
+
+**44 publish a FAR · 5 verified unconstrained · 122 remain gaps.** The RA
+(Subtitle F) and MU (Subtitle G) figures were NOT verified tonight; they carry a
+FAR already, so the split does not touch them, but their provenance is still a
+comment.
+
+## Hurdle coverage: disclosed, not closed
+
+Compare rendered "Approvals to clear" as a bare count. Six of fifteen cities have
+city-specific mandates encoded, so an unencoded city read as a less-regulated
+city — **absence of a finding rendering as a finding of absence**, fifth instance
+tonight and the worst placed, because Compare exists to be read across cities.
+
+Shipped: the count is marked as a floor for unencoded cities, and a standing
+disclaimer says coverage varies. `CITIES_WITH_SPECIFIC_HURDLES` is checked
+against the `city === '…'` branches in `hurdles.ts` by a test — verified by
+adding a fake branch and watching it fail, because a coverage claim guarded by an
+unverified test is the thing this ledger keeps catching.
+
+Encoding the nine remaining cities is a project, not cleanup, and is NOT started.
+DC is the cheapest first move: `IZ_Designation` is published per polygon (43 of
+977), it sits in a layer already fetched, and the inclusionary hurdle shape
+exists for Boston, NYC and SF — `fetched-not-mapped`, same as Minneapolis.

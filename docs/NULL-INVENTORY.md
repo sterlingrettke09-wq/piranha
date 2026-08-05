@@ -23,7 +23,7 @@ count.** 709 tests pass whether a city resolves a FAR or assumes one.
 | chicago | `B3-2` | **RESOLVED** | AS_OF_RIGHT | FAR (per-use) from published data |
 | sf | `NCD-24TH-NOE-VALLEY` | **UNCONSTRAINED (an answer)** | NEEDS_RELIEF | code affirmatively imposes no FAR; lot area is a placeholder |
 | seattle | `NR` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
-| dc | `RF-1` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| dc | `RF-1` | **UNCONSTRAINED (an answer)** | NEEDS_RELIEF | code affirmatively imposes no FAR; lot area is a placeholder |
 | austin | `MF-4` | **RESOLVED** | AS_OF_RIGHT | FAR 0.75 from published data |
 | la | `C2-1-O` | **RESOLVED** | AS_OF_RIGHT | FAR 1.5 from published data |
 | denver | `G-MU-5` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
@@ -34,7 +34,7 @@ count.** 709 tests pass whether a city resolves a FAR or assumes one.
 | sanjose | `PQP` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 | nashville | `DTC` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 
-**5 resolved from published data · 2 unconstrained (an answer) · 8 gaps · 0 probe failures.**
+**5 resolved from published data · 3 unconstrained (an answer) · 7 gaps · 0 probe failures.**
 
 ## What a "gap" costs the user, post fail-closed audit
 
@@ -55,7 +55,8 @@ stand and the lot-area figure is a placeholder under a stated absence.
 
 | Reason | Cities | What it needs |
 |---|---|---|
-| `published-not-fetched` | dc · seattle (NR + non-NC/C) · miami (Art. 4 Table 2) · sandiego (LDC tables) | research + a table |
+| `published-not-fetched` | dc (D/NC/ARTS/CG/PDR + MU-11…14) · seattle (NR + non-NC/C) · miami (Art. 4 Table 2) · sandiego (LDC tables) | research + a table |
+| `fetched-not-mapped` | dc (`IZ_Designation` — inclusionary, published per polygon, never fetched) | wiring |
 | `fetched-not-mapped` | minneapolis (Corridor/Transit/Core/Production — base FAR + earned premiums) | wiring, once Table 540-2 is read |
 | `not-published` | sanjose · nashville | code-text extraction, or it stays null |
 

@@ -15,27 +15,92 @@ const HISTORIC = `${BASE}/DCOZ/Zone_Mapservice/MapServer/6`
 // DCMR): Subtitle D (R), E (RF), F (RA), G (MU). High-confidence families only;
 // Downtown (D) and Neighborhood (NC) zones vary by sub-area/street and are left
 // null (honest — no by-right envelope shown). Heights exclude penthouse.
-const DC_LIMITS: Record<string, { h: number | null; f: number | null }> = {
-  'RF-1': { h: 35, f: null }, 'RF-2': { h: 35, f: null }, 'RF-3': { h: 35, f: null },
-  'RF-4': { h: 40, f: 1.8 }, 'RF-5': { h: 50, f: 1.8 },
+//
+// ⚠️ `f: null` USED TO MEAN TWO DIFFERENT THINGS HERE, which is rule 5's exact
+// failure. RF-1 has no FAR because the code imposes none (an ANSWER); D-4 has no
+// FAR because it varies by sub-area and we have not resolved it (a GAP). Both
+// rendered identically, so DC never got the `farUnconstrained` separation that
+// SF §124(b) and Denver's form-based DZC already had.
+//
+// `noFar` now marks the verified stated absences. It is set ONLY where the
+// primary source was read — not on the strength of this comment, which is the
+// trap rule 15 describes. Verified 2026-08-05 against the DC Office of Zoning
+// PDFs of Title 11:
+//
+//   Subtitle D ch. 3 (R-1-A, R-1-B, R-2, R-3): sections run 300–310 with NO FAR
+//     section. § 303.1 verbatim: "The maximum permitted building height, not
+//     including the penthouse, in the R-1-A, R-1-B, R-2, and R-3 zones shall not
+//     exceed forty feet (40 ft.) and the number of stories shall not exceed
+//     three (3) stories."  Controlled by lot dimensions (§ 302), height (§ 303)
+//     and lot occupancy (§ 304).
+//   Subtitle E ch. 3/4/5 (RF-1, RF-2, RF-3): each runs 300/400/500–308/408/508
+//     with NO FAR section; the parallel slot is "MAXIMUM NUMBER OF DWELLING
+//     UNITS". RF-1 § 303.1 = 35 ft and 3 stories; § 302.1 = 2 units; § 304.1 =
+//     60% lot occupancy.
+//   Subtitle E ch. 6 (RF-4, RF-5) DOES have § 602 "FAR AND MAXIMUM NUMBER OF
+//     DWELLING UNITS". § 602.1 verbatim: "The maximum permitted floor area ratio
+//     (FAR) for all buildings and structures in the RF-4 and RF-5 zones shall be
+//     1.8."  § 603.1 RF-4 = 40 ft / 3 stories; § 603.2 RF-5 = 50 ft / 4 stories
+//     for row dwellings and flats (40 ft / 3 stories for detached).
+//
+// The structural tell is that the FAR section EXISTS exactly where FAR applies.
+//
+// NOT verified tonight: the RA (Subtitle F) and MU (Subtitle G) numbers below.
+// They already carry a FAR so the three-state split does not touch them, but
+// they remain a table whose provenance is a comment.
+//
+// `s` carries a story count the code STATES, so the envelope never divides feet
+// by an 11 ft/story constant the code does not use (rule 12).
+interface DcLimit {
+  h: number | null
+  f: number | null
+  /** The code affirmatively imposes NO floor-area ratio here — an ANSWER, not a
+   *  missing lookup. Absent means unknown, which stays a gap and fails closed. */
+  noFar?: true
+  /** Story count as STATED by the code, where it states one. */
+  s?: number
+  /** Section the absence or figure was read from. */
+  cite?: string
+}
+const DC_LIMITS: Record<string, DcLimit> = {
+  'RF-1': { h: 35, f: null, noFar: true, s: 3, cite: '11 DCMR Subtitle E § 303.1 (no FAR section in ch. 3)' },
+  'RF-2': { h: 35, f: null, noFar: true, cite: '11 DCMR Subtitle E ch. 4 (no FAR section)' },
+  'RF-3': { h: 35, f: null, noFar: true, cite: '11 DCMR Subtitle E ch. 5 (no FAR section)' },
+  'RF-4': { h: 40, f: 1.8, s: 3, cite: '11 DCMR Subtitle E §§ 602.1, 603.1' },
+  'RF-5': { h: 50, f: 1.8, s: 4, cite: '11 DCMR Subtitle E §§ 602.1, 603.2(b)' },
   'RA-1': { h: 40, f: 0.9 }, 'RA-2': { h: 50, f: 1.8 }, 'RA-3': { h: 60, f: 3.0 },
   'RA-4': { h: 90, f: 3.5 }, 'RA-5': { h: 90, f: 5.0 },
   'MU-1': { h: 65, f: 4.0 }, 'MU-2': { h: 90, f: 6.0 }, 'MU-3': { h: 40, f: 1.0 },
   'MU-4': { h: 50, f: 2.5 }, 'MU-5': { h: 70, f: 3.5 }, 'MU-6': { h: 90, f: 4.0 },
   'MU-7': { h: 65, f: 5.0 }, 'MU-8': { h: 70, f: 6.5 }, 'MU-9': { h: 90, f: 6.0 }, 'MU-10': { h: 90, f: 6.0 },
 }
-export function dcLimits(code: string | null): { h: number | null; f: number | null } {
+export function dcLimits(code: string | null): DcLimit {
   if (!code) return { h: null, f: null }
   const base = code.toUpperCase().trim().split('/')[0].trim()
-  // Georgetown overlay caps at 35 ft.
+  // An overlay suffix (`R-1A/FH`, `RF-1/CAP`, `R-3/NO`…) means the parcel is in
+  // a base zone PLUS an overlay in Subtitle C/W that we have not read. The base
+  // zone's verified "no FAR" is a fact about the base zone only; whether an
+  // overlay can impose a floor-area limit where the base imposes none is
+  // unresolved, so `noFar` is withheld and the parcel falls to a gap. Dropping
+  // a verdict is the safe direction; asserting one across an unread overlay is
+  // not. Heights and FARs still resolve from the base.
+  const hasOverlay = code.includes('/')
+  const strip = (l: DcLimit): DcLimit => (hasOverlay && l.noFar ? { ...l, noFar: undefined } : l)
+  // Georgetown overlay caps at 35 ft. The FAR under it is NOT resolved — this is
+  // a height override, so it must not inherit a `noFar` from the base zone.
   if (/\/GT|GEORGETOWN/i.test(code)) return { h: 35, f: null }
-  if (DC_LIMITS[base]) return DC_LIMITS[base]
+  if (DC_LIMITS[base]) return strip(DC_LIMITS[base])
   // Lettered sub-zones (MU-7A, MU-7B, RA-4A…) share their numbered parent's
   // limits closely enough; fall back to the parent rather than returning null.
   const parent = base.replace(/([0-9])[A-Z]+$/, '$1')
-  if (parent !== base && DC_LIMITS[parent]) return DC_LIMITS[parent]
-  // Residential House (R) zones: 40 ft, no FAR (Subtitle D § 303.1).
-  if (base.startsWith('R-') || /^R\d/.test(base)) return { h: 40, f: null }
+  if (parent !== base && DC_LIMITS[parent]) return strip(DC_LIMITS[parent])
+  // Residential House (R) zones — Subtitle D ch. 3 has no FAR section at all;
+  // § 303.1 states 40 ft AND three stories for R-1-A/R-1-B/R-2/R-3. Note the
+  // code hyphenates as `R-1-A` while the GIS publishes `R-1A`; the prefix test
+  // covers both. Verified against the Subtitle D PDF, not inferred.
+  if (base.startsWith('R-') || /^R\d/.test(base)) {
+    return strip({ h: 40, f: null, noFar: true, s: 3, cite: '11 DCMR Subtitle D § 303.1 (no FAR section in ch. 3)' })
+  }
   return { h: null, f: null }
 }
 
@@ -132,6 +197,12 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
       article: zoning?.Zone_District ? String(zoning.Zone_District) : null,
       maxHeightFt: lim.h,
       maxFAR: lim.f,
+      // A verified stated absence, not a failed lookup — keeps the verdict from
+      // being withheld on districts whose code affirmatively imposes no FAR.
+      ...(lim.noFar ? { farUnconstrained: true } : {}),
+      // Carry the code's OWN story count where it states one, so the envelope
+      // does not divide feet by an ft/story constant the code never used.
+      ...(lim.s != null ? { maxStories: lim.s } : {}),
       allowedUses: usesForZone(code),
     },
     lot: {

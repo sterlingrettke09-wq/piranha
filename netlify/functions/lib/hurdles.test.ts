@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { assessHurdles } from './hurdles'
 import type { ParcelInfo } from '../../../src/types/parcel'
 import type { AnalysisInput } from '../../../src/types/analysis'
+import { CITIES_WITH_SPECIFIC_HURDLES } from '../../../src/config/cities'
 
 function parcel(over: Partial<ParcelInfo>): ParcelInfo {
   return {
@@ -384,5 +385,20 @@ describe('assessHurdles — project type', () => {
   it('change of use adds code-upgrade hurdle', () => {
     const hs = assessHurdles('boston', parcel({}), project({ projectType: 'change_of_use' }))
     expect(hs.some((h) => /Change-of-use/.test(h.label))).toBe(true)
+  })
+})
+
+// Rule 14: the coverage claim shown to users must be impossible to falsify by
+// forgetting to update it. `CITIES_WITH_SPECIFIC_HURDLES` drives Compare's
+// "partial" marker and the standing disclaimer; if someone encodes a new city's
+// mandates here and does not add it to the list, that city keeps being labelled
+// incomplete — and, worse, the reverse omission would label an unencoded city
+// complete. So the list is checked against the branches in this module's source.
+describe('the published hurdle-coverage list matches the code', () => {
+  it('equals the set of cities this module actually branches on', async () => {
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync(new URL('./hurdles.ts', import.meta.url), 'utf8')
+    const branched = [...src.matchAll(/city === '([a-z]+)'/g)].map((m) => m[1])
+    expect([...new Set(branched)].sort()).toEqual([...CITIES_WITH_SPECIFIC_HURDLES].sort())
   })
 })

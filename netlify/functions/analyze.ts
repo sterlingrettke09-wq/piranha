@@ -50,6 +50,12 @@ const DISCLAIMERS = [
   // while the same report corrects a FAR disclosure: disclosing one limitation
   // and not the other is inconsistent in the direction that flatters the tool.
   'Base construction rates are internal estimates with unverified provenance, scaled by RSMeans 2021 city cost indices. Independent industry figures for market-grade buildings run higher. Treat the total as a rough floor.',
+  // The hurdle list is the "Regulation" half of what this tool is for, and its
+  // coverage is uneven: city-specific mandates are encoded for 6 of 15 cities,
+  // the rest get the generic set. Undisclosed, that makes an unencoded city read
+  // as a less-regulated city — a coverage artifact presented as a finding about
+  // the world, in the direction that flatters. Compare marks the count too.
+  'The regulatory requirements listed are not exhaustive, and coverage varies by city. City-specific mandates (inclusionary housing, large-project review) are encoded for some cities and not others, so treat the list as a floor rather than a complete account of what a city requires.',
   'Verify zoning, fees, and permitting with the city before relying on these figures.',
 ]
 

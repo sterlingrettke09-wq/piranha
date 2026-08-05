@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getDcParcelInfo } from './dc'
+import { getDcParcelInfo, dcLimits } from './dc'
 import { mockArcgisFetch, featureSet, ARCGIS_ERROR_200 } from './__fixtures__'
 
 // Endpoint URL substrings the DC provider hits (see dc.ts):
@@ -157,5 +157,88 @@ describe('getDcParcelInfo — resilience', () => {
     if (res.ok) return
     expect(res.code).toBe('NO_PARCEL')
     expect(res.status).toBe(404)
+  })
+})
+
+// DC's limit table used a single `f: null` for two states rule 5 says must never
+// render the same: "the code imposes no FAR here" (an ANSWER) and "we could not
+// resolve one" (a GAP). The split below is verified against the DC Office of
+// Zoning's own PDFs of Title 11 — not against the code comment that used to
+// assert it, because rule 15 is precisely about how convincing a well-written
+// internal rationale looks. Sections are quoted in dc.ts.
+describe('DC separates a stated FAR absence from an unresolved one', () => {
+  // Subtitle D ch. 3 and Subtitle E ch. 3/4/5 contain NO floor-area-ratio
+  // section at all; the parallel slot is dwelling-unit count. The structural
+  // tell is that Subtitle E ch. 6 DOES have § 602 "FAR AND MAXIMUM NUMBER OF
+  // DWELLING UNITS" — the section exists exactly where FAR applies.
+  it.each(['R-1A', 'R-1B', 'R-2', 'R-3', 'RF-1', 'RF-2', 'RF-3'])(
+    '%s is a stated absence, not a gap',
+    (zone) => {
+      const l = dcLimits(zone)
+      expect(l.f).toBeNull()
+      expect(l.noFar).toBe(true)
+      expect(l.cite).toMatch(/DCMR/)
+    },
+  )
+
+  // 11 DCMR Subtitle E § 602.1: "The maximum permitted floor area ratio (FAR)
+  // for all buildings and structures in the RF-4 and RF-5 zones shall be 1.8."
+  it.each([
+    ['RF-4', 1.8, 40, 3],
+    ['RF-5', 1.8, 50, 4],
+  ] as const)('%s publishes FAR %s, height %s ft, %s stories', (zone, f, h, s) => {
+    const l = dcLimits(zone)
+    expect(l.f).toBe(f)
+    expect(l.h).toBe(h)
+    expect(l.s).toBe(s)
+    expect(l.noFar).toBeUndefined()
+  })
+
+  // Downtown and the other unresolved families must NOT be claimed as absences.
+  // These fail closed: no FAR and no `noFar`, so the verdict is withheld.
+  it.each(['D-4', 'ARTS-1', 'CG-2', 'PDR-1', 'HE-2', 'NHR', 'MU-11', 'MU-14'])(
+    '%s stays a GAP — unknown, not unconstrained',
+    (zone) => {
+      const l = dcLimits(zone)
+      expect(l.f).toBeNull()
+      expect(l.noFar).toBeUndefined()
+    },
+  )
+
+  // An overlay suffix means a Subtitle C/W overlay we have not read. The base
+  // zone's verified absence is a fact about the BASE ZONE; extending it across
+  // an unread overlay would assert legal permission we never checked. Heights
+  // still resolve from the base — only the FAR claim is withheld.
+  it.each(['R-1A/FH', 'R-1B/WH', 'R-3/NO', 'RF-1/CAP', 'R-1A/TS/NO'])(
+    '%s withholds the absence claim because an overlay is unread',
+    (zone) => {
+      expect(dcLimits(zone).noFar).toBeUndefined()
+      expect(dcLimits(zone).h).not.toBeNull()
+    },
+  )
+
+  it('the Georgetown cap does not inherit an FAR claim from its base zone', () => {
+    expect(dcLimits('R-1B/GT')).toEqual({ h: 35, f: null })
+  })
+
+  // The code hyphenates as R-1-A while the GIS publishes R-1A. Both must reach
+  // the same answer — the Chicago punctuation defect, in another city.
+  it('accepts the code spelling and the GIS spelling alike', () => {
+    expect(dcLimits('R-1-A').noFar).toBe(true)
+    expect(dcLimits('R-1A').noFar).toBe(true)
+  })
+
+  // Rule 12: carry the story count the code STATES rather than dividing feet by
+  // an ft/story constant the code never used. § 303.1 states 40 ft AND three
+  // stories; 40 ÷ 11 rounds to 3 by luck, not by reading.
+  it('carries the code-stated story count for R zones', () => {
+    expect(dcLimits('R-2')).toMatchObject({ h: 40, s: 3 })
+  })
+
+  // A `noFar` with no citation is exactly the state this split exists to
+  // prevent — an absence asserted without a source (rule 14: make it impossible,
+  // not documented).
+  it.each(['R-1A', 'R-2', 'RF-1', 'RF-2', 'RF-3'])('%s cites a section', (zone) => {
+    expect(dcLimits(zone).cite).toBeTruthy()
   })
 })

@@ -146,7 +146,8 @@ stand and the lot-area figure is a placeholder under a stated absence.
 
 | Reason | Cities | What it needs |
 |---|---|---|
-| \`published-not-fetched\` | dc · seattle (NR + non-NC/C) · miami (Art. 4 Table 2) · sandiego (LDC tables) | research + a table |
+| \`published-not-fetched\` | dc (D/NC/ARTS/CG/PDR + MU-11…14) · seattle (NR + non-NC/C) · miami (Art. 4 Table 2) · sandiego (LDC tables) | research + a table |
+| \`fetched-not-mapped\` | dc (\`IZ_Designation\` — inclusionary, published per polygon, never fetched) | wiring |
 | \`fetched-not-mapped\` | minneapolis (Corridor/Transit/Core/Production — base FAR + earned premiums) | wiring, once Table 540-2 is read |
 | \`not-published\` | sanjose · nashville | code-text extraction, or it stays null |
 
