@@ -1243,3 +1243,55 @@ disclosed where the fees are shown. Closing it needs either a sourced
 net-to-gross efficiency or a per-city density the zoning publishes — San Jose's
 `PDDENSITY` (units/acre) is the one candidate seen so far, and is per-city, not
 a global substitute.
+
+---
+
+## 2026-08-04 — RULE 13 SWEEP, run against the RESOLVED cities first. Boston fails.
+
+Run on the correct asymmetry: **a joint dependency in a city that looks resolved
+is worse than a gap in one that doesn't.** A gap emits a null and tells the user
+nothing is known. A field resolved from one of two required inputs emits a
+confident number, produces no null, fails no test, and looks like a working city.
+
+So the five cities emitting real FAR answers were audited before any backlog
+city: **Boston, NYC, Austin, LA, Philadelphia.** Question asked of each: does the
+published rule key on anything beyond the single field the provider reads?
+
+### Boston — TWO findings, one of them a shipped wrong number
+
+The zoning layer publishes 19 fields the provider never requested. Two matter:
+
+**1. `NumFloorsMax` — the code's OWN story count, unread.** Populated on **624 of
+1,649** subdistricts. The envelope was instead dividing `HeightMax` by the 11 ft
+convention.
+
+Measured across the 80 distinct subdistricts publishing BOTH: **28 disagree
+(35%).** The pattern is systematic, not marginal — at `HeightMax` 35 the code
+says **2 or 2.5 stories** and we published **3**.
+
+Verified live before and after on a real `1F-5000` parcel:
+`height=35, stated=2.5 → envelope 2.5 (stated)`. Before the fix: **3**.
+
+Third instance of rule 12 (Miami 87-vs-80, Denver 13-vs-12, Boston 3-vs-2.5),
+and the first found in a city already marked RESOLVED.
+
+**2. `DwellingUnitsPerAreaMax` — a published DENSITY field. Checked as a possible
+substitute for `avgUnitGrossSqFt` (defect 6) and it is NOT one: populated on
+**0 of 1,649** subdistricts.** Empty. Recorded so the lead is not re-chased —
+the field exists in the schema and carries no data.
+
+Also unread and NOT claimed as defects: `ConditionNum` / `ConditionTxt` /
+`Restrictions` (descriptive text — the example parcel reads "Row House Building
+or Town House Building"), setbacks, `DwellingUnitsFactor`, `AmendmentNum`.
+Whether any modifies FAR is unestablished; no direction claimed.
+
+### The sweep's own justification, confirmed
+
+Boston sat in the null inventory as `RESOLVED far=2` — correctly, for FAR. Its
+story count was wrong on roughly a third of the subdistricts that publish one,
+and nothing in 683 tests, the type checker, the linter, or the null inventory
+had an opinion. **The inventory measures whether a field resolved, not whether
+it resolved from all the inputs the rule requires.** Rule 13's sweep is the only
+instrument that asks the second question.
+
+NYC, Austin, LA and Philadelphia remain to be audited against the same question.

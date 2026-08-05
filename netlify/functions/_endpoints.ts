@@ -54,7 +54,12 @@ export const FIELDS = {
   // HeightMax/FARMax/Use_ are real dimensional fields on the zoning layer
   // (verified 2026-05-29): e.g. Stuart St => HeightMax 155, FARMax 10,
   // Use_ "Mixed-Use"; Open Space subdistricts return null limits.
-  zoning: ['Name', 'District', 'Article', 'HeightMax', 'FARMax', 'Use_'],
+  // NumFloorsMax is the code's OWN story count and is populated on 624 of 1,649
+  // subdistricts. Without it the envelope divides HeightMax by an 11 ft
+  // convention and disagrees with the published figure on 35% of the
+  // subdistricts that state both (35 ft → we said 3 stories, the code says 2 or
+  // 2.5). See CLAUDE.md rule 12.
+  zoning: ['Name', 'District', 'Article', 'HeightMax', 'FARMax', 'Use_', 'NumFloorsMax'],
   // address = ST_NUM + ST_NAME; PID = parcel id; LAND_SF = lot size (sq ft).
   // OWNER is requested ONLY to detect government-owned parcels (City Hall, courts,
   // schools, fire stations) so they're flagged non-developable. It is reduced to a

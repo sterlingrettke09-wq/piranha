@@ -105,6 +105,13 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
       article: zoning?.Article ? String(zoning.Article) : null,
       maxHeightFt: typeof zoning?.HeightMax === 'number' ? zoning.HeightMax : null,
       maxFAR: typeof zoning?.FARMax === 'number' ? zoning.FARMax : null,
+      // The code states a floor count on 624 of 1,649 subdistricts. Carry it
+      // rather than dividing HeightMax by a floor-to-floor convention — on the
+      // 80 subdistricts publishing both, deriving disagreed with the code 35%
+      // of the time (2 or 2.5 stated vs 3 derived at HeightMax 35).
+      ...(typeof zoning?.NumFloorsMax === 'number' && zoning.NumFloorsMax > 0
+        ? { maxStories: zoning.NumFloorsMax }
+        : {}),
       allowedUses: mapZoningUse(typeof zoning?.Use_ === 'string' ? zoning.Use_ : null),
     },
     lot: {
