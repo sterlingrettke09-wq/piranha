@@ -22,10 +22,15 @@ describe('getLaParcelInfo', () => {
     // districtCode keeps the raw ZONE_CMPLT including the [Q] qualifier.
     expect(info.zoning.districtCode).toBe('[Q]R3-1')
     // laLimits: [Q] stripped → R3-1, tok '1' = HD1. R3 is NOT in the
-    // base-controlled R-zone regex (RA|RE|RS|R1|RD|RW|R2), so HD1 FAR 3.0 applies
-    // and height-district cap h is null for plain '1'.
+    // base-controlled R-zone regex (RA|RE|RS|R1|RD|RW|R2), so HD1 FAR 3.0 applies.
     expect(info.zoning.maxFAR).toBe(3.0)
-    expect(info.zoning.maxHeightFt).toBeNull()
+    // CORRECTED 2026-08-05 — this asserted null (no height limit published) on
+    // the strength of Height District 1 carrying no cap of its own. It does not,
+    // but the base zone does: LAMC § 12.21.1 preamble, "In the A1, A2, RZ, RMP,
+    // and RW2 Zones, and in those portions of the RD and R3 Zones, which are
+    // also in Height District No. 1, no Building or Structure shall exceed 45
+    // feet in height." R3-1 is one of the commonest zone strings in the city.
+    expect(info.zoning.maxHeightFt).toBe(45)
     // usesForZone: strip [Q] → R3 → residential + mixed.
     expect(info.zoning.allowedUses).toEqual(['residential', 'mixed'])
     // ZONING_DESCRIPTION surfaced as article.

@@ -37,6 +37,7 @@ import { getSanDiegoParcelInfo } from './providers/sandiego'
 import { getSanJoseParcelInfo } from './providers/sanjose'
 import { getNashvilleParcelInfo } from './providers/nashville'
 import { computeEnvelope } from './envelope'
+import { resolveBostonFar } from './zoning/boston'
 
 export type { ParcelResult }
 
@@ -104,7 +105,16 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
       subdistrict: zoning?.District ? String(zoning.District) : null,
       article: zoning?.Article ? String(zoning.Article) : null,
       maxHeightFt: typeof zoning?.HeightMax === 'number' ? zoning.HeightMax : null,
-      maxFAR: typeof zoning?.FARMax === 'number' ? zoning.FARMax : null,
+      // BPDA publishes no FARMax on the two-numerical-part subdistricts
+      // (B-1-55, H-2-55, H-2-D-65, I-2-D-65, L-2-65, M-1-55). Without a
+      // provider value, resolveZoningLimits fell through to the per-letter seed
+      // constants — which put B-1-55 at FAR 2.0 against the code's 1.0. Art. 3
+      // § 3-1 makes the subdistrict number the FAR and Art. 13 Table B states
+      // it; read it rather than seeding from the leading letter.
+      maxFAR:
+        typeof zoning?.FARMax === 'number'
+          ? zoning.FARMax
+          : resolveBostonFar(String(zoning?.Name ?? '')),
       // The code states a floor count on 624 of 1,649 subdistricts. Carry it
       // rather than dividing HeightMax by a floor-to-floor convention — on the
       // 80 subdistricts publishing both, deriving disagreed with the code 35%

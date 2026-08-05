@@ -70,10 +70,20 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const land = landR.status === 'fulfilled' ? firstAttrs(landR.value) : null
   const height = heightR.status === 'fulfilled' ? firstAttrs(heightR.value) : null
-  // gen_hght uses 9999 as a "no limit" sentinel (open-space / no height district);
-  // treat that (and any absurd value) as null, not a 9999 ft / 900-story tower.
+  // gen_hght encodes non-numeric height districts as repdigit sentinels, NOT as
+  // a single 9999 "no limit" value. Distinct-value query against layer 5 on
+  // 2026-08-05 returned exactly nine, each with a self-describing `height`
+  // label: 1111 USCG/Caltrans · 2222 "None Stated" · 3333 Job Corps · 4444
+  // "Special Height District" · 5555 CP · 6666 HP · 7777 HP-RA · 8888 MB-RA ·
+  // 9999 OS (Open Space — an unmapped height district, not "unlimited").
+  //
+  // The bound is `<= 1000`, not `< 1000`: the same query showed the real height
+  // ladder runs 25…1000, and gen_hght=1000 is ONE polygon whose `height` reads
+  // "1000-S-2" — a genuine 1,000 ft height district (numeral prefix and numeric
+  // field agree). The old `< 1000` discarded it, publishing a data GAP where the
+  // map states an answer. Every sentinel is >= 1111, so nothing is admitted here.
   const ghRaw = Number(height?.gen_hght)
-  const maxHeightFt = Number.isFinite(ghRaw) && ghRaw > 0 && ghRaw < 1000 ? ghRaw : null
+  const maxHeightFt = Number.isFinite(ghRaw) && ghRaw > 0 && ghRaw <= 1000 ? ghRaw : null
 
   const luCode = land?.landuse_landuse ? String(land.landuse_landuse).trim().toUpperCase() : ''
   const luUnits = land?.landuse_resunits != null ? Number(land.landuse_resunits) : 0

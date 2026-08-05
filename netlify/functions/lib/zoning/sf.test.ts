@@ -6,7 +6,9 @@ import { resolveSfFar } from './sf'
 // Area Ratio limits shall not apply to Residential Uses."
 
 describe('SF §124(b) — residential FAR exemption is a KNOWN ABSENCE', () => {
-  it.each(['RH-1', 'RH-1(D)', 'RH-2', 'RM-1', 'RM-4', 'RTO', 'RED', 'RED-MX'])(
+  // RTO codes are the three the map carries (RTO-1/-C/-M), not the family name
+  // "RTO" — which this list used to exercise and which matches no parcel.
+  it.each(['RH-1', 'RH-1(D)', 'RH-2', 'RM-1', 'RM-4', 'RTO-1', 'RTO-C', 'RTO-M', 'RED', 'RED-MX'])(
     'R district %s exempts residential',
     (z) => {
       const r = resolveSfFar(z)
@@ -59,6 +61,33 @@ describe('SF — the exemption is per-USE, not per-district', () => {
       expect(resolveSfFar(z as string).nonResidentialFAR).toBe(far)
     },
   )
+})
+
+describe('SF RTO — the key must be the code the MAP carries, not the family name', () => {
+  // Ord. 245-25 (Family Zoning Plan, Eff. 1/12/2026) renamed RTO to RTO-1 and
+  // created RTO-C; § 201 as amended: "'RTO District' shall mean any RTO-1,
+  // RTO-C, or RTO-M District". Table 209.4's "Floor Area Ratio" row prints
+  // "1.8 to 1" in all three columns (Ord. 245-25 p. 109).
+  //
+  // WHAT SHIPPED: a single key 'RTO'. Live query of the SF Planning zoning layer
+  // (MapServer/3) on 2026-08-05: zoning='RTO' → 0 features, while RTO-1 → 83,
+  // RTO-M → 75, RTO-C → 908. The key matched NOTHING, so 1,066 parcels resolved
+  // nonResidentialFAR = null (a gap) where the code states 1.8.
+  it.each([['RTO-1', 1.8], ['RTO-M', 1.8], ['RTO-C', 1.8]])(
+    '%s non-residential FAR %s (was null: the old table keyed bare "RTO")',
+    (z, far) => {
+      const r = resolveSfFar(z as string)
+      expect(r.nonResidentialFAR).toBe(far)
+      expect(r.residentialExempt).toBe(true) // R district → § 124(b)
+      expect(r.maxFAR).toBeNull()
+    },
+  )
+
+  it('bare "RTO" is not a live district code and resolves nothing', () => {
+    // Pins the defect shape: were the family name ever re-added as a key it
+    // would again match zero parcels while looking correct in review.
+    expect(resolveSfFar('RTO').nonResidentialFAR).toBeNull()
+  })
 })
 
 describe('SF — never guesses', () => {

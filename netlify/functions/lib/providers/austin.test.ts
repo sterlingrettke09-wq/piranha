@@ -77,7 +77,10 @@ describe('getAustinParcelInfo — happy path', () => {
     expect(res.info.address).toBe('Selected location')
   })
 
-  it('pins a downtown CBD zone (h null, f 8.0) and commercial uses', async () => {
+  // Was 'pins a downtown CBD zone (h null, f 8.0)'. The height half of that
+  // title was retracted 2026-08-05: LDC § 25-2-492(D) states 350 ft for CBD
+  // (Ord. No. 20251023-063, Pt. 1, 11-3-25). See austinZoningTable.test.ts.
+  it('pins a downtown CBD zone (h 350, f 8.0) and commercial uses', async () => {
     vi.stubEnv('MAPBOX_TOKEN', 'test-token')
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
@@ -90,7 +93,7 @@ describe('getAustinParcelInfo — happy path', () => {
     const res = await getAustinParcelInfo(LAT, LNG)
     expect(res.ok).toBe(true)
     if (!res.ok) return
-    expect(res.info.zoning.maxHeightFt).toBeNull()
+    expect(res.info.zoning.maxHeightFt).toBe(350)
     expect(res.info.zoning.maxFAR).toBe(8.0)
     expect(res.info.zoning.allowedUses).toEqual(['commercial', 'mixed', 'residential'])
   })

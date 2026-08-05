@@ -39,21 +39,86 @@ const ZONING =
 const SUBCHAPTER_F =
   'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/PLANNINGCADASTRE_residential_design_standards/FeatureServer/0'
 
-// Max height (ft) + FAR by base zone, from Austin LDC §25-2-492 site-development
-// regulations (City of Austin Zoning Guide tables). Residential zones are
-// height-governed with no FAR (f: null). PUD/DR/AV/P vary case-by-case → null.
-const AUSTIN_LIMITS: Record<string, { h: number | null; f: number | null }> = {
+// Max height + FAR by base zone. Verified value-by-value 2026-08-05 against the
+// PRIMARY source: Austin Land Development Code § 25-2-492 (SITE DEVELOPMENT
+// REGULATIONS), Subsection (D) "Site development regulation table" — Municode
+// Supplement No. 173, "Codified through Ordinance No. 20260122-059, effective
+// February 2, 2026". § 25-2-492(A): "The table in Subsection (D) establishes the
+// principal site development regulations for each zoning district."
+//
+// The table's 37 district columns run LA, RR, SF-1, SF-2, SF-3, SF-4A, SF-4B,
+// SF-5, SF-6, MF-1…MF-6, MH, NO, LO, GO, CR, LR, GR, L, CBD, DMU, W/LO, CS,
+// CS-1, CH, IP, MI, LI, R&D, DR, AV, AG, P. Every row carries exactly 37 value
+// cells, so the columns are positionally unambiguous — that alignment is what
+// was checked, since a one-column slip is the failure mode that publishes a
+// neighbouring district's number under this district's name.
+//
+// `h` is the code's own MAXIMUM HEIGHT figure in FEET. Where the code states a
+// STORY count instead, `s` carries it and `h` stays null — never convert
+// between the two with a per-story constant.
+//
+// Residential zones have a BLANK FAR cell (f: null → a gap, not "no FAR"; the
+// SF-1/2/3 branch below resolves those properly). PUD/DR/AV/P vary case-by-case
+// → absent. W/LO and CH are deliberately absent: their table cells are footnote
+// pointers to regulations we have not resolved (CH's height is a function of
+// impervious cover, § 25-2-582(B)), and a gap is the honest state.
+const AUSTIN_LIMITS: Record<string, { h: number | null; f: number | null; s?: number }> = {
   RR: { h: 35, f: null }, 'SF-1': { h: 35, f: null }, 'SF-2': { h: 35, f: null }, 'SF-3': { h: 35, f: null },
-  'SF-4A': { h: 35, f: null }, 'SF-4B': { h: 30, f: null }, 'SF-5': { h: 35, f: null }, 'SF-6': { h: 35, f: null },
+  // SF-4A: the § 25-2-492(D) height cell is footnote 4, which points at
+  // § 25-2-779 (Small Lot Single-Family Residential Use). § 25-2-779(D)(3), for
+  // "property zoned single-family residence small lot (SF-4A) district or less
+  // restrictive": "The maximum height for a structure is 35 feet." Confirmed.
+  'SF-4A': { h: 35, f: null },
+  // SF-4B: was `h: 30` — a FOOT figure the code never states. The § 25-2-492(D)
+  // height cell is footnote 5 → § 25-2-558 (Single-Family Residence Condominium
+  // Site (SF-4B) District Regulations), whose § 25-2-558(G) reads: "Except as
+  // provided in Subsection (H), the maximum height of a building is two stories.
+  // A story may not exceed a plate height of 10 feet." The code regulates SF-4B
+  // in STORIES. 30 ft is not derivable from it (two stories at a 10 ft plate is
+  // not 30), and § 25-2-558 is the only place in Chapter 25-2 that sets an SF-4B
+  // height. Carry the stated 2 stories; leave feet unresolved rather than
+  // multiplying by an invented ft/story.
+  'SF-4B': { h: null, f: null, s: 2 },
+  'SF-5': { h: 35, f: null }, 'SF-6': { h: 35, f: null },
+  // MH: every MH cell in the § 25-2-492(D) table is an em dash, so the 35 does
+  // NOT come from there. It is § 25-2-1205 (Site Development Regulations for
+  // Mobile Home Parks), item (15): "The maximum height of a structure shall be
+  // 35 feet." § 25-2-1206 routes mobile home SUBDIVISIONS to the SF-2
+  // regulations, which are also 35 ft — both paths agree. Confirmed.
   MH: { h: 35, f: null },
   'MF-1': { h: 40, f: null }, 'MF-2': { h: 40, f: null }, 'MF-3': { h: 40, f: 0.75 },
   'MF-4': { h: 60, f: 0.75 }, 'MF-5': { h: 60, f: 1.0 }, 'MF-6': { h: 90, f: null },
   NO: { h: 35, f: 0.35 }, LO: { h: 40, f: 0.7 }, GO: { h: 60, f: 1.0 }, CR: { h: 40, f: 0.25 },
   LR: { h: 40, f: 0.5 }, GR: { h: 60, f: 1.0 }, L: { h: 200, f: 8.0 }, CS: { h: 60, f: 2.0 }, 'CS-1': { h: 60, f: 2.0 },
-  CBD: { h: null, f: 8.0 }, DMU: { h: 120, f: 5.0 },
-  IP: { h: 60, f: 1.0 }, LI: { h: 60, f: 1.0 }, MI: { h: 120, f: 1.0 }, 'R&D': { h: 45, f: 0.25 },
+  // CBD: was `h: null`, which rendered downtown as "height unknown". The
+  // § 25-2-492(D) MAXIMUM HEIGHT cell for CBD now reads 350 — added by Ord. No.
+  // 20251023-063, Pt. 1, 11-3-25 (listed in the table's own Source line, which
+  // ends "Ord. 20100819-064; Ord. No. 20251023-063, Pt. 1, 11-3-25"). This is a
+  // BASE entitlement, not a bonus: § 25-2-581 (Central Business District (CBD)
+  // District Regulations) imposes no height at all, and the Downtown Density
+  // Bonus Program treats 350 ft as the threshold ABOVE which bonus area is
+  // measured (§ 25-2-586(B)(2): participation "only for floor-to-area ratio that
+  // exceeds 8:1 or height above 350 feet").
+  CBD: { h: 350, f: 8.0 }, DMU: { h: 120, f: 5.0 },
+  IP: { h: 60, f: 1.0 }, LI: { h: 60, f: 1.0 }, MI: { h: 120, f: 1.0 },
+  // R&D height 45 ft is § 25-2-603(F): "The maximum height is 45 feet, except
+  // that the height of a building may exceed 45 feet by one foot for each
+  // additional two feet that the building is set back … up to a maximum height
+  // of 90 feet." 45 is the base; the 90 is a setback-earned increase, not a
+  // ceiling to publish.
+  //
+  // R&D FAR was 0.25 applied to every R&D parcel. The § 25-2-492(D) FAR cell for
+  // R&D is footnote 14 → § 25-2-603, and § 25-2-603(E) is GEOGRAPHICALLY
+  // CONDITIONED: "The maximum floor to area ratio is .25 to 1 in the following
+  // areas: (1) the Barton Creek watershed…; (2) the aquifer-related Williamson
+  // Creek watershed…; (3) the Lake Austin watershed…; (4) the Lake Austin
+  // watershed…; and (5) the Northwest Area…". We do not resolve watershed
+  // geometry, so for an arbitrary R&D parcel the FAR is UNRESOLVED (null → a
+  // gap), not 0.25. It is also not `farUnconstrained`: the slot exists and is
+  // filled for five named areas, so an absence has not been established.
+  'R&D': { h: 45, f: null },
 }
-function austinLimits(base: string | null): { h: number | null; f: number | null } {
+function austinLimits(base: string | null): { h: number | null; f: number | null; s?: number } {
   if (!base) return { h: null, f: null }
   return AUSTIN_LIMITS[base.toUpperCase().trim()] ?? { h: null, f: null }
 }
@@ -221,6 +286,10 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
       maxHeightFt: sf ? sf.maxHeightFt : lim.h,
       maxFAR: sf ? sf.maxFAR : lim.f,
       allowedUses: usesForZone(base),
+      // Only where the CODE states a story count (SF-4B, § 25-2-558(G)). The
+      // envelope prefers a stated count over one derived by dividing a height by
+      // a floor-to-floor convention, and labels which it used.
+      ...(!sf && lim.s != null ? { maxStories: lim.s } : {}),
       ...(sf?.farFloorSqFt != null ? { farFloorSqFt: sf.farFloorSqFt } : {}),
       ...(sf?.farUnconstrained ? { farUnconstrained: true } : {}),
       ...(subFOk && austinHomeAlternatives(base, insideSubchapterF)

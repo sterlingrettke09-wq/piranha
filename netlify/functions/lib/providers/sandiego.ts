@@ -30,8 +30,24 @@ const CITY_LAND = `${DSD}/Regulatory/MapServer/3`
 const COASTAL_ZONE =
   'https://services9.arcgis.com/wwVnNW92ZHUIr0V0/arcgis/rest/services/Coastal_Zone_Polygon/FeatureServer/0'
 
-/** Proposition D (1972) caps buildings at 30 ft in the coastal height overlay. */
-const COASTAL_HEIGHT_LIMIT_FT = 30
+/** SDMC §132.0505(a) (Chapter 13, 7-2024 printing): "Notwithstanding any section
+ *  to the contrary, no building or addition to a building shall be constructed
+ *  with a height in excess of thirty feet within the Coastal Zone of the City of
+ *  San Diego." Codification of Proposition D (effective 12-7-1972); amended by
+ *  Prop L (1988), Prop D (1998), Prop C (2000), Measure E (2020), O-21508 (2022)
+ *  and O-21811 (eff. 7-11-2024) — every amendment carved out a geographic
+ *  EXCEPTION area, none moved the thirty-foot figure.
+ *
+ *  Verified 2026-08-05 against docs.sandiego.gov/municode/municodechapter13/
+ *  ch13art02division05.pdf. The figure is carried in FEET, as the code states it.
+ *
+ *  Which parcels are inside the overlay is NOT re-derived here: §132.0502(a)
+ *  delegates the boundary to "Map No. C-380, filed in the office of the City
+ *  Clerk", and the CHLOZ layer queried below is the City's own mapping of it.
+ *  The §132.0505(b)(1)-(b)(4) exception areas are therefore honoured only to the
+ *  extent that layer honours them — spot-probed 2026-08-05: downtown south of
+ *  Laurel St (b)(1) and San Ysidro (b)(3) correctly return NO feature. */
+export const COASTAL_HEIGHT_LIMIT_FT = 30
 
 const posInt = (v: unknown): number | null => {
   const n = Number(v)
@@ -41,7 +57,7 @@ const posInt = (v: unknown): number | null => {
 // San Diego zone names (Land Development Code): RS/RM/RX residential,
 // CC/CN/CV/CO/CR commercial, IL/IH/IP/IS industrial, OC/OP/OF open space,
 // AG agricultural, plus planned districts (CCPD-*, GQPD-*, and other *PD-*).
-function usesForZone(zone: string | null): string[] | null {
+export function usesForZone(zone: string | null): string[] | null {
   if (!zone) return null
   const z = zone.trim().toUpperCase()
   if (/^R[SMX]-/.test(z)) return ['residential']
@@ -116,10 +132,29 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
   const address = [num > 0 ? String(num) : '', street].filter(Boolean).join(' ').trim()
 
   const zone = zoning?.ZONE_NAME ? String(zoning.ZONE_NAME).trim() : null
-  // Proposition D's 30 ft coastal cap is the one numeric height San Diego
+  // The §132.0505 30 ft coastal cap is the one numeric height San Diego
   // publishes spatially. Base-zone heights/FARs live in Land Development Code
   // tables keyed on the zone-name suffix and are NOT in the GIS, so they stay
-  // null ("not in public data") rather than being guessed.
+  // null ("not in public data") rather than being guessed. That null is a GAP
+  // (missing lookup), not an answer — with one documented exception below.
+  //
+  // Two things checked 2026-08-05 against Chapter 13 Article 1 (3-2026 printing):
+  //
+  //  1. The 30 ft cap never OVERSTATES a base zone, because no Chapter 13 base
+  //     zone caps structure height below 30 ft. Lowest figure in each division:
+  //     Div 3 open space 30 ft; Div 4 residential 30 ft (RS-1-1…1-7 "24/30" is
+  //     24 ft at the setback rising to 30 ft overall per §131.0444(c) and
+  //     Diagram 131-04L — 30 is the ceiling, not the pair's larger alternative);
+  //     Div 5 commercial 30 ft. So min(base, coastal) is 30 wherever CHLOZ hits.
+  //
+  //  2. INDUSTRIAL IS A KNOWN ABSENCE, NOT A GAP, and we currently render it as
+  //     a gap. §131.0644 "Maximum Structure Height in Industrial Zones": "There
+  //     are no height limits for structures in the industrial zones except as
+  //     limited by the regulations in Chapter 13, Article 2 (Overlay Zones)."
+  //     The section EXISTS and affirmatively states no limit, which is the
+  //     rule-5 test for an absence. Reporting it as such needs a height analogue
+  //     of `zoning.farUnconstrained` in src/types/parcel.ts, so it is recorded
+  //     here rather than fixed — do not let this comment read as if it shipped.
   const inCoastalHeight = chloz?.ZONENAME != null && /chloz/i.test(String(chloz.ZONENAME))
 
   // City-owned land is the only ownership signal available here.
