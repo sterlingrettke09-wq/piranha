@@ -2233,3 +2233,73 @@ were not. That asymmetry is the general lesson: **a result that succeeds gets le
 scrutiny than one that fails, and success in the flattering direction is exactly
 where scrutiny is most needed.** Eight of eleven "successful" measurements were
 wrong or overstated, and none would have been caught by re-reading our own code.
+
+---
+
+## 2026-08-05 — Filter enumeration: 8 of 9 sampling filters are defective
+
+Applied the parser-domain enumeration to the SAMPLING FILTERS. The question is not
+whether a filter looks reasonable; it is what the filter actually admits.
+
+| city | verdict | what it admits that is not a new building |
+|---|---|---|
+| philadelphia | **CLEAN** | 1.7%; misses ~0.1% |
+| seattle | BOTH | 3.5% contamination; DADUs filed under both "New" and "Addition" |
+| miami | CONTAMINATED | 8.7% — trellises, pergolas, "NEW PARK ONLY" |
+| sf | CONTAMINATED | 9.0% sheds/accessory + 18.1% duplication |
+| nashville | BOTH | **25.1%**; misses `CACH` commercial shell |
+| denver | BOTH | clean on type, but misses COMMERCIAL PHASED CONSTRUCTION |
+| **austin** | BOTH | **37.0%** — 3,599 pools/spas, decks, retaining walls, EV chargers, event tents |
+| **boston** | BOTH | **58.0%** — 854 Certificates of Occupancy (53.2%) |
+| **nyc** (script) | BOTH | **63.9%** — foundation/earthwork 41.2%, plumbing 19.9% |
+
+### The contamination biases DOWN, again
+
+Nashville's contaminated slice: median 0.99 mo against 1.12 overall. Miami's:
+5.9 mo against 12.6 for real buildings. Third distinct mechanism in a row —
+after the wrong date field and right-censoring — and all three run the same way.
+Rule 18 predicted this: the errors that survive are the ones producing plausible
+output, and a too-fast permit time reads as a fast city rather than a bad sample.
+
+### Too narrow is the harder half, and it is where the real projects are
+
+Austin excludes `work_class='Shell'`: 202 records, **median 11.1 months, p80
+17.4** — new shell buildings for multifamily, offices, hotels, parking garages.
+1.7% of the corrected count and the entire upper tail. Meanwhile Austin's
+admitted set is 49% single-family houses at 1.64 mo. **Multifamily measured alone
+is 10.0 months against a published headline of 2.2** — the class the tool exists
+to answer for, wrong by 4.5×.
+
+Denver misses COMMERCIAL PHASED CONSTRUCTION (22 rows absent entirely); Nashville
+misses `CACH` commercial shell; Boston's `worktype` misses 10 of 684.
+
+### NYC: the script does not reproduce its own committed number
+
+The script's filter is 63.9% sub-permits. The COMMITTED filter is not. The shipped
+8.3-month figure came from a corrected query the script does not contain, so
+anyone re-running `scripts/permits/nyc.mjs` gets a different number with no way to
+know which is right. **A committed figure whose generator disagrees with it is
+worse than an unsourced one** — it carries the appearance of reproducibility.
+
+### Order for the next pass, and why
+
+**Filters → censoring → restated bases.** A censoring correction applied to a
+contaminated population produces a rigorously computed number for the wrong
+thing. Austin corrected for censoring but still 37% swimming pools would be
+precisely wrong.
+
+Censoring ruling already made: Kaplan-Meier where the cohort supports it,
+median-of-issued explicitly labelled a FLOOR where it does not, withdrawn where
+neither means anything — never a bare median. **Publish the issuance rate
+regardless**: it is the one number censoring cannot bias, and "60% of filings here
+ever issue" is arguably more useful than any median. KM's assumption that
+censoring is independent of time-to-event is a stated limitation, not an
+assumption to wave through: long-pending applications are plausibly unlike ones
+that resolve.
+
+### Position of the eight surviving figures, stated plainly
+
+Every one except Philadelphia is computed over a population now KNOWN to be
+contaminated. They have not been withdrawn only because recomputation is the next
+pass rather than a judgement call — but until that pass lands, **only
+Philadelphia's 3.0 months rests on a filter that was checked and held.**
