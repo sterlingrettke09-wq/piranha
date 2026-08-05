@@ -27,8 +27,19 @@ const LA_HD: Record<string, { f: number; h: number | null }> = {
 }
 function laLimits(zoneCmplt: string | null): { h: number | null; f: number | null } {
   if (!zoneCmplt) return { h: null, f: null }
-  // Strip [Q]/[T]/(Q)/(T) prefixes, then split base-zone / height-district.
-  const z = zoneCmplt.replace(/^[[(]?[QT][\])]?-?/i, '').trim()
+  // Strip a leading QUALIFIER, then split base-zone / height-district.
+  //
+  // ⚠️ CORRECTED 2026-08-04. The old pattern only knew [Q]/(Q)/[T]/(T). LA also
+  // publishes (F) — "Frontage"/conditional — and (WC) — Warner Center. Measured
+  // live: 14 of 2,128 distinct ZONE_CMPLT strings (0.7%) carry an unhandled
+  // prefix, and BOTH failure modes overstate:
+  //   (F)CM-1-CUGU → base parsed as "(F)CM", so the C/M Height-District-1
+  //     override never fired → FAR 3.0 published where the code says 1.5.
+  //   (F)RE11-1    → base parsed as "(F)RE11", so the base-controlled R-zone
+  //     test never fired → FAR 3.0 asserted where there should be NONE.
+  // Now accepts any bracketed qualifier. The bare Q/T branch is preserved so
+  // existing behaviour for un-bracketed forms is unchanged.
+  const z = zoneCmplt.replace(/^(?:[[(][A-Z]{1,4}[\])]|[QT])-?/i, '').trim()
   const parts = z.split('-')
   const base = (parts[0] ?? '').toUpperCase()
   const tok = (parts[1] ?? '').toUpperCase()

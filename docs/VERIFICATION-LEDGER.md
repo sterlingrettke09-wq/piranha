@@ -1355,3 +1355,65 @@ base rate.
 
 LA and Philadelphia remain. Recorded explicitly so the sweep is not read as
 complete.
+
+### Rule 13 sweep COMPLETE — LA defect found, Philadelphia clean.
+
+**LA — DEFECT, in the zone-string parser.**
+
+LA already parses the composite string correctly in principle (strip qualifier →
+split base zone / height district → apply the C/M Height-District-1 override).
+The bug was in the strip:
+
+```
+/^[[(]?[QT][\])]?-?/i      // knew [Q] (Q) [T] (T) — and nothing else
+```
+
+LA also publishes `(F)` and `(WC)` qualifiers. Measured live: **14 of 2,128
+distinct `ZONE_CMPLT` strings (0.7%)** carry an unhandled prefix. **Both failure
+modes overstate:**
+
+| Zone string | Base parsed as | Result | Should be |
+|---|---|---|---|
+| `(F)CM-1-CUGU` | `(F)CM` | FAR **3.0** — C/M override never fired | **1.5** (LAMC §12.21.1-A.1) |
+| `(F)RE11-1` | `(F)RE11` | FAR **3.0** — base-controlled R test never fired | **null** (no FAR asserted) |
+
+Fixed to accept any bracketed qualifier, with the bare `Q`/`T` branch preserved
+so unbracketed forms behave as before. Tests pin every observed prefix form and
+assert an unqualified string is left untouched.
+
+**This is a THIRD failure shape**, distinct from the two the sweep was built for:
+not *published-but-derived*, not *joint dependency*, but **a parser whose input
+domain was narrower than the source's actual output**. Q1 and Q2 would both have
+missed it; it surfaced only from reading live distinct values of the field the
+parser consumes. Add to the sweep: **enumerate the real value space of any field
+you parse, rather than the forms you expect.**
+
+**Philadelphia — CLEAN on all three questions.**
+
+- **Q1.** `ZoningCodeCharacteristics` publishes `MaxHeight` and `MaxFAR`; both
+  are fetched. Unfetched `MinLotArea` / `MinPercent` are not FAR inputs. Nothing
+  derived that the source states.
+- **Q2.** `long_code` vs `code` differ only by hyphenation (`CMX3` / `CMX-3`) —
+  37 distinct pairs, all cosmetic. Not overlays, no joint dependency.
+- **Q3.** The free-text `MaxFAR` parser was already built and tested against the
+  published percentage form.
+
+Two staleness fields go unread and are logged rather than fixed: **`pending`
+is `'Yes'` on 7 of 29,205 polygons** (a pending rezoning bill), and
+`sunset_date` is populated on exactly **1**. Neither changes a FAR we publish
+today; both would let the tool say "a rezoning is pending here", which is
+product surface, not a defect.
+
+### Final sweep table
+
+| City | Q1 published-but-derived | Q2 joint dependency | Q3 semantics / parse |
+|---|---|---|---|
+| boston | **DEFECT — `NumFloorsMax`, fixed** | not audited | not audited |
+| nyc | negative | minor — `SplitZone` 2.3%, label only | negative |
+| austin | known two-branch, built for | known, built for | not audited |
+| la | negative | negative (already parsed) | **DEFECT — `(F)`/`(WC)` prefixes, fixed** |
+| philadelphia | negative | negative | negative |
+
+**Two defects across five cities, in different shapes, neither caught by 683
+tests.** The prediction of "at least one more" held; the shape it took did not
+match either question the sweep was designed around.
