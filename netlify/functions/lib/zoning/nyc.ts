@@ -8,7 +8,10 @@
 //
 // ── 2026-08-05 CORRECTION: the section this file cited was REPEALED ──────────
 // This table used to cite "ZR 23-662(a) Table 1". That section no longer
-// exists — https://zr.planning.nyc.gov/article-ii/chapter-3/23-662 returns 404.
+// exists — https://zr.planning.nyc.gov/article-ii/chapter-3/23-662 [known-dead]
+// returns 404. That link is kept deliberately, as EVIDENCE of the repeal rather
+// than as a source relied on; scripts/check-citations.ts expects it to stay dead
+// and fails if it ever resolves again.
 // City of Yes for Housing Opportunity (last amended 12/5/2024) renumbered the
 // Quality Housing height regs into ZR 23-43 ("Height and Setback Requirements
 // in R6 Through R12 Districts"), whose operative table is ZR 23-432, and RAISED

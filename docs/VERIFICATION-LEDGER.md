@@ -2082,3 +2082,50 @@ Run it before each parallel round, not after.
 - **Zero refuted out of nineteen.** Either the extractors were disciplined or the
   refuters lacked teeth. One data point. If the next round is also 0, check the
   refuter role rather than concluding extraction is perfect.
+
+---
+
+## 2026-08-05 — Citation decay, made mechanical
+
+`scripts/check-citations.ts` fetches every URL the repo cites **in a comment**
+and exits non-zero on a 4xx/5xx. A citation is a claim about the current state of
+an external document, and it rots silently — a third failure mode alongside
+*unsourced* and *mis-transcribed*: **correctly sourced to something that no
+longer exists.**
+
+**It fired on its first run**, on the case it was built for: `nyc.ts:11` still
+carried the repealed `zr.planning.nyc.gov/.../23-662` link. The builder had
+corrected every section reference and left the URL in the module header — the
+same shape as rule 17, a retraction that didn't reach one more place.
+
+### Two design points, both learned the hard way tonight
+
+**Unreachable ≠ dead.** A network error reports as UNREACHABLE and does NOT fail.
+An offline machine must not be indistinguishable from a repealed statute — rule
+5, a failed fetch is never a substantive answer.
+
+**A deliberately recorded dead link is not a defect.** `nyc.ts` keeps the 404 URL
+*as evidence of the repeal*. Those carry an explicit `[known-dead]` marker on the
+URL's own line, never inferred from nearby prose like "returns 404" — guessing
+would let a genuinely rotted link hide behind a word. And a `[known-dead]` URL
+that RESOLVES again also fails: the record has gone stale.
+
+### What it cannot do, stated so the green result is not over-read
+
+It catches **repealed** and **moved**. It does not catch **amended in place** —
+the URL still returns 200 while the text underneath changes, which is the more
+common case and still needs someone reading the source. A pass means the
+documents we cite still exist, never that the numbers we cite are current.
+
+### Recorded for the next parallel round
+
+**A refuter reading the same source as the extractor is a second reading, not an
+adversarial one.** It catches transcription and is blind to source defects.
+Minneapolis's transposed handbook columns were caught by two independent
+ordinance PDFs agreeing *against* a third document — cross-source disagreement,
+not scrutiny of any single source. Give the refuter a different source than the
+extractor used, by construction.
+
+**And the checker must never repair what it finds.** A checker that fixes becomes
+a builder with extra context and inherits the same blind spot. Report-only is
+what makes the separation real — it is why Denver's do-nothing fix was caught.
