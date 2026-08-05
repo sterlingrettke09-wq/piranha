@@ -1909,3 +1909,58 @@ Rule 9's corollary says disclosure copy is code. This adds the failure mode:
 summary that describes it**, and summaries are what get read first. Fixing the
 line is trivial; noticing it required reading the file for a different reason
 entirely.
+
+---
+
+## 2026-08-05 — DC's RA/MU provenance: FOUR WRONG FARs, TWO OVERSTATING
+
+Ranked top of the backlog on the grounds that these numbers are *published*
+rather than withheld. That ranking paid immediately.
+
+**RA (Subtitle F) — all five confirmed.** Table § 302.1 gives RA-1…5 as
+0.9 / 1.8 / 3.0 / 3.5 / 5.0 and Table § 303.1 gives 40 / 50 / 60 / 90 / 90 ft.
+Every figure already matched. RA-5 also reads "6.0 for an apartment house or
+hotel"; the base 5.0 is kept, because the larger number assumes a program the
+user has not chosen (rule 6).
+
+**MU (Subtitle G) — four of ten were wrong.**
+
+| district | published | code § 402.1 | direction |
+|---|---|---|---|
+| MU-6 | 4.0 | **6.0** | understated |
+| MU-7 | 5.0 | **4.0** | **overstated 25%** |
+| MU-8 | 6.5 | **5.0** | **overstated 30%** |
+| MU-9 | 6.0 | **6.5** | understated |
+
+The shape names the cause: **our MU-6/7/8 each held the code's MU-7/8/9 figure**
+— one row's slip down the FAR column, propagated into every cost, unit count and
+impact fee those districts produced. MU-5 was wrong differently: the code splits
+MU-5-A (65 ft) and MU-5-B (75 ft), sharing FAR 3.5 but not height, and a single
+`MU-5` at 70 ft matched neither while the lettered-parent fallback kept it
+hidden. A bare `MU-5` now fails closed.
+
+### What could not have caught this
+
+The table was internally consistent, typechecked, and covered by tests — one of
+which **asserted `MU-7 → maxFAR 5.0` in its own title**. Correcting the provider
+required arguing against a green test that named the wrong number. Rule 15, and
+the fourth time internal verification has actively defended a defect rather than
+merely missing it.
+
+Nothing here was discoverable from inside. It took reading Subtitle G.
+
+### The IZ joint dependency, now measured rather than argued
+
+Both FAR tables carry explicit `(IZ)` rows — MU-1 4.0 → 4.8, MU-7 4.0 → 4.8,
+MU-10 90 ft → 100 ft. These are Inclusionary Zoning bonus tiers earned by
+committing affordable units, so the base remains the by-right figure and the
+bonus is NOT carried. But it settles the open rule-13 question: `IZ_Designation`,
+published per polygon and still unfetched, is a genuine joint dependency for
+anyone modelling the bonus.
+
+### Still open
+
+MU zones run to **MU-29** (Dupont 15–22, Capitol 23–26, Naval Observatory 27,
+Fort Totten 28–29) and RA to **RA-10**. The curated table covers MU-1…10 and
+RA-1…5; the rest resolve to nothing, which is a correct gap and a bigger one
+than "MU-11…14" implied.

@@ -68,11 +68,52 @@ const DC_LIMITS: Record<string, DcLimit> = {
   'RF-3': { h: 35, f: null, noFar: true, cite: '11 DCMR Subtitle E ch. 5 (no FAR section)' },
   'RF-4': { h: 40, f: 1.8, s: 3, cite: '11 DCMR Subtitle E §§ 602.1, 603.1' },
   'RF-5': { h: 50, f: 1.8, s: 4, cite: '11 DCMR Subtitle E §§ 602.1, 603.2(b)' },
-  'RA-1': { h: 40, f: 0.9 }, 'RA-2': { h: 50, f: 1.8 }, 'RA-3': { h: 60, f: 3.0 },
-  'RA-4': { h: 90, f: 3.5 }, 'RA-5': { h: 90, f: 5.0 },
-  'MU-1': { h: 65, f: 4.0 }, 'MU-2': { h: 90, f: 6.0 }, 'MU-3': { h: 40, f: 1.0 },
-  'MU-4': { h: 50, f: 2.5 }, 'MU-5': { h: 70, f: 3.5 }, 'MU-6': { h: 90, f: 4.0 },
-  'MU-7': { h: 65, f: 5.0 }, 'MU-8': { h: 70, f: 6.5 }, 'MU-9': { h: 90, f: 6.0 }, 'MU-10': { h: 90, f: 6.0 },
+  // RA — Subtitle F Table § 302.1 (FAR) and Table § 303.1 (height/stories).
+  // All five confirmed 2026-08-05 against the published PDF; every figure below
+  // already matched. RA-5 also reads "6.0 for an apartment house or hotel" — the
+  // base 5.0 is kept because the larger number assumes a program the user has
+  // not chosen (rule 6); it is recorded as an alternative, not raised.
+  'RA-1': { h: 40, f: 0.9, s: 3, cite: '11 DCMR Subtitle F §§ 302.1, 303.1' },
+  'RA-2': { h: 50, f: 1.8, cite: '11 DCMR Subtitle F §§ 302.1, 303.1' },
+  'RA-3': { h: 60, f: 3.0, cite: '11 DCMR Subtitle F §§ 302.1, 303.1' },
+  'RA-4': { h: 90, f: 3.5, cite: '11 DCMR Subtitle F §§ 302.1, 303.1' },
+  'RA-5': { h: 90, f: 5.0, cite: '11 DCMR Subtitle F §§ 302.1, 303.1 (6.0 for an apartment house or hotel)' },
+
+  // MU — Subtitle G Table § 302.1 (MU-1/2), Table § 402.1 (MU-3…10) and the
+  // matching height tables.
+  //
+  // ⚠️ FOUR OF THESE WERE WRONG, and the shape says how: our MU-6/7/8 each held
+  // the code's MU-7/8/9 figure — an off-by-one transcription slip down the FAR
+  // column. MU-7 published 5.0 against a code figure of 4.0 and MU-8 published
+  // 6.5 against 5.0, both OVERSTATING buildable area by 25–30% and flowing
+  // straight into cost, unit counts and impact fees. MU-6 and MU-9 understated.
+  // Caught only by reading Subtitle G; the table was internally plausible,
+  // type-checked and covered by tests that asserted it equalled itself.
+  //
+  // MU-5 was wrong differently: the code splits MU-5-A (65 ft) and MU-5-B
+  // (75 ft), which share FAR 3.5 but NOT height. A single `MU-5` at 70 ft
+  // matched neither, and the lettered-parent fallback would have kept hiding it.
+  // Both spellings are keyed — the code writes MU-5-A, the GIS writes MU-5A.
+  //
+  // The `(IZ)` rows in both tables are Inclusionary Zoning BONUS tiers (MU-1
+  // 4.0 → 4.8, MU-7 4.0 → 4.8, MU-10 90 ft → 100 ft). They are earned by
+  // committing to affordable units, so the base is the by-right figure and the
+  // bonus is not carried (rule 6). Their existence does confirm that
+  // `IZ_Designation` — published per polygon, still unfetched — is a real joint
+  // dependency for anyone who later models the bonus.
+  'MU-1': { h: 65, f: 4.0, cite: '11 DCMR Subtitle G §§ 302.1, 303.1' },
+  'MU-2': { h: 90, f: 6.0, cite: '11 DCMR Subtitle G §§ 302.1, 303.1' },
+  'MU-3': { h: 40, f: 1.0, s: 3, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-4': { h: 50, f: 2.5, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-5-A': { h: 65, f: 3.5, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-5A': { h: 65, f: 3.5, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-5-B': { h: 75, f: 3.5, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-5B': { h: 75, f: 3.5, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-6': { h: 90, f: 6.0, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-7': { h: 65, f: 4.0, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-8': { h: 70, f: 5.0, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-9': { h: 90, f: 6.5, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
+  'MU-10': { h: 90, f: 6.0, cite: '11 DCMR Subtitle G §§ 402.1, 403.1' },
 }
 export function dcLimits(code: string | null): DcLimit {
   if (!code) return { h: null, f: null }

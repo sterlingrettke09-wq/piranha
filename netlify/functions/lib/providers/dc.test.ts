@@ -58,7 +58,13 @@ describe('getDcParcelInfo — happy path', () => {
     expect(res.info.zoning.allowedUses).toEqual(['commercial', 'mixed', 'residential'])
   })
 
-  it('pins an exact-match base zone (MU-7 → h:65, f:5.0) without fallback', async () => {
+  // ⚠️ This test asserted `maxFAR === 5.0` until 2026-08-05. That figure was
+  // wrong — 11 DCMR Subtitle G Table § 402.1 gives MU-7 a FAR of 4.0, and the
+  // table had slipped one row down the column. The test was not failing to catch
+  // the defect, it was DEFENDING it: correcting the provider meant arguing
+  // against a green test whose name asserted the wrong number (rule 15).
+  // The height (65 ft) was right and is unchanged.
+  it('pins an exact-match base zone (MU-7 → h:65, f:4.0) without fallback', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         'MapServer/40': dcParcel(),
@@ -71,7 +77,7 @@ describe('getDcParcelInfo — happy path', () => {
     expect(res.ok).toBe(true)
     if (!res.ok) return
     expect(res.info.zoning.maxHeightFt).toBe(65)
-    expect(res.info.zoning.maxFAR).toBe(5.0)
+    expect(res.info.zoning.maxFAR).toBe(4.0)
   })
 
   it('detects a government owner via OWNERNAME and surfaces ownerPublic', async () => {
@@ -288,5 +294,85 @@ describe('DC fails closed where the two zone columns disagree', () => {
     if (!res.ok) return
     expect(res.info.zoning.farUnconstrained).toBeUndefined()
     expect(res.info.zoning.maxFAR).toBeNull()
+  })
+})
+
+// Every figure below is quoted from the DC Office of Zoning's published PDFs of
+// Title 11, read 2026-08-05. Before that read, these numbers' only provenance
+// was a code comment — and four of the ten MU districts were wrong, two of them
+// overstating buildable area. The table was internally consistent, typechecked,
+// and covered by a test asserting it equalled itself.
+describe('DC RA and MU figures, against Subtitles F and G', () => {
+  // Subtitle F Table § 302.1 (FAR) / Table § 303.1 (height, stories).
+  it.each([
+    ['RA-1', 0.9, 40],
+    ['RA-2', 1.8, 50],
+    ['RA-3', 3.0, 60],
+    ['RA-4', 3.5, 90],
+    ['RA-5', 5.0, 90],
+  ] as const)('%s → FAR %s, %s ft', (zone, f, h) => {
+    expect(dcLimits(zone)).toMatchObject({ f, h })
+  })
+
+  // RA-5 also reads "6.0 for an apartment house or hotel". The base is kept:
+  // the larger figure assumes a program the user has not chosen (rule 6).
+  it('keeps RA-5 at the base 5.0, not the apartment-house 6.0', () => {
+    expect(dcLimits('RA-5').f).toBe(5.0)
+  })
+
+  // Subtitle G Table § 302.1 (MU-1/2) and Table § 402.1 (MU-3…10).
+  it.each([
+    ['MU-1', 4.0, 65],
+    ['MU-2', 6.0, 90],
+    ['MU-3', 1.0, 40],
+    ['MU-4', 2.5, 50],
+    ['MU-6', 6.0, 90],
+    ['MU-7', 4.0, 65],
+    ['MU-8', 5.0, 70],
+    ['MU-9', 6.5, 90],
+    ['MU-10', 6.0, 90],
+  ] as const)('%s → FAR %s, %s ft', (zone, f, h) => {
+    expect(dcLimits(zone)).toMatchObject({ f, h })
+  })
+
+  // The four that were wrong, pinned individually so a regression names itself.
+  // Ours held the code's MU-(N+1) figure for N = 6, 7, 8.
+  it('MU-7 and MU-8 no longer overstate buildable area', () => {
+    expect(dcLimits('MU-7').f).toBe(4.0) // was 5.0 — 25% overstatement
+    expect(dcLimits('MU-8').f).toBe(5.0) // was 6.5 — 30% overstatement
+  })
+  it('MU-6 and MU-9 no longer understate it', () => {
+    expect(dcLimits('MU-6').f).toBe(6.0) // was 4.0
+    expect(dcLimits('MU-9').f).toBe(6.5) // was 6.0
+  })
+
+  // MU-5-A and MU-5-B share FAR 3.5 but NOT height. A single MU-5 at 70 ft
+  // matched neither, and the lettered-parent fallback hid it.
+  it.each([
+    ['MU-5-A', 65],
+    ['MU-5A', 65],
+    ['MU-5-B', 75],
+    ['MU-5B', 75],
+  ] as const)('%s is %s ft with FAR 3.5', (zone, h) => {
+    expect(dcLimits(zone)).toMatchObject({ f: 3.5, h })
+  })
+
+  // A bare MU-5 is ambiguous between the two sub-zones' heights, so it fails
+  // closed rather than picking one.
+  it('a bare MU-5 resolves to nothing', () => {
+    expect(dcLimits('MU-5')).toEqual({ h: null, f: null })
+  })
+
+  // IZ rows are bonus tiers earned by providing affordable units, never
+  // by-right. The base must never silently become the bonus.
+  it('never publishes an Inclusionary Zoning bonus as the by-right figure', () => {
+    expect(dcLimits('MU-1').f).toBe(4.0) // not 4.8 (IZ)
+    expect(dcLimits('MU-2').f).toBe(6.0) // not 7.2 (IZ)
+    expect(dcLimits('MU-10').h).toBe(90) // not 100 (IZ)
+  })
+
+  // Every figure now names the section it came from.
+  it.each(['RA-1', 'RA-5', 'MU-1', 'MU-7', 'MU-9', 'MU-5A'])('%s cites a section', (zone) => {
+    expect(dcLimits(zone).cite).toMatch(/Subtitle [FG]/)
   })
 })
