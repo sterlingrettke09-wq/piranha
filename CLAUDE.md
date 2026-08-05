@@ -171,6 +171,22 @@ check the interpretation against the source before trusting the assertion. A
 green test is evidence the code matches an interpretation, never evidence the
 interpretation is right.
 
+**16. A measurement that contradicts a known-good result is the INSTRUMENT's
+problem until proven otherwise.** `B3-2` resolving to FAR 2.2 and "1,528 Chicago
+classes unhandled" could not both be true. The contradiction was visible in the
+data before anyone looked for a cause — and the reflex was to explain the
+surprising number (a narrow parser? PDs?) rather than to distrust the thing that
+produced it. Both explanations were plausible, which is precisely why they were
+worthless: a wrong instrument generates plausible stories on demand.
+
+The tell is a result that is *surprising in a direction that implies work*. "This
+city is far more broken than we thought" is the shape a measurement error takes
+when it flatters your sense that there is more to find. Reconcile against the
+known-good case FIRST — one hand-run of the resolver would have closed it — and
+only then believe the aggregate. Note the asymmetry with rule 10: a single probe
+is not evidence of a defect, but a single *known-good* result IS evidence against
+a measurement that contradicts it.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
