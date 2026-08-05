@@ -1566,3 +1566,47 @@ Options, with the trade stated:
 
 The separation shipped here is a prerequisite for all three and is correct under
 any of them.
+
+### Ruling (c) IMPLEMENTED — the boundary is "does it claim what the code permits?"
+
+Option (a) rejected on the user's reasoning, recorded because it is the better
+argument: blocking eight cities would be **honest about FAR and dishonest about
+everything else**. Seattle, DC, Philadelphia and the rest still have real cost
+indices, real timelines, real hurdle logic, real parcel data. Suppressing
+validated work to purify an unvalidated input is the mirror of the permissive
+bias, not the fix for it.
+
+| Output | Claims what the code permits? | Treatment |
+|---|---|---|
+| AS_OF_RIGHT / NEEDS_RELIEF verdict | **yes** — and it is the output users act on | **blocked** → INDETERMINATE, with a check explaining why |
+| Size-triggered **required** hurdles | **yes** — asserts a rule APPLIES | **downgraded** to `info`, note names the uncertainty |
+| Already-`likely`/`info` hurdles | no — their own text hedges | untouched |
+| Cost + timeline | no — claims what building that much would cost | **kept**, disclosed |
+
+Boston's Article 80 15-unit trigger firing off `lot × 1.0 ÷ 1300` is two
+assumptions producing a legal claim. It is downgraded rather than deleted: the
+rule may well apply, and saying so while naming the uncertainty beats silence.
+
+**`assumed-unconstrained` passes everything.** SF and Denver keep their verdicts
+and their required hurdles, because the code affirmatively imposes no FAR — the
+placeholder sits under a stated absence, not under ignorance.
+
+### Verified live, all 15 cities
+
+8 cities on `assumed-far-1.0` now return **INDETERMINATE** instead of a verdict;
+**SF (NEEDS_RELIEF) and Denver (AS_OF_RIGHT) keep theirs**; all 15 still produce
+cost and timeline. 9 tests pin the boundary in both directions — including that
+an envelope-derived size and a stated absence both keep `required` status, so
+the downgrade cannot silently over-apply.
+
+### Rule 15, demonstrated on its author
+
+Worth recording plainly: the test corrected by this audit was written **two
+turns earlier, by me, in the session that produced rule 15** — green, with
+documented reasoning, asserting that the two unknowns were the same. Philadelphia's
+four tests were the same shape from an earlier session.
+
+**Knowing about the failure mode does not prevent it.** Rule 15 is not about
+carelessness; it is about what a test *is*. An assertion that something is
+absent, unparseable, or inapplicable encodes an interpretation, and the better
+the reasoning is written down, the more it costs to overturn.

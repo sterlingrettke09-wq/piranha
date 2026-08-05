@@ -49,6 +49,31 @@ export interface HurdleContext {
   path?: 'as_of_right' | 'variance' | 'prohibited'
 }
 
+// FAIL-CLOSED (2026-08-05). A `required` hurdle is a regulatory claim. When the
+// project's floor area (and therefore its unit count) came from `lot × 1.0`
+// because no FAR could be resolved, a size-triggered hurdle would be asserting
+// that a rule APPLIES on the strength of a placeholder — Boston's Article 80
+// 15-unit trigger firing off `lot × 1.0 ÷ 1300` is two assumptions producing a
+// legal claim.
+//
+// Downgraded to 'info', not removed: the rule may well apply, and saying so
+// while naming the uncertainty is more useful than silence. Hurdles already
+// carrying 'likely' or 'info' are left alone — their own text already hedges.
+// `assumed-unconstrained` is NOT downgraded: the code affirmatively imposes no
+// FAR there, so the size sits under a stated absence.
+function softenSizeDependent(hurdles: Hurdle[], gfaBasis: AnalysisInput['gfaBasis']): Hurdle[] {
+  if (gfaBasis !== 'assumed-far-1.0') return hurdles
+  return hurdles.map((h) =>
+    h.sizeDependent && h.status === 'required'
+      ? {
+          ...h,
+          status: 'info' as const,
+          note: `${h.note} ⚠️ This threshold is measured against a placeholder size — no floor-area limit could be resolved for this district, so whether the rule applies here is unconfirmed.`,
+        }
+      : h,
+  )
+}
+
 export function assessHurdles(city: string, parcel: ParcelInfo, project: AnalysisInput, ctx: HurdleContext = {}): Hurdle[] {
   const discretionary = ctx.path === 'variance'
   const hurdles: Hurdle[] = []
@@ -115,6 +140,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       hurdles.push({
         category: 'affordability',
         label: 'Inclusionary (IDP): income-restricted units',
+        sizeDependent: true,
         status: 'required',
         note: 'Boston’s Inclusionary Development Policy requires roughly 17% of units be income-restricted (or a payment in lieu) for residential developments of 10+ units (raised from 13% in the 2024 zoning amendment).',
       })
@@ -135,6 +161,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       hurdles.push({
         category: 'review',
         label: 'Article 80 Small Project Review',
+        sizeDependent: true,
         status: 'required',
         note: 'Developments of 20,000–50,000 sq ft — or any project adding 15+ dwelling units — undergo Article 80 Small Project Review by the Planning Department (formerly the BPDA), covering design and climate resilience.',
         addsMonths: 4,
@@ -199,6 +226,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       hurdles.push({
         category: 'affordability',
         label: 'Inclusionary affordable housing',
+        sizeDependent: true,
         status: 'required',
         note: 'San Francisco requires roughly 12–26% of units be affordable (or a fee) for residential projects of 10+ units.',
       })
@@ -447,5 +475,5 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     })
   }
 
-  return hurdles
+  return softenSizeDependent(hurdles, project.gfaBasis)
 }

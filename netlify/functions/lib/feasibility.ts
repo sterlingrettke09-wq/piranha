@@ -215,6 +215,30 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   if (overall === 'AS_OF_RIGHT' && heightUnknown && effHeight != null && effHeight > UNKNOWN_HEIGHT_CONFIDENCE_FT) {
     overall = 'INDETERMINATE'
   }
+
+  // FAIL-CLOSED (2026-08-05). A verdict is a claim about what the CODE PERMITS.
+  // When the project's floor area came from `lot × 1.0` because no FAR could be
+  // resolved, "as-of-right" would assert something about the law derived from a
+  // size the code never stated — and it is the output a user is most likely to
+  // act on. There is no honest caveat for it: either the parcel is as-of-right
+  // or it isn't.
+  //
+  // Scoped deliberately to 'assumed-far-1.0'. `assumed-unconstrained` means the
+  // code AFFIRMATIVELY imposes no FAR (SF §124(b), Denver's form-based DZC), so
+  // a lot-area placeholder sits under a stated absence and the verdict stands.
+  // Cost and timeline estimates are NOT blocked — they claim what building that
+  // much would cost, not what the code allows.
+  if (project.gfaBasis === 'assumed-far-1.0' && (overall === 'AS_OF_RIGHT' || overall === 'NEEDS_RELIEF')) {
+    overall = 'INDETERMINATE'
+    checks.push({
+      dimension: 'far',
+      status: 'INDETERMINATE',
+      proposed: `${project.gfa.toLocaleString()} sf (assumed)`,
+      allowed: 'not published for this district',
+      note:
+        'No floor-area limit could be resolved for this district, so the size above is a placeholder (lot area), not a code limit. A permitted/not-permitted verdict would be a claim about the law derived from a number the code never states.',
+    })
+  }
   const path: ApprovalPath = overall === 'PROHIBITED' ? 'prohibited' : overall === 'NEEDS_RELIEF' ? 'variance' : 'as_of_right'
   // The envelope is "known" when the city's DATA gives us a FAR or height limit —
   // independent of whether the user proposed a value to compare. (Previously this

@@ -65,6 +65,11 @@ export interface Hurdle {
   serial?: boolean
   /** Estimated months this hurdle adds to approval, if any. */
   addsMonths?: number
+  /** TRUE when this hurdle fires on a SIZE threshold (floor area or unit count).
+   *  If the size itself was assumed because no FAR resolved, a 'required'
+   *  status here would be a regulatory claim built on a placeholder — so those
+   *  are downgraded to 'info' rather than asserted. */
+  sizeDependent?: boolean
 }
 
 /** A soft, non-blocking flag for parcels that look like a stadium, arena,
