@@ -140,6 +140,24 @@ longer silently drop it. Same move as the test asserting the superseded
 Minneapolis Chapter 546 codes resolve to nothing. A comment documents a mistake;
 a structure prevents it.
 
+**15. A test encodes an INTERPRETATION, and a well-explained one is the hardest
+to overturn.** Four tests asserted `parseMaxFAR('70% of Lot Area')` returns
+null, with a comment explaining that it was "lot coverage, not floor-area
+ratio". The interpretation was wrong — that string IS the FAR expression — and
+Philadelphia's RM-2/3/4 districts were published at an assumed FAR 1.0 against
+code figures of 0.70/1.50/3.50.
+
+The suite was not failing to catch the defect. It was **defending** it: fixing
+required arguing against green tests *and* a documented rationale. This sharpens
+rule 9 — internal verification does not merely fail to detect errors of
+interpretation, it entrenches them, and **the entrenchment is proportional to
+how well the wrong reasoning was written down.**
+
+When a test asserts that something is absent, unparseable, or not applicable,
+check the interpretation against the source before trusting the assertion. A
+green test is evidence the code matches an interpretation, never evidence the
+interpretation is right.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
