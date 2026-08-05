@@ -19,8 +19,26 @@
 /** Phrases that make a value conditional — the number doesn't apply universally. */
 const CONDITIONAL = /\bif\b|\botherwise\b|\bvaries\b|\bbased on\b|\bdetermined by\b|\bexcept\b|\bunless\b|\bsubject to\b/i
 
-/** A percentage measured against something other than lot floor area. */
-const OTHER_DENOMINATOR = /of\s+lot\s+area|of\s+district\s+area|excluding\s+streets|lot\s+coverage/i
+/** A percentage measured against a denominator we cannot apply to ONE parcel.
+ *
+ *  ⚠️ CORRECTED 2026-08-05. This previously also rejected `of lot area`, on the
+ *  reasoning that it measured "something other than lot floor area". It does
+ *  not — **that IS the FAR expression**. Philadelphia's Zoning Quick Guide
+ *  (PCPC, Feb 2026) labels the RM district diagrams literally
+ *  "FAR = 70% of Lot Area", "= 150% of Lot Area", "= 350% of Lot Area", under a
+ *  row headed "Max. Height / FAR (Floor Area Ratio)". Floor area as a percentage
+ *  of lot area is the definition of a floor-area ratio.
+ *
+ *  The rejection silently discarded the published FAR for RM-2 (0.70), RM-3
+ *  (1.50) and RM-4 (3.50) — Philadelphia's higher-density residential
+ *  districts — sending them to defaultSpec's FAR-1.0 fallback instead. RM-2 was
+ *  therefore published at an assumed 1.0 against a code figure of 0.70, a 43%
+ *  overstatement, in the direction that flatters the site.
+ *
+ *  `district area` and `excluding streets` stay rejected and are NOT the same
+ *  thing: RMX-1/RMX-2 measure across a whole district, which cannot be applied
+ *  to a single parcel. `lot coverage` stays rejected — footprint, not floor area. */
+const OTHER_DENOMINATOR = /of\s+district\s+area|excluding\s+streets|lot\s+coverage/i
 
 function clean(raw: string | null | undefined): string | null {
   if (raw == null) return null

@@ -1,0 +1,149 @@
+// Enumerate the REAL value space of every field a parser consumes, and report
+// the values that parser does not handle.
+//
+// WHY THIS EXISTS
+// The LA defect (2026-08-04) was a parser whose input domain was narrower than
+// the source's actual output: the qualifier strip knew [Q]/(Q)/[T]/(T), and LA
+// also publishes (F) and (WC). 14 of 2,128 distinct strings mis-parsed, and both
+// failure modes OVERSTATED the envelope.
+//
+// That class is invisible to everything else we have:
+//   · no null is produced — the parser returns a confident number
+//   · no test fails — the tests exercise the forms we thought of
+//   · no schema violation — the value is a legal string for that field
+//
+// Q1 ("does the source publish what we derive?") and Q2 ("joint dependency?")
+// both ask what the source PUBLISHES. This asks what the source actually
+// EMITS, and those differ whenever a schema is more permissive than its
+// documentation — which is always.
+//
+// Unlike the other sweep questions this one is mechanically runnable and
+// re-runnable when a city republishes. Run it with:
+//   npx vite-node scripts/enumerate-parser-domains.ts
+
+import { resolveDenver } from '../netlify/functions/lib/zoning/denver'
+import { resolveMiami } from '../netlify/functions/lib/zoning/miami'
+import { resolveSeattle } from '../netlify/functions/lib/zoning/seattle'
+import { resolveMinneapolisFar } from '../netlify/functions/lib/zoning/minneapolis'
+import { resolveChicago } from '../netlify/functions/lib/zoning/chicago'
+import { resolveSfFar } from '../netlify/functions/lib/zoning/sf'
+import { resolveNyc } from '../netlify/functions/lib/zoning/nyc'
+import { parseMaxFAR, parseMaxHeightFt } from '../netlify/functions/lib/zoning/philadelphia'
+import { parseSanJoseHeightFt } from '../netlify/functions/lib/providers/sanjose'
+
+interface Target {
+  city: string
+  /** Human label for what is being parsed. */
+  what: string
+  /** ArcGIS layer/table to enumerate. */
+  url: string
+  field: string
+  /** True when the parser is EXPECTED to reject some values (e.g. a FAR module
+   *  scoped to one zone family). Those are reported separately from surprises. */
+  scopedTo?: string
+  /** Returns true when the parser produced a usable answer for this value. */
+  handled: (v: string) => boolean
+}
+
+const ORG_PHL = 'https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services'
+
+const TARGETS: Target[] = [
+  {
+    city: 'denver', what: 'zone string → FAR/height/stories',
+    url: 'https://denvergov.org/maps/data/Zoning/MapServer/1', field: 'ZONE_DISTRICT',
+    handled: (v) => resolveDenver(v).heightFt != null,
+  },
+  {
+    city: 'miami', what: 'transect code → height/stories',
+    url: 'https://gis.miami.gov/gis/rest/services/Zoning/ZoningMiami21/MapServer/5', field: 'M21_ZONE',
+    handled: (v) => resolveMiami(v, null).heightFt != null,
+  },
+  {
+    city: 'seattle', what: 'zone string → NC/C FAR',
+    url: 'https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/Current_Land_Use_Zoning_Detail_2/FeatureServer/0',
+    field: 'ZONING', scopedTo: 'NC/C only (SMC 23.47A.013)',
+    handled: (v) => resolveSeattle(v).far != null,
+  },
+  {
+    city: 'minneapolis', what: 'built-form code → FAR',
+    url: 'https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/Planning_Zoning_Built_Form/FeatureServer/0',
+    field: 'Abbrv', scopedTo: 'Interior 1/2/3 only',
+    handled: (v) => resolveMinneapolisFar(v, 'UN1').maxFAR != null,
+  },
+  {
+    city: 'chicago', what: 'zone class → residential base FAR',
+    url: 'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/15',
+    field: 'ZONE_CLASS', scopedTo: 'residential districts only',
+    handled: (v) => resolveChicago(v).maxFAR != null,
+  },
+  {
+    city: 'sf', what: 'zoning code → §124 FAR',
+    url: 'https://sfplanninggis.org/arcgiswa/rest/services/PlanningData/MapServer/3', field: 'zoning',
+    handled: (v) => { const r = resolveSfFar(v); return r.maxFAR != null || r.residentialExempt },
+  },
+  {
+    city: 'nyc', what: 'zoning district → limits',
+    url: 'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0',
+    field: 'ZoneDist1', scopedTo: 'PLUTO supplies FAR numerically; this is the curated table',
+    handled: (v) => resolveNyc(v).maxFAR != null || resolveNyc(v).maxHeightFt != null,
+  },
+  {
+    city: 'philadelphia', what: 'free-text MaxFAR',
+    url: `${ORG_PHL}/ZoningCodeCharacteristics/FeatureServer/0`, field: 'MaxFAR',
+    handled: (v) => parseMaxFAR(v) != null,
+  },
+  {
+    city: 'philadelphia', what: 'free-text MaxHeight',
+    url: `${ORG_PHL}/ZoningCodeCharacteristics/FeatureServer/0`, field: 'MaxHeight',
+    handled: (v) => parseMaxHeightFt(v) != null,
+  },
+  {
+    city: 'sanjose', what: 'free-text HEIGHTLIMIT',
+    url: 'https://geo.sanjoseca.gov/server/rest/services/PLN/PLN_Zoning_Height_Limit/MapServer/0',
+    field: 'HEIGHTLIMIT',
+    handled: (v) => parseSanJoseHeightFt(v) != null,
+  },
+]
+
+async function distinctValues(url: string, field: string): Promise<string[] | null> {
+  const qs = new URLSearchParams({
+    where: '1=1', outFields: field, returnDistinctValues: 'true',
+    returnGeometry: 'false', f: 'json',
+  })
+  try {
+    const res = await fetch(`${url}/query?${qs}`)
+    const d = (await res.json()) as { features?: { attributes: Record<string, unknown> }[]; error?: unknown }
+    if (d.error || !d.features) return null
+    const out = new Set<string>()
+    for (const f of d.features) {
+      const v = f.attributes[field]
+      if (v != null && String(v).trim() !== '') out.add(String(v).trim())
+    }
+    return [...out].sort()
+  } catch {
+    return null
+  }
+}
+
+;(async () => {
+  let surprises = 0
+  for (const t of TARGETS) {
+    const vals = await distinctValues(t.url, t.field)
+    if (vals == null) {
+      console.log(`\n${t.city}/${t.field}  — LAYER UNREACHABLE (not a pass; re-run)`)
+      continue
+    }
+    const unhandled = vals.filter((v) => !t.handled(v))
+    const pct = vals.length ? (100 * unhandled.length) / vals.length : 0
+    console.log(`\n${t.city}/${t.field} — ${t.what}`)
+    console.log(`  ${vals.length} distinct values · ${unhandled.length} unhandled (${pct.toFixed(1)}%)${t.scopedTo ? `  [scoped: ${t.scopedTo}]` : ''}`)
+    if (unhandled.length) {
+      console.log(`  unhandled: ${unhandled.slice(0, 24).join(' · ')}${unhandled.length > 24 ? ` …+${unhandled.length - 24}` : ''}`)
+      if (!t.scopedTo) surprises += unhandled.length
+    }
+  }
+  console.log(`\n${'='.repeat(70)}`)
+  console.log(`UNSCOPED unhandled values (genuine surprises): ${surprises}`)
+  console.log('Scoped parsers are EXPECTED to reject out-of-scope values — those')
+  console.log('are gaps the null inventory already discloses, not parse failures.')
+})()

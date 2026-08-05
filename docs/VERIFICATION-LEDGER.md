@@ -1417,3 +1417,76 @@ product surface, not a defect.
 **Two defects across five cities, in different shapes, neither caught by 683
 tests.** The prediction of "at least one more" held; the shape it took did not
 match either question the sweep was designed around.
+
+---
+
+## 2026-08-05 — THE ENUMERATION CHECK. Philadelphia was not clean after all.
+
+Built as `scripts/enumerate-parser-domains.ts` — mechanically runnable and
+re-runnable when a city republishes. For every string parser: pull the LIVE
+distinct values of the field it consumes, run the parser over all of them, and
+report the values it does not handle.
+
+**This is the only question that asks what the source EMITS rather than what it
+publishes**, and those differ whenever a schema is more permissive than its
+documentation.
+
+### Result
+
+Most unhandled values are **correctly-disclosed gaps** where the parser returns
+null by design, already recorded in the null inventory: Seattle's downtown
+(DMC/DOC/DH — outside NC/C), Minneapolis Corridor/Transit/Core/Production,
+Chicago's B/C/D/M, Miami's T4/T5/D1-3/CI/CS (that module explicitly documents
+returning null there), Denver's Former-Chapter-59 and Downtown families, SF's
+special-use districts (PDR/SALI/Mission Bay/Park Merced).
+
+**One genuine surprise: Philadelphia's free-text `MaxFAR` parser — 6 of 9
+published values unhandled, three of them wrongly.**
+
+### The defect
+
+`OTHER_DENOMINATOR` rejected `of lot area`, on the stated reasoning that it was
+"a percentage measured against something other than lot floor area."
+
+**It is not. That IS the FAR expression.** Philadelphia's Zoning Quick Guide
+(PCPC, February 2026) labels the RM district diagrams literally
+**"FAR = 70% of Lot Area"**, **"= 150% of Lot Area"**, **"= 350% of Lot Area"**,
+under a row headed *"Max. Height / FAR (Floor Area Ratio)"*. Floor area as a
+percentage of lot area is the definition of a floor-area ratio.
+
+So the published FAR for **RM-2 (0.70), RM-3 (1.50) and RM-4 (3.50)** — the
+higher-density residential districts — was being discarded and sent to
+`defaultSpec`'s FAR-1.0 fallback. **RM-2 was published at an assumed 1.0 against
+a code figure of 0.70: a 43% overstatement, in the direction that flatters the
+site.** Fourth defect class to run that way.
+
+`district area` / `excluding streets` stay rejected and are genuinely different
+— RMX-1/2 measure across a whole district, which cannot be applied to one
+parcel. `lot coverage` stays rejected: footprint, not floor area.
+
+### FOUR EXISTING TESTS ENCODED THE DEFECT
+
+`philadelphia.test.ts` asserted `parseMaxFAR('70% of Lot Area')` returns null,
+with the comment *"70% of Lot Area is lot coverage, not floor-area ratio."* The
+three district-level tests asserted `null` FAR for RM-2/3/4.
+
+**The test suite was pinning the wrong assumption in place.** Nothing about
+having tests protected this — the tests were the thing making it durable.
+Corrected against the primary source, with the correction noted inline so the
+next reader sees why the assertion flipped.
+
+### A search summary contradicted the source, and was wrong
+
+A web search reported RM-2/3/4 at 120% / 225% / 525%. The GIS says 70 / 150 /
+350. The primary guide resolves it: **those are base + Mixed Income Housing
+low-income bonus** (+50 / +75 / +175, printed on the same page). The summary
+reported bonused figures as base. Checked rather than trusted — the discipline
+that has now caught a bad secondary source four separate times this session.
+
+### Stopping condition — RESET
+
+Philadelphia had been recorded clean on all three sweep questions. The
+enumeration check found a shipped wrong number in it. **The "two consecutive
+clean cities" counter therefore resets**, and — more importantly — *clean on
+Q1/Q2/Q3 does not imply clean*. The three-question audit and the enumeration
+check are independent instruments.
