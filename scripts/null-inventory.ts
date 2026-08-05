@@ -151,7 +151,27 @@ stand and the lot-area figure is a placeholder under a stated absence.
 | \`fetched-not-mapped\` | minneapolis (Corridor/Transit/Core/Production — base FAR + earned premiums) | wiring, once Table 540-2 is read |
 | \`not-published\` | sanjose · nashville | code-text extraction, or it stays null |
 
-### Open rule-5 question: Philadelphia's blank MaxFAR districts
+### Highest-ranked open item: DC's RA and MU provenance
+
+**44 DC districts publish a FAR whose only source is a code comment.** Subtitles
+F (RA) and G (MU) were not read when Subtitles D and E were, so those numbers
+stand exactly where DC's no-FAR claims stood before Title 11 was opened — by
+assertion.
+
+Nothing regressed and this is not a defect. It ranks above the unread-overlay
+question for one reason: **it affects numbers the tool currently publishes,
+rather than verdicts it currently withholds.** A wrong published FAR reaches
+cost, unit counts and fees; a withheld verdict reaches nobody.
+
+### Philadelphia's remaining blanks — still gaps, deliberately
+
+Ten residential districts (RSD-1/2/3, RSA-1…5, RTA-1/2, RM-1) are now verified
+stated absences against the Feb 2026 Quick Guide. The other ten — CMX-2,
+CMX-2.5, CA-1, CA-2, I-P, SP-INS, SP-ENT, SP-STA, SP-PO-A/P, SP-AIR — are NOT,
+because those pages were not read. Two successful classifications are not a
+licence to generalise the pattern to a district nobody has looked at.
+
+### Resolved: Philadelphia's residential blanks
 
 The city's \`ZoningCodeCharacteristics\` table carries 36 districts. 13 publish a
 numeric FAR, 3 publish prose the parser cannot reduce to a number (\`RMX-1\` and

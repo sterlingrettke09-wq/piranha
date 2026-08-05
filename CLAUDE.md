@@ -68,6 +68,18 @@ render the same. See `zoning.farUnconstrained` / `envelope.farBasis:
 'unconstrained'` for the pattern. Corollary: a failed fetch must never
 silently become a substantive answer.
 
+*How to establish an absence — ask whether the source has a SLOT for the value,
+not whether the slot is filled.* This settled two cities. DC: Subtitle D ch. 3
+and Subtitle E ch. 3/4/5 have **no FAR section at all**, while Subtitle E ch. 6
+has § 602 "FAR AND MAXIMUM NUMBER OF DWELLING UNITS" — the section exists exactly
+where FAR applies. Philadelphia: Table 14-701-1 has **no FAR row**, and
+14-701-2's combined "Max. Height / FAR" cell holds a height alone for RM-1 while
+RM-2/3/4 hold percentages of lot area. In both, the document's own structure is
+POSITIVE evidence of absence rather than a reader failing to find something.
+A blank cell is not this. And the method does not generalise past what was read:
+Philadelphia's other ten blanks (CMX-2, CA-1, I-P, SP-*) stay gaps, because **an
+absence is only an answer once someone has looked.**
+
 **6. Do not report a maximum across alternatives as if it were a ceiling.**
 Where a code allows either A or B (Austin: 0.40 single-family OR 0.65 for three
 units), reporting the larger assumes a program the user has not chosen and
@@ -186,6 +198,25 @@ known-good case FIRST — one hand-run of the resolver would have closed it — 
 only then believe the aggregate. Note the asymmetry with rule 10: a single probe
 is not evidence of a defect, but a single *known-good* result IS evidence against
 a measurement that contradicts it.
+
+**17. A retraction must propagate to every place the claim appears — and headers
+and summaries are read FIRST.** `zoning/philadelphia.ts` contained both the
+retracted claim (`"70% of Lot Area" = lot coverage, not FAR`) and its detailed
+retraction, **three lines apart**, with the false version in the file's opening
+summary where a reader lands. Anyone opening it to learn what the module does
+would have read the wrong claim and never scrolled to the correction.
+
+This is worse than rule 15. There the wrong interpretation was merely
+well-defended; here the correct one was already written and lost anyway, on
+position alone. Second instance of the shape — defect 5 carried a retracted
+tier-premium claim after it had been retracted elsewhere — so it is a pattern,
+not an incident.
+
+The mitigation is mechanical and takes one command: **when you retract something,
+grep the claim's distinctive terms across the whole repo** rather than fixing the
+site where you happened to notice it. Fix every hit, or label it as a recorded
+retraction. Run 2026-08-05 over the known retracted claims found no third live
+instance — the check is cheap and the failure it prevents is silent.
 
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
