@@ -1,18 +1,10 @@
 {
-  "sf": {
+  "austin": {
     "newConstruction": {
-      "medianMonths": 11.8,
-      "p80Months": 24.4,
-      "n": 165,
-      "vintage": "filed 2022-01-01 onward; computed 2026-06-10; data.sfgov.org Building Permits (permit_type 1,2 = new construction)"
-    }
-  },
-  "seattle": {
-    "newConstruction": {
-      "medianMonths": 6.2,
-      "p80Months": 10.8,
-      "n": 3956,
-      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.seattle.gov Building Permits (permittypedesc = New)"
+      "medianMonths": 2.2,
+      "p80Months": 6.3,
+      "n": 17279,
+      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class = New)"
     }
   },
   "chicago": {
@@ -23,12 +15,12 @@
       "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.cityofchicago.org Building Permits (permit_type = 'PERMIT - NEW CONSTRUCTION')"
     }
   },
-  "austin": {
+  "denver": {
     "newConstruction": {
-      "medianMonths": 2.2,
-      "p80Months": 6.3,
-      "n": 17279,
-      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class = New)"
+      "medianMonths": 4.4,
+      "p80Months": 10.4,
+      "n": 6590,
+      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; opendata-geospatial.denvergov.org Construction Permits (residential + commercial; CLASS = 'NEW BUILDING')"
     }
   },
   "la": {
@@ -39,12 +31,60 @@
       "vintage": "submitted 2022-01-01 onward; computed 2026-06-10; data.lacity.org Building & Safety Permit Information (permit_type = 'Bldg-New')"
     }
   },
-  "denver": {
+  "miami": {
     "newConstruction": {
-      "medianMonths": 4.4,
-      "p80Months": 10.4,
-      "n": 6590,
-      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; opendata-geospatial.denvergov.org Construction Permits (residential + commercial; CLASS = 'NEW BUILDING')"
+      "medianMonths": 12.1,
+      "p80Months": 20.9,
+      "n": 1085,
+      "vintage": "filed 2022-01-01 onward; computed 2026-08-05; datahub-miamigis.opendata.arcgis.com \"Building Permits Since 2014\" ArcGIS FeatureServer (ScopeofWork = 'NEW CONSTRUCTION', master building permit PermitNumber LIKE '%001B001', TotalSQFT > 0); PlanCreatedDate -> IssuedDate"
+    }
+  },
+  "nashville": {
+    "newConstruction": {
+      "medianMonths": 1.1,
+      "p80Months": 2.7,
+      "n": 10196,
+      "vintage": "applied 2023-08-01 onward; computed 2026-08-05; data.nashville.gov Building Permits Issued (ArcGIS Building_Permits_Issued_2 layer 0; Per_Ty IN ('CACN','CARN') = Building Commercial/Residential - New). Feed is a ROLLING 3-YEAR window of issued permits (issue dates 2023-08-01..2026-08-04), so the 2022-01-01 start used for other cities is not attainable without left-truncation bias; 2023-08-01 is the earliest filing cohort the window covers completely."
+    }
+  },
+  "nyc": {
+    "newConstruction": {
+      "medianMonths": 8.3,
+      "p80Months": 17,
+      "n": 4394,
+      "vintage": "filed 2022-01-01 onward; computed 2026-08-05; data.cityofnewyork.us DOB NOW: Build \u2013 Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
+    }
+  },
+  "philadelphia": {
+    "newConstruction": {
+      "medianMonths": 3,
+      "p80Months": 6.3,
+      "n": 3766,
+      "vintage": "applied 2022-01-01 onward; computed 2026-08-05; phl.carto.com permits (permitdescription = Residential/Commercial Building Permit, typeofwork = New Construction*) joined on permit number to ArcGIS AGO_Lyr_Permit_App_Status_Eclipse APPLICATIONDATE"
+    }
+  },
+  "sandiego": {
+    "newConstruction": {
+      "medianMonths": 10.2,
+      "p80Months": 18.2,
+      "n": 2015,
+      "vintage": "created 2022-01-01 onward; computed 2026-08-05; data.sandiego.gov Development Permits / DSD Approvals (JOB_BC_CODE = new-building classes; APPROVAL_TYPE in Building Permit, Combination Building Permit)"
+    }
+  },
+  "seattle": {
+    "newConstruction": {
+      "medianMonths": 6.2,
+      "p80Months": 10.8,
+      "n": 3956,
+      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.seattle.gov Building Permits (permittypedesc = New)"
+    }
+  },
+  "sf": {
+    "newConstruction": {
+      "medianMonths": 11.8,
+      "p80Months": 24.4,
+      "n": 165,
+      "vintage": "filed 2022-01-01 onward; computed 2026-06-10; data.sfgov.org Building Permits (permit_type 1,2 = new construction)"
     }
   }
 }

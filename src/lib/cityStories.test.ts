@@ -35,12 +35,17 @@ describe('storyFor', () => {
     expect(story).toContain('3 months')
   })
 
-  it('marks SF as the slowest measured and interpolates its relief add', () => {
+  // SF held "the slowest we measure" only because it WAS the slowest city we had
+  // data for. Measuring Miami (12.1 mo) in 2026-08 took that title, and the copy
+  // correctly stopped claiming it. The superlative is computed from the measured
+  // set, so it moves whenever the set grows — a test asserting it belongs to one
+  // named city is pinning a fact about our COVERAGE, not about San Francisco.
+  it('reports SF from its measurement and no longer claims a superlative it lost', () => {
     const sf = byCity('sf')
     const story = storyFor(sf, ranked)
     // SF median 11.8 → rounds to "about 12 months".
     expect(story).toContain('about 12 months')
-    expect(story).toContain('the slowest we measure')
+    expect(story).not.toContain('the slowest we measure')
     // SF relief adder is 12 months.
     expect(sf.reliefAddMonths).toBe(12)
     expect(story).toContain('12 months')
@@ -93,10 +98,16 @@ describe('storyFor', () => {
     expect(story).toContain('5 months')
   })
 
-  it('falls back for NYC and names its variance adder honestly', () => {
+  // Was "falls back for NYC" and asserted the 54-month LIFECYCLE estimate, because
+  // NYC had no measured permit data. It does now — median 8.3 mo over n=4,394 DOB
+  // NOW initial New Building filings — so the story reports a measurement instead
+  // of an estimate. The assertion changed because the underlying claim changed
+  // from "we guess" to "we counted".
+  it('reports NYC from measured permit data rather than the lifecycle estimate', () => {
     const nyc = byCity('nyc')
     const story = storyFor(nyc, ranked)
-    expect(story).toContain('about 54 months')
+    expect(story).toContain('about 8 months')
+    expect(story).not.toContain('about 54 months')
     expect(story).toContain('7 months')
   })
 

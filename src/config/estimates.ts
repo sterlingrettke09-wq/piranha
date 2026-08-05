@@ -47,6 +47,19 @@ export type BuildingTier = 'single' | 'multi' | 'apartment'
 //    range whose upper bound is doing the work.
 //
 //    ⚠️ THIS IS EVIDENCE THAT 340 IS WRONG. IT IS NOT THE REPLACEMENT VALUE.
+//
+//    ⚠️ NO LONGER UNCONTESTED (2026-08-05). That conclusion rested on ONE
+//    external benchmark. A second one now disagrees with the first by roughly
+//    2× on the same product class: Cumming Q4 2025's LOWEST apartment low-bound
+//    across nine metros is Nashville $280/sf — still 1.93× the RSMeans bare
+//    $145.01 and 1.43× its fee-inclusive $195.97. So 340 is condemned by one
+//    published source and corroborated by another.
+//    Per rule 1, NO DIRECTION is asserted here: the reconciliation is almost
+//    certainly a scope difference between an RSMeans national-average Square
+//    Foot model and a Cumming metro "typical construction cost range", plus the
+//    GC/OH&P question that is open on BOTH sides — but that is a mechanism
+//    argued aloud, and nothing has measured it. Do not treat defect 0 as settled
+//    in either direction until the two benchmarks are reconciled.
 //    The comparison is against ONE model at national average, in one specific
 //    configuration. Do NOT lift 145.01 into this table. The replacement must come
 //    from the estimator's model set matched to OUR tier definitions, at a
@@ -164,12 +177,36 @@ export type BuildingTier = 'single' | 'multi' | 'apartment'
 // HARD construction cost ($/sf), U.S. NATIONAL average — labor + materials only,
 // excluding land and soft costs. Scaled per metro by cityCostIndex below (which
 // is also national-based), so the two numbers are independently sourced.
-// Source: RSMeans 2026 building models — apartment 4–7 story ≈ $340/sf, office
-// 5–10 story ≈ $390/sf. NOTE: "institutional" reflects schools/civic (~$450);
-// hospitals run far higher (~$700–975/sf), a known limitation of one bucket.
+// ⚠️ PROVENANCE — read COST_DATA_VINTAGE above before adding a source name here.
+// These lines used to read "Source: RSMeans 2026 building models" and tag each
+// constant "RSMeans 2026". That attribution was WITHDRAWN on 2026-08-04 as an
+// unsupported claim, and the withdrawal is recorded at the top of this file —
+// but the retracted version survived here, in the header a reader hits first and
+// on the constants themselves. Rule 17: a retraction must reach every place the
+// claim appears, and headers outrank bodies. These constants have NO named
+// source. They are internal estimates.
+//
+// CORROBORATED, NOT SOURCED (2026-08-05). Checked against Cumming Group Market
+// Analysis Q4 2025 p.27 "Location Cost Impact", per-city, scope-matched to our
+// `hard` line (Cumming excludes land, professional fees, permits, FF&E, soft
+// costs and sitework — all separate addends here or absent from the model):
+//   · residential — inside Cumming's published range for 3 of 9 cities and below
+//     the low bound by 0.3–9.0% for the rest; worst case Denver −9.0%. At the
+//     5–8 storey tier (heightCostFactor 1.12) ALL NINE land inside the range,
+//     so the residual low bias is a tier artifact, not a base-rate error.
+//   · commercial — inside Cumming's office Shell & Core range for 7 of 9;
+//     worst +5.2% (Nashville). Sits between S&C and S&C+TI in all nine, which is
+//     where a complete-building rate belongs.
+//   · institutional — inside Cumming's K-12 range in all 9 cities.
+//   · mixed 365 — UNCHECKED. Cumming publishes no mixed-use row.
+// An independent published source agreeing within tolerance is corroboration. It
+// is not provenance, and it must not be written up as one.
+//
+// NOTE: "institutional" reflects schools/civic (~$450); hospitals run far higher
+// (~$700–975/sf), a known limitation of one bucket — Cumming confirms it.
 export const costPerSqFtByUse: Record<Use, number> = {
-  residential: 340, // RSMeans 2026 mid-rise multifamily, national avg
-  commercial: 390, // RSMeans 2026 office 5–10 story, national avg
+  residential: 340, // internal estimate; corroborated vs Cumming Q4 2025 (see above)
+  commercial: 390, // internal estimate; corroborated vs Cumming Q4 2025 office S&C
   mixed: 365, // blend of residential + ground-floor commercial
   institutional: 450, // schools/civic; healthcare is materially higher
 }
