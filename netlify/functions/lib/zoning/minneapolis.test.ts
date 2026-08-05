@@ -1,8 +1,65 @@
 import { describe, it, expect } from 'vitest'
 import { resolveMinneapolisFar } from './minneapolis'
 
-// City of Minneapolis Built Form Districts Handbook (Oct 2023), Interior 1/2/3
-// district pages, read from the primary PDF 2026-08-04.
+// Source of record: Minneapolis Code of Ordinances, Title 20 — Zoning Code,
+// effective July 1, 2023, §540.110, Table 540-2 (pp.127-128) and Table 540-3
+// (p.128). Read from rendered page images of the ordinance PDF 2026-08-05.
+//
+// NOT the Built Form Districts Handbook (Oct 2023) — its Interior 2 page
+// transposes the "Cluster Developments" and "Institutional and Civic Uses"
+// columns, and that transposition is what shipped here.
+
+describe('Minneapolis cluster developments — Table 540-3, ONE column', () => {
+  // §540.110(a) applies Table 540-2 to "principal structures, except cluster
+  // developments"; §540.110(b) sends cluster developments to Table 540-3:
+  //   Interior 1 / Interior 2 (merged cell) .... 0.5
+  //   All other districts ...................... 0.7
+
+  it('BFI2 cluster is 0.5 — NOT the 0.8 (UN/RM) / 1.4 (other) we used to publish', () => {
+    // Regression: the old values came from the handbook's transposed Interior 2
+    // row. If either 0.8 or 1.4 reappears here, the handbook won the argument.
+    for (const primary of ['UN1', 'UN2', 'UN3', 'RM1', 'RM2', 'CM2', 'DT1', 'PR1', 'TR1']) {
+      const far = resolveMinneapolisFar('BFI2', primary).alternatives.find(
+        (a) => a.label === 'Cluster development',
+      )?.far
+      expect(far, primary).toBe(0.5)
+      expect(far, primary).not.toBe(0.8)
+      expect(far, primary).not.toBe(1.4)
+    }
+  })
+
+  it('Table 540-3 has no primary-zoning column, so cluster FAR cannot vary by it', () => {
+    // The whole defect was a UN/RM split applied to a table that has none.
+    for (const bf of ['BFI1', 'BFI2', 'BFI3']) {
+      const unRm = resolveMinneapolisFar(bf, 'UN1').alternatives.find(
+        (a) => a.label === 'Cluster development',
+      )?.far
+      const other = resolveMinneapolisFar(bf, 'CM4').alternatives.find(
+        (a) => a.label === 'Cluster development',
+      )?.far
+      expect(unRm, bf).toBe(other)
+      expect(unRm, bf).toBeTypeOf('number')
+    }
+  })
+
+  it('pins each Interior district to its Table 540-3 row', () => {
+    const cluster = (bf: string) =>
+      resolveMinneapolisFar(bf, 'UN1').alternatives.find((a) => a.label === 'Cluster development')
+        ?.far
+    expect(cluster('BFI1')).toBe(0.5) // Table 540-3, Interior 1/Interior 2 merged cell
+    expect(cluster('BFI2')).toBe(0.5) // Table 540-3, same merged cell
+    expect(cluster('BFI3')).toBe(0.7) // Table 540-3, "All other districts"
+  })
+
+  it('cluster development stays an ALTERNATIVE and never becomes the headline', () => {
+    // Rule 6: a program the user has not chosen. It is smaller than the BFI2
+    // "other uses" figure and larger than nothing — either way maxFAR is the
+    // Table 540-2 base for a 1-3 unit dwelling.
+    for (const bf of ['BFI1', 'BFI2', 'BFI3']) {
+      expect(resolveMinneapolisFar(bf, 'UN1').maxFAR, bf).toBe(0.5)
+    }
+  })
+})
 
 describe('Minneapolis FAR needs BOTH layers', () => {
   it('the UN/RM split keys on the PRIMARY zoning district, not the overlay', () => {

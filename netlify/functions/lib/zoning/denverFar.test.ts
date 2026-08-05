@@ -18,11 +18,21 @@ describe('Denver — form-based districts are UNCONSTRAINED (known absence)', ()
   })
 
   it('marks a parseable stories suffix unconstrained', () => {
-    // Not in the curated table, but a valid post-2010 form-based code.
-    const r = resolveDenver('C-MX-16')
+    // A valid post-2010 form-based code that is NOT in the curated table.
+    const r = resolveDenver('G-MU-7')
     expect(r.farUnconstrained).toBe(true)
     expect(r.far).toBeNull()
-    expect(r.heightFt).toBe(192)
+    expect(r.heightFt).toBe(84) // 7 × 12, and flagged as an estimate:
+    expect(r.heightBasis).toBe('derived-estimate')
+  })
+
+  it('C-MX-16 is now code-stated at 200 ft, not the 192 ft this once asserted', () => {
+    // This case used to assert heightFt === 192 (16 × 12). DZC Art. 7
+    // §7.3.3.3.D "General", p. 7.3-13, prints "Feet (max) 200'" for C-MX-16.
+    const r = resolveDenver('C-MX-16')
+    expect(r.heightFt).toBe(200)
+    expect(r.heightFt).not.toBe(192)
+    expect(r.farUnconstrained).toBe(true)
   })
 
   it('marks SU/TU/RH letter-suffix districts unconstrained', () => {
@@ -93,9 +103,45 @@ describe('Denver — stories are stated, not re-derived', () => {
     }
   })
 
-  it('height and stories stay consistent with the module constant', () => {
+  // ⚠️ The assertion that used to live here was:
+  //
+  //     expect(Math.round(lim.stories * DENVER_FT_PER_STORY)).toBe(lim.heightFt)
+  //
+  // It looped over EVERY curated entry and demanded height === stories × 12.
+  // It was green, it was well explained, and it was pinning the defect in
+  // place: the DZC prints C-MX-5 at 70', C-MX-8 at 110', C-MX-12 at 150', and
+  // this test asserted 60/96/144. Correcting the data required deleting a
+  // passing test — CLAUDE.md rule 15. Its replacement asserts the invariant
+  // that is actually true: every entry declares WHERE its feet came from, and
+  // only the unverified ones may equal stories × 12.
+  it('every curated entry declares its height basis', () => {
     for (const [code, lim] of Object.entries(DENVER_LIMITS)) {
-      expect(Math.round((lim.stories as number) * DENVER_FT_PER_STORY), code).toBe(lim.heightFt)
+      expect(['code-stated', 'derived-estimate'], code).toContain(lim.heightBasis)
+    }
+  })
+
+  it('a code-stated height is NEVER stories × 12 — that is the defect signature', () => {
+    const coded = Object.entries(DENVER_LIMITS).filter(
+      ([, l]) => l.heightBasis === 'code-stated',
+    )
+    expect(coded.length).toBeGreaterThanOrEqual(12) // all of Article 7
+    for (const [code, lim] of coded) {
+      expect(lim.heightFt, code).not.toBe(
+        Math.round((lim.stories as number) * DENVER_FT_PER_STORY),
+      )
+      // The code's printed feet exceed the 12 ft/story estimate everywhere in
+      // Article 7 — the old derivation was biased LOW, not merely different.
+      expect(lim.heightFt as number, code).toBeGreaterThan(
+        (lim.stories as number) * DENVER_FT_PER_STORY,
+      )
+    }
+  })
+
+  it('only derived-estimate entries may equal stories × 12', () => {
+    for (const [code, lim] of Object.entries(DENVER_LIMITS)) {
+      if (lim.heightFt === Math.round((lim.stories as number) * DENVER_FT_PER_STORY)) {
+        expect(lim.heightBasis, code).toBe('derived-estimate')
+      }
     }
   })
 

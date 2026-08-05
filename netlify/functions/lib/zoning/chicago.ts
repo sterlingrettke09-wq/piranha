@@ -10,7 +10,7 @@
 //   C1-5  → "C1" district, dash suffix "5"
 //   DX-7  → "DX" downtown district, dash suffix "7"
 //   M1-2  → "M1" manufacturing district, dash suffix "2"
-//   RM-5  → residential class (handled by the residential base-FAR table)
+//   RM-5  → residential class (handled by the residential FAR + height table)
 //
 // Because B/C/D/M FAR is a pure function of that dash suffix, we resolve it
 // PROGRAMMATICALLY from the published per-suffix table rather than enumerating
@@ -24,25 +24,113 @@ export interface DistrictLimits {
   heightFt: number | null
 }
 
-// ── Residential base FAR ──────────────────────────────────────────────────
-// Chicago Zoning Ordinance §17-2-0305 (R district base floor-area ratios).
-// Moved here unchanged from providers/chicago.ts (already sourced). RM4.5 =
-// 1.70 per §17-2-0304-A FAR table. Residential heights vary by district and
-// building type (§17-2-0311), so heightFt is null (honestly "not a single
-// published figure") — residential parcels are FAR-governed in this tool.
-export const CHICAGO_BASE_FAR: Record<string, number> = {
-  'RS-1': 0.5,
-  'RS-2': 0.65,
-  'RS-3': 0.9,
-  'RT-3.5': 1.05,
-  'RT-4': 1.2,
-  'RT-4A': 1.2,
-  'RM-4.5': 1.7, // §17-2-0304-A FAR table (RM4.5 = 1.70)
-  'RM-5': 2.0,
-  'RM-5.5': 2.5,
-  'RM-6': 4.4,
-  'RM-6.5': 6.6,
+// ── Residential base FAR + height ─────────────────────────────────────────
+// FAR:    §17-2-0304-A "Maximum Floor Area Ratio" table.
+// Height: §17-2-0311-A "Maximum Building Height (feet)" table.
+// Both tables re-read against the live ordinance text on codelibrary.amlegal.com
+// (Chicago Zoning Ordinance, Chapter 17-2, "17-2-0300 Bulk and density
+// standards") on 2026-08-05.
+//
+// PRIOR DEFECT: every residential district returned heightFt: null with the
+// rationale "residential heights vary by district and building type". That is
+// true of the RM districts and false of RS1/RS2/RS3/RT3.5/RT4, for which
+// §17-2-0311-A publishes ONE frontage-independent figure. A null rendered
+// downstream as "no district height limit available" — the permissive
+// direction — for the four lowest-density districts in the city.
+//
+// The height column we carry is the PRINCIPAL RESIDENTIAL BUILDINGS figure.
+// Every row of §17-2-0311-A also gives "Principal nonresidential buildings:
+// None"; that is a different building type and is NOT what this tool reports.
+//
+// Height is stated in FEET by the ordinance, so it is carried in feet — no
+// per-story conversion anywhere (rule 12).
+//
+// A district cannot be added without stating what the height table says about
+// it: `heightBasis` is required and the three non-numeric bases are the only
+// way to write a null (rule 14 — a structure, not a comment).
+type ResidentialHeight =
+  /** §17-2-0311-A publishes a single figure for principal residential buildings. */
+  | { heightFt: number; heightBasis: 'published' }
+  /** §17-2-0311-A gives two figures selected by lot frontage; we do not know the frontage here. */
+  | { heightFt: null; heightBasis: 'varies-by-lot-frontage' }
+  /** §17-2-0311-A says "None" — a known ABSENCE of a height cap, not a failed lookup (rule 5). */
+  | { heightFt: null; heightBasis: 'no-limit-in-code' }
+  /** The district has no row in §17-2-0311-A at all. */
+  | { heightFt: null; heightBasis: 'not-listed-in-table' }
+
+export type ResidentialLimits = { far: number; note: string } & ResidentialHeight
+
+const published = (far: number, heightFt: number, note: string): ResidentialLimits => ({
+  far,
+  heightFt,
+  heightBasis: 'published',
+  note,
+})
+const variesByFrontage = (far: number, note: string): ResidentialLimits => ({
+  far,
+  heightFt: null,
+  heightBasis: 'varies-by-lot-frontage',
+  note,
+})
+const noHeightLimit = (far: number, note: string): ResidentialLimits => ({
+  far,
+  heightFt: null,
+  heightBasis: 'no-limit-in-code',
+  note,
+})
+const notListed = (far: number, note: string): ResidentialLimits => ({
+  far,
+  heightFt: null,
+  heightBasis: 'not-listed-in-table',
+  note,
+})
+
+export const CHICAGO_RESIDENTIAL: Record<string, ResidentialLimits> = {
+  // §17-2-0311-A: "RS1 | Principal residential buildings: 30 / Principal
+  // nonresidential buildings: None". FAR 0.50 per §17-2-0304-A.
+  'RS-1': published(0.5, 30, '§17-2-0311-A RS1: principal residential buildings 30 ft'),
+  'RS-2': published(0.65, 30, '§17-2-0311-A RS2: principal residential buildings 30 ft'),
+  'RS-3': published(0.9, 30, '§17-2-0311-A RS3: principal residential buildings 30 ft'),
+  'RT-3.5': published(1.05, 35, '§17-2-0311-A RT3.5: principal residential buildings 35 ft'),
+  'RT-4': published(1.2, 38, '§17-2-0311-A RT4: principal residential buildings 38 ft'),
+
+  // RT4A has NO row in the §17-2-0311-A height table (the table runs RS1, RS2,
+  // RS3, RT3.5, RT4, RM4.5, RM5, RM5.5, RM6, RM6.5). §17-2-0105-C says special
+  // height standards apply to "A"-suffix districts and points at §17-2-0311,
+  // but the only height figure §17-2-0311 attaches to accessible-unit buildings
+  // is the §17-2-0311-B(2) exemption — 42 ft, and only for RT4 buildings with
+  // no more than 19 dwelling units of which at least 25% are Type A units.
+  // That is a conditional exemption, not a base by-right ceiling for the
+  // district, so it is not published here. FAR 1.20 unchanged (RT4's figure;
+  // §17-2-0304-B, the accessible-unit FAR exception, now reads "Reserved").
+  'RT-4A': notListed(1.2, 'no RT4A row in §17-2-0311-A; §17-2-0311-B(2) 42 ft is conditional'),
+
+  // §17-2-0311-A gives RM4.5 and RM5 two figures keyed to lot frontage —
+  // "Lot Frontage of less than 32 feet: 45 / Lot Frontage of 32 feet or more:
+  // 47" — and RM5.5 "75 feet or less: 47 / more than 75 feet: 60". This module
+  // is not given lot frontage, so it publishes neither figure (picking the
+  // larger would be rule 6; picking either would be a guess).
+  'RM-4.5': variesByFrontage(1.7, '§17-2-0311-A RM4.5: 45 ft under 32 ft frontage, 47 ft at/over'),
+  'RM-5': variesByFrontage(2.0, '§17-2-0311-A RM5: 45 ft under 32 ft frontage, 47 ft at/over'),
+  'RM-5.5': variesByFrontage(2.5, '§17-2-0311-A RM5.5: 47 ft at/under 75 ft frontage, 60 ft over'),
+
+  // §17-2-0311-A: "RM6 | Principal residential buildings: None (tall buildings
+  // require Planned Development approval in accordance with Section
+  // 17-13-0600)". The code imposes no height cap — an answer, not a gap.
+  // FAR 4.40 / 6.60 are the BASE figures; the §17-2-0304-C premium is a
+  // project-specific unit-count trade and is not published here.
+  'RM-6': noHeightLimit(4.4, '§17-2-0311-A RM6: None; tall buildings need PD approval §17-13-0600'),
+  'RM-6.5': noHeightLimit(
+    6.6,
+    '§17-2-0311-A RM6.5: None; tall buildings need PD approval §17-13-0600',
+  ),
 }
+
+// Kept as a plain FAR map because providers/chicago.ts indexes it directly.
+// Derived so the two can never disagree.
+export const CHICAGO_BASE_FAR: Record<string, number> = Object.fromEntries(
+  Object.entries(CHICAGO_RESIDENTIAL).map(([k, v]) => [k, v.far]),
+)
 
 // ── B/C district FAR by dash suffix ───────────────────────────────────────
 // §17-3-0403-A maximum floor area ratio table (Business & Commercial
@@ -111,8 +199,8 @@ const M_FAR_BY_SUFFIX: Record<string, number> = {
 //
 // Found by scripts/enumerate-parser-domains.ts — the same parser-domain class
 // as the LA qualifier defect: the source emits a form the parser never knew.
-const BASE_FAR_BY_UNHYPHENATED: Record<string, number> = Object.fromEntries(
-  Object.entries(CHICAGO_BASE_FAR).map(([k, v]) => [k.replace(/-/g, ''), v]),
+const RESIDENTIAL_BY_UNHYPHENATED: Record<string, ResidentialLimits> = Object.fromEntries(
+  Object.entries(CHICAGO_RESIDENTIAL).map(([k, v]) => [k.replace(/-/g, ''), v]),
 )
 
 /**
@@ -126,14 +214,16 @@ export function resolveChicago(zone: string | null | undefined): DistrictLimits 
 
   // Residential classes carry the intensity in the class name itself (RM-5,
   // RT-4…), not a separate dash suffix — look them up directly.
-  if (z in CHICAGO_BASE_FAR) {
-    return { far: CHICAGO_BASE_FAR[z], heightFt: null }
+  if (z in CHICAGO_RESIDENTIAL) {
+    const r = CHICAGO_RESIDENTIAL[z]
+    return { far: r.far, heightFt: r.heightFt }
   }
 
-  // Same district, different punctuation — see BASE_FAR_BY_UNHYPHENATED.
+  // Same district, different punctuation — see RESIDENTIAL_BY_UNHYPHENATED.
   const unhyphenated = z.replace(/-/g, '')
-  if (unhyphenated in BASE_FAR_BY_UNHYPHENATED) {
-    return { far: BASE_FAR_BY_UNHYPHENATED[unhyphenated], heightFt: null }
+  if (unhyphenated in RESIDENTIAL_BY_UNHYPHENATED) {
+    const r = RESIDENTIAL_BY_UNHYPHENATED[unhyphenated]
+    return { far: r.far, heightFt: r.heightFt }
   }
 
   // B/C/D/M classes: split "<prefix><digit?>-<suffix>" → prefix letter + suffix.
@@ -168,7 +258,9 @@ export const CHICAGO_LIMITS: Record<string, DistrictLimits> = {
   'RS-1': resolveChicago('RS-1'),
   'RS-2': resolveChicago('RS-2'),
   'RS-3': resolveChicago('RS-3'),
+  'RT-3.5': resolveChicago('RT-3.5'),
   'RT-4': resolveChicago('RT-4'),
+  'RM-5.5': resolveChicago('RM-5.5'),
   'RM-5': resolveChicago('RM-5'),
   'RM-6': resolveChicago('RM-6'),
   'B1-1': resolveChicago('B1-1'),

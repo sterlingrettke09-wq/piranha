@@ -38,7 +38,7 @@ const denverZoning = (over: Record<string, unknown> = {}) =>
 afterEach(() => vi.restoreAllMocks())
 
 describe('getDenverParcelInfo — happy path', () => {
-  it('derives height from HEIGHT_STORIES × 12 and normalizes a C-MX-5 parcel', async () => {
+  it('prefers the code-stated height over a HEIGHT_STORIES derivation for a C-MX-5 parcel', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         'MapServer/0': denverParcel(),
@@ -57,15 +57,20 @@ describe('getDenverParcelInfo — happy path', () => {
     expect(res.info.parcelId).toBe('0234512018000')
     expect(res.info.zoning.districtCode).toBe('C-MX-5')
     expect(res.info.lot.sizeSqFt).toBe(9500)
-    // 5 stories × 12 ft/story = 60.
-    expect(res.info.zoning.maxHeightFt).toBe(60)
+    // ⚠️ Was `5 stories × 12 ft/story = 60`. That assertion — and this test's own
+    // former title — DEFENDED the production defect: the provider derived feet
+    // from the live HEIGHT_STORIES field before consulting the curated table, so
+    // correcting the table changed nothing for real parcels. DZC Art. 7
+    // § 7.3.3.3.D prints C-MX-5 at 70 ft. A figure read from the code outranks
+    // one manufactured from a story count (rules 11 and 12).
+    expect(res.info.zoning.maxHeightFt).toBe(70)
     expect(res.info.zoning.maxFAR).toBeNull() // form-based code, no FAR
-    // WO-8.8 depth: resolving through the curated table keeps FAR null (Denver
-    // is height-governed) while the 60 ft height carries through — the honest
+    // Resolving through the curated table keeps FAR null (Denver is
+    // height-governed) while the code-stated 70 ft carries through — the honest
     // "height-governed district" shape, not a fabricated FAR.
     const resolved = resolveZoningLimits(res.info.zoning, 'denver')
     expect(resolved.maxFAR).toBeNull()
-    expect(resolved.maxHeightFt).toBe(60)
+    expect(resolved.maxHeightFt).toBe(70)
     // -MX → commercial/mixed/residential.
     expect(res.info.zoning.allowedUses).toEqual(['commercial', 'mixed', 'residential'])
     // EHA market area feeds overlays.feeArea.

@@ -1964,3 +1964,70 @@ MU zones run to **MU-29** (Dupont 15–22, Capitol 23–26, Naval Observatory 27
 Fort Totten 28–29) and RA to **RA-10**. The curated table covers MU-1…10 and
 RA-1…5; the rest resolve to nothing, which is a correct gap and a bigger one
 than "MU-11…14" implied.
+
+---
+
+## 2026-08-05 — Six cities verified against primary code, in parallel
+
+Two workflows: extract+refute across six curated tables, then one builder per
+city. 32 agents. Every discrepancy was found by one agent reading the code and
+independently confirmed by a second that re-read the source and tried to refute
+it. **19 confirmed, 0 refuted, 0 unreadable sources, 96 districts checked and
+found correct.**
+
+### What was wrong
+
+| city | defect | direction |
+|---|---|---|
+| **denver** | 5 Art. 7 heights DERIVED as stories×12 (60/96/144) where the DZC prints 70/110/150 | understated |
+| **chicago** | RS-1/2/3, RT-3.5, RT-4 heights null where §17-2-0311-A publishes 30/30/30/35/38 ft | permissive |
+| **nyc** | **carrying a REPEALED edition** — ZR 23-662 was struck by City of Yes (12/5/2024) and heights moved to ZR 23-432; 9 values stale | understated |
+| **seattle** | FAR 3.0 vs 3.25 on unsuffixed 40-ft zones; and `isNcOrC()` missed P-designated zones — **357 of 1,183 polygons** | mixed |
+| **miami** | T6 Floor Lot Ratios unresolved; 12 districts now sourced from Art. 4 Table 2 | gap |
+| **minneapolis** | BFI2 cluster FAR 0.8/1.4 vs Table 540-3's 0.5 | overstated |
+
+### Three findings worth more than the numbers
+
+**NYC was not a transcription error — it was a repealed code.** The uniform +5 ft
+that looked like base-vs-building height was City of Yes moving Quality Housing
+heights out of a section whose URL now 404s. The file cited 23-662 throughout.
+Nothing internal could detect that a citation had been repealed.
+
+**Minneapolis's SOURCE was wrong.** The module cited the Built Form Handbook,
+whose Interior 2 page has its columns TRANSPOSED against the ordinance (both
+Interior 1 and 3 agree; only Interior 2 does not). Two independent ordinance PDFs
+agree with each other. A correctly-transcribed number from a defective secondary
+source — which is why the rule is *primary* source.
+
+**Seattle's null was defended by a written rationale that was checkable and
+false.** The comment said MHA status "cannot be read from the bare code (the
+provider strips the suffix)". Both real entry points pass the RAW string, and a
+live distinct-value query returns both `NC2-40 (M)` and `NC2-40`. Rule 15 again.
+
+### The fix that fixed nothing — caught by the checker
+
+Denver's corrected table **did not reach production**.
+`providers/denver.ts` derived `stories × 12` from the live `HEIGHT_STORIES` field
+*before* consulting the table, and the provider takes precedence in
+`zoningLimits.ts`. A real C-MX-5 parcel kept publishing 60 ft. The builder's new
+tests were green because they called `resolveDenver` directly.
+
+**Rule 11, committed inside the fix for a rule-12 defect.** Order now inverted: a
+figure read from the code outranks one manufactured from a story count.
+
+And the test defending it named the defect in its own title —
+`derives height from HEIGHT_STORIES × 12`. Third instance tonight of a green test
+actively protecting a wrong number. That is now the single most reliable
+signature of a real defect in this repo: **a test whose title asserts a
+derivation rather than a source.**
+
+### Deliberately not changed
+
+Denver Articles 3–6 (18 entries) print different feet per building form
+(G-MU-3 is 40 ft as Apartment, 35 ft as Town House), so choosing one is a rule-6
+call — routed through `storiesOnlyFeetUnverified()` and flagged
+`heightBasis: 'derived-estimate'` so the gap is greppable. Chicago RM-4.5/5/5.5
+vary by lot frontage we do not have; RM-6/6.5 say "None" (an absence, not a gap).
+Miami's Public Benefit bonuses, Denver's height incentives, Seattle's MHA rows,
+NYC's affordable-housing heights and Minneapolis's cluster program are all
+alternatives, not ceilings — none adopted.

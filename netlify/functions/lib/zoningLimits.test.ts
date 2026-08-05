@@ -73,10 +73,14 @@ describe('resolveZoningLimits — per-city curated tables (WO-8.8)', () => {
     expect(r.maxFAR).toBe(9)
   })
 
-  it('Denver: a C-MX-5 stays null FAR (form-based) and derives 60 ft', () => {
+  // Was `derives 60 ft` (5 stories × an unsourced 12 ft/story). DZC Art. 7
+  // § 7.3.3.3.D prints C-MX-5 at 70 ft, and this expectation was pinning the
+  // derived number in place across cities — rule 15, in the shared test no
+  // single city owned.
+  it('Denver: a C-MX-5 stays null FAR (form-based) and carries the code-stated 70 ft', () => {
     const r = resolveZoningLimits(z('C-MX-5'), 'denver')
     expect(r.maxFAR).toBeNull()
-    expect(r.maxHeightFt).toBe(60)
+    expect(r.maxHeightFt).toBe(70)
   })
 
   it('Denver: provider height always wins over the table', () => {
@@ -99,14 +103,14 @@ describe('resolveZoningLimits — per-city curated tables (WO-8.8)', () => {
 
   // ── NYC (depth tranche 2) — table fills HEIGHT for contextual districts only;
   //    provider farByUse still wins for FAR. ─────────────────────────────────
-  it('NYC: a contextual R7A gets the ZR 23-662 height 80 ft, FAR stays provider-sourced (null here)', () => {
+  it('NYC: a contextual R7A gets the ZR 23-432 height 85 ft, FAR stays provider-sourced (null here)', () => {
     const r = resolveZoningLimits(z('R7A'), 'nyc')
-    expect(r.maxHeightFt).toBe(80)
+    expect(r.maxHeightFt).toBe(85)
     expect(r.maxFAR).toBeNull() // FAR comes from PLUTO farByUse, not this table
   })
 
-  it('NYC: a commercial C4-4A resolves to its R7A equivalent height (80 ft)', () => {
-    expect(resolveZoningLimits(z('C4-4A'), 'nyc').maxHeightFt).toBe(80)
+  it('NYC: a commercial C4-4A resolves to its R7A equivalent height (85 ft)', () => {
+    expect(resolveZoningLimits(z('C4-4A'), 'nyc').maxHeightFt).toBe(85)
   })
 
   it('NYC: a NON-contextual R6 stays null height (sky-exposure-plane governed)', () => {

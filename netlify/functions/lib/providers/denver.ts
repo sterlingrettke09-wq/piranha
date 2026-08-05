@@ -26,11 +26,25 @@ function isFormerChapter59(description?: unknown): boolean {
 }
 
 function denverMaxHeightFt(zone: string | null, heightStories: unknown, description?: unknown): number | null {
+  // ⚠️ ORDER IS THE WHOLE POINT. This used to derive `stories × 12` from the live
+  // HEIGHT_STORIES field FIRST and only consult the curated table when the field
+  // was absent — so a C-MX-5 parcel published 60 ft while the DZC prints 70 ft,
+  // and correcting the table alone changed nothing for real parcels. The table's
+  // own tests passed throughout, because they called resolveDenver directly
+  // instead of the pipeline (rule 11, inside the fix for a rule-12 defect).
+  //
+  // A figure READ FROM THE CODE outranks one manufactured from a story count via
+  // an unsourced ft/story constant. Only where the DZC's printed feet have not
+  // been read (`derived-estimate` — Articles 3–6, whose districts print different
+  // feet per building form) does the live story count still drive an estimate.
+  const fromCode = resolveDenver(zone, { formerChapter59: isFormerChapter59(description) })
+  if (fromCode.heightBasis === 'code-stated' && fromCode.heightFt != null) return fromCode.heightFt
+
   const stories = Number(heightStories)
   if (Number.isFinite(stories) && stories > 0) return Math.round(stories * DENVER_FT_PER_STORY)
   // Legacy "Former Chapter 59" zones (B-3, O-1, R-X…) put a district CLASS in the
   // trailing number, NOT a story count — don't fabricate a height from it.
-  return resolveDenver(zone, { formerChapter59: isFormerChapter59(description) }).heightFt
+  return fromCode.heightFt
 }
 
 // Story count the code states. Denver encodes it as the trailing token and the

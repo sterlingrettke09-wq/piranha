@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveChicago, CHICAGO_LIMITS, CHICAGO_BASE_FAR } from './chicago'
+import { resolveChicago, CHICAGO_LIMITS, CHICAGO_BASE_FAR, CHICAGO_RESIDENTIAL } from './chicago'
 
 // Every number below is pinned to the Chicago Zoning Ordinance (Title 17) tables
 // cited in chicago.ts. These tests are the guard against silently changing a
@@ -57,15 +57,143 @@ describe('resolveChicago — M manufacturing FAR (§17-5-0404-A)', () => {
   })
 })
 
-describe('resolveChicago — residential base FAR (§17-2)', () => {
+describe('resolveChicago — residential base FAR (§17-2-0304-A)', () => {
   it.each([
     ['RS-1', 0.5],
+    ['RS-2', 0.65],
     ['RS-3', 0.9],
-    ['RM-5', 2.0],
-    ['RM-6', 4.4],
+    ['RT-3.5', 1.05],
     ['RT-4', 1.2],
+    ['RM-4.5', 1.7],
+    ['RM-5', 2.0],
+    ['RM-5.5', 2.5],
+    ['RM-6', 4.4],
+    ['RM-6.5', 6.6],
   ])('%s → FAR %f', (zone, far) => {
     expect(resolveChicago(zone).far).toBe(far)
+  })
+})
+
+// ── §17-2-0311-A "Maximum Building Height (feet)" ─────────────────────────
+//
+// REGRESSION GUARD. Until 2026-08-05 every residential district in this module
+// returned heightFt: null, justified by a comment claiming residential heights
+// "vary by district and building type". §17-2-0311-A publishes ONE
+// frontage-independent figure for RS1/RS2/RS3/RT3.5/RT4, so the null was not a
+// "varies" case at all — it was a missing lookup that rendered downstream as
+// "no district height limit available", the permissive direction, on the four
+// lowest-density district families in Chicago.
+//
+// OLD (WRONG) VALUE FOR ALL FIVE: null.
+// Re-read against the live ordinance text on codelibrary.amlegal.com, Chicago
+// Zoning Ordinance §17-2-0300 Bulk and density standards, on 2026-08-05. The
+// verbatim RS1 row is:
+//   "RS1 | Principal residential buildings: 30
+//          Principal nonresidential buildings: None"
+// The figure carried is the PRINCIPAL RESIDENTIAL one; the "None" in every row
+// belongs to the nonresidential column and must never be read as our answer.
+describe('resolveChicago — residential height (§17-2-0311-A)', () => {
+  it.each([
+    ['RS-1', 30],
+    ['RS-2', 30],
+    ['RS-3', 30],
+    ['RT-3.5', 35],
+    ['RT-4', 38],
+  ])('%s → heightFt %i (was null before 2026-08-05)', (zone, heightFt) => {
+    expect(resolveChicago(zone).heightFt).toBe(heightFt)
+    expect(resolveChicago(zone).heightFt).not.toBeNull()
+  })
+
+  // Not a rounding difference between neighbouring districts: RT3.5 and RT4 are
+  // genuinely 35 and 38, and RS1/RS2/RS3 are genuinely all 30 despite three
+  // different FARs. Pin the shape so a future "tidy-up" can't smooth it.
+  it('RS1, RS2 and RS3 share 30 ft even though their FARs differ', () => {
+    const rs = ['RS-1', 'RS-2', 'RS-3'].map(resolveChicago)
+    expect(rs.map((r) => r.heightFt)).toEqual([30, 30, 30])
+    expect(rs.map((r) => r.far)).toEqual([0.5, 0.65, 0.9])
+  })
+
+  // §17-2-0311-A gives RM4.5/RM5 45 ft under 32 ft of lot frontage and 47 ft at
+  // or above it; RM5.5 is 47 ft at/under 75 ft and 60 ft over. This module is
+  // never given lot frontage, so publishing either endpoint would be a guess
+  // and publishing the larger would be rule 6. Null is correct HERE — and the
+  // basis records that it is a "varies", not a lookup miss.
+  it.each([
+    ['RM-4.5', 'varies-by-lot-frontage'],
+    ['RM-5', 'varies-by-lot-frontage'],
+    ['RM-5.5', 'varies-by-lot-frontage'],
+  ])('%s height varies by lot frontage → null, basis %s', (zone, basis) => {
+    expect(resolveChicago(zone).heightFt).toBeNull()
+    expect(CHICAGO_RESIDENTIAL[zone].heightBasis).toBe(basis)
+  })
+
+  // §17-2-0311-A RM6/RM6.5: "Principal residential buildings: None (tall
+  // buildings require Planned Development approval…)". The code imposes no
+  // height cap. Same null on the wire as a "varies", but a DIFFERENT basis —
+  // rule 5: a known absence and a missing lookup must be distinguishable.
+  it.each(['RM-6', 'RM-6.5'])('%s has no height limit in the code, not a gap', (zone) => {
+    expect(resolveChicago(zone).heightFt).toBeNull()
+    expect(CHICAGO_RESIDENTIAL[zone].heightBasis).toBe('no-limit-in-code')
+  })
+
+  // RT4A has no row in §17-2-0311-A. The only height §17-2-0311 attaches to
+  // accessible-unit buildings is the §17-2-0311-B(2) exemption — 42 ft, and
+  // only for RT4 buildings of ≤19 units with ≥25% Type A units. That is a
+  // conditional exemption, not a district-wide by-right ceiling, so 42 must NOT
+  // be published as RT4A's height.
+  it('RT-4A publishes no height (and never the conditional 42 ft)', () => {
+    const r = resolveChicago('RT-4A')
+    expect(r.heightFt).toBeNull()
+    expect(r.heightFt).not.toBe(42)
+    expect(CHICAGO_RESIDENTIAL['RT-4A'].heightBasis).toBe('not-listed-in-table')
+  })
+
+  // Every row of §17-2-0311-A ends "Principal nonresidential buildings: None".
+  // Reading that column instead of the residential one would put null on RS1.
+  it('no residential district silently borrows the nonresidential "None"', () => {
+    for (const zone of ['RS-1', 'RS-2', 'RS-3', 'RT-3.5', 'RT-4']) {
+      expect(CHICAGO_RESIDENTIAL[zone].heightBasis).toBe('published')
+    }
+  })
+})
+
+// Rule 14: the height disposition is a required property of every residential
+// entry, so a new district cannot be added with its height quietly dropped. The
+// type already forbids it; this asserts the table has no gap at runtime too.
+describe('CHICAGO_RESIDENTIAL — every district states its height disposition', () => {
+  it('covers all 11 R districts of §17-2-0304-A / §17-2-0311-A', () => {
+    expect(Object.keys(CHICAGO_RESIDENTIAL).sort()).toEqual(
+      [
+        'RM-4.5',
+        'RM-5',
+        'RM-5.5',
+        'RM-6',
+        'RM-6.5',
+        'RS-1',
+        'RS-2',
+        'RS-3',
+        'RT-3.5',
+        'RT-4',
+        'RT-4A',
+      ].sort(),
+    )
+  })
+
+  it('every entry carries a basis, a citation note, and a consistent height', () => {
+    for (const [district, r] of Object.entries(CHICAGO_RESIDENTIAL)) {
+      expect(r.heightBasis, district).toBeTruthy()
+      expect(r.note, district).toMatch(/§17-2-03/)
+      // 'published' is the ONLY basis allowed to carry a number, and it must.
+      if (r.heightBasis === 'published') expect(typeof r.heightFt, district).toBe('number')
+      else expect(r.heightFt, district).toBeNull()
+    }
+  })
+
+  it('CHICAGO_BASE_FAR is derived from it, so the two cannot disagree', () => {
+    for (const [district, r] of Object.entries(CHICAGO_RESIDENTIAL)) {
+      expect(CHICAGO_BASE_FAR[district], district).toBe(r.far)
+    }
+    expect(Object.keys(CHICAGO_BASE_FAR).length).toBe(Object.keys(CHICAGO_RESIDENTIAL).length)
   })
 })
 
@@ -128,6 +256,15 @@ describe('punctuation variants of a residential class resolve to the same FAR', 
   it('agrees with the canonical hyphenated spelling', () => {
     expect(resolveChicago('RM4.5')).toEqual(resolveChicago('RM-4.5'))
     expect(resolveChicago('RM5.5')).toEqual(resolveChicago('RM-5.5'))
+  })
+
+  // The normalization must carry the §17-2-0311-A height too, not just FAR —
+  // otherwise the `RM4.5`-spelled parcels behave differently from `RS1`-spelled
+  // ones on height.
+  it('carries the height through the unhyphenated spelling', () => {
+    expect(resolveChicago('RS1').heightFt).toBe(30)
+    expect(resolveChicago('RT3.5').heightFt).toBe(35)
+    expect(resolveChicago('RT4')).toEqual(resolveChicago('RT-4'))
   })
 
   // The normalization is only safe while stripping hyphens keeps every

@@ -1,60 +1,93 @@
 // NYC contextual-district HEIGHT table (WO-8.8 depth tranche 2).
 //
 // Source: NYC Zoning Resolution (ZR), as published at zr.planning.nyc.gov.
-// Verified against the live code text 2026-06-10. Section citations are in-line
-// below so a reviewer can re-check every number against the published table.
+// Re-verified against the live code text 2026-08-05 by parsing the published
+// HTML table on BOTH official hosts (zr.planning.nyc.gov and
+// zoningresolution.planning.nyc.gov). Section citations are in-line below so a
+// reviewer can re-check every number against the published table.
+//
+// ── 2026-08-05 CORRECTION: the section this file cited was REPEALED ──────────
+// This table used to cite "ZR 23-662(a) Table 1". That section no longer
+// exists — https://zr.planning.nyc.gov/article-ii/chapter-3/23-662 returns 404.
+// City of Yes for Housing Opportunity (last amended 12/5/2024) renumbered the
+// Quality Housing height regs into ZR 23-43 ("Height and Setback Requirements
+// in R6 Through R12 Districts"), whose operative table is ZR 23-432, and RAISED
+// most of the figures. Every height below was re-read from that table.
+//
+// The stale values were NOT a base-height/building-height mix-up. Both the old
+// and the new figures are MAXIMUM BUILDING HEIGHTS; the old ones were simply
+// from the superseded text. For reference, 23-432's *maximum base height*
+// column (the height at which the setback must occur) reads 65/45/75/85 ft for
+// R6A/R6B/R7A/R7D — neither the values we shipped nor the ones we now ship, so
+// the two quantities were never being confused.
 //
 // THE GAP THIS FILLS — height. The NYC provider is backed by MapPLUTO, which
-// carries per-use FAR (ResidFAR / CommFAR / FacilFAR) but NEVER a height: NYC
-// encodes height differently depending on the district.
+// carries per-use FAR (ResidFAR / CommFAR / FacilFAR) but NEVER a height.
 //
-//   • CONTEXTUAL districts — the lettered R districts (R6A, R7A, R8B …) and the
-//     "Quality Housing" program — have a FLAT max building height fixed by ZR
-//     23-662 Table 1. Those are the rows below.
-//   • NON-CONTEXTUAL districts (R6, R7-1, R7-2, R8, R10 without a letter, and
-//     the C6-x downtown districts whose residential equivalent is a bare R6/R8/
-//     R10) are governed by the SKY EXPOSURE PLANE / height-factor envelope, NOT
-//     a flat cap. There is no single published height to look up, so resolveNyc
-//     returns null for them (honest — see resolveNyc()).
-//
-// We store the MAXIMUM BUILDING HEIGHT *WITHOUT* a qualifying ground floor — the
-// LOWER, conservative number from ZR 23-662 paragraph (a) Table 1 ("Basic
-// building heights"). The taller "qualifying ground floor" figures in Table 2
-// are an optional bonus, so using them would overstate the by-right envelope.
-// Understating height is the safe failure direction for this product (it can
-// push a verdict toward NEEDS_RELIEF, never the reverse).
+// WHICH COLUMN. ZR 23-432 splits every row into "Standard residences" and
+// "Qualifying affordable housing or qualifying senior housing". We store the
+// STANDARD RESIDENCES max building height — the base by-right figure. The
+// qualifying-housing columns are an incentive program the user has not chosen
+// (R6A: 75 standard vs 95 qualifying), so reporting them would overstate the
+// by-right envelope. Understating height is the safe failure direction for this
+// product (it can push a verdict toward NEEDS_RELIEF, never the reverse).
 //
 // This table fills maxHeightFt ONLY. FAR continues to come from the provider's
 // farByUse (MapPLUTO), which always wins — resolveNyc never returns a far.
+//
+// KNOWN GAP, not an absence (see CLAUDE.md rule 5). Under the pre-12/5/2024
+// text the non-contextual districts (bare R6, R7-1, R7-2, R8, R10) genuinely
+// had NO flat cap — they were sky-exposure-plane / height-factor governed, and
+// returning null for them was an ANSWER. That is no longer true: ZR 23-432
+// applies to "R6 R7 R8 R9 R10 R11 R12" and now publishes flat maximum building
+// heights for the bare districts too (e.g. R6¹ 75 / R6² 55). resolveNyc still
+// returns null for them, which is now a GAP we have not closed rather than a
+// property of the code. Closing it changes resolved heights for parcels that
+// currently report "unknown" and is left to a scoped follow-up.
 
 export interface DistrictLimits {
   far: number | null
   heightFt: number | null
 }
 
-// ── Contextual R-district max building heights (ZR 23-662 paragraph (a),
-//    Table 1 "Basic building heights" — the conservative no-qualifying-ground-
-//    floor column) ──────────────────────────────────────────────────────────
-// Verified 2026-06-10 against zr.planning.nyc.gov/article-ii/chapter-3/23-662.
+// ── Contextual R-district max building heights ──────────────────────────────
+// ZR 23-432 (Height and setback requirements), last amended 12/5/2024, table
+// "MINIMUM BASE HEIGHT, MAXIMUM BASE HEIGHT, AND MAXIMUM BUILDING HEIGHTS",
+// column "Standard residences → Maximum height of buildings or other
+// structures (in feet)".
+// Verified 2026-08-05 against zr.planning.nyc.gov/article-ii/chapter-3/23-432
+// (and the identical table on zoningresolution.planning.nyc.gov).
 //
-// Districts whose Table-1 "Maximum Height of Buildings" varies by proximity to a
-// wide street (R9A, R9X, R10A — taller within 100 ft of a wide street) are
-// stored at the LOWER (non-wide-street) figure, the conservative bound. R9D and
-// R10X are intentionally omitted: their Table-1 max height is "N/A" (governed by
-// tower regulations in ZR 23-663, not a flat cap) → must stay null, not guessed.
+// The table's superscripts are defined in the footnotes of that section:
+//   ¹ = zoning lots or portions thereof within 100 feet of a WIDE STREET
+//   ² = zoning lots or portions thereof on a NARROW STREET beyond 100 feet of
+//       a wide street (or, wide-street-frontage-only lots, beyond 100 ft of the
+//       street line)
+// We do not carry per-parcel wide/narrow-street frontage, so for split rows we
+// store the LOWER (² narrow-street) figure — the conservative bound.
+//
+// ZR 23-434 (modifications for zoning lots meeting certain criteria) and 23-435
+// (towers, where permitted) can exceed these; both are conditional programs, so
+// the by-right base figure is what belongs here.
 export const NYC_CONTEXTUAL_HEIGHTS: Record<string, number> = {
-  R6A: 70, // ZR 23-662(a) Table 1: max building height 70 ft
-  R6B: 50, // ZR 23-662(a) Table 1: 50 ft
-  R7A: 80, // ZR 23-662(a) Table 1: 80 ft
-  R7B: 75, // ZR 23-662(a) Table 1: 75 ft
-  R7D: 100, // ZR 23-662(a) Table 1: 100 ft
-  R7X: 120, // ZR 23-662(a) Table 1: 120 ft (outside Manhattan Core; 125 inside — lower is conservative)
-  R8A: 120, // ZR 23-662(a) Table 1: 120 ft
-  R8B: 75, // ZR 23-662(a) Table 1: 75 ft
-  R8X: 150, // ZR 23-662(a) Table 1: 150 ft
-  R9A: 135, // ZR 23-662(a) Table 1: R9A¹ 145 / R9A² 135 — store 135 (non-wide-street, conservative)
-  R9X: 160, // ZR 23-662(a) Table 1: R9X¹ 170 / R9X² 160 — store 160 (non-wide-street, conservative)
-  R10A: 185, // ZR 23-662(a) Table 1: R10A¹ 210 / R10A² 185 — store 185 (non-wide-street, conservative)
+  R6A: 75, // ZR 23-432 row "R6A, R6¹, R6-1": standard-residence max bldg height 75 ft (was 70 — superseded 23-662)
+  R6B: 55, // ZR 23-432 row "R6B": 55 ft (was 50 — superseded 23-662)
+  R7A: 85, // ZR 23-432 row "R7A, R7-1¹, R7-2¹": 85 ft (was 80 — superseded 23-662)
+  R7B: 75, // ZR 23-432 row "R7B": 75 ft (unchanged by the 12/5/2024 amendment)
+  R7D: 105, // ZR 23-432 row "R7D": 105 ft (was 100 — superseded 23-662)
+  R7X: 125, // ZR 23-432 row "R7X, R7-3": 125 ft (was 120; the old Manhattan-Core split no longer exists)
+  R8A: 125, // ZR 23-432 row "R8A": 125 ft (was 120 — superseded 23-662)
+  R8B: 75, // ZR 23-432 row "R8B": 75 ft (unchanged by the 12/5/2024 amendment)
+  R8X: 155, // ZR 23-432 row "R8X": 155 ft (was 150 — superseded 23-662)
+  R9A: 135, // ZR 23-432: R9A¹ 145 / R9A² 135 — store 135 (narrow-street, conservative)
+  R9X: 165, // ZR 23-432: R9X¹ 175 / R9X² 165 — store 165 (narrow-street, conservative; was 160)
+  R10A: 185, // ZR 23-432: R10A¹ 215 / R10A² 185 — store 185 (narrow-street, conservative)
+  // R9D and R10X used to be omitted here on the rationale that their max height
+  // was "N/A → governed by tower regulations". That rationale was true of the
+  // repealed 23-662 and is FALSE of 23-432, which publishes a flat standard-
+  // residence max building height for both. Values read from the same table.
+  R9D: 175, // ZR 23-432 row "R9D, R9-1": 175 ft
+  R10X: 185, // ZR 23-432: R10X¹ 215 / R10X² 185 — store 185 (narrow-street, conservative)
 }
 
 // ── Commercial-district residential equivalents (ZR 34-112, last amended
@@ -65,7 +98,9 @@ export const NYC_CONTEXTUAL_HEIGHTS: Record<string, number> = {
 // C districts whose equivalent is a bare R6/R7-2/R8/R9/R10 (e.g. C6-7 → R10) are
 // sky-exposure-plane / height-factor governed and are deliberately NOT listed →
 // resolveNyc returns null for them. Verified 2026-06-10 against
-// zr.planning.nyc.gov/article-iii/chapter-4/34-112.
+// zr.planning.nyc.gov/article-iii/chapter-4/34-112. (The 2026-08-05 pass
+// re-read ZR 23-432 only; this mapping was not re-verified against the
+// 12/5/2024 amendment.)
 export const NYC_COMMERCIAL_EQUIVALENT: Record<string, string> = {
   // → R6A
   'C4-2A': 'R6A',
@@ -106,12 +141,15 @@ export const NYC_COMMERCIAL_EQUIVALENT: Record<string, string> = {
  * Resolve the NYC by-right max building height for a zoning district string
  * (e.g. "R7A", "C4-4A", "R6", "C6-7").
  *
- * Returns the flat ZR 23-662 Table-1 height ONLY for contextual lettered R
- * districts and the C districts whose residential equivalent is one of them
- * (ZR 34-112). For every other district — non-contextual R6/R7-1/R7-2/R8/R9/R10
- * and their C-equivalents, special districts, manufacturing, etc. — height is
- * governed by the sky-exposure plane / height-factor envelope (no flat cap), so
- * we return null. NEVER guesses.
+ * Returns the flat ZR 23-432 standard-residence max building height ONLY for
+ * the contextual lettered R districts listed above and the C districts whose
+ * residential equivalent is one of them (ZR 34-112). For every other district —
+ * bare R6/R7-1/R7-2/R8/R9/R10 and their C-equivalents, special districts,
+ * manufacturing, etc. — we return null. NEVER guesses.
+ *
+ * For the bare R districts that null is a GAP, not an answer: since the
+ * 12/5/2024 amendment ZR 23-432 does publish flat heights for them. See the
+ * "KNOWN GAP" note at the top of this file.
  *
  * FAR is ALWAYS null here: NYC FAR comes from the provider's MapPLUTO farByUse,
  * which wins in resolveZoningLimits. This table only contributes maxHeightFt.
@@ -152,7 +190,9 @@ export const NYC_LIMITS: Record<string, DistrictLimits> = {
   R8X: resolveNyc('R8X'),
   R9A: resolveNyc('R9A'),
   R9X: resolveNyc('R9X'),
+  R9D: resolveNyc('R9D'),
   R10A: resolveNyc('R10A'),
+  R10X: resolveNyc('R10X'),
   'C4-4A': resolveNyc('C4-4A'), // → R7A
   'C6-2A': resolveNyc('C6-2A'), // → R8A
   'C6-4A': resolveNyc('C6-4A'), // → R10A
