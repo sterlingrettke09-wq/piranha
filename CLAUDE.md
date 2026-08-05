@@ -218,6 +218,33 @@ site where you happened to notice it. Fix every hit, or label it as a recorded
 retraction. Run 2026-08-05 over the known retracted claims found no third live
 instance — the check is cheap and the failure it prevents is silent.
 
+**18. A result that LOOKS like an answer gets less scrutiny than one that looks
+like a gap — so the surviving errors are always the ones that produced plausible
+output.** Eleven cities returned a permit-timing number and four returned
+nothing. The four nulls were interrogated hard, because a null feels like
+something to explain. The eleven numbers were waved through, because a number in
+the right units looks like success. **Eight of the eleven were wrong or
+overstated**, and not one was catchable by re-reading our own code.
+
+Every defect this session fits the shape. The FAR-1.0 fallback, the fabricated
+Denver heights, the 87-story Miami round-trip, the `1.15` markup, LA's overstated
+qualifiers, DC's off-by-one MU column — **all produced numbers, none produced
+nulls.** This is rule 5's asymmetry one level up: rule 5 says an absence and a
+gap must not render the same; this says a plausible answer and a correct answer
+do not feel different either.
+
+The operational consequence: **verification cannot be triggered by a suspicious
+result.** Suspicion is precisely the signal that is missing in the dangerous
+cases — Chicago's 1.0-month median was suspicious and got caught, while NYC's
+perfectly reasonable 8.3 was wrong by nearly 2× and looked fine. The audit step
+has to be unconditional and it has to run BEFORE shipping, not after.
+
+Corollary, from the same round: **the absence of a wrong output is not evidence
+the code is right.** `scripts/permits/boston.mjs` admits Certificates of Occupancy
+as new construction — 54% of what it selects — and has never emitted a wrong
+number only because a missing date field halted it first. It was one schema change
+from shipping. Code that did not run is not code that works.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
