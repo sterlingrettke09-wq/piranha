@@ -106,10 +106,16 @@ describe('computeRedTapeIndex', () => {
   })
 
   it('exposes measured permit medians + relief odds where the artifacts carry them', () => {
-    // Chicago has a measured new-construction median; Boston has a relief rate.
+    // Philadelphia has a measured new-construction median; Boston has a relief rate.
+    // Was Chicago until 2026-08-05, when its 1-month figure was withdrawn — 46% of
+    // that sample was a 2022-23 cohort stamped applied==issued. Philadelphia is one
+    // of the two cities the audit rated SOUND on its date field.
+    const philadelphia = ranked.find((r) => r.slug === 'philadelphia')!
+    expect(philadelphia.measuredMedianMonths).toBeGreaterThan(0)
+    expect(philadelphia.measuredPermitN).toBeGreaterThan(0)
+    // A withdrawn city must read as absent, never as a fabricated number.
     const chicago = ranked.find((r) => r.slug === 'chicago')!
-    expect(chicago.measuredMedianMonths).toBe(1)
-    expect(chicago.measuredPermitN).toBeGreaterThan(0)
+    expect(chicago.measuredMedianMonths).toBeNull()
     const boston = ranked.find((r) => r.slug === 'boston')!
     expect(boston.reliefGrantRate).toBeCloseTo(0.927, 3)
     expect(boston.reliefN).toBeGreaterThan(0)

@@ -105,9 +105,15 @@ describe('measured permit timing', () => {
     expectMeasuredShape(t.measured)
   })
 
-  it('Chicago (landed via chicago.mjs) → measured is populated', () => {
+  // ⚠️ WITHDRAWN 2026-08-05. Chicago and LA were measured and published, then an
+  // adversarial audit disqualified both. Chicago: 46% of the sample was a 2022-23
+  // cohort stamped applied==issued (51.6% zero-day), roughly halving the median.
+  // LA: 45.4% of the cohort never issued, so the p80 of 13.0 months is undefined,
+  // not merely imprecise. These assert the ABSENCE so the old figures cannot be
+  // silently reinstated from the stale scripts.
+  it('Chicago is withdrawn — a backfill artifact halved its median', () => {
     const t = resolveTimeline('chicago', project({ city: 'chicago' }), feas('by-right'), false)
-    expectMeasuredShape(t.measured)
+    expect(t.measured).toBeUndefined()
   })
 
   it('Austin (landed via austin.mjs) → measured is populated', () => {
@@ -115,9 +121,9 @@ describe('measured permit timing', () => {
     expectMeasuredShape(t.measured)
   })
 
-  it('Los Angeles (landed via la.mjs) → measured is populated', () => {
+  it('Los Angeles is withdrawn — 45% of its cohort never issued', () => {
     const t = resolveTimeline('la', project({ city: 'la' }), feas('by-right'), false)
-    expectMeasuredShape(t.measured)
+    expect(t.measured).toBeUndefined()
   })
 
   it('a city absent from permitStats → measured is undefined', () => {

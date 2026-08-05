@@ -7,28 +7,12 @@
       "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class = New)"
     }
   },
-  "chicago": {
-    "newConstruction": {
-      "medianMonths": 1,
-      "p80Months": 3.9,
-      "n": 5899,
-      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.cityofchicago.org Building Permits (permit_type = 'PERMIT - NEW CONSTRUCTION')"
-    }
-  },
   "denver": {
     "newConstruction": {
       "medianMonths": 4.4,
       "p80Months": 10.4,
       "n": 6590,
       "vintage": "applied 2022-01-01 onward; computed 2026-06-10; opendata-geospatial.denvergov.org Construction Permits (residential + commercial; CLASS = 'NEW BUILDING')"
-    }
-  },
-  "la": {
-    "newConstruction": {
-      "medianMonths": 6,
-      "p80Months": 13,
-      "n": 13406,
-      "vintage": "submitted 2022-01-01 onward; computed 2026-06-10; data.lacity.org Building & Safety Permit Information (permit_type = 'Bldg-New')"
     }
   },
   "miami": {
@@ -61,14 +45,6 @@
       "p80Months": 6.3,
       "n": 3766,
       "vintage": "applied 2022-01-01 onward; computed 2026-08-05; phl.carto.com permits (permitdescription = Residential/Commercial Building Permit, typeofwork = New Construction*) joined on permit number to ArcGIS AGO_Lyr_Permit_App_Status_Eclipse APPLICATIONDATE"
-    }
-  },
-  "sandiego": {
-    "newConstruction": {
-      "medianMonths": 10.2,
-      "p80Months": 18.2,
-      "n": 2015,
-      "vintage": "created 2022-01-01 onward; computed 2026-08-05; data.sandiego.gov Development Permits / DSD Approvals (JOB_BC_CODE = new-building classes; APPROVAL_TYPE in Building Permit, Combination Building Permit)"
     }
   },
   "seattle": {

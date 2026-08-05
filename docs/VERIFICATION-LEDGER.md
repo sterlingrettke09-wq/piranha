@@ -2183,3 +2183,53 @@ Two latent bugs found in our own committed scripts and NOT yet fixed:
 slice is Certificates of Occupancy — it never emitted a wrong number only because
 the missing date halted it first. `scripts/permits/nyc.mjs` admits plumbing and
 equipment sub-permits and slices by issuance year rather than filing year.
+
+---
+
+## 2026-08-05 — The eleven measured permit timings audited. THREE WITHDRAWN.
+
+The four failures were interrogated because they failed; the eleven successes had
+never been. An adversarial audit — one agent per city, told to default to
+distrust — returned **2 SOUND, 8 CONTAMINATED_SAMPLE, 1 WRONG_DATE_FIELD**.
+
+**Withdrawn immediately** (removed from `permitStats.json`; tests now assert the
+absence so the stale scripts cannot reinstate them):
+
+- **San Diego 10.2 mo — WRONG DATE FIELD.** The start stamp is documented as when
+  a permit is *"added to the Permit System"*, never earlier than intake (median
+  +14 d, p90 +181 d), and **8.93% of rows are create==issue on projects filed a
+  median 928 days earlier.** The UI called it "Median filing→permit". It was not.
+- **Chicago 1.0 mo.** `APPLICATION_START_DATE` is documented as *"Date when City
+  began reviewing permit application"* — not filing. Worse, 46% of the sample is a
+  2022-23 cohort where 51.6% / 31.2% of records are stamped applied==issued, a
+  backfill artifact that roughly HALVED the median. Spot-check: a $19.7M 6-storey
+  73-unit senior apartment shows application_start == issue on one day, with Plan
+  Commission approval independently reported five months earlier. Clean 2024-25
+  cohorts give **1.71 mo**, not 1.0.
+- **LA 6.0 / 13.0.** The date field is fine — the ESTIMATOR is not. 45.4% of the
+  cohort never issued. Only 64.1% of the matured 2022 cohort ever issued, so an
+  80th percentile **does not exist**. A caveat cannot repair an undefined statistic.
+
+### The dominant failure was not the date field
+
+Only one city had the trap we went looking for. The systematic problem is
+**right-censoring**: the median is computed over permits that ISSUED, and a large
+share never do. Every instance biases the figure LOW — the flattering direction.
+
+- **NYC** — 8.3 mo published; 45% of initial New Building filings since 2022 never
+  issued. Kaplan-Meier over all 8,039 gives **15.9 months**.
+- **Austin** — and a second, separate defect: `work_class='New'` is **not new
+  buildings**. 23% is swimming pools and spas; 32% is "Structures Other Than
+  Bldg". Class medians span 6×: single-family 1.64 mo, 5+ family apartments
+  **9.82 mo**, parking garage 11.93. **A user testing a multifamily parcel is
+  shown 2.2 months against a measured 9.8.**
+- **Denver, Seattle, SF, Nashville, Philadelphia, Miami** — all censored low to
+  varying degrees; all keep their figures pending a restated basis.
+
+### What this says about the method
+
+The audit existed only because the failures were scrutinised and the successes
+were not. That asymmetry is the general lesson: **a result that succeeds gets less
+scrutiny than one that fails, and success in the flattering direction is exactly
+where scrutiny is most needed.** Eight of eleven "successful" measurements were
+wrong or overstated, and none would have been caught by re-reading our own code.

@@ -157,9 +157,21 @@ export function hasCitySpecificHurdles(slug: string): boolean {
  * Kept honest by a test that reads permitStats.json and asserts this list matches
  * it exactly, so measuring a twelfth city cannot silently leave the list stale.
  */
+// ⚠️ chicago, la and sandiego were REMOVED 2026-08-05 after an adversarial audit.
+// They were published for part of one session and are recorded here so nobody
+// re-adds them from the old query:
+//   · sandiego — WRONG DATE FIELD. The start stamp is documented as when a permit
+//     is "added to the Permit System", never earlier than intake (median +14 d,
+//     p90 +181 d), and 8.93% of rows are create==issue on projects filed a median
+//     928 days earlier. The UI called it "Median filing→permit". It was not.
+//   · chicago — 46% of the sample is a 2022-23 cohort where 51.6%/31.2% of records
+//     are stamped applied==issued, a backfill artifact that roughly HALVED the
+//     median. Clean 2024-25 cohorts give 1.71 mo, not 1.0.
+//   · la — 45.4% of the cohort never issued. The p80 of 13.0 is unsalvageable:
+//     only 64.1% of the matured 2022 cohort ever issued, so no 80th percentile
+//     exists. A caveat cannot repair a statistic that is undefined.
 export const CITIES_WITH_MEASURED_PERMITS = [
-  'austin', 'chicago', 'denver', 'la', 'miami', 'nashville',
-  'nyc', 'philadelphia', 'sandiego', 'seattle', 'sf',
+  'austin', 'denver', 'miami', 'nashville', 'nyc', 'philadelphia', 'seattle', 'sf',
 ] as const
 
 export function hasMeasuredPermitTiming(slug: string): boolean {

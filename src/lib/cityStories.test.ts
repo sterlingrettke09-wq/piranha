@@ -24,13 +24,14 @@ describe('storyFor', () => {
   })
 
   // ── Branch 1: MEASURED permit time leads ─────────────────────────────────
-  it('leads with the measured permit median (Chicago — the fastest)', () => {
+  // ⚠️ Chicago's 1-month median was WITHDRAWN 2026-08-05: 46% of the sample was a
+  // 2022-23 cohort stamped applied==issued. The "fastest we measure" superlative
+  // it carried was an artifact of that, and this test was pinning it.
+  it('Chicago no longer carries a measured median or the fastest superlative', () => {
     const chicago = byCity('chicago')
     const story = storyFor(chicago, ranked)
-    // Chicago's median is 1 month → "about a month", and it holds the floor.
-    expect(chicago.measuredMedianMonths).toBe(1)
-    expect(story).toContain('about a month')
-    expect(story).toContain('the fastest we measure')
+    expect(chicago.measuredMedianMonths).toBeNull()
+    expect(story).not.toContain('the fastest we measure')
     // The real relief adder (3 months) is interpolated, not invented.
     expect(story).toContain('3 months')
   })
@@ -51,11 +52,11 @@ describe('storyFor', () => {
     expect(story).toContain('12 months')
   })
 
-  it('renders a measured median with no superlative for the middle (LA)', () => {
+  it('LA no longer renders a measured median — 45% of its cohort never issued', () => {
     const la = byCity('la')
     const story = storyFor(la, ranked)
-    expect(story).toContain('about 6 months')
-    expect(story).not.toContain('we measure') // not an extreme
+    expect(la.measuredMedianMonths).toBeNull()
+    expect(story).not.toContain('about 6 months')
   })
 
   // ── Branch 2: RELIEF grant rate (says-yes angle) ─────────────────────────
