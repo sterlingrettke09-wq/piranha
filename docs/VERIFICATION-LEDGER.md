@@ -2031,3 +2031,54 @@ vary by lot frontage we do not have; RM-6/6.5 say "None" (an absence, not a gap)
 Miami's Public Benefit bonuses, Denver's height incentives, Seattle's MHA rows,
 NYC's affordable-housing heights and Minneapolis's cluster program are all
 alternatives, not ceilings — none adopted.
+
+---
+
+## 2026-08-05 — The defect signature, run as a grep. It hit.
+
+The Denver provider bug produced a reusable signature: **a test whose title
+asserts a DERIVATION rather than a source.** Grepping test titles for
+derives/computes/calculates/estimates/infers across the repo returned ~24 hits,
+most of them legitimate (geometric area, `hard = gfa × rate`, the `storiesBasis`
+labelling that exists precisely to mark a derivation).
+
+One was the real thing:
+
+```
+it('Former-Chapter-59 code WITHOUT the description still derives a height from
+    the trailing token', …)
+    expect(res.info.zoning.maxHeightFt).toBe(36)
+```
+
+`B-3` is a former Chapter 59 code whose **3 is a district CLASS, not a story
+count**. The provider's own comment said so — "don't fabricate a height from it"
+— but the guard fired only when `ZONE_DESCRIPTION` contained the literal phrase
+"former chapter 59". Where the layer described the parcel as plain "Business",
+the guard missed and 3 × 12 published **36 ft** out of a number that means
+nothing of the kind. The test pinned it and named it.
+
+**Measured against the live layer: 23 of Denver's 184 distinct zone codes carry
+a numeric trailing token** — B-1…B-8, H-2, I-0/1/2, MS-1/2/3, O-1/2, OS-1, P-1,
+R-0…R-5 — every one of them a legacy class exposed to this. Protection depended
+on a free-text annotation being filled in.
+
+The guard is now structural: a current DZC code carries context AND form
+(`C-MX-5`, `G-MU-3`) so it has two or more hyphens; a bare letter class plus a
+token is legacy. The shape of a code is intrinsic; a description is an
+annotation that may or may not be present. Modern codes the shape test also
+catches (`D-C`, `CMP-H`, `OS-A/B/C`, `I-A/B`) have non-numeric tails and could
+never have fabricated a height.
+
+**The grep took five minutes and found a live fabrication across 23 districts.**
+Run it before each parallel round, not after.
+
+### Still open from this round
+
+- **A citation can be REPEALED.** NYC cited ZR 23-662 throughout; City of Yes
+  struck it on 2024-12-05 and the URL now 404s. This is neither unsourced nor
+  mis-transcribed — it is correctly sourced to something that no longer exists.
+  Proposed guard: a cited URL returning 404 should FAIL A TEST, not rot quietly.
+  Cheapest available new check; not yet built.
+- **Zero refuted out of nineteen.** Either the extractors were disciplined or the
+  refuters lacked teeth. One data point. If the next round is also 0, check the
+  refuter role rather than concluding extraction is perfect.

@@ -110,9 +110,15 @@ describe('getDenverParcelInfo — happy path', () => {
     expect(res.info.zoning.allowedUses).toEqual(['commercial', 'mixed', 'residential'])
   })
 
-  it('Former-Chapter-59 code WITHOUT the description still derives a height from the trailing token', async () => {
-    // Counter-branch: same B-3 code but no "Former Chapter 59" description, so the
-    // trailing numeric token (3) is read as stories → 3 × 12 = 36.
+  // ⚠️ This test asserted `maxHeightFt === 36` and was titled "still derives a
+  // height from the trailing token" — it PINNED a fabrication. `B-3` is a former
+  // Chapter 59 code whose "3" is a district CLASS, not a story count, and the
+  // guard fired only when ZONE_DESCRIPTION happened to contain the phrase
+  // "former chapter 59". Described as plain "Business", the parcel published
+  // 3 × 12 = 36 ft out of a number that means nothing of the kind.
+  // The guard is now structural (code shape, not description text), so the
+  // description being absent no longer opens the fabricating branch.
+  it('a legacy code fabricates NO height even when the description omits "Former Chapter 59"', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         'MapServer/0': denverParcel(),
@@ -129,7 +135,7 @@ describe('getDenverParcelInfo — happy path', () => {
     const res = await getDenverParcelInfo(LAT, LNG)
     expect(res.ok).toBe(true)
     if (!res.ok) return
-    expect(res.info.zoning.maxHeightFt).toBe(36)
+    expect(res.info.zoning.maxHeightFt).toBeNull()
   })
 
   it('detects a government owner via OWNER_NAME and surfaces ownerPublic', async () => {

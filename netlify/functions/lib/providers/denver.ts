@@ -21,8 +21,30 @@ const EHA = 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/
 // height from the code's trailing stories token — with the "Former Chapter 59"
 // guard preserved so a legacy class-code number isn't misread as stories.
 // maxFAR stays null (Denver's form-based code has no FAR — see that module).
-function isFormerChapter59(description?: unknown): boolean {
-  return /former chapter 59/i.test(String(description ?? ''))
+// A current DZC code always carries a neighborhood-context prefix AND a form
+// segment — `C-MX-5`, `G-MU-3`, `U-SU-A`, `S-MX-3`, `E-TU-B`, `I-MX-3` — so it
+// has at least two hyphens. Former Chapter 59 legacy codes are a bare letter
+// class plus a number: `B-3`, `O-1`, `R-2`, `R-X`.
+//
+// ⚠️ This used to be detected ONLY by the phrase "former chapter 59" appearing
+// in ZONE_DESCRIPTION. Where the layer described a legacy parcel as plain
+// "Business", the guard silently missed and the trailing token — a district
+// CLASS number — was read as a story count and multiplied into a height: B-3
+// published 36 ft (3 × 12) for a district whose "3" means nothing of the kind.
+// A test asserted that behaviour and named it in its own title ("still derives a
+// height from the trailing token"), so the fabrication was pinned in place.
+//
+// The shape of the code is intrinsic; a description string is an annotation that
+// may or may not be filled in. Detect on the shape, and treat the description as
+// a secondary confirmation only.
+function isFormerChapter59(zone?: unknown, description?: unknown): boolean {
+  if (/former chapter 59/i.test(String(description ?? ''))) return true
+  const z = String(zone ?? '').trim().toUpperCase()
+  if (!z) return false
+  // Two or more hyphens ⇒ a current DZC context-and-form code.
+  if ((z.match(/-/g) ?? []).length >= 2) return false
+  // Single-letter class + trailing token ⇒ legacy (B-3, O-1, R-2, R-X, PUD-4).
+  return /^[A-Z]{1,3}-[0-9A-Z]+$/.test(z)
 }
 
 function denverMaxHeightFt(zone: string | null, heightStories: unknown, description?: unknown): number | null {
@@ -37,7 +59,7 @@ function denverMaxHeightFt(zone: string | null, heightStories: unknown, descript
   // an unsourced ft/story constant. Only where the DZC's printed feet have not
   // been read (`derived-estimate` — Articles 3–6, whose districts print different
   // feet per building form) does the live story count still drive an estimate.
-  const fromCode = resolveDenver(zone, { formerChapter59: isFormerChapter59(description) })
+  const fromCode = resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description) })
   if (fromCode.heightBasis === 'code-stated' && fromCode.heightFt != null) return fromCode.heightFt
 
   const stories = Number(heightStories)
@@ -54,7 +76,7 @@ function denverMaxHeightFt(zone: string | null, heightStories: unknown, descript
 function denverMaxStories(zone: string | null, heightStories: unknown, description?: unknown): number | null {
   const s = Number(heightStories)
   if (Number.isFinite(s) && s > 0) return s
-  return resolveDenver(zone, { formerChapter59: isFormerChapter59(description) }).stories ?? null
+  return resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description) }).stories ?? null
 }
 
 // Whether the DZC imposes NO FAR on this district (a known absence) as opposed
@@ -62,7 +84,7 @@ function denverMaxStories(zone: string | null, heightStories: unknown, descripti
 // which made defaultSpec fall back to an unsourced FAR-1.0 assumption on every
 // Denver parcel. Former-Chapter-59 and unrecognised codes stay unresolved.
 function denverFarUnconstrained(zone: string | null, description?: unknown): boolean {
-  return resolveDenver(zone, { formerChapter59: isFormerChapter59(description) }).farUnconstrained === true
+  return resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description) }).farUnconstrained === true
 }
 
 // Denver code (ZONE_DISTRICT, e.g. "U-SU-A", "G-MU-3", "C-MX-5", "D-C") →
