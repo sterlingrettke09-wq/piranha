@@ -151,7 +151,15 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
   // across casings and to the 2016-code field ZR16.
   const zCode = zoning?.Zoning ?? zoning?.ZONING ?? zoning?.ZR16
   const code = zCode != null && String(zCode).trim() ? String(zCode).trim() : null
-  const lim = dcLimits(code)
+  // `Zoning` and `ZR16` agree on 974 of 977 polygons (measured live 2026-08-05).
+  // On the three that disagree the two columns name DIFFERENT zones — one pair
+  // is MU-2 vs MU-3A, which is FAR 6.0 against 1.0. Nothing in the layer says
+  // which column is authoritative, so picking either publishes a confident
+  // number on a 6× ambiguity. Fail closed instead: keep the district label for
+  // display, withhold the envelope, and let the gap disclose itself.
+  const zr16 = zoning?.ZR16 != null ? String(zoning.ZR16).trim() : ''
+  const ambiguousDistrict = code != null && zr16 !== '' && zr16.toUpperCase() !== code.toUpperCase()
+  const lim = ambiguousDistrict ? { h: null, f: null } : dcLimits(code)
 
   // Existing structure: SALETYPE "Improved" means a building stands here (vs
   // vacant land). CLASSTYPE's leading digit gives a coarse use (1 residential,

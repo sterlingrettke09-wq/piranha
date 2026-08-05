@@ -1849,3 +1849,15 @@ Encoding the nine remaining cities is a project, not cleanup, and is NOT started
 DC is the cheapest first move: `IZ_Designation` is published per polygon (43 of
 977), it sits in a layer already fetched, and the inclusionary hurdle shape
 exists for Boston, NYC and SF — `fetched-not-mapped`, same as Minneapolis.
+
+### The three ambiguous polygons — failed closed
+
+`Zoning` and `ZR16` disagree on 3 of 977 polygons, and where they disagree they
+name different zones: `MU-2` vs `MU-3A` is FAR 6.0 against 1.0. The provider
+preferred `Zoning` and published a confident envelope on a 6× ambiguity that
+nothing in the layer resolves. It now keeps the district label for display and
+withholds the envelope — including the no-FAR claim, so a disagreement cannot
+manufacture a stated absence either.
+
+0.3% of polygons, and the cheapest possible fix: the provider already fetched
+both columns and was reading one.

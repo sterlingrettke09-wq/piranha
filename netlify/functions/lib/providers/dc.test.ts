@@ -242,3 +242,51 @@ describe('DC separates a stated FAR absence from an unresolved one', () => {
     expect(dcLimits(zone).cite).toBeTruthy()
   })
 })
+
+// The DCOZ layer carries `Zoning` and `ZR16`, which agree on 974 of 977 polygons
+// (measured live 2026-08-05). Where they disagree they name different zones —
+// MU-2 vs MU-3A is FAR 6.0 vs 1.0 — and nothing in the layer says which column
+// is authoritative. An arbitrary pick is worst exactly where the spread is
+// widest, so the envelope is withheld and the gap discloses itself.
+describe('DC fails closed where the two zone columns disagree', () => {
+  const withZones = (Zoning: string, ZR16: string) =>
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({
+        'MapServer/40': dcParcel(),
+        'MapServer/24': featureSet({ Zoning, ZR16, Zone_District: 'Mixed-Use' }),
+        'MapServer/6': featureSet(),
+        NFHL: featureSet(),
+      }),
+    )
+
+  it('withholds FAR and height when Zoning and ZR16 name different districts', async () => {
+    withZones('MU-2', 'MU-3A')
+    const res = await getDcParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    // The label still shows — only the envelope is withheld.
+    expect(res.info.zoning.districtCode).toBe('MU-2')
+    expect(res.info.zoning.maxFAR).toBeNull()
+    expect(res.info.zoning.maxHeightFt).toBeNull()
+    expect(res.info.zoning.farUnconstrained).toBeUndefined()
+  })
+
+  it('resolves normally when the two columns agree', async () => {
+    withZones('MU-2', 'MU-2')
+    const res = await getDcParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.maxFAR).toBe(6.0)
+    expect(res.info.zoning.maxHeightFt).toBe(90)
+  })
+
+  // A disagreement must not be allowed to manufacture a stated absence either.
+  it('withholds the no-FAR claim too when the columns disagree', async () => {
+    withZones('R-2', 'MU-4')
+    const res = await getDcParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.farUnconstrained).toBeUndefined()
+    expect(res.info.zoning.maxFAR).toBeNull()
+  })
+})
