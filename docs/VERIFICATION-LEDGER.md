@@ -1490,3 +1490,79 @@ enumeration check found a shipped wrong number in it. **The "two consecutive
 clean cities" counter therefore resets**, and — more importantly — *clean on
 Q1/Q2/Q3 does not imply clean*. The three-question audit and the enumeration
 check are independent instruments.
+
+---
+
+## 2026-08-05 — FAIL-CLOSED AUDIT. The permissive default was structural.
+
+Run because five defect classes this session all ran in the same direction:
+FAR-1.0 fallback · Miami/Denver/Boston story derivation · LA's unparsed
+qualifiers · Philadelphia's rejected FAR strings. **Five instances, one
+direction, no coincidence.**
+
+### The cause, in one function
+
+`defaultSpec.ts` collapsed the two states the envelope had carefully separated:
+
+```
+farBasis 'unconstrained'  (the code SAYS no FAR — SF §124(b), Denver DZC)
+farBasis  null            (we could not resolve one)
+        ↓ both yield maxFloorAreaSqFt: null
+        ↓ both fell to lot × 1.0
+        ↓ both reported 'assumed-far-1.0'
+```
+
+**Rule 5's distinction was built one layer up and thrown away here.** That is
+the structural reason "we didn't find a constraint" kept becoming
+"unconstrained": nothing downstream could tell the two apart.
+
+### Fixed (technical, unambiguous)
+
+`gfaBasis` now has three states: `envelope` · **`assumed-unconstrained`** ·
+`assumed-far-1.0`. The middle one means the code affirmatively imposes no FAR
+and lot area is a placeholder under a *stated absence*; the last means we could
+not resolve one at all — a guess made in ignorance, and the state that should
+fail closed. The assumptions panel gives them different user-facing text.
+
+A test that I wrote two turns ago asserted the collapse was correct
+("a genuinely farUnconstrained district STILL gets assumed-far-1.0"). It has
+been corrected with a note. **Rule 15 caught inside the same session that
+produced rule 15.**
+
+### MEASURED IMPACT — and this is a PRODUCT decision, not a technical one
+
+Strict fail-closed (block wherever FAR is *unresolved*, allow where the code
+says *unconstrained*), measured live against one real parcel per city:
+
+| Outcome | Cities |
+|---|---|
+| **Keeps an estimate** (7) | boston · nyc · chicago · austin · la (envelope) · **sf · denver** (unconstrained → placeholder) |
+| **Would be BLOCKED** (8) | seattle · dc · minneapolis · philadelphia · miami · sandiego · sanjose · nashville |
+
+**More than half the cities would stop producing an estimate.** That is the
+honest posture and a materially worse-looking product, exactly as predicted.
+
+Two corrections the run produced as a side effect: **Chicago's `B3-2` DOES
+resolve** (`farBasis: district`) — the null inventory entry was too pessimistic
+— and **San Diego returns a real district** (`CCPD-ER`) with a better probe
+coordinate than the city landmark.
+
+### NOT DECIDED — brought to the user deliberately
+
+Whether to actually block is a product judgment about what the tool claims, not
+a technical question, and it is being brought rather than resolved here. The
+last time a product decision was settled by reading a docstring (the Austin
+3-unit headline) it was wrong, and the failure was not the answer — it was
+deciding alone that the question was technical.
+
+Options, with the trade stated:
+- **(a) Full fail-closed.** 8 cities stop estimating. Most honest; halves
+  apparent coverage.
+- **(b) Keep estimating, escalate the disclosure** from the assumptions panel to
+  the result headline. Coverage unchanged; the guess stops being quiet.
+- **(c) Split by consequence.** Block where the assumption drives a *verdict*
+  (feasibility AS_OF_RIGHT vs NEEDS_RELIEF); keep where it only drives a cost
+  estimate. More surgical, more code.
+
+The separation shipped here is a prerequisite for all three and is correct under
+any of them.

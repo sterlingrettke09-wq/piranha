@@ -22,7 +22,11 @@ export interface AnalysisInput {
    *  must be disclosed wherever the resulting numbers are shown. Usually this
    *  means the city's FAR exists but isn't published in GIS (San Diego, San
    *  Jose, Nashville), not that the district is unconstrained. */
-  gfaBasis?: 'envelope' | 'assumed-far-1.0'
+  /** 'assumed-unconstrained' = the code affirmatively imposes NO FAR, so lot
+   *  area is a placeholder under a stated absence. 'assumed-far-1.0' = we could
+   *  not resolve a FAR at all — a guess made in ignorance, and the state that
+   *  should fail closed. Keeping these apart is the fail-closed audit's finding. */
+  gfaBasis?: 'envelope' | 'assumed-unconstrained' | 'assumed-far-1.0'
   units?: number
   stories?: number
   heightFt?: number

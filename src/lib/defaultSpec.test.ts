@@ -167,13 +167,18 @@ describe('buildDefaultSpec — gfaBasis labels the assumption', () => {
     expect(spec?.gfa).toBe(10000) // lot * 1.0 — the guess, now labelled
   })
 
-  it('labels the assumption for an UNCONSTRAINED district too', () => {
-    // Even a known absence of FAR does not make lot * 1.0 a code-derived number.
+  it('distinguishes a STATED absence of FAR from an unresolved one', () => {
+    // ⚠️ CORRECTED 2026-08-05 by the fail-closed audit. This previously asserted
+    // that an unconstrained district ALSO gets 'assumed-far-1.0' — i.e. that the
+    // two unknowns are the same. They are not: one is the code's answer, the
+    // other is our ignorance, and collapsing them is what made five defect
+    // classes default permissive. Rule 15 — the test was encoding the wrong
+    // interpretation.
     const spec = buildDefaultSpec(
       { ...base, envelope: { maxFloorAreaSqFt: null, maxHeightFt: 60, maxStories: 5, maxUnits: null, allowedUses: ['residential'], farBasis: 'unconstrained' } } as never,
       'denver',
     )
-    expect(spec?.gfaBasis).toBe('assumed-far-1.0')
+    expect(spec?.gfaBasis).toBe('assumed-unconstrained')
   })
 
   it('the two bases are always distinguishable', () => {

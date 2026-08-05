@@ -53,14 +53,28 @@ export function buildDefaultSpec(parcel: ParcelInfo, city: string): AnalysisInpu
   // separable downstream so the UI can disclose it. Deliberately NOT removed:
   // returning null here would leave those parcels with no estimate at all, and
   // a disclosed assumption beats both a silent one and a blank screen.
+  // ⚠️ FAIL-CLOSED AUDIT, 2026-08-05. This function used to collapse two states
+  // the envelope had carefully separated. `farBasis: 'unconstrained'` (the code
+  // affirmatively imposes no FAR — SF §124(b), Denver's form-based DZC) and
+  // `farBasis: null` (we could not resolve one) BOTH yield a null floor area,
+  // so both fell to the same `lot * 1.0` guess and both reported
+  // 'assumed-far-1.0'. Rule 5's distinction was built one layer up and thrown
+  // away here.
+  //
+  // They are now separable downstream. Five defect classes this session ran in
+  // the permissive direction, and the reason is structural: "we did not find a
+  // constraint" naturally defaults to "unconstrained".
   let gfa: number | null = null
-  let gfaBasis: 'envelope' | 'assumed-far-1.0' | null = null
+  let gfaBasis: 'envelope' | 'assumed-unconstrained' | 'assumed-far-1.0' | null = null
   if (env && env.maxFloorAreaSqFt != null && env.maxFloorAreaSqFt > 0) {
     gfa = quantizeGfa(env.maxFloorAreaSqFt * 0.85)
     gfaBasis = 'envelope'
   } else if (parcel.lot.sizeSqFt != null && parcel.lot.sizeSqFt > 0) {
     gfa = quantizeGfa(parcel.lot.sizeSqFt * 1.0)
-    gfaBasis = 'assumed-far-1.0'
+    // The code SAYS no FAR binds here, so a lot-area stand-in is a stated
+    // absence with a placeholder size — weaker than an envelope, stronger than
+    // a guess made in ignorance.
+    gfaBasis = env?.farBasis === 'unconstrained' ? 'assumed-unconstrained' : 'assumed-far-1.0'
   }
   if (gfa === null || gfaBasis === null) return null
 
