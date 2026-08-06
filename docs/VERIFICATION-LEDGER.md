@@ -2303,3 +2303,45 @@ Every one except Philadelphia is computed over a population now KNOWN to be
 contaminated. They have not been withdrawn only because recomputation is the next
 pass rather than a judgement call — but until that pass lands, **only
 Philadelphia's 3.0 months rests on a filter that was checked and held.**
+
+### Two checks the next pass must run, and one claim narrowed
+
+**1. "All three mechanisms bias down" is an observation, not a law — and I stated
+it as one.** Every contamination *measured* biased the published figure down
+(Nashville 0.99 vs 1.12, Miami 5.9 vs 12.6), and every *exclusion* found so far
+also biased down, because the excluded records were slow (Austin's `Shell` at
+11.1 mo, Nashville's `CACH` commercial shell). But an exclusion that drops records
+which issued FAST biases the published figure **up**, and nothing has checked for
+that direction. Some of the seven may be OVERSTATED rather than understated.
+
+The live candidate is **Seattle**: SDCI files a detached accessory dwelling under
+either "New" or "Addition", so some DADUs are excluded — and a backyard cottage is
+plausibly a fast permit. If so Seattle's 6.2 months is too HIGH, not too low, and
+correcting it in the assumed direction would make it worse.
+
+**Per exclusion, measure the duration of the excluded set before assuming which
+way it moves the number.** Austin's audit did exactly this (excluded `Shell` =
+11.1 mo median, stated explicitly); the other cities' exclusions were counted but
+not timed.
+
+**2. SF's 18.1% duplication needs its cause identified before its fix.** Genuine
+duplicate permits on one project and a join producing extra rows are different
+defects with different corrections — dedupe by project key versus fix the query.
+The audit reported the rate, not the mechanism. Austin flagged the same shape from
+the other side: `masterpermitnum` exists precisely because large projects split
+across many permits (twelve "Parking Garage - Module C/E/F/G…" rows for one
+garage), so **n over-counts projects in at least two cities** and the correction is
+a dedupe, not a filter change.
+
+### Next pass, ordered
+
+1. **`nyc.mjs`** — the script's filter is 63.9% sub-permits; the committed figure
+   came from a different query. Make one match the other. Not both.
+2. **Austin** — add `Shell`, drop non-building `permit_class` values, and
+   recompute BY PERMIT CLASS rather than in aggregate. A single median over a
+   population that is 49% single-family and 3% multifamily answers no question
+   anyone asked.
+3. The remaining six filters, timing each excluded set.
+4. Censoring (KM where supported, floor-labelled median otherwise, issuance rate
+   always).
+5. Restated bases.
