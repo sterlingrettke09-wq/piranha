@@ -2600,3 +2600,37 @@ new-construction rate, which the city does not publish.
 
 **Not yet applied.** SF is withdrawn and Seattle's defect is recorded; the seven
 restatements are the next pass.
+
+#### CORRECTION, same day — "floor" is the wrong label for the four issued-only cities
+
+The entry above recommends FLOOR-LABELLED MEDIANS for Austin, Denver, Miami and
+Philadelphia. That label is wrong, and the distinction is not cosmetic.
+
+**A floor label claims: the true value is higher and we are understating it.** It
+implies a knowable number we have bounded from below.
+
+**What these four actually publish is a CONDITIONAL median: time-to-issuance
+GIVEN issuance.** That is a well-defined statistic on a well-defined
+subpopulation. It is not an approximation of the unconditional median — it is a
+different quantity, and the tool currently claims to publish the other one.
+
+So the label must state the CONDITION, not hedge the magnitude:
+> "Median time from application to permit **among applications that resulted in a
+> permit.** This city publishes only issued permits, so the share of applications
+> that never issue is unknown."
+
+Contrast with **SF, withdrawn**: there the unconditional median genuinely does not
+exist, because most filings never issue. Conditional-and-labelled is publishable;
+undefined is not. Two different situations that a "floor" label would have
+rendered identically — rule 5's shape again, in the disclosure copy.
+
+**And restricting to older cohorts does not convert one into the other.** It
+reduces right-truncation (Austin apartment by filing year: 11.1 → 9.7 → 6.2 → 4.8
+→ 1.6, which is not projects getting faster but recent filings entering only if
+they issued fast). It does NOT remove selection: a 2019 cohort still contains only
+permits that eventually issued. Older cohorts buy a better conditional median, not
+an unconditional one.
+
+**Open:** does the same filing-year gradient appear in Denver, Miami and
+Philadelphia? If so the older-cohort restriction applies to all four. Austin is
+the only one measured so far.
