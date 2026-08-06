@@ -44,8 +44,11 @@ describe('storyFor', () => {
   it('reports SF from its measurement and no longer claims a superlative it lost', () => {
     const sf = byCity('sf')
     const story = storyFor(sf, ranked)
-    // SF median 11.8 → rounds to "about 12 months".
-    expect(story).toContain('about 12 months')
+    // SF median 12.5 → rounds to "about 13 months". Was 11.8/"about 12" until
+    // 2026-08-06, when the filter was corrected: an address fan-out (18.1% of
+    // rows, median 9.1 mo) and non-building accessory permits (9.0%, median 7.7)
+    // were both FASTER than the retained set, so removing them raised the figure.
+    expect(story).toContain('about 13 months')
     expect(story).not.toContain('the slowest we measure')
     // SF relief adder is 12 months.
     expect(sf.reliefAddMonths).toBe(12)

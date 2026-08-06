@@ -2464,3 +2464,63 @@ distribution. Those are the censoring and duplication passes.
 
 **Next: the remaining six filters, each excluded set TIMED**, since the sign of an
 exclusion is set by what its criterion selects on.
+
+---
+
+## 2026-08-06 — The remaining six filters. The direction is NOT uniform.
+
+Six agents, one per city, each required to report the **n AND median duration** of
+every set it added or removed. That requirement is the whole finding.
+
+| city | was | now | direction | what moved it |
+|---|---|---|---|---|
+| denver | 4.4 | 4.5 | too low | +51 commercial PHASED CONSTRUCTION (median 6.0 vs 4.5 retained) |
+| miami | 12.1 | **12.6** | too low | −94 non-buildings (median 5.9 vs 12.6) |
+| nashville | 1.1 | 1.2 | too low | −2,504 accessory (median 1.0), +CACH commercial shell |
+| sf | 11.8 | **12.5** | too low | −32 address fan-out (9.1) and −13 accessory (7.7), both faster |
+| **seattle** | **6.2** | **5.8** | **TOO HIGH** | +714 detached ADUs (median 2.8 vs 6.3 retained) |
+| boston | — | — | **not computable** | filter fixed; no application date exists |
+
+**Seattle is the one that matters.** Every correction before it ran the same way,
+and the temptation was to treat "contamination biases down" as a property of the
+mechanism. It is not. SDCI files a new backyard cottage under either "New" or
+"Addition", so 714 genuine ground-up ADUs at median 2.8 months were excluded —
+fast records, whose absence held the published figure UP. Seattle also decomposed
+cleanly, one change at a time: STFI removal +0.1, DADU addition −0.5.
+
+**The sign is set by what the criterion selects on, and only timing reveals it.**
+A count cannot. Five of six moved up, one moved down, and nothing but measurement
+distinguished them.
+
+### SF's duplication was a fan-out, not a multi-permit project
+
+The 18.1% was diagnosed before being fixed, as required: it is an ADDRESS FAN-OUT
+— one permit joined to many address rows — not one project filing many permits.
+So the correction is a **dedupe, not a re-weighting**. Removed rows ran 9.1 months
+against 11.8 retained, so the dedupe alone moved 11.5 → 11.8, and the accessory
+removal took it to 12.5. Both mechanisms pushed the same way here; they need not.
+
+### Boston refused to derive a sign, correctly
+
+The filter is fixed — `permittypedescr='Erect/New Construction'` replaces
+`worktype='ERECT'`, dropping 855 Certificates of Occupancy (99% of which sit on a
+property ALREADY in the sample, issued a median 23.7 months later) and 67
+foundation permits. But Boston publishes no application date, so the agent
+measured the excluded sets' **lifecycle position** rather than their duration and
+declined to convert that into a direction: a CO's own review time is unmeasured,
+and claiming the figure "would have been too high" would be a mechanism argued
+aloud (rule 1). The halt is now structural — `applicationDateField()` throws
+before any data pull — rather than incidental, which is how the old version came
+to be accidentally safe.
+
+### Per-tier breakdowns now on five cities
+
+austin, denver, miami, nashville, seattle, sf. The spreads justify the split:
+Austin apartment 8.6 against a 2.1 aggregate; Miami apartment 20.2 against 12.6;
+Seattle apartment 10.4 against 5.8. SF inverts — apartment 10.5 is FASTER than
+single-family 13.1 — which is measured, not assumed, and worth understanding
+before it is explained.
+
+**Still open:** right-censoring on every one of these (all are issued-permits-only
+samples, so all are floors), Nashville's per-unit child permits (24.9% of rows
+cite a master), and Austin's `masterpermitnum` module-splitting.

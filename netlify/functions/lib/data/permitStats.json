@@ -29,26 +29,80 @@
   },
   "denver": {
     "newConstruction": {
-      "medianMonths": 4.4,
-      "p80Months": 10.4,
-      "n": 6590,
-      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; opendata-geospatial.denvergov.org Construction Permits (residential + commercial; CLASS = 'NEW BUILDING')"
+      "medianMonths": 4.5,
+      "p80Months": 11.1,
+      "n": 6922,
+      "vintage": "applied 2022-01-01 onward; computed 2026-08-06; opendata-geospatial.denvergov.org Construction Permits (residential CLASS = 'NEW BUILDING'; commercial CLASS IN ('NEW BUILDING','PHASED CONSTRUCTION'))"
+    },
+    "byTier": {
+      "single": {
+        "medianMonths": 5.4,
+        "p80Months": 12.2,
+        "n": 3505,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; opendata-geospatial.denvergov.org Construction Permits (residential CLASS = 'NEW BUILDING'; commercial CLASS IN ('NEW BUILDING','PHASED CONSTRUCTION'))"
+      },
+      "apartment": {
+        "medianMonths": 5.3,
+        "p80Months": 10.8,
+        "n": 628,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; opendata-geospatial.denvergov.org Construction Permits (residential CLASS = 'NEW BUILDING'; commercial CLASS IN ('NEW BUILDING','PHASED CONSTRUCTION'))"
+      }
     }
   },
   "miami": {
     "newConstruction": {
-      "medianMonths": 12.1,
-      "p80Months": 20.9,
-      "n": 1085,
-      "vintage": "filed 2022-01-01 onward; computed 2026-08-05; datahub-miamigis.opendata.arcgis.com \"Building Permits Since 2014\" ArcGIS FeatureServer (ScopeofWork = 'NEW CONSTRUCTION', master building permit PermitNumber LIKE '%001B001', TotalSQFT > 0); PlanCreatedDate -> IssuedDate"
+      "medianMonths": 12.6,
+      "p80Months": 21.4,
+      "n": 991,
+      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; datahub-miamigis.opendata.arcgis.com \"Building Permits Since 2014\" ArcGIS FeatureServer (ScopeofWork = 'NEW CONSTRUCTION', master building permit PermitNumber LIKE '%001B001', WorkItems building allowlist); PlanCreatedDate -> IssuedDate"
+    },
+    "byTier": {
+      "single": {
+        "medianMonths": 11.3,
+        "p80Months": 17.9,
+        "n": 511,
+        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; datahub-miamigis.opendata.arcgis.com \"Building Permits Since 2014\" ArcGIS FeatureServer (ScopeofWork = 'NEW CONSTRUCTION', master building permit PermitNumber LIKE '%001B001', WorkItems building allowlist); PlanCreatedDate -> IssuedDate"
+      },
+      "multi": {
+        "medianMonths": 11,
+        "p80Months": 18.7,
+        "n": 291,
+        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; datahub-miamigis.opendata.arcgis.com \"Building Permits Since 2014\" ArcGIS FeatureServer (ScopeofWork = 'NEW CONSTRUCTION', master building permit PermitNumber LIKE '%001B001', WorkItems building allowlist); PlanCreatedDate -> IssuedDate"
+      },
+      "apartment": {
+        "medianMonths": 20.2,
+        "p80Months": 28.4,
+        "n": 189,
+        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; datahub-miamigis.opendata.arcgis.com \"Building Permits Since 2014\" ArcGIS FeatureServer (ScopeofWork = 'NEW CONSTRUCTION', master building permit PermitNumber LIKE '%001B001', WorkItems building allowlist); PlanCreatedDate -> IssuedDate"
+      }
     }
   },
   "nashville": {
     "newConstruction": {
-      "medianMonths": 1.1,
-      "p80Months": 2.7,
-      "n": 10196,
-      "vintage": "applied 2023-08-01 onward; computed 2026-08-05; data.nashville.gov Building Permits Issued (ArcGIS Building_Permits_Issued_2 layer 0; Per_Ty IN ('CACN','CARN') = Building Commercial/Residential - New). Feed is a ROLLING 3-YEAR window of issued permits (issue dates 2023-08-01..2026-08-04), so the 2022-01-01 start used for other cities is not attainable without left-truncation bias; 2023-08-01 is the earliest filing cohort the window covers completely."
+      "medianMonths": 1.2,
+      "p80Months": 2.8,
+      "n": 7796,
+      "vintage": "applied 2023-08-01 onward; computed 2026-08-06; NashvilleOpenData Building Permits Issued (ArcGIS Building_Permits_Issued_2 layer 0; Per_Ty IN (CARN, CACN, CACH) = Building Residential/Commercial - New + Commercial Shell, gated to building Per_SubTy only). Feed is a ROLLING ~3-YEAR window of ISSUED permits (2023-08-01..2026-08-04), so the 2022-01-01 start used for other cities is not attainable without left-truncation bias and 2023-08-01 is the earliest filing cohort the window covers completely. Because only issued permits appear, the issuance rate is not computable and this median is a FLOOR. Nashville also issues per-unit child permits under a master permit (24.9% of rows cite one), which re-weights the median toward large repetitive developments."
+    },
+    "byTier": {
+      "single": {
+        "medianMonths": 1.1,
+        "p80Months": 2.4,
+        "n": 5431,
+        "vintage": "applied 2023-08-01 onward; computed 2026-08-06; NashvilleOpenData Building Permits Issued (ArcGIS Building_Permits_Issued_2 layer 0; Per_Ty IN (CARN, CACN, CACH) = Building Residential/Commercial - New + Commercial Shell, gated to building Per_SubTy only). Feed is a ROLLING ~3-YEAR window of ISSUED permits (2023-08-01..2026-08-04), so the 2022-01-01 start used for other cities is not attainable without left-truncation bias and 2023-08-01 is the earliest filing cohort the window covers completely. Because only issued permits appear, the issuance rate is not computable and this median is a FLOOR. Nashville also issues per-unit child permits under a master permit (24.9% of rows cite one), which re-weights the median toward large repetitive developments."
+      },
+      "multi": {
+        "medianMonths": 2.2,
+        "p80Months": 4.5,
+        "n": 452,
+        "vintage": "applied 2023-08-01 onward; computed 2026-08-06; NashvilleOpenData Building Permits Issued (ArcGIS Building_Permits_Issued_2 layer 0; Per_Ty IN (CARN, CACN, CACH) = Building Residential/Commercial - New + Commercial Shell, gated to building Per_SubTy only). Feed is a ROLLING ~3-YEAR window of ISSUED permits (2023-08-01..2026-08-04), so the 2022-01-01 start used for other cities is not attainable without left-truncation bias and 2023-08-01 is the earliest filing cohort the window covers completely. Because only issued permits appear, the issuance rate is not computable and this median is a FLOOR. Nashville also issues per-unit child permits under a master permit (24.9% of rows cite one), which re-weights the median toward large repetitive developments."
+      },
+      "apartment": {
+        "medianMonths": 3,
+        "p80Months": 7,
+        "n": 570,
+        "vintage": "applied 2023-08-01 onward; computed 2026-08-06; NashvilleOpenData Building Permits Issued (ArcGIS Building_Permits_Issued_2 layer 0; Per_Ty IN (CARN, CACN, CACH) = Building Residential/Commercial - New + Commercial Shell, gated to building Per_SubTy only). Feed is a ROLLING ~3-YEAR window of ISSUED permits (2023-08-01..2026-08-04), so the 2022-01-01 start used for other cities is not attainable without left-truncation bias and 2023-08-01 is the earliest filing cohort the window covers completely. Because only issued permits appear, the issuance rate is not computable and this median is a FLOOR. Nashville also issues per-unit child permits under a master permit (24.9% of rows cite one), which re-weights the median toward large repetitive developments."
+      }
     }
   },
   "nyc": {
@@ -69,18 +123,58 @@
   },
   "seattle": {
     "newConstruction": {
-      "medianMonths": 6.2,
-      "p80Months": 10.8,
-      "n": 3956,
-      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.seattle.gov Building Permits (permittypedesc = New)"
+      "medianMonths": 5.8,
+      "p80Months": 10.2,
+      "n": 4702,
+      "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
+    },
+    "byTier": {
+      "single": {
+        "medianMonths": 5.1,
+        "p80Months": 8.5,
+        "n": 2407,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
+      },
+      "multi": {
+        "medianMonths": 6.3,
+        "p80Months": 10.4,
+        "n": 1646,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
+      },
+      "apartment": {
+        "medianMonths": 10.4,
+        "p80Months": 18.4,
+        "n": 425,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
+      }
     }
   },
   "sf": {
     "newConstruction": {
-      "medianMonths": 11.8,
-      "p80Months": 24.4,
-      "n": 165,
-      "vintage": "filed 2022-01-01 onward; computed 2026-06-10; data.sfgov.org Building Permits (permit_type 1,2 = new construction)"
+      "medianMonths": 12.5,
+      "p80Months": 25.3,
+      "n": 132,
+      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.sfgov.org Building Permits (permit_type 1,2 = new construction; primary_address_flag = Y to collapse the one-row-per-address fan-out; proposed_use allowlist = buildings only)"
+    },
+    "byTier": {
+      "single": {
+        "medianMonths": 13.1,
+        "p80Months": 24.4,
+        "n": 50,
+        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.sfgov.org Building Permits (permit_type 1,2 = new construction; primary_address_flag = Y to collapse the one-row-per-address fan-out; proposed_use allowlist = buildings only)"
+      },
+      "multi": {
+        "medianMonths": 17.9,
+        "p80Months": 31.7,
+        "n": 34,
+        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.sfgov.org Building Permits (permit_type 1,2 = new construction; primary_address_flag = Y to collapse the one-row-per-address fan-out; proposed_use allowlist = buildings only)"
+      },
+      "apartment": {
+        "medianMonths": 10.5,
+        "p80Months": 19,
+        "n": 48,
+        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.sfgov.org Building Permits (permit_type 1,2 = new construction; primary_address_flag = Y to collapse the one-row-per-address fan-out; proposed_use allowlist = buildings only)"
+      }
     }
   }
 }
