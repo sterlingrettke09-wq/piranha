@@ -109,6 +109,34 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
   const parcel = parcelResult.info
 
+  // ⚠️ DERIVED SERVER-SIDE, DELIBERATELY. `gfaBasis` records where the parcel's
+  // size LIMIT came from, and three fail-closed guards read it:
+  //   · feasibility.ts — withholds the verdict (INDETERMINATE, not AS_OF_RIGHT)
+  //   · hurdles.ts     — downgrades size-triggered hurdles to 'info'
+  //   · assumptions.ts — surfaces the "ASSUMED, not a code limit" disclosure
+  //
+  // All three were DEAD IN PRODUCTION until 2026-08-06. `buildDefaultSpec` sets
+  // gfaBasis client-side, but `toQuery()` in src/hooks/useAnalysis.ts never
+  // serialized it, so `project.gfaBasis` was `undefined` on every real request
+  // and every guard returned at its first line. Measured at the HTTP entry
+  // point: Minneapolis and Nashville were returning **AS_OF_RIGHT off a
+  // `lot × 1.0` placeholder** — precisely the claim those guards exist to
+  // prevent — while docs/NULL-INVENTORY.md described the withholding as shipped
+  // behaviour. The unit tests passed throughout because they called the
+  // functions directly (rule 11, again).
+  //
+  // Deriving it here rather than accepting a query param is the stronger fix: it
+  // cannot be omitted by a caller, and a user who edits `gfa` upward on a parcel
+  // whose FAR never resolved still gets the verdict withheld — which is the
+  // point. The client's own value is now redundant, not load-bearing.
+  const env = parcel.envelope
+  const gfaBasis: AnalysisInput['gfaBasis'] =
+    env?.maxFloorAreaSqFt != null && env.maxFloorAreaSqFt > 0
+      ? 'envelope'
+      : env?.farBasis === 'unconstrained'
+        ? 'assumed-unconstrained'
+        : 'assumed-far-1.0'
+
   const project: AnalysisInput = {
     parcelId: parcel.parcelId,
     city,
@@ -118,6 +146,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     lng,
     use,
     gfa,
+    gfaBasis,
     units,
     stories,
     heightFt,

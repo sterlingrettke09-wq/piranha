@@ -2755,3 +2755,79 @@ computable for Nashville by joining the two** — currently unexploited.
 **Philadelphia's 3.0 months is now the weakest figure on the board, not the
 strongest.** Its filter needs re-gating on a filing-time field before any issuance
 rate is computed from it.
+
+---
+
+## 2026-08-06 — THE FAIL-CLOSED FEATURE WAS DEAD IN PRODUCTION
+
+Found while measuring something else: how often `softenSizeDependent()` downgrades
+a hurdle. The answer was **never**, and the reason invalidates a feature shipped
+and pushed earlier in this same session.
+
+`buildDefaultSpec` sets `gfaBasis` client-side. **`toQuery()` in
+`src/hooks/useAnalysis.ts` never serialized it.** `/api/analyze` reconstructs
+`project` from query params alone, so `project.gfaBasis` was `undefined` on every
+real request and all three consumers returned at their first line:
+
+- `feasibility.ts` — the INDETERMINATE withholding never fired
+- `hurdles.ts` — no size-triggered hurdle was ever downgraded
+- `assumptions.ts` — the "ASSUMED, not a code limit" disclosure never rendered
+
+Measured at the HTTP entry point, before the fix:
+
+```
+minneapolis  gfaBasis=assumed-far-1.0  in-process: INDETERMINATE  via handler: AS_OF_RIGHT
+nashville    gfaBasis=assumed-far-1.0  in-process: INDETERMINATE  via handler: AS_OF_RIGHT
+```
+
+**Minneapolis and Nashville were publishing AS_OF_RIGHT off a `lot × 1.0`
+placeholder** — the exact claim the guard was built to prevent — while
+`docs/NULL-INVENTORY.md` described the withholding as shipped behaviour. That
+document was wrong for a day.
+
+### Why it survived a fail-closed audit, tests, and a review
+
+Rule 11, at the worst possible place. `failClosed.test.ts` calls
+`assessFeasibility` and `assessHurdles` directly. Every test passed, the feature
+was correct, and the wire between the client and the function had a missing field.
+**The guard was verified; the path to the guard was not.**
+
+Rule 18 hid it further: three of the five fallback cities (Seattle, San Diego,
+San Jose) DO return INDETERMINATE — from unrelated causes — so a spot check of the
+group looks right. The two that were wrong were the two nobody looked at.
+
+### The fix, and why it is server-side
+
+`gfaBasis` is now DERIVED in `analyze.ts` from the parcel envelope, not read from
+a query param. It records where the parcel's size LIMIT came from, so a caller
+cannot omit it, and a user who edits `gfa` upward on a parcel whose FAR never
+resolved still gets the verdict withheld. The client's value is now redundant
+rather than load-bearing.
+
+Verified through the REAL handler, not the functions:
+
+```
+minneapolis  INDETERMINATE  floorAreaBasis PRESENT
+nashville    INDETERMINATE  floorAreaBasis PRESENT
+chicago  B3-2  NEEDS_RELIEF  "Derived from the published zoning limit"
+boston   MFR/LS PROHIBITED   "Derived from the published zoning limit"
+```
+
+### Also found in the same measurement
+
+- **San Diego's inventory coordinate returns a DIFFERENT PARCEL on nearly every
+  call** — parcelIds 5861800900 / 4174800800, lot sizes 97,106 / 39,615 / 21,389 /
+  8,500 sq ft over four calls. Same defect class as the old Philadelphia point.
+- **San Diego and San Jose both probe NON-DEVELOPABLE parcels** (Horton Plaza;
+  a PQP public/quasi-public lot). `analyze.ts` zeroes hurdles for those, so
+  neither city's new hurdle encoding is exercised by the inventory at all.
+- **Minneapolis has the largest hidden exposure**: 6 of its 10 encoded hurdles are
+  size-triggered, and its FAR needs a two-layer join (rule 13) so it falls back
+  citywide. Now that the guard works, most of Minneapolis's regulatory encoding
+  will correctly demote to `info` — the fix is resolving Corridor/Transit FAR, not
+  changing the hurdles.
+- **Null `addsMonths` confirmed as ABSENCE, not skip**, for denver, miami and
+  sandiego, each with the researcher's stated reason (Denver publishes durations
+  in days; Miami's only figures are decision shot-clocks and a demolition-deferral
+  CEILING). Nashville does publish one and it IS encoded. The "five cities" premise
+  was wrong — LA has no city branch at all.

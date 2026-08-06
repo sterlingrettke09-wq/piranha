@@ -130,7 +130,10 @@ export function cityName(slug: string): string {
  * `hurdles.ts` and asserts they match this list exactly, so encoding a new city
  * without updating it fails the suite rather than silently mislabelling.
  */
-export const CITIES_WITH_SPECIFIC_HURDLES = ['boston', 'chicago', 'la', 'nyc', 'seattle', 'sf'] as const
+export const CITIES_WITH_SPECIFIC_HURDLES = [
+  'austin', 'boston', 'chicago', 'dc', 'denver', 'la', 'miami', 'minneapolis',
+  'nashville', 'nyc', 'philadelphia', 'sandiego', 'sanjose', 'seattle', 'sf',
+] as const
 
 export function hasCitySpecificHurdles(slug: string): boolean {
   return (CITIES_WITH_SPECIFIC_HURDLES as readonly string[]).includes(slug)
