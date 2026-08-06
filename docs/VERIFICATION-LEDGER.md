@@ -2956,3 +2956,39 @@ overlapping parcels. `fetchParcelSnap`'s buffered path already picks the nearest
 deterministically; the exact path has no tiebreak because "nearest" is undefined
 when every candidate contains the point. Changing it touches all fifteen cities
 and needs its own verification pass.
+
+### The rate, and what the sweep did NOT establish
+
+**29 of 96 encoded gates were corrected — a 30% error rate on the encoding
+process under truncation.** Recorded as the number because it calibrates how much
+scrutiny the next batch encoding needs: this was not a subset going wrong, it was
+the process being broadly unreliable when its input was clipped.
+
+Two things the sweep did not establish, stated rather than implied:
+
+**1. The under-fire count is a FLOOR, not a total.** Seven were found (4 + 2 + 1),
+so the answer is not zero and not untested. But the search vocabulary given to the
+agents was narrowing-oriented — `and`, `only if`, `except`, `unless`, `provided
+that`. A source BROADER than the gate reads as `or`, `including`, `any`, and those
+terms were never specified. The seven surfaced anyway; more may exist.
+
+**2. "66 unchanged" would have been wrong, and the arithmetic does not close.**
+Explicitly reported clean: 20 + 22 + 22 = **64**. Against 19 over-firing and 7
+under-firing, that accounts for 90 of the 105 items the agents said they covered —
+while the nine branches actually contain 96 gates. The discrepancy is items
+counted that are not branch gates (parking rendered from `PARKING_RULES`, historic
+from `HISTORIC_BODY`). **So ~15 are unaccounted for, not verified correct.** A
+clean count that does not reconcile with the file is not evidence of coverage.
+
+### Probe stability is now checked on every run
+
+`stability()` calls each probe three times and compares parcelId and lot size. An
+unstable probe now prints a warning and stamps the inventory row **"PROBE UNSTABLE
+— this row is not reproducible"** rather than reading as an ordinary result.
+
+The underlying defect is live in all fifteen cities: a point inside overlapping
+parcel polygons returns an arbitrary one, because every candidate contains it and
+`nearestFeatureSet()` has no tiebreak. **A single call always looks fine** — rule
+18's shape exactly — so the only detection is calling repeatedly and comparing.
+This inventory already hits every city, which makes it the cheapest place to run
+that check. All fifteen probes are currently stable.

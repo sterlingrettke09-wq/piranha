@@ -82,6 +82,31 @@ async function probe(city: string, lat: number, lng: number, attempts = 3) {
   return last as Awaited<ReturnType<typeof getParcelInfo>>
 }
 
+/** Does this coordinate resolve to the SAME parcel every time?
+ *
+ *  A point inside OVERLAPPING parcel polygons returns an arbitrary one: every
+ *  candidate contains it, so `nearestFeatureSet()` has no tiebreak and the
+ *  server's ordering decides. San Diego's old probe did exactly this — four calls
+ *  gave two parcelIds at lot sizes 97,106 / 39,615 / 21,389 / 8,500 sq ft.
+ *
+ *  **A single call always looks fine**, which is why this went unnoticed: the
+ *  symptom is only visible by calling repeatedly and comparing. That makes it
+ *  rule 18's shape — a plausible answer is indistinguishable from a correct one —
+ *  and this inventory already hits every city, so it is the cheapest place to
+ *  detect it.
+ *
+ *  This checks the PROBE, not the city. An unstable result means the coordinate
+ *  sits on overlapping polygons, not that the provider is broken. */
+async function stability(city: string, lat: number, lng: number, calls = 3) {
+  const seen = new Set<string>()
+  for (let i = 0; i < calls; i++) {
+    const r = await getParcelInfo(city, lat, lng)
+    seen.add(r.ok ? `${r.info.parcelId}/${r.info.lot.sizeSqFt}` : 'ERR')
+    await new Promise((res) => setTimeout(res, 300))
+  }
+  return { stable: seen.size === 1, seen: [...seen] }
+}
+
 ;(async () => {
   const stamp = new Date().toISOString().slice(0, 10)
   const rows: Row[] = []
@@ -110,7 +135,16 @@ async function probe(city: string, lat: number, lng: number, attempts = 3) {
       : gfaBasis === 'assumed-unconstrained' ? 'code affirmatively imposes no FAR; lot area is a placeholder'
       : 'no FAR resolvable; cost/timeline still estimated and disclosed'
 
-    rows.push({ city, district: String(r.info.zoning.districtCode).slice(0, 22), farBasis, gfaBasis, verdict, outcome, note })
+    const st = await stability(city, lat, lng)
+    if (!st.stable) {
+      console.warn(`  ⚠️ ${city}: probe UNSTABLE — ${st.seen.join(' | ')} (overlapping parcels?)`)
+    }
+    rows.push({
+      city,
+      district: String(r.info.zoning.districtCode).slice(0, 22),
+      farBasis, gfaBasis, verdict, outcome,
+      note: st.stable ? note : `${note} ⚠️ PROBE UNSTABLE — returned ${st.seen.length} different parcels; this row is not reproducible`,
+    })
   }
 
   const resolved = rows.filter((r) => r.gfaBasis === 'envelope').length
