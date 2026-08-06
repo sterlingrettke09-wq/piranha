@@ -2411,3 +2411,56 @@ deliberately after the remaining filters.
 **Next: Austin by permit class.** Add `Shell`, drop the non-building
 `permit_class` values, and stop publishing one median over a population that is
 49% single-family and 3% multifamily.
+
+---
+
+## 2026-08-06 — Austin: filter corrected, and the median split by tier
+
+Second item of the pass. Two defects in one filter, plus the structural problem
+underneath both.
+
+**Too broad — 37% was not a building.** `work_class='New'` says the WORK is new;
+it says nothing about whether the thing is a building. That is carried by
+`permit_class`, which the filter ignored. Excluded now: 3,599 swimming pools and
+spas, plus decks, patio covers, retaining walls, dumpster enclosures, EV
+chargers, telecom towers, boat docks and SXSW/ACL event tents.
+
+It survived because the contamination's median (2.4 mo) sits close to the clean
+set's (2.1) — **it barely moved the headline while silently redefining what the
+headline was about.**
+
+The gate is an ALLOWLIST of Census building-use codes, not a denylist: an Austin
+category nobody has seen is excluded rather than admitted, so a new class cannot
+quietly re-contaminate the figure.
+
+**Too narrow — `work_class='Shell'` was excluded.** 202 records at median 11.1 mo
+/ p80 17.4: the largest multifamily, office, hotel and parking-garage projects in
+the city, i.e. exactly the cohort a feasibility tool is consulted about. 1.7% of
+the corrected count and the entire upper tail.
+
+**The structural problem: one median over that population answers no question.**
+
+| tier | median | p80 | n |
+|---|---|---|---|
+| single | 1.6 mo | 4.0 | 8,835 |
+| multi | 2.9 mo | 6.8 | 1,208 |
+| **apartment** | **8.6 mo** | **16.2** | 1,491 |
+| *aggregate* | *2.1 mo* | *6.1* | *11,534* |
+
+77% of the population is single-family houses, so the aggregate IS the
+single-family number wearing a city-wide label. **Someone testing a multifamily
+parcel was being shown 2.1 months against a measured 8.6.**
+
+`measuredFor(city, tier)` now prefers the tier-specific figure, falling back to
+the aggregate only where no breakdown exists — the aggregate is the weaker
+number, not the default. Tiers under n=30 are omitted rather than published thin.
+The corrected `n` is 11,534, matching the audit's independent prediction exactly.
+
+**Not fixed here, and still open for Austin:** the sample is right-censored
+(issued permits only; complete cohorts move the p80 from 6.3 to 7.1–8.2), and
+`masterpermitnum` shows one parking garage filing as twelve "Module C/E/F/G…"
+rows, so `n` over-counts PROJECTS and large projects are over-weighted in the
+distribution. Those are the censoring and duplication passes.
+
+**Next: the remaining six filters, each excluded set TIMED**, since the sign of an
+exclusion is set by what its criterion selects on.

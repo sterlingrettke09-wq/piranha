@@ -183,3 +183,42 @@ describe('the published measured-permit coverage list matches the data', () => {
     },
   )
 })
+
+// Austin's new-construction population is 77% single-family houses at 1.6 months
+// and 13% apartment-tier at 8.6 — a 5x spread that a single 2.1-month city median
+// hid completely. Someone testing a multifamily parcel was shown the
+// single-family number. These pin the tier selection so that cannot come back.
+describe('measuredFor prefers the tier-specific figure over the city aggregate', () => {
+  it('an apartment-tier Austin project gets the apartment measurement, not the aggregate', () => {
+    const agg = measuredFor('austin')
+    const apt = measuredFor('austin', 'apartment')
+    expect(apt).toBeDefined()
+    expect(apt!.medianMonths).toBeGreaterThan(agg!.medianMonths)
+    // The whole point: they must not be the same number.
+    expect(apt!.medianMonths).not.toBe(agg!.medianMonths)
+  })
+
+  it('tiers are ordered single < multi < apartment', () => {
+    const s = measuredFor('austin', 'single')!
+    const m = measuredFor('austin', 'multi')!
+    const a = measuredFor('austin', 'apartment')!
+    expect(s.medianMonths).toBeLessThan(m.medianMonths)
+    expect(m.medianMonths).toBeLessThan(a.medianMonths)
+  })
+
+  // A city with no breakdown must still resolve — the aggregate is the fallback,
+  // not the default.
+  it('falls back to the aggregate where no tier breakdown exists', () => {
+    expect(measuredFor('philadelphia', 'apartment')).toEqual(measuredFor('philadelphia'))
+  })
+
+  it('an unknown city resolves to nothing under any tier', () => {
+    expect(measuredFor('atlantis', 'apartment')).toBeUndefined()
+  })
+
+  // Every published tier figure must carry a real sample. The script omits any
+  // tier under n=30 rather than publishing a thin median.
+  it.each(['single', 'multi', 'apartment'] as const)('the %s tier carries n >= 30', (tier) => {
+    expect(measuredFor('austin', tier)!.n).toBeGreaterThanOrEqual(30)
+  })
+})

@@ -1,10 +1,30 @@
 {
   "austin": {
     "newConstruction": {
-      "medianMonths": 2.2,
-      "p80Months": 6.3,
-      "n": 17279,
-      "vintage": "applied 2022-01-01 onward; computed 2026-06-10; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class = New)"
+      "medianMonths": 2.1,
+      "p80Months": 6.1,
+      "n": 11534,
+      "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class IN (New, Shell), building permit_class only)"
+    },
+    "byTier": {
+      "single": {
+        "medianMonths": 1.6,
+        "p80Months": 4,
+        "n": 8835,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class IN (New, Shell), building permit_class only)"
+      },
+      "multi": {
+        "medianMonths": 2.9,
+        "p80Months": 6.8,
+        "n": 1208,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class IN (New, Shell), building permit_class only)"
+      },
+      "apartment": {
+        "medianMonths": 8.6,
+        "p80Months": 16.2,
+        "n": 1491,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class IN (New, Shell), building permit_class only)"
+      }
     }
   },
   "denver": {

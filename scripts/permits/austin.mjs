@@ -29,6 +29,7 @@ const HOST = 'data.austintexas.gov'
 const PERMITTYPE_FIELD = 'permittype'
 const PERMITTYPE_BUILDING = 'BP'
 const WORKCLASS_FIELD = 'work_class'
+const PERMITCLASS_FIELD = 'permit_class'
 const WORKCLASS_NEW = 'New'
 
 // Filter to permits APPLIED on/after this date (keeps the vintage recent). If
@@ -42,7 +43,60 @@ const APPLIED_DATE_FIELD = 'applieddate'
 const ISSUED_DATE_FIELD = 'issue_date'
 
 const OUT_PATH = new URL('../../netlify/functions/lib/data/permitStats.json', import.meta.url)
-const DATASET_NAME = "data.austintexas.gov Issued Construction Permits (permittype = BP, work_class = New)"
+const DATASET_NAME =
+  'data.austintexas.gov Issued Construction Permits ' +
+  "(permittype = BP, work_class IN (New, Shell), building permit_class only)"
+
+// ── permit_class gate — ADDED 2026-08-06 ────────────────────────────────────
+// `work_class = 'New'` says the work is new. It says NOTHING about whether the
+// thing is a BUILDING — that is carried by `permit_class`. An audit found 37.0%
+// of the old admitted set was not a building: 3,599 swimming pools and spas,
+// plus decks, patio covers, retaining walls, dumpster enclosures, EV chargers,
+// telecom towers, boat docks and SXSW/ACL event tents.
+//
+// It survived because the contamination's duration (median 2.4 mo) is close to
+// the clean set's (2.1) — it barely moved the headline while silently redefining
+// what the headline was ABOUT.
+//
+// ALLOWLIST, not a denylist: a permit_class we have never seen is EXCLUDED
+// rather than admitted, so a new Austin category cannot quietly re-contaminate
+// this. Codes are the Census building-use series the portal uses; the excluded
+// neighbours are 329 (Structures Other Than Bldg), 330 (Accessory Use to
+// Primary), 437 (Boat Dock) and 438 (Garage/Carport Addn, Retaining Wall).
+const BUILDING_CLASS_CODES = new Set([
+  '101', // Single Family Houses
+  '102', // Secondary Apartment (ADU)
+  '103', // Two Family Bldgs
+  '104', // Three and Four Family Bldgs
+  '105', // Five or More Family Bldgs
+  '106', // Mixed Use
+  '213', // Hotels/Motels
+  '318', '319', '320', '321', '322', '323', '324', '325', '326', '327', '328',
+])
+
+// Which building tier each class belongs to. Mirrors buildingTier() in
+// netlify/functions/lib/timeline.ts: single = 1 unit, multi = 2-4, apartment =
+// 5+ AND all commercial/institutional.
+//
+// WHY THIS EXISTS: one median over Austin's new-construction population answers
+// no question anyone asked. That population is 49% single-family houses at 1.64
+// months and 3% multifamily at 10.0 months — a 6x spread. Publishing 2.2 months
+// to someone testing a multifamily parcel is wrong by 4.5x.
+const TIER_BY_CLASS = {
+  '101': 'single',
+  '102': 'multi', '103': 'multi', '104': 'multi',
+  '105': 'apartment', '106': 'apartment',
+  '213': 'apartment',
+  '318': 'apartment', '319': 'apartment', '320': 'apartment', '321': 'apartment',
+  '322': 'apartment', '323': 'apartment', '324': 'apartment', '325': 'apartment',
+  '326': 'apartment', '327': 'apartment', '328': 'apartment',
+}
+
+/** Census use code out of a permit_class like "R- 101 Single Family Houses". */
+function classCode(permitClass) {
+  const m = /\b(\d{3})\b/.exec(String(permitClass ?? ''))
+  return m ? m[1] : null
+}
 
 import { readFile, writeFile } from 'node:fs/promises'
 
@@ -78,14 +132,19 @@ const daysToMonths = (days) => Math.round((days / 30.44) * 10) / 10
 
 // Pull applied/issued pairs for new-construction building permits applied since `since`.
 async function pull(since) {
+  // work_class IN ('New','Shell') — 'Shell' is ground-up construction and was
+  // being EXCLUDED: 202 records at median 11.1 mo / p80 17.4, i.e. the largest
+  // multifamily, office, hotel and parking-garage projects in the city, which is
+  // exactly the cohort a feasibility tool is consulted about. Dropping them was
+  // 1.7% of the count and the entire upper tail.
   const where =
     `${PERMITTYPE_FIELD} = '${PERMITTYPE_BUILDING}' ` +
-    `AND ${WORKCLASS_FIELD} = '${WORKCLASS_NEW}' ` +
+    `AND ${WORKCLASS_FIELD} IN ('New', 'Shell') ` +
     `AND ${APPLIED_DATE_FIELD} >= '${since}T00:00:00.000' ` +
     `AND ${APPLIED_DATE_FIELD} IS NOT NULL ` +
     `AND ${ISSUED_DATE_FIELD} IS NOT NULL`
   return socrata('json', {
-    $select: `${APPLIED_DATE_FIELD} AS applied, ${ISSUED_DATE_FIELD} AS issued`,
+    $select: `${APPLIED_DATE_FIELD} AS applied, ${ISSUED_DATE_FIELD} AS issued, ${PERMITCLASS_FIELD} AS pclass`,
     $where: where,
     $limit: '50000',
   })
@@ -119,15 +178,29 @@ async function main() {
   // 3. Compute durations, dropping negatives and absurd outliers (> 120 months).
   //    Also watch the NYC failure mode (same-day OTC artifact).
   const days = []
+  const byTier = { single: [], multi: [], apartment: [] }
   let sameDay = 0
+  let notABuilding = 0
   for (const row of rows) {
+    // The permit_class gate. A row whose class is unknown or not on the
+    // allowlist is DROPPED, not bucketed — an unrecognised category must never
+    // fall through into the aggregate.
+    const code = classCode(row.pclass)
+    if (code == null || !BUILDING_CLASS_CODES.has(code)) {
+      notABuilding++
+      continue
+    }
     const a = Date.parse(row.applied)
     const i = Date.parse(row.issued)
     if (Number.isNaN(a) || Number.isNaN(i)) continue
     const d = (i - a) / 86_400_000
     if (Math.abs(d) < 0.5) sameDay++
-    if (d >= 0 && d <= 120 * 30.44) days.push(d)
+    if (d >= 0 && d <= 120 * 30.44) {
+      days.push(d)
+      byTier[TIER_BY_CLASS[code]].push(d)
+    }
   }
+  console.log(`  excluded ${notABuilding} non-building rows (pools, decks, docks, event tents…)`)
 
   if (days.length === 0) {
     console.warn('  No usable applied/issued pairs returned; leaving permitStats.json unchanged.')
@@ -156,12 +229,31 @@ async function main() {
     return
   }
 
-  const stats = {
-    medianMonths,
-    p80Months,
-    n: days.length,
-    vintage: `applied ${since} onward; computed ${new Date().toISOString().slice(0, 10)}; ${DATASET_NAME}`,
+  const stamp = new Date().toISOString().slice(0, 10)
+  const vintage = `applied ${since} onward; computed ${stamp}; ${DATASET_NAME}`
+
+  // Per-tier figures. The aggregate is kept for compatibility but is the WEAKER
+  // number — it is dominated by single-family volume, so a consumer that knows
+  // the project's tier should always prefer byTier (see measuredFor()).
+  const tiers = {}
+  for (const [tier, arr] of Object.entries(byTier)) {
+    if (arr.length < 30) {
+      console.warn(`  tier ${tier}: n=${arr.length} < 30 — omitted rather than published thin`)
+      continue
+    }
+    arr.sort((x, y) => x - y)
+    tiers[tier] = {
+      medianMonths: daysToMonths(quantile(arr, 0.5)),
+      p80Months: daysToMonths(quantile(arr, 0.8)),
+      n: arr.length,
+      vintage,
+    }
   }
+  console.log('  by tier:', Object.fromEntries(
+    Object.entries(tiers).map(([k, v]) => [k, `${v.medianMonths}mo n=${v.n}`]),
+  ))
+
+  const stats = { medianMonths, p80Months, n: days.length, vintage }
 
   // 5. Idempotent merge into the shared artifact.
   let existing = {}
@@ -170,7 +262,10 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, austin: { ...(existing.austin ?? {}), newConstruction: stats } }
+  const merged = {
+    ...existing,
+    austin: { ...(existing.austin ?? {}), newConstruction: stats, byTier: tiers },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log('  Wrote austin.newConstruction:', stats)

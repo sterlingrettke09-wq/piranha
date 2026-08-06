@@ -26,7 +26,7 @@ export interface MeasuredPermit {
 
 const PERMIT_STATS = permitStats as Record<
   string,
-  { newConstruction?: MeasuredPermit } | undefined
+  { newConstruction?: MeasuredPermit; byTier?: Partial<Record<BuildingTier, MeasuredPermit>> } | undefined
 >
 
 /** single ≤1 unit · multi 2–4 · apartment 5+. Commercial & institutional → apartment. */
@@ -50,9 +50,21 @@ export interface TimelineResult {
 }
 
 /** The measured new-construction permit timing for a city, or undefined when the
- *  pipeline has no trustworthy figure for it. Exposed for the wiring + tests. */
-export function measuredFor(city: string): MeasuredPermit | undefined {
-  return PERMIT_STATS[city]?.newConstruction
+ *  pipeline has no trustworthy figure for it. Exposed for the wiring + tests.
+ *
+ *  PREFERS THE TIER-SPECIFIC FIGURE when one exists and the caller knows the
+ *  tier. A single city-wide median answers no question anyone asked: Austin's
+ *  new-construction population is 77% single-family houses at 1.6 months and 13%
+ *  apartment-tier at 8.6 — a 5x spread hidden inside one 2.1-month headline.
+ *  Someone testing a multifamily parcel was being shown the single-family number.
+ *
+ *  The aggregate remains the fallback, because a city with no tier breakdown is
+ *  better served by a city-wide median than by nothing — but where a breakdown
+ *  exists the aggregate is the WEAKER number, not the default. */
+export function measuredFor(city: string, tier?: BuildingTier): MeasuredPermit | undefined {
+  const entry = PERMIT_STATS[city]
+  if (tier && entry?.byTier?.[tier]) return entry.byTier[tier]
+  return entry?.newConstruction
 }
 
 export function resolveTimeline(
@@ -68,7 +80,7 @@ export function resolveTimeline(
   // The measured permit timing only applies to ground-up new construction (the
   // pipeline samples NB/new-construction permits), so it's only attached for
   // projectType 'new'; additions/renovations get no measured line.
-  const measured = project.projectType === 'new' ? measuredFor(city) : undefined
+  const measured = project.projectType === 'new' ? measuredFor(city, tier) : undefined
 
   if (feasibility.path === 'prohibited') {
     return { months: 0, path: feasibility.path, tier, includesDemolition, measured }
