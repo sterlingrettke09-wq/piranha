@@ -2926,3 +2926,33 @@ command silently no-ops. Running it directly disproves that — it has been the
 entry point for every script all session and it produces the PARTIAL verdict
 above. Reported here because a plausible-sounding tooling claim from an agent is
 exactly the kind of thing that gets relayed unverified.
+
+### Probe coordinates: San Diego and San Jose were measuring a blocked parcel
+
+Both replaced 2026-08-06. Each failed differently, and neither was the
+Philadelphia failure the file's own comment describes.
+
+- **San Diego [32.7157, -117.1611]** — Horton Plaza, city-owned, sitting on
+  OVERLAPPING ownership polygons. Every one of them contains the point, so the
+  exact-match query returns several, `nearestFeatureSet()` cannot discriminate
+  between features that all contain it, and the server's ordering decides. Four
+  calls returned parcelIds 5861800900 and 4174800800 at lot sizes 97,106 / 39,615
+  / 21,389 / 8,500 sq ft. **Philadelphia's old point was OFF any parcel; this one
+  was ON too many** — opposite defects with the same symptom.
+- **San Jose [37.3382, -121.8863]** — a PQP public/quasi-public lot.
+
+Both were non-developable, so `analyze.ts` zeroes hurdles for them. **Neither
+city's regulatory encoding was exercised by this inventory at all** — those two
+rows measured a blocked parcel, not the city, while reading as ordinary results.
+
+Replacements are ordinary residential parcels — `RS-1-7` (7,958 sq ft) and
+`R-1-8` (5,018 sq ft) — each verified STABLE over four isolated re-probes, same
+parcelId and lot size every time. Both still report GAP, which is now a real
+finding about those cities' FAR resolution rather than an artifact of probing land
+nobody can build on.
+
+**Not fixed:** the underlying non-determinism when a point falls inside several
+overlapping parcels. `fetchParcelSnap`'s buffered path already picks the nearest
+deterministically; the exact path has no tiebreak because "nearest" is undefined
+when every candidate contains the point. Changing it touches all fifteen cities
+and needs its own verification pass.

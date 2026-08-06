@@ -33,8 +33,23 @@ const EXTRA: Record<string, [number, number]> = {
   // defect when it is really a coordinate sitting off a parcel edge.
   philadelphia: [39.9208, -75.23192],
   miami: [25.7743, -80.1918],
-  sandiego: [32.7157, -117.1611],
-  sanjose: [37.3382, -121.8863],
+  // ⚠️ BOTH REPLACED 2026-08-06. The old points were civic land, and each failed
+  // in its own way:
+  //   · sandiego [32.7157, -117.1611] — Horton Plaza, city-owned. It sits on
+  //     OVERLAPPING ownership polygons, so the exact-match query returns several
+  //     features that all contain the point, "nearest" cannot discriminate, and
+  //     the server's ordering decides. Four calls returned parcelIds 5861800900
+  //     and 4174800800 at lot sizes 97,106 / 39,615 / 21,389 / 8,500 sq ft. This
+  //     is NOT the unstable-edge failure the Philadelphia comment records — that
+  //     was a point off any parcel; this is a point on too many.
+  //   · sanjose [37.3382, -121.8863] — a PQP public/quasi-public lot.
+  // Both were non-developable, so analyze.ts zeroed their hurdles and NEITHER
+  // city's regulatory encoding was exercised by this inventory at all. The rows
+  // measured a blocked parcel, not the city.
+  // Replacements are ordinary residential parcels, each verified STABLE over four
+  // isolated re-probes (same parcelId and lot size every time).
+  sandiego: [32.735, -117.129], // RS-1-7, 7,958 sq ft, parcel 4536510700
+  sanjose: [37.345, -121.9], // R-1-8, 5,018 sq ft, parcel 25919043
   nashville: [36.1627, -86.7816],
 }
 
