@@ -12,66 +12,68 @@
 // This is NOT a runtime dependency. The committed JSON is the only thing the
 // app reads; this script only refreshes it (re-run quarterly).
 //
-// ── Dataset choice (the honest part) ─────────────────────────────────────────
-// NYC publishes two relevant DOB permit datasets:
+// ── Dataset choice — CORRECTED 2026-08-05 ───────────────────────────────────
+// This script used the LEGACY BIS feed (ipu4-2q9a, job_type 'NB', sliced by
+// ISSUANCE year) while the committed permitStats.json figure came from DOB NOW.
+// The two disagreed, so **the script did not reproduce its own output** — anyone
+// re-running it got a different number with no way to know which was right. A
+// committed figure whose generator contradicts it is worse than an unsourced one:
+// it carries the appearance of reproducibility.
 //
-//   * DOB Permit Issuance (ipu4-2q9a) — has BOTH filing_date AND issuance_date,
-//     plus job_type (NB = New Building). This is the legacy BIS feed.
-//   * DOB NOW: Build – Approved Permits (rbx6-tga4) — current, but only carries
-//     approved_date + issued_date. It has NO filing/applied date, so a true
-//     filing -> issuance latency CANNOT be computed from it without fabricating
-//     the filing leg (an approved date is not when the job was filed).
+// An audit found the BIS query was also 63.9% contaminated — job_type='NB' alone
+// admits foundation/earthwork (41.2%), plumbing (19.9%) and equipment/fence
+// sub-permits filed under the same job. And BIS is winding down: NB seq-01 rows
+// fall from 670 (2022) to 41 (2026), too thin and unrepresentative of the current
+// system.
 //
-// Per the WO ("pick whichever exposes BOTH a filing/applied date and an issuance
-// date for New Building"), we use ipu4-2q9a — it is the only one of the two that
-// exposes both legs of the duration we measure.
+// NOW USES: DOB NOW: Build – Job Application Filings (w9ak-ipjd).
+//   · `filing_date` and `first_permit_date` are real calendar_date columns, so a
+//     server-side `>=` comparison is correct (the BIS feed's MM/DD/YYYY TEXT
+//     columns compared lexicographically — the gotcha this file used to document).
+//   · `job_type = 'New Building'` excludes Alteration, Alteration-CO, No Work,
+//     Full Demolition, and "ALT-CO - New Building with Existing Elements to
+//     Remain" (not ground-up).
+//   · `job_filing_number LIKE '%-I1'` keeps INITIAL filings only. This is the
+//     load-bearing filter: of 19,319 permitted NB filings just 4,394 are -I1;
+//     the other 14,029 are -S* subsequent per-work-type filings (plumbing,
+//     sprinkler, structural) — the sub-permits that contaminated the old query.
+//     Cross-check: all 4,394 carry general_construction_work_type_='YES', and
+//     that alternative discriminator yields the identical 8.3 / 17.0.
 //
-// TWO SCHEMA GOTCHAS verified the hard way against the live data:
-//
-//  1. filing_date / issuance_date are TEXT columns in MM/DD/YYYY format, NOT
-//     Socrata floating timestamps. A naive `filing_date >= '2022-01-01'` does a
-//     LEXICOGRAPHIC compare and silently returns the wrong rows. So we filter the
-//     recent slice server-side with `issuance_date LIKE '%/YYYY'` on the wanted
-//     years and parse MM/DD/YYYY ourselves.
-//  2. permit_sequence__ is zero-padded ('01', '02', ...). '1' matches NOTHING.
-//     We keep '01' = the ORIGINAL permit so the span reflects the first time the
-//     job was permitted (not a renewal/reissue).
-//
-// The BIS feed is winding down (DOB migrated to DOB NOW), but still carries real
-// recent NB records: ~1.9k issued in 2022, ~0.7k in 2023, ~0.4k in 2024. That is
-// plenty for a stable median, and the vintage stamps exactly which years are in.
+// ⚠️ KNOWN LIMITATION, not fixed here. This median is conditional on eventual
+// issuance: 45% of initial NB filings since 2022 have never issued, and the
+// permitted share falls by cohort (1461/1960 in 2022 → 764/1764 in 2025), so
+// recent cohorts are right-censored and the pooled figure sits BELOW the mature
+// 2022 cohort's 10.1 months. Kaplan-Meier over all 8,039 filings gives ~15.9
+// months. Correcting that is a separate pass — see docs/VERIFICATION-LEDGER.md.
 //
 // Verify the schema by probing:
-//   curl -s "https://data.cityofnewyork.us/api/views/ipu4-2q9a.json"  (columns)
-//   curl -s "https://data.cityofnewyork.us/resource/ipu4-2q9a.json?\$limit=1"
-const RESOURCE_ID = 'ipu4-2q9a'
+//   curl -s "https://data.cityofnewyork.us/api/views/w9ak-ipjd.json"  (columns)
+const RESOURCE_ID = 'w9ak-ipjd'
 const HOST = 'data.cityofnewyork.us'
 
 // New Building job type (verified against the distinct job_type histogram:
 // NB ~571k records). DM = demolition, A1/A2/A3 = alterations, SG = sign.
-const NEW_CONSTRUCTION_JOBTYPE = 'NB'
+const NEW_CONSTRUCTION_JOBTYPE = 'New Building'
 const JOBTYPE_FIELD = 'job_type'
 
-// Original-permit sequence (zero-padded in this dataset).
-const ORIGINAL_SEQUENCE = '01'
-
-// Issuance years that make up the recent slice. Widened automatically (older
-// years prepended) if the recent slice is thin.
-const RECENT_YEARS = [2025, 2024, 2023, 2022]
-const WIDE_YEARS = [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018]
+// Earliest FILING date in the window. A real timestamp column, so the server-side
+// comparison is a true date compare (see the header — the old feed's text dates
+// silently compared lexicographically).
+const SINCE = '2022-01-01T00:00:00.000'
 
 const FILING_DATE_FIELD = 'filing_date'
-const ISSUANCE_DATE_FIELD = 'issuance_date'
+const ISSUANCE_DATE_FIELD = 'first_permit_date'
+const FILING_NUMBER_FIELD = 'job_filing_number'
 
 const OUT_PATH = new URL('../../netlify/functions/lib/data/permitStats.json', import.meta.url)
-const DATASET_NAME = 'data.cityofnewyork.us DOB Permit Issuance ipu4-2q9a (job_type NB; legacy BIS feed, MM/DD/YYYY dates)'
+const DATASET_NAME =
+  "data.cityofnewyork.us DOB NOW: Build – Job Application Filings w9ak-ipjd " +
+  "(job_type = 'New Building'; initial -I1 filings only)"
 
-// Parse a MM/DD/YYYY text date to epoch ms; null if it doesn't match.
-function parseMdy(s) {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s).trim())
-  if (!m) return null
-  const [, mm, dd, yyyy] = m
-  const t = Date.UTC(Number(yyyy), Number(mm) - 1, Number(dd))
+// Real ISO timestamps in this dataset — no MM/DD/YYYY parsing needed.
+function parseIso(s) {
+  const t = Date.parse(String(s))
   return Number.isNaN(t) ? null : t
 }
 
@@ -115,16 +117,16 @@ function quantile(sortedDays, q) {
 
 const daysToMonths = (days) => Math.round((days / 30.44) * 10) / 10
 
-async function pull(years) {
-  // Server-side: original NB permits whose (text) issuance_date ends in one of the
-  // wanted years. We do the actual span math client-side after parsing MM/DD/YYYY.
-  const yearClause = years.map((y) => `${ISSUANCE_DATE_FIELD} LIKE '%/${y}'`).join(' OR ')
+async function pull() {
+  // INITIAL New Building filings that reached a permit, filed since SINCE.
+  // The `-I1` suffix is what excludes the -S* subsequent per-work-type filings
+  // (plumbing, sprinkler, structural) that made the previous query 63.9%
+  // sub-permits. Duration is measured to FIRST permit, not to any later one.
   const where =
     `${JOBTYPE_FIELD} = '${NEW_CONSTRUCTION_JOBTYPE}' ` +
-    `AND permit_sequence__ = '${ORIGINAL_SEQUENCE}' ` +
-    `AND ${FILING_DATE_FIELD} IS NOT NULL ` +
-    `AND ${ISSUANCE_DATE_FIELD} IS NOT NULL ` +
-    `AND (${yearClause})`
+    `AND ${FILING_NUMBER_FIELD} LIKE '%-I1' ` +
+    `AND ${FILING_DATE_FIELD} >= '${SINCE}' ` +
+    `AND ${ISSUANCE_DATE_FIELD} IS NOT NULL`
   return socrata(RESOURCE_ID, 'json', {
     $select: `${FILING_DATE_FIELD} AS filed, ${ISSUANCE_DATE_FIELD} AS issued`,
     $where: where,
@@ -138,7 +140,7 @@ async function main() {
   // 1. Confirm both date legs + job_type exist in the live schema. (If they ever
   //    vanish, fail loudly rather than fabricate.)
   const fields = await fieldNames(RESOURCE_ID)
-  for (const f of [FILING_DATE_FIELD, ISSUANCE_DATE_FIELD, JOBTYPE_FIELD]) {
+  for (const f of [FILING_DATE_FIELD, ISSUANCE_DATE_FIELD, JOBTYPE_FIELD, FILING_NUMBER_FIELD]) {
     if (!fields.has(f)) {
       throw new Error(
         `Expected field "${f}" not found in ${RESOURCE_ID} schema; the resource may ` +
@@ -148,21 +150,15 @@ async function main() {
     }
   }
 
-  // 2. Pull; widen the year window if the recent slice is thin.
-  let years = RECENT_YEARS
-  let rows = await pull(years)
-  if (rows.length < 50) {
-    console.warn(`  Only ${rows.length} NB rows issued in ${RECENT_YEARS.join('/')}; widening.`)
-    years = WIDE_YEARS
-    rows = await pull(years)
-  }
+  // 2. Pull. No year-widening: filing_date is a real timestamp, so one
+  //    server-side `>=` gets the whole window in a single request.
+  const rows = await pull()
 
-  // 3. Durations from the MM/DD/YYYY text dates, dropping negatives and
-  //    > 120-month outliers. (Same-day OTC permits → a legitimate 0-day span.)
+  // 3. Durations, dropping negatives and > 120-month outliers.
   const days = []
   for (const row of rows) {
-    const a = parseMdy(row.filed)
-    const i = parseMdy(row.issued)
+    const a = parseIso(row.filed)
+    const i = parseIso(row.issued)
     if (a == null || i == null) continue
     const d = (i - a) / 86_400_000
     if (d >= 0 && d <= 120 * 30.44) days.push(d)
@@ -189,7 +185,9 @@ async function main() {
     medianMonths,
     p80Months,
     n: days.length,
-    vintage: `issued in ${years.slice().sort().join('/')}; computed ${new Date().toISOString().slice(0, 10)}; ${DATASET_NAME}`,
+    vintage:
+      `filed ${SINCE.slice(0, 10)} onward; computed ${new Date().toISOString().slice(0, 10)}; ` +
+      `${DATASET_NAME}`,
   }
 
   // 5. Idempotent merge.

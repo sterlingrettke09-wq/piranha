@@ -2372,3 +2372,42 @@ check whether the duplicated rows share a project key. Genuine duplicate permits
 a multi-permit project, and a join fanning out rows are three different defects
 with three different corrections, and only the middle one requires re-weighting
 the distribution rather than deduping it.
+
+---
+
+## 2026-08-06 — `nyc.mjs` now reproduces its own committed figure
+
+First item of the next pass, done. The script pulled the LEGACY BIS feed
+(`ipu4-2q9a`, `job_type='NB'`, sliced by ISSUANCE year) while the committed
+figure came from DOB NOW. **The generator contradicted its own output** — anyone
+re-running it got a different number with no way to know which was right.
+
+Repointed to `w9ak-ipjd` (DOB NOW: Build – Job Application Filings) with the
+audited query. Three things the old one got wrong:
+
+- **63.9% contamination.** `job_type='NB'` alone admitted foundation/earthwork
+  (41.2%), plumbing (19.9%) and equipment/fence sub-permits filed under the same
+  job. The fix is `job_filing_number LIKE '%-I1'` — of 19,319 permitted NB
+  filings only 4,394 are INITIAL; the other 14,029 are `-S*` subsequent
+  per-work-type filings. Cross-checked: all 4,394 carry
+  `general_construction_work_type_='YES'`, and that independent discriminator
+  yields the identical 8.3 / 17.0.
+- **A winding-down feed.** BIS NB seq-01 rows fall 670 (2022) → 41 (2026).
+- **A lexicographic date compare.** BIS `filing_date`/`issuance_date` are TEXT in
+  MM/DD/YYYY, so `>= '2022-01-01'` silently compared as strings — the gotcha the
+  file itself documented and worked around by slicing on issuance year, which is
+  the wrong leg. DOB NOW's columns are real timestamps, so one server-side `>=`
+  is correct and the year-widening logic is gone.
+
+Verified by running it: **median 8.3, p80 17.0, n 4,403** — reproduces the
+committed 8.3 / 17.0 exactly, n grown from 4,394 by two days of new filings.
+
+The right-censoring limitation is written into the script's header rather than
+left implicit: 45% of initial NB filings since 2022 never issued, permitted share
+falls 1461/1960 (2022) → 764/1764 (2025), and Kaplan-Meier over all 8,039 gives
+~15.9 months against the 8.3 published. That correction is the censoring pass,
+deliberately after the remaining filters.
+
+**Next: Austin by permit class.** Add `Shell`, drop the non-building
+`permit_class` values, and stop publishing one median over a population that is
+49% single-family and 3% multifamily.

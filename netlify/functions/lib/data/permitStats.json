@@ -35,8 +35,8 @@
     "newConstruction": {
       "medianMonths": 8.3,
       "p80Months": 17,
-      "n": 4394,
-      "vintage": "filed 2022-01-01 onward; computed 2026-08-05; data.cityofnewyork.us DOB NOW: Build \u2013 Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
+      "n": 4403,
+      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.cityofnewyork.us DOB NOW: Build – Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
     }
   },
   "philadelphia": {
