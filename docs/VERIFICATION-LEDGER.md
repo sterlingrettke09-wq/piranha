@@ -2831,3 +2831,35 @@ boston   MFR/LS PROHIBITED   "Derived from the published zoning limit"
   in days; Miami's only figures are decision shot-clocks and a demolition-deferral
   CEILING). Nashville does publish one and it IS encoded. The "five cities" premise
   was wrong — LA has no city branch at all.
+
+### Where the hurdle encoding actually landed — `45dcc58`
+
+That commit's message describes 29 lines of `analyze.ts` (the `gfaBasis`
+production fix). It also contains **~2,400 lines of hurdle encoding and backfill**
+— nine city branches, their tests, and the untruncated proposals doc — swept in by
+a `git add -A`. The content is correct and tested; the message is not where a
+reader would find it. Recorded here rather than rewriting a pushed commit.
+
+### The truncation over-fired systematically, and the mechanism predicts it
+
+A truncated conjunctive condition ALWAYS over-fires: the slice keeps the first
+clause and drops the `AND`. My `[:90]` cut landed exactly where qualifiers live,
+so every affected rule came out BROADER than the code. Ten contradictions were
+found and **all ten ran the same direction** — asserting a mandate on projects the
+code exempts:
+
+- **Philadelphia Project Information Form** — widest. Gated on `gfa > 2500` alone,
+  but § 18-502(2) is conjunctive: over 2,500 sq ft AND (Council ordinance OR ZBA
+  variance OR Civic Design Review criteria). As encoded it asserted `required` on
+  essentially every as-of-right Philadelphia project over 2,500 sq ft.
+- **DC Green Building Act** — `gfa >= 50000` with no use test, on a source that
+  explicitly warns the rule "is often misquoted as applying to all large
+  buildings." The encoding reproduced the known misquote.
+- **San Diego Mobility Choices** — pushed on every project with a "confirm whether
+  yours falls inside the exception" hedge, against a hard numeric exemption:
+  residential of four or fewer units, exempt outright.
+
+**The ten are not a sample — they are the ones that CONTRADICTED the fragment.** A
+rule whose source merely NARROWS what the fragment said produces no contradiction
+and no flag, while still over-firing. Any rule with a qualifier after character 90
+is a candidate. That sweep is the open item.
