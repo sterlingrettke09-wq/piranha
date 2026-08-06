@@ -2699,3 +2699,59 @@ apartment 10.4 — with a real denominator (74.1% overall issuance).
 Six restatements (austin, denver, miami, nashville, nyc, philadelphia), four of
 them as CONDITIONAL medians with the condition in the label. Nashville's p80 to be
 withdrawn. Philadelphia to be re-examined for KM.
+
+---
+
+## 2026-08-06 — Fill-at-issuance is a SCHEMA PROPERTY, and it is in Philadelphia too
+
+Seattle's defect generalised into a test: for every field a filter gates on,
+compare its non-null rate on PENDING filings against ISSUED ones. A field
+populated only at resolution selects issued permits by construction — and it is
+**invisible to anyone querying only issued permits**, which is how it survived.
+
+| city | verdict |
+|---|---|
+| nyc | **CLEAN** — every gate >= 97.9% populated on pending |
+| nashville | **CLEAN** — 100% on both sides, value domain checked too |
+| **philadelphia** | **FILL_AT_ISSUANCE DEFECT** |
+
+### Philadelphia: the denominator was 98.7% destroyed
+
+Philadelphia has a real pending population — 9,887 non-issued RP-/CP- filings
+applied 2022+. The current classifying gate admits 29,004 issued and **only 126
+non-issued, wrongly excluding 9,761 of 9,887 (98.7%)**. The resulting issuance
+rate is **99.6%** — a Seattle-shaped artifact, in the one city this ledger had
+called "checked and holding" two passes ago.
+
+`STATUS` itself is clean: 100% non-null on non-issued records, no gradient, and
+the pending queue is live (pending counts by filing year 0/0/0/32/349/2,028, so
+old cohorts fully resolve). Layer-wide STATUS nulls are all legacy HANSEN rows;
+zero of 653,123 ECLIPSE rows are null. **The defect is in the cohort gate, not the
+status field** — which is why testing only the obvious field would have missed it.
+
+Two fields DO carry the Seattle property — `LATESTREVIEWDUEDATE` and
+`LATESTREVIEWCOMPLETEDDATE`, 54% on pending against 100% on issued — and the
+script's header cites one of them as a validation. A check performed on a
+fill-at-issuance field validates nothing about the pending population.
+
+### Neither KM nor a full competing-risks model is available here
+
+`EXPIRED` is 22.6% of rows and genuinely ambiguous between "abandoned" and
+"issued then lapsed". More decisively: **the competing-risk event TIME is
+unpublished**, so a cumulative-incidence function cannot be fitted either. Naming
+the right estimator does not make its inputs exist.
+
+### The generalisation
+
+NYC found the same competing-risk distinction independently: 272 in-window pending
+filings are "Filing Withdrawn" — not censored survivors — and `filing_status` is
+100% non-null on pending, so the separation is available there.
+
+Nashville turned up something else: its pending population lives in a **sibling
+layer** (Building_Permit_Applications, 5,886 rows, all unissued, identical
+21-field schema). The script queries only the issued layer. **An issuance rate is
+computable for Nashville by joining the two** — currently unexploited.
+
+**Philadelphia's 3.0 months is now the weakest figure on the board, not the
+strongest.** Its filter needs re-gating on a filing-time field before any issuance
+rate is computed from it.
