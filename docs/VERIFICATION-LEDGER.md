@@ -2863,3 +2863,66 @@ code exempts:
 rule whose source merely NARROWS what the fragment said produces no contradiction
 and no flag, while still over-firing. Any rule with a qualifier after character 90
 is a candidate. That sweep is the open item.
+
+---
+
+## 2026-08-06 — The conjunctive sweep: the ten were not the population
+
+Swept all 105 encoded hurdle gates against their restored source, asking a
+different question from the one that found the ten: **not "does the source
+contradict the encoding" but "does the source contain a conjunction, exception or
+use restriction the gate does not implement".** A rule that merely NARROWS what
+the truncated fragment said contradicts nothing, raises no flag, and still
+over-fires.
+
+**19 more over-firing gates found. 7 under-firing. 64 of 105 already clean.**
+
+Nearly twice as many again as the contradictions, and every one the predicted
+shape: the fragment kept the first clause and dropped a conjunct.
+
+| | gate as written | source qualifier dropped |
+|---|---|---|
+| **DC Green Area Ratio** | every new building | § 601.2 applies to "all zones EXCEPT the R and RF zones" — DC's rowhouse and detached zones, most of its zoned land |
+| **Miami historic demolition delay** | every teardown | § 23-6.2(b)(4)b.4 needs a CONTRIBUTING structure, i.e. a designated district — and `parcel.overlays.historicDistrict` was already in use three lines away |
+| **San Diego ESL permit** | **100% of San Diego projects** | Table 143-01A row 3 is the "multiple dwelling unit development" row; other types sit on rows nobody read |
+
+San Diego's is the cleanest illustration: an unconditional `hurdles.push(...)`
+handing a Process Three hearing claim to every single-dwelling, commercial and
+institutional project, off one unread table row.
+
+### Under-firing was reported and deliberately NOT fixed
+
+Seven gates are NARROWER than their source. **None were widened.** Widening a gate
+asserts that a rule applies, and each of these needs an input or a reading we do
+not have — San Diego's Process Four historical-resource permit is the worst, since
+a user is never told the rule exists at all. Reported for research, not closed by
+guesswork.
+
+Two Philadelphia under-fires are the same truncation pointing the other way: the
+fragment kept Case 1 of a two-case table and dropped Case 2.
+
+### The citation checker can no longer pass on an empty set
+
+Measured coverage: **3 checkable URLs repo-wide against 418 section citations, and
+46 of 48 citing files contain nothing the tool can test.** `hurdles.ts` (191
+citations, 0 URLs) was the worst but not the exception — it was the rule.
+
+The tool now reports three per-file states — `checked` / `unchecked` / `silent`,
+with `silent` (no citations at all) deliberately distinct from `unchecked` (an
+absence is not a gap) — and **`PASS` is unreachable while any file is
+`unchecked`.** The tree currently prints:
+
+> `PARTIAL — every cited URL resolves, but 46 files cite sources this tool cannot
+> fetch and it verified none of them. This is NOT a pass. Do not read it as one.`
+
+Mutation-verified: removing the `unchecked` state fails 5 tests; forcing `PASS`
+fails 2. And the checker does **not** exempt itself from its own coverage rule —
+it appears in its own unchecked list, which is the whole argument.
+
+### One agent claim that was false, checked rather than relayed
+
+The instrument agent reported that `vite-node` is not installed and the documented
+command silently no-ops. Running it directly disproves that — it has been the
+entry point for every script all session and it produces the PARTIAL verdict
+above. Reported here because a plausible-sounding tooling claim from an agent is
+exactly the kind of thing that gets relayed unverified.

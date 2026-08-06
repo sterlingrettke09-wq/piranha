@@ -658,6 +658,57 @@ describe('assessHurdles — DC', () => {
     expect(fs?.note).toMatch(/70% of common-laborer hours/)
   })
 
+  // ---- Restored-source sweep (2026-08-06). Each of the three below was encoded
+  // from the `[:90]`-truncated trigger table and fired BROADER than 11-C DCMR /
+  // the D.C. Code. Each test pins the tightened gate AND a case that must now
+  // NOT fire — the half a green test usually leaves out.
+  const dcZoned = (code: string, over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    dc(over, { zoning: { districtCode: code, subdistrict: null, article: null, maxHeightFt: 50, maxFAR: 1.8, allowedUses: ['residential'] }, ...p })
+
+  it('the Green Area Ratio does NOT apply in the R and RF house-form zones', () => {
+    // 11-C DCMR § 601.2: "all new buildings on properties in all zones EXCEPT
+    // the R and RF zones". The gate fired on every new DC building.
+    for (const zone of ['R-1A', 'R-2', 'R-3', 'RF-1', 'RF-4', 'RF-1/CAP', 'R-3/NO']) {
+      expect(byLabel(dcZoned(zone, { projectType: 'new' }), /Green Area Ratio/), zone).toBeFalsy()
+    }
+    // …and it still applies everywhere else, including RA (Residential
+    // Apartment), which is NOT an R or RF zone despite the leading R.
+    for (const zone of ['RA-1', 'RA-2', 'MU-4', 'NC-1', 'PDR-2', 'D-4']) {
+      expect(byLabel(dcZoned(zone, { projectType: 'new' }), /Green Area Ratio/)?.status, zone).toBe('required')
+    }
+    // An unresolved district code keeps firing: the exemption applies only where
+    // the zone is affirmatively known to be R or RF (a gap is not an answer).
+    expect(byLabel(dcZoned('Unknown', { projectType: 'new' }), /Green Area Ratio/)?.status).toBe('required')
+  })
+
+  it('the historic-district demolition finding needs a building to demolish', () => {
+    const hd = { overlays: { historicDistrict: 'Capitol Hill Historic District', floodZone: null } }
+    // Vacant lot in a historic district: nothing is being demolished, so
+    // § 6-1104's public-interest finding does not apply…
+    const vacant = dc({ projectType: 'new' }, { ...hd, existing: { landUse: 'Vacant Land' } })
+    expect(byLabel(vacant, /necessary in the public interest/)).toBeFalsy()
+    expect(byLabel(dc({ projectType: 'new' }, hd), /necessary in the public interest/)).toBeFalsy()
+    // …while the design review that DOES apply to new construction still fires.
+    expect(byLabel(vacant, /Historic district design review/)?.status).toBe('required')
+    // A real teardown still carries it.
+    expect(
+      byLabel(dc({ projectType: 'new' }, { ...hd, existing: { landUse: 'Row dwelling' } }), /necessary in the public interest/)?.status,
+    ).toBe('required')
+  })
+
+  it('TOPA excludes a multifamily building whose CO is within the prior 15 years', () => {
+    // § 42-3404.02b(b)(20), added by the RENTAL Act of 2025.
+    const recent = dc({ projectType: 'new', units: 40 }, { existing: { landUse: 'Apartment', units: 12, yearBuilt: 2020 } })
+    expect(byLabel(recent, /TOPA/)).toBeFalsy()
+    // The 180-day notice is a different statute with no such exclusion — it must
+    // still fire on the same parcel.
+    expect(byLabel(recent, /180-day notice/)?.addsMonths).toBe(6)
+    // Older building: TOPA applies. Unknown year: TOPA applies (a missing year
+    // must not buy the exclusion).
+    expect(byLabel(dc({ projectType: 'new', units: 40 }, { existing: { landUse: 'Apartment', units: 12, yearBuilt: 1985 } }), /TOPA/)?.status).toBe('likely')
+    expect(byLabel(dc({ projectType: 'new', units: 40 }, { existing: { landUse: 'Apartment', units: 12 } }), /TOPA/)?.status).toBe('likely')
+  })
+
   it('stormwater states the 1.2-inch retention, and DCEPA names both exemptions', () => {
     const sw = byLabel(dc({}, { lot: { sizeSqFt: 6000, lotType: null } }), /Stormwater Retention/)
     expect(sw?.note).toMatch(/1\.2-inch/)
@@ -761,6 +812,20 @@ describe('assessHurdles — Denver', () => {
     expect(h?.note).toMatch(/Cherry Creek North Design Advisory Board/)
     const dz = parcel({ zoning: { districtCode: 'D-GT', subdistrict: null, article: null, maxHeightFt: 200, maxFAR: 5, allowedUses: ['residential'] } })
     expect(byLabel(assessHurdles('denver', dz, project({ city: 'denver' })), /Design Advisory Board/)?.note).toMatch(/Downtown Design Advisory Board/)
+  })
+
+  // Restored-source sweep (2026-08-06): the ordinance reaches "new buildings and
+  // additions" of 25,000 sq ft, plus existing buildings of that size on a roof
+  // replacement. The gate fired on floor area alone.
+  it('the Green Buildings Ordinance reaches new buildings and additions, not any 25,000 sq ft project', () => {
+    expect(byLabel(denver({ projectType: 'new', gfa: 30000 }), /Green Buildings Ordinance/)?.status).toBe('required')
+    expect(byLabel(denver({ projectType: 'addition', gfa: 30000 }), /Green Buildings Ordinance/)?.status).toBe('required')
+    // A change of use inside an existing 30,000 sq ft building adds no new
+    // building and no addition — the cool-roof requirement does not attach to it.
+    expect(byLabel(denver({ projectType: 'change_of_use', gfa: 30000 }), /Green Buildings Ordinance/)).toBeFalsy()
+    expect(byLabel(denver({ projectType: 'adu', gfa: 30000 }), /Green Buildings Ordinance/)).toBeFalsy()
+    // The floor-area threshold itself is unchanged.
+    expect(byLabel(denver({ projectType: 'new', gfa: 20000 }), /Green Buildings Ordinance/)).toBeFalsy()
   })
 
   it('the Green Buildings Ordinance names the cool roof and the second compliance path', () => {
@@ -963,6 +1028,75 @@ describe('assessHurdles — Minneapolis', () => {
     expect(byLabel(vacant, /screened for historic significance/)).toBeFalsy()
   })
 
+  it('administrative site plan review is CONJUNCTIVE: under 20 units AND no other public hearing', () => {
+    // Table 550-1: "may be reviewed administratively if BOTH of the following
+    // apply: (1) no other land use application requiring a public hearing.
+    // (2) fewer than twenty (20) new or additional dwelling units". Only the
+    // unit half was encoded, so a 6-unit project needing a variance was told
+    // its review was administrative — "no hearing, no commission" — which is
+    // false: the variance is itself heard in public.
+    const asOfRight = byLabel(mpls({ use: 'residential', units: 6 }), /Site plan review/)
+    expect(asOfRight?.note).toMatch(/BOTH conditions/)
+    expect(asOfRight?.note).toMatch(/This project meets both, so the review is administrative/)
+    const withVariance = byLabel(
+      assessHurdles('minneapolis', parcel({}), project({ city: 'minneapolis', use: 'residential', units: 6 }), { path: 'variance' }),
+      /Site plan review/,
+    )
+    expect(withVariance?.note).toMatch(/NOT eligible for administrative review/)
+    expect(withVariance?.note).toMatch(/City Planning Commission/)
+    // The one published duration is unchanged on every branch.
+    expect(withVariance?.addsMonths).toBe(2)
+  })
+
+  it('parkland dedication needs a net increase in dwelling units', () => {
+    // § 598.370(a) fires on "a net increase in residential dwelling units", and
+    // every item on its exclusion list adds none. The gate read residential use.
+    expect(byLabel(mpls({ use: 'residential', units: 12 }), /Parkland dedication/)?.status).toBe('required')
+    const noNewUnits = mpls({ use: 'residential', projectType: 'addition', units: 0, gfa: 30000 })
+    expect(byLabel(noNewUnits, /Parkland dedication/)).toBeFalsy()
+    // Not a magnitude threshold — the research row states sizeDependent False,
+    // and softenSizeDependent must not reach it.
+    expect(byLabel(mpls({ use: 'residential', units: 12 }), /Parkland dedication/)?.sizeDependent).toBeFalsy()
+    // The EAW absence is NOT gated on the unit test — it is a finding about
+    // residential development as such.
+    expect(byLabel(noNewUnits, /State environmental review \(EAW\)/)?.status).toBe('info')
+  })
+
+  it('no net loss counts demolished DWELLING units — a warehouse teardown raises none', () => {
+    // "If a project with 100 or more units will demolish units that are 50 or
+    // more years old". Demolishing a non-residential building demolishes no
+    // dwelling units, so the requirement stays at the ordinary 8%.
+    const warehouse = mpls({ projectType: 'new', units: 120 }, { existing: { landUse: 'Warehouse', units: 0, yearBuilt: 1920 } })
+    expect(byLabel(warehouse, /No net loss/)).toBeFalsy()
+    // The demolition SCREEN is not narrowed with it — that one really does
+    // reach every principal building (§ 599.910(a)).
+    expect(byLabel(warehouse, /screened for historic significance/)?.status).toBe('required')
+    // Fails closed: a positive unit count on a non-residential label still
+    // fires, and so does an unlabelled building.
+    const mixed = mpls({ projectType: 'new', units: 120 }, { existing: { landUse: 'Commercial', units: 6, yearBuilt: 1920 } })
+    expect(byLabel(mixed, /No net loss/)?.status).toBe('required')
+    const unlabelled = mpls({ projectType: 'new', units: 120 }, { existing: { buildingAreaSqFt: 9000, yearBuilt: 1920 } })
+    expect(byLabel(unlabelled, /No net loss/)?.status).toBe('required')
+    // A single-family house is still a dwelling unit.
+    const house = mpls({ projectType: 'new', units: 120 }, { existing: { landUse: 'Single Family Residence', yearBuilt: 1920 } })
+    expect(byLabel(house, /No net loss/)?.status).toBe('required')
+  })
+
+  it('the inclusionary mandate discloses the tenure half of its trigger', () => {
+    // UHP § III reaches RENTAL projects only and exempts all for-sale projects
+    // until further notice. There is no tenure field on AnalysisInput, so the
+    // qualifier cannot be gated on — it must at least be stated, not implied by
+    // one capitalised word buried mid-note.
+    const iz = byLabel(mpls({ use: 'residential', units: 60 }), /Inclusionary Zoning: 8%/)
+    expect(iz?.note).toMatch(/TENURE IS PART OF THE TRIGGER/)
+    expect(iz?.note).toMatch(/for-sale projects — condominiums and for-sale townhomes — are exempt/)
+  })
+
+  it('the major TDM plan carries the building-conversion exception on its row', () => {
+    const major = byLabel(mpls({ use: 'residential', units: 250 }), /Travel demand management/)
+    expect(major?.note).toMatch(/except as otherwise authorized in this table for building conversions/)
+  })
+
   it('does NOT name a historic review body — none was researched for Minneapolis', () => {
     // Rule 4: no citation, no claim. The generic copy is correct here; an
     // invented commission name would read as sourced six months from now.
@@ -1109,6 +1243,70 @@ describe('assessHurdles — Philadelphia', () => {
     expect(byLabel(recent, /former house of worship/)).toBeFalsy()
   })
 
+  it('Civic Design Review counts only floor area OUTSIDE an existing structure', () => {
+    // Table 14-304-2 fires on "new construction or an expansion" and excludes
+    // "any floor area within an existing structure" and "any dwelling units
+    // within an existing structure". A conversion inside an existing building
+    // creates neither, however large it is — the gate read gfa alone.
+    expect(byLabel(phl({ gfa: 150000, units: 140 }), /Civic Design Review/)?.status).toBe('required')
+    const conversion = phl({ projectType: 'change_of_use', gfa: 150000, units: 140 })
+    expect(byLabel(conversion, /Civic Design Review/)).toBeFalsy()
+    // ...and with CDR gone, the two rows that trigger off it go too.
+    expect(byLabel(conversion, /RCO neighborhood notice/)).toBeFalsy()
+    expect(byLabel(conversion, /Project Information Form/)).toBeFalsy()
+    // An expansion is expressly in scope.
+    expect(byLabel(phl({ projectType: 'addition', gfa: 150000, units: 140 }), /Civic Design Review/)?.status).toBe('required')
+  })
+
+  it('Civic Design Review does not reach the SP districts § 14-304(5)(b)(.1) excludes', () => {
+    // Both cases open "located in any district, except as provided in
+    // § 14-304(5)(b)(.1)" — SP-ENT, SP-PO and SP-STA are excluded outright.
+    for (const districtCode of ['SP-ENT', 'SP-PO', 'SP-STA']) {
+      const hs = phl(
+        { gfa: 150000, units: 140 },
+        { zoning: { districtCode, subdistrict: null, article: null, maxHeightFt: null, maxFAR: null, allowedUses: null } },
+      )
+      expect(byLabel(hs, /Civic Design Review/), districtCode).toBeFalsy()
+    }
+    // A district that merely starts with the same letters is not excluded — the
+    // industrial exclusion is "certain I-1/I-2/I-3/I-P buildings" in the source
+    // and is deliberately NOT gated on.
+    const industrial = phl(
+      { gfa: 150000, units: 140 },
+      { zoning: { districtCode: 'I-2', subdistrict: null, article: null, maxHeightFt: null, maxFAR: null, allowedUses: null } },
+    )
+    expect(byLabel(industrial, /Civic Design Review/)?.status).toBe('required')
+  })
+
+  it('RCO notice and the PIF follow CDR into the halved Case 2 band, at Case 2’s own confidence', () => {
+    // § 14-303(12)(a)(.3) and § 18-502(2)(c) both read "meets the requirements
+    // for Civic Design Review in § 14-304(5)" — Case 1 OR Case 2. Reading only
+    // Case 1 made both rows NARROWER than the source: a project in the halved
+    // band was never told either might apply. UNDER-firing, so the fix adds a
+    // row rather than removing one, and it carries Case 2's 'likely'.
+    const halved = phl({ gfa: 60000, units: 60 })
+    expect(byLabel(halved, /Civic Design Review/)?.status).toBe('likely')
+    const rco = byLabel(halved, /RCO neighborhood notice/)
+    expect(rco?.status).toBe('likely')
+    expect(rco?.note).toMatch(/Case 2/)
+    expect(rco?.sizeDependent).toBe(true)
+    const pif = byLabel(halved, /Project Information Form/)
+    expect(pif?.status).toBe('likely')
+    expect(pif?.note).toMatch(/Case 2 threshold/)
+    // Case 1 is still 'required', and below both cases nothing fires.
+    expect(byLabel(phl({ gfa: 150000 }), /RCO neighborhood notice/)?.status).toBe('required')
+    expect(byLabel(phl({ gfa: 150000 }), /Project Information Form/)?.status).toBe('required')
+    expect(byLabel(phl({ gfa: 40000, units: 40 }), /RCO neighborhood notice/)).toBeFalsy()
+    expect(byLabel(phl({ gfa: 40000, units: 40 }), /Project Information Form/)).toBeFalsy()
+  })
+
+  it('the 21-day demolition posting carries its three stated exceptions', () => {
+    const demo = byLabel(phl({ projectType: 'new', units: 20 }, { existing: { landUse: 'Row dwelling' } }), /Licensed demolition contractor/)
+    expect(demo?.note).toMatch(/imminently dangerous/)
+    expect(demo?.note).toMatch(/14-303\(13\)/)
+    expect(demo?.note).toMatch(/subject of a Zoning Board variance/)
+  })
+
   it('names the Philadelphia Historical Commission in a historic district', () => {
     const hs = phl({}, { overlays: { historicDistrict: 'Rittenhouse-Fitler Historic District', floodZone: null } })
     expect(byLabel(hs, /Historic district design review/)?.note).toMatch(/Philadelphia Historical Commission/)
@@ -1175,16 +1373,72 @@ describe('assessHurdles — Miami', () => {
     expect(byLabel(mia({ gfa: 150000 }), /Urban Development Review Board/)).toBeFalsy()
   })
 
-  it('demolition rows: historic delay on any teardown, no-relocation only on rental multifamily', () => {
-    const rental = mia({ projectType: 'new', units: 40 }, { existing: { landUse: 'Apartment', units: 8 } })
-    const delay = byLabel(rental, /Historic demolition delay/)
+  // REWRITTEN. The previous version of this test was called "historic delay on
+  // any teardown" and asserted exactly that — a green test defending an
+  // over-broad gate (ledger rule 15). § 23-6.2(b)(4)b.4's six-month arm reaches
+  // "demolition or relocation of a CONTRIBUTING structure or landscape feature",
+  // which presupposes a designated historic district or site; the gate read
+  // `teardown` alone, so every Miami teardown in the city carried it.
+  it('the six-month demolition deferral needs a designated historic district, not just a teardown', () => {
+    const historic = mia(
+      { projectType: 'new', units: 40 },
+      { existing: { landUse: 'Apartment', units: 8 }, overlays: { historicDistrict: 'Morningside Historic District', floodZone: null } },
+    )
+    const delay = byLabel(historic, /Historic demolition delay/)
     expect(delay?.status).toBe('likely')
     expect(delay?.addsMonths).toBeUndefined() // the research row published no duration
     expect(delay?.note).toMatch(/six months/)
+    expect(delay?.note).toMatch(/CONTRIBUTING/)
+    // Outside a district the six-month arm must NOT fire.
+    const plain = mia({ projectType: 'new', units: 40 }, { existing: { landUse: 'Apartment', units: 8 } })
+    expect(byLabel(plain, /Historic demolition delay/)).toBeFalsy()
+    // ...but the 45-day archaeological arm of the same provision does not turn
+    // on a district, so it keeps a row rather than vanishing with the fix.
+    const dig = byLabel(plain, /Archaeological zone/)
+    expect(dig?.status).toBe('info')
+    expect(dig?.note).toMatch(/45 calendar days/)
+    expect(dig?.addsMonths).toBeUndefined()
+  })
+
+  it('no-relocation absence: rental multifamily only, and only outside a historic district', () => {
+    const rental = mia({ projectType: 'new', units: 40 }, { existing: { landUse: 'Apartment', units: 8 } })
     expect(byLabel(rental, /No tenant relocation/)?.status).toBe('info')
     const sfh = mia({ projectType: 'new', units: 4 }, { existing: { landUse: 'Single Family Residence' } })
-    expect(byLabel(sfh, /Historic demolition delay/)).toBeTruthy()
     expect(byLabel(sfh, /No tenant relocation/)).toBeFalsy()
+    // The trigger says "outside a designated historic district" in as many
+    // words — inside one, demolition runs the certificate-of-appropriateness
+    // process and the flat absence is not the whole story.
+    const inDistrict = mia(
+      { projectType: 'new', units: 40 },
+      { existing: { landUse: 'Apartment', units: 8 }, overlays: { historicDistrict: 'Morningside Historic District', floodZone: null } },
+    )
+    expect(byLabel(inDistrict, /No tenant relocation/)).toBeFalsy()
+  })
+
+  it('city impact fees need a NET INCREASE in dwelling units, not just residential use', () => {
+    // § 13-6: a permit for additions, remodels or rehabilitation "which result
+    // in ... no net increase in the number of residential dwelling units" is
+    // exempt. The gate read residential use alone.
+    expect(byLabel(mia({ use: 'residential', units: 12 }), /City of Miami development impact fees/)?.status).toBe('required')
+    const noNewUnits = mia({ use: 'residential', projectType: 'addition', units: 0, gfa: 30000 })
+    expect(byLabel(noNewUnits, /City of Miami development impact fees/)).toBeFalsy()
+    // The county school fee is NOT narrowed with it — § 33K-5 also reaches
+    // "expansions of existing units", so a unit test there would under-fire.
+    expect(byLabel(noNewUnits, /educational facilities impact fee/)?.status).toBe('required')
+    // And the county mobility fee is charged on any development activity.
+    expect(byLabel(noNewUnits, /multimodal mobility impact fee/)?.status).toBe('required')
+  })
+
+  it('the no-CEQA absence is stated with its condition, not as a flat exemption', () => {
+    // § 380.06(12)(a) is conjunctive: a development EXCEEDING the § 380.0651
+    // statewide guidelines is still reviewed by the local government under
+    // § 163.3184(4), and only comprehensive-plan consistency removes that.
+    const env = byLabel(mia({ use: 'residential', units: 40 }), /No state environmental review act/)
+    expect(env?.status).toBe('info')
+    expect(env?.note).toMatch(/380\.06/)
+    expect(env?.note).toMatch(/380\.0651/)
+    expect(env?.note).toMatch(/163\.3184\(4\)/)
+    expect(env?.note).toMatch(/consistent with the comprehensive plan|consistency/)
   })
 
   it('names the HEPB in a historic district', () => {
@@ -1296,7 +1550,11 @@ describe('assessHurdles — San Diego', () => {
     expect(inc?.note).toMatch(/142\.1302/)
     expect(byLabel(hs, /Mobility Choices/)?.note).toMatch(/143\.1102/)
     expect(byLabel(hs, /Environmentally Sensitive Lands/)?.status).toBe('likely')
-    expect(byLabel(hs, /CEQA/)?.note).toMatch(/128\.0202/)
+    // CEQA is discretionary-path only (§ 128.0202(b)) — see the dedicated test.
+    const disc = assessHurdles('sandiego', parcel({}), project({ city: 'sandiego', use: 'residential', units: 24, gfa: 30000 }), {
+      path: 'variance',
+    })
+    expect(byLabel(disc, /CEQA/)?.note).toMatch(/128\.0202/)
     expect(byLabel(hs, /Development Impact Fees/)?.status).toBe('required')
     // ABSENCE-shaped info row: the CPIO overlay is mapped, not size-driven.
     expect(byLabel(hs, /Community Plan Implementation Overlay/)?.status).toBe('info')
@@ -1393,6 +1651,64 @@ describe('assessHurdles — San Diego', () => {
     expect(p4?.note).toMatch(/143\.0210/)
     expect(byLabel(sd({ use: 'residential', units: 20 }), /Process Four/)).toBeFalsy()
   })
+
+  // ---- Sweep of the untruncated § sources against the encoded gates. ----
+
+  // UNDER-fire, the rarer and worse direction: § 143.0210(e)(2)(B) reads
+  // "Multiple dwelling unit residential, COMMERCIAL, OR INDUSTRIAL development
+  // on any size lot, or any subdivision on any size lot". The residential-only
+  // gate meant a commercial project on a historical-resource parcel was never
+  // told a Process Four hearing applies.
+  it('Process Four also reaches a commercial project on a historical-resource parcel', () => {
+    const histo = { overlays: { historicDistrict: 'Sherman Heights Historic District', floodZone: null } }
+    const comm = byLabel(sd({ use: 'commercial', units: 0, gfa: 40000 }, histo), /Process Four/)
+    expect(comm?.status).toBe('required')
+    expect(comm?.note).toMatch(/commercial or industrial/)
+    // A single dwelling is still outside it — the row says MULTIPLE dwelling unit.
+    expect(byLabel(sd({ use: 'residential', units: 1 }, histo), /Process Four/)).toBeFalsy()
+  })
+
+  // OVER-fire: the permit assignment read was Table 143-01A ROW 3, which is the
+  // MULTIPLE DWELLING UNIT row. The unconditional push published a Process Three
+  // claim for single-dwelling and commercial projects off rows nobody read.
+  it('the ESL Site Development Permit rides on the multiple-dwelling-unit row it cites', () => {
+    const esl = byLabel(sd({ use: 'residential', units: 12 }), /Environmentally Sensitive Lands/)
+    expect(esl?.status).toBe('likely')
+    expect(esl?.sizeDependent).toBe(true)
+    expect(esl?.note).toMatch(/Table 143-01A row 3/)
+    // Must NOT fire: one dwelling, and a wholly commercial project.
+    expect(byLabel(sd({ use: 'residential', units: 1 }), /Environmentally Sensitive Lands/)).toBeFalsy()
+    expect(byLabel(sd({ use: 'commercial', units: 0, gfa: 40000 }), /Environmentally Sensitive Lands/)).toBeFalsy()
+  })
+
+  // OVER-fire: § 128.0202(b) says an activity is NOT subject to CEQA if it does
+  // not involve the exercise of discretionary powers. The row fired on every
+  // project, telling as-of-right applicants they carried environmental review.
+  it('CEQA fires on the discretionary path only', () => {
+    const aor = assessHurdles('sandiego', parcel({}), project({ city: 'sandiego', use: 'residential', units: 24 }), { path: 'as_of_right' })
+    expect(byLabel(aor, /CEQA/)).toBeFalsy()
+    const disc = assessHurdles('sandiego', parcel({}), project({ city: 'sandiego', use: 'residential', units: 24 }), { path: 'variance' })
+    const ceqa = byLabel(disc, /CEQA/)
+    expect(ceqa?.status).toBe('likely')
+    expect(ceqa?.note).toMatch(/128\.0202/)
+    // The things that push a nominally as-of-right project off the ministerial
+    // path are named rather than dropped with the gate.
+    expect(ceqa?.note).toMatch(/environmentally sensitive lands/i)
+    expect(ceqa?.note).toMatch(/Type B/)
+  })
+
+  // OVER-fire: § 142.0640 exempts the first two ADUs on a premises outright.
+  it('Development Impact Fees skip an ADU, which the code exempts', () => {
+    expect(byLabel(sd({ projectType: 'adu', use: 'residential', units: 1 }), /Development Impact Fees/)).toBeFalsy()
+    expect(byLabel(sd({ use: 'residential', units: 24 }), /Development Impact Fees/)?.status).toBe('required')
+  })
+
+  // § 142.1302 applies the inclusionary division "except as provided in Section
+  // 142.1303", which was not read. The gate stays as-is — no threshold invented
+  // — but the unread exception is disclosed rather than silently assumed away.
+  it('the inclusionary row discloses the § 142.1303 exception it does not implement', () => {
+    expect(byLabel(sd({ use: 'residential', units: 24 }), /Inclusionary Affordable Housing/)?.note).toMatch(/142\.1303/)
+  })
 })
 
 describe('assessHurdles — San José', () => {
@@ -1488,6 +1804,17 @@ describe('assessHurdles — San José', () => {
     expect(byLabel(sj({ use: 'residential', units: 30 }), /Commercial linkage fee/)).toBeFalsy()
     expect(byLabel(sj({ use: 'commercial', gfa: 60000 }), /Commercial linkage fee/)?.status).toBe('info')
   })
+
+  // OVER-fire: § 21.04.010.A attaches CEQA to DISCRETIONARY approvals, and the
+  // only thing making an ordinary San José project discretionary is the Site
+  // Development Permit — which § 20.100.610.A.1 exempts for one one-family
+  // dwelling on a single lot. CEQA was firing where the SDP row did not.
+  it('CEQA carries the Site Development Permit’s own single-dwelling exception', () => {
+    expect(byLabel(sj({ use: 'residential', units: 1 }), /Site Development Permit/)).toBeFalsy()
+    expect(byLabel(sj({ use: 'residential', units: 1 }), /CEQA/)).toBeFalsy()
+    expect(byLabel(sj({ use: 'residential', units: 2 }), /CEQA/)?.status).toBe('likely')
+    expect(byLabel(sj({ use: 'commercial', gfa: 60000 }), /CEQA/)?.status).toBe('likely')
+  })
 })
 
 describe('assessHurdles — Nashville', () => {
@@ -1581,6 +1908,40 @@ describe('assessHurdles — Nashville', () => {
     expect(byLabel(flooded, /Preserved floodplain/)?.status).toBe('likely')
     expect(byLabel(nash({}), /Preserved floodplain/)).toBeFalsy()
   })
+
+  // OVER-fire: § 17.28.020.A applies the hillside standards to "new construction
+  // on land in an UNDEVELOPED STATE where natural slopes are of fifteen percent
+  // or greater" — two conditions. The gate implemented neither, so every
+  // Nashville project, teardowns included, was told the standards apply.
+  it('hillside standards need new construction on undeveloped land', () => {
+    const green = byLabel(nash({ projectType: 'new', use: 'residential', units: 12 }), /Hillside development standards/)
+    expect(green?.status).toBe('likely')
+    expect(green?.note).toMatch(/undeveloped state/)
+    // Must NOT fire: a parcel already carrying a building is not undeveloped…
+    expect(
+      byLabel(
+        nash({ projectType: 'new', use: 'residential', units: 12 }, { existing: { landUse: 'Retail Store', buildingAreaSqFt: 4000 } }),
+        /Hillside development standards/,
+      ),
+    ).toBeFalsy()
+    // …and an addition or a change of use is not new construction.
+    expect(byLabel(nash({ projectType: 'addition' }), /Hillside development standards/)).toBeFalsy()
+    expect(byLabel(nash({ projectType: 'change_of_use' }), /Hillside development standards/)).toBeFalsy()
+  })
+
+  // OVER-fire: § 17.20.140.B.2 is a NONRESIDENTIAL floor-area test, but the gate
+  // measured `project.gfa` — the whole building — whenever the use included a
+  // commercial component, so a mixed-use project was matched on its residential
+  // floor area. No gfa split exists, so the limb is restricted to a wholly
+  // non-residential project; the >75-unit limb still catches large mixed ones.
+  it('the multimodal 50,000 sq ft limb is non-residential floor area, not total gfa', () => {
+    expect(byLabel(nash({ use: 'commercial', units: 0, gfa: 60000 }), /Multimodal transportation analysis/)?.status).toBe('required')
+    // Must NOT fire: a mixed-use building of 60,000 sq ft and 60 units is under
+    // the unit trigger, and its non-residential area is not 60,000 sq ft.
+    expect(byLabel(nash({ use: 'mixed', units: 60, gfa: 60000 }), /Multimodal transportation analysis/)).toBeFalsy()
+    // The unit limb is unchanged and still reaches mixed use.
+    expect(byLabel(nash({ use: 'mixed', units: 120, gfa: 60000 }), /Multimodal transportation analysis/)?.status).toBe('required')
+  })
 })
 
 // Rules 1 and 2 again, for this batch. Same shape as the two blocks above: no
@@ -1620,7 +1981,9 @@ describe('San Diego / San José / Nashville — no invented durations', () => {
   }
 
   const SIZE_TRIGGERED: Record<string, RegExp[]> = {
-    sandiego: [/Inclusionary Affordable Housing/, /Mobility Choices/, /Process Four/],
+    // ESL joined this list when its gate was tightened to Table 143-01A row 3
+    // (multiple dwelling unit development) — it now reads a unit count.
+    sandiego: [/Inclusionary Affordable Housing/, /Mobility Choices/, /Process Four/, /Environmentally Sensitive Lands/],
     sanjose: [/Inclusionary Housing Ordinance/, /Park impact fee/, /Green building certification/, /Transportation Demand Management/],
     nashville: [/Multimodal transportation analysis/],
   }
@@ -1639,7 +2002,7 @@ describe('San Diego / San José / Nashville — no invented durations', () => {
       }
       // Conversely: a hurdle that fires regardless of size must NOT be tagged.
       const alwaysOn = hs.filter((h) =>
-        /Development Impact Fees|Environmentally Sensitive Lands|Community Plan Implementation|Stacked San José|Prevailing wage and 30%|All-electric mandate|State law bars|Sidewalk construction|Tree density|Hillside development/.test(h.label),
+        /Development Impact Fees|Community Plan Implementation|Stacked San José|Prevailing wage and 30%|All-electric mandate|State law bars|Sidewalk construction|Tree density|Hillside development/.test(h.label),
       )
       expect(alwaysOn.length, `${city} expected at least one always-on hurdle`).toBeGreaterThan(0)
       for (const h of alwaysOn) expect(h.sizeDependent, `${city} / ${h.label}`).toBeFalsy()

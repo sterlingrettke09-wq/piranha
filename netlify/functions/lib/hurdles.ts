@@ -542,7 +542,21 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       })
     }
 
-    if (project.projectType === 'new') {
+    // ZONE RESTRICTION (2026-08-06). 11-C DCMR § 601.2 applies the Green Area
+    // Ratio to "all new buildings on properties in ALL ZONES EXCEPT the R and RF
+    // zones" — the house-form residential zones, which are most of DC's land
+    // area. The gate asserted it on every new building in the city, while the
+    // hurdle's OWN note already said "in all zones except the R and RF
+    // house-form zones": the claim was true in the text and false in the gate
+    // (ledger rule 9's boundary problem). Base zone only — an overlay suffix
+    // (`R-3/NO`, `RF-1/CAP`) does not move the parcel out of its base zone.
+    // Matches R-1A/R-2/R-3… and RF-1…RF-5; deliberately NOT RA-* (Residential
+    // Apartment), NC, MU, PDR or D, all of which are inside the GAR. An
+    // unresolved district code ('Unknown') keeps firing — the exemption is only
+    // applied where the zone is affirmatively known to be R or RF.
+    const dcBaseZone = (parcel.zoning.districtCode ?? '').toUpperCase().split('/')[0].trim()
+    const dcHouseFormZone = /^RF?(-|$)/.test(dcBaseZone)
+    if (project.projectType === 'new' && !dcHouseFormZone) {
       hurdles.push({
         category: 'environmental',
         label: 'Green Area Ratio: landscape minimum',
@@ -576,7 +590,13 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       })
     }
 
-    if (parcel.overlays.historicDistrict && project.projectType === 'new') {
+    // THERE MUST BE SOMETHING TO DEMOLISH (2026-08-06). § 6-1104(b) reaches "any
+    // permit to demolish a historic landmark or a building or structure located
+    // in a historic district". The gate fired on `projectType === 'new'` alone,
+    // so a new building on a VACANT lot inside a historic district was told a
+    // demolition permit needed a public-interest finding. `teardown` is
+    // `new` AND an existing structure — the condition the source actually states.
+    if (parcel.overlays.historicDistrict && teardown) {
       hurdles.push({
         category: 'demolition',
         label: 'Demolition in a historic district: "necessary in the public interest"',
@@ -595,12 +615,24 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         note: 'To recover possession of an occupied rental unit in order to demolish the building and replace it with new construction, DC requires that a copy of the demolition permit first be filed with the Rent Administrator, then a 180-day notice to vacate served on every tenant, plus statutory relocation assistance under subchapter VII (D.C. Official Code § 42-3505.01(g)(1)–(2)). The tenancy, not the permit, is the binding constraint: the clock cannot start before the demolition permit exists, so six months of holding costs on an already-entitled site is the realistic floor.',
         addsMonths: 6,
       })
-      hurdles.push({
-        category: 'demolition',
-        label: 'TOPA: tenants get first right to buy',
-        status: 'likely',
-        note: 'Under the Tenant Opportunity to Purchase Act, tenants of an occupied housing accommodation must be given a bona fide opportunity to purchase before the owner can sell it OR issue a notice to vacate for demolition (D.C. Official Code § 42-3404.02(a)) — it fires on the teardown, not just on a sale. For accommodations of 5 or more units the statute sets minimum periods the owner must allow: 45 days for the tenants to register an organization, then not less than 120 days to negotiate a contract, then not less than 120 days after contracting to arrange financing (§ 42-3404.11). Tenants routinely assign those rights to a developer for a payment. No months are assigned here because the clock only runs if tenants organize, but a TOPA-encumbered site should never be underwritten on an as-of-right timeline. Since the RENTAL Act of 2025, a multifamily building whose permanent certificate of occupancy issued within the prior 15 years is excluded (§ 42-3404.02b(b)(20)).',
-      })
+      // NEW-CONSTRUCTION EXCLUSION (2026-08-06). § 42-3404.02b(b)(20), added by
+      // the RENTAL Act of 2025, takes a multifamily building whose permanent
+      // certificate of occupancy issued within the prior 15 years OUT of TOPA.
+      // The gate asserted TOPA on every rental teardown, including buildings
+      // finished last year. `yearBuilt` is the CO-date proxy already used for
+      // Austin's 50-year screen and LA/SF rent control; suppress only when the
+      // year is KNOWN and inside the window — an unknown year keeps the hurdle.
+      const topaYearBuilt = existing.ex?.yearBuilt
+      const topaNewConstructionExcluded =
+        topaYearBuilt != null && new Date().getFullYear() - topaYearBuilt < 15
+      if (!topaNewConstructionExcluded) {
+        hurdles.push({
+          category: 'demolition',
+          label: 'TOPA: tenants get first right to buy',
+          status: 'likely',
+          note: 'Under the Tenant Opportunity to Purchase Act, tenants of an occupied housing accommodation must be given a bona fide opportunity to purchase before the owner can sell it OR issue a notice to vacate for demolition (D.C. Official Code § 42-3404.02(a)) — it fires on the teardown, not just on a sale. For accommodations of 5 or more units the statute sets minimum periods the owner must allow: 45 days for the tenants to register an organization, then not less than 120 days to negotiate a contract, then not less than 120 days after contracting to arrange financing (§ 42-3404.11). Tenants routinely assign those rights to a developer for a payment. No months are assigned here because the clock only runs if tenants organize, but a TOPA-encumbered site should never be underwritten on an as-of-right timeline. Since the RENTAL Act of 2025, a multifamily building whose permanent certificate of occupancy issued within the prior 15 years is excluded (§ 42-3404.02b(b)(20)).',
+        })
+      }
     }
 
     hurdles.push({
@@ -688,7 +720,15 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       })
     }
 
-    if (project.gfa >= 25000) {
+    // PROJECT-TYPE RESTRICTION (2026-08-06). The ordinance reaches "new buildings
+    // and additions containing 25,000 square feet or more of gross floor area",
+    // plus existing buildings of that size ON A ROOF REPLACEMENT. The gate fired
+    // on floor area alone, so a change of use or an interior ADU conversion in a
+    // 25,000 sq ft building was told a cool roof was required with no roof work
+    // in the project at all. The roof-replacement limb is NOT modelled — we have
+    // no roof-work input — and the note says so rather than pretending otherwise.
+    const denverGboProjectLimb = project.projectType === 'new' || project.projectType === 'addition'
+    if (denverGboProjectLimb && project.gfa >= 25000) {
       hurdles.push({
         category: 'environmental',
         label: 'Green Buildings Ordinance (25,000 sq ft)',
@@ -714,7 +754,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         label: 'Inclusionary Zoning: 8% affordable units',
         sizeDependent: true,
         status: 'required',
-        note: 'A residential RENTAL project of 50 or more new dwelling units must set aside 8% of its units at or below 60% of Area Median Income, held affordable for at least 20 years. Two alternatives are allowed instead: 7% at 50% AMI, or 4% at 30% AMI. Cash in lieu is $15 per square foot of net residential area in buildings up to 7 stories, and $22 per square foot at 8 stories or more. In buildings under 100 units the first 15 units are excluded from the calculation (20–85-unit buildings), tapering to 1 exempt unit at 99 units. The zoning ordinance’s own trigger is 20 units, but the Unified Housing Policy currently exempts rental projects of 20–49 units, so 50 is the line that actually bites (Minneapolis Code of Ordinances § 550.810(a); Unified Housing Policy § III(A)(1), effective April 1, 2025). The requirement is set by Council policy, not the zoning text — the policy in effect the day your complete land use application is submitted governs.',
+        note: 'A residential RENTAL project of 50 or more new dwelling units must set aside 8% of its units at or below 60% of Area Median Income, held affordable for at least 20 years. Two alternatives are allowed instead: 7% at 50% AMI, or 4% at 30% AMI. Cash in lieu is $15 per square foot of net residential area in buildings up to 7 stories, and $22 per square foot at 8 stories or more. In buildings under 100 units the first 15 units are excluded from the calculation (20–85-unit buildings), tapering to 1 exempt unit at 99 units. The zoning ordinance’s own trigger is 20 units, but the Unified Housing Policy currently exempts rental projects of 20–49 units, so 50 is the line that actually bites (Minneapolis Code of Ordinances § 550.810(a); Unified Housing Policy § III(A)(1), effective April 1, 2025). TENURE IS PART OF THE TRIGGER and this tool holds no tenure field: the mandate reaches RENTAL projects only, and for-sale projects — condominiums and for-sale townhomes — are exempt at any size until further notice. Confirm which you are building before treating this as binding. The requirement is set by Council policy, not the zoning text — the policy in effect the day your complete land use application is submitted governs.',
       })
     }
 
@@ -735,16 +775,24 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // nothing else in the Minneapolis research states one. The SECOND threshold
     // (20 units → mandatory public hearing) was lost to truncation and is
     // restored here: below 20 units the same review is administrative.
+    // Administrative review is CONJUNCTIVE in Table 550-1 — it needs BOTH that
+    // the project carries no other land use application requiring a public
+    // hearing AND that it is under 20 units. The unit half alone was encoded,
+    // so a 6-unit project that also needs a variance (itself a land use
+    // application heard in public) was told its review would be administrative
+    // with "no hearing, no commission" — false on the variance path.
     if (units >= 4) {
+      const mplsHearing = units >= 20 || discretionary
       hurdles.push({
         category: 'review',
         label: 'Site plan review',
         sizeDependent: true,
         status: 'required',
-        note:
-          units >= 20
-            ? 'Any building or use containing 4 or more new or additional dwelling units or rooming units goes through site plan review before a building permit — and at 20 or more units the application is NOT eligible for administrative review: it must go to a public hearing before the City Planning Commission (Minneapolis Code of Ordinances § 550.510 and Table 550-1, incl. footnote 2). Units added in any 3-year period are counted together. Minnesota’s 60-day rule (Minn. Stat. § 15.99, subd. 2) requires the city to approve or deny within 60 days, extendable once by up to 60 more days with written notice.'
-            : 'Any building or use containing 4 or more new or additional dwelling units or rooming units goes through site plan review before a building permit (Minneapolis Code of Ordinances § 550.510 and Table 550-1). Under 20 units the review is administrative — no hearing, no commission; the public-hearing requirement starts at 20 new or additional units, counting units added in any 3-year period together. Minnesota’s 60-day rule (Minn. Stat. § 15.99, subd. 2) requires the city to approve or deny within 60 days, extendable once by up to 60 more days with written notice. Conversions of non-residential floor area to housing stay administrative at any unit count.',
+        note: !mplsHearing
+          ? 'Any building or use containing 4 or more new or additional dwelling units or rooming units goes through site plan review before a building permit (Minneapolis Code of Ordinances § 550.510 and Table 550-1). Administrative review is available only if BOTH conditions in Table 550-1 hold: the project includes no other land use application requiring a public hearing, AND it includes fewer than 20 new or additional dwelling units or rooming units. This project meets both, so the review is administrative — no hearing, no commission; the public-hearing requirement starts at 20 new or additional units, counting units added in any 3-year period together. Minnesota’s 60-day rule (Minn. Stat. § 15.99, subd. 2) requires the city to approve or deny within 60 days, extendable once by up to 60 more days with written notice. Conversions of non-residential floor area to housing stay administrative at any unit count.'
+          : units >= 20
+            ? 'Any building or use containing 4 or more new or additional dwelling units or rooming units goes through site plan review before a building permit — and at 20 or more units the application is NOT eligible for administrative review: it must go to a public hearing before the City Planning Commission (Minneapolis Code of Ordinances § 550.510 and Table 550-1, incl. footnote 2). Administrative review needs BOTH conditions in Table 550-1 — no other land use application requiring a public hearing, and fewer than 20 units — and the unit half already fails here. Units added in any 3-year period are counted together. Minnesota’s 60-day rule (Minn. Stat. § 15.99, subd. 2) requires the city to approve or deny within 60 days, extendable once by up to 60 more days with written notice.'
+            : 'Any building or use containing 4 or more new or additional dwelling units or rooming units goes through site plan review before a building permit (Minneapolis Code of Ordinances § 550.510 and Table 550-1). This project is under 20 units, but the unit count is only HALF the test: administrative review requires BOTH that the project includes no other land use application requiring a public hearing AND that it is under 20 units. This project needs discretionary zoning relief, which is itself a land use application heard in public, so the first condition fails and the site plan is NOT eligible for administrative review — expect the City Planning Commission, not a staff sign-off. Minnesota’s 60-day rule (Minn. Stat. § 15.99, subd. 2) requires the city to approve or deny within 60 days, extendable once by up to 60 more days with written notice.',
         addsMonths: 2,
       })
     }
@@ -757,19 +805,29 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         status: 'required',
         note:
           units >= 250
-            ? 'At 250 or more new or additional dwelling units or rooming units, Minneapolis requires a MAJOR travel demand management plan scoring at least 6 points, including a traffic study prepared to industry standards and certified by a licensed engineer (Minneapolis Code of Ordinances § 555.1310(c) and Table 555-10). You pick strategies from Table 555-11 — transit passes, bike facilities, unbundled parking, car-share — until you hit the point total, and you must keep complying afterward.'
+            ? 'At 250 or more new or additional dwelling units or rooming units, Minneapolis requires a MAJOR travel demand management plan scoring at least 6 points, including a traffic study prepared to industry standards and certified by a licensed engineer (Minneapolis Code of Ordinances § 555.1310(c) and Table 555-10). The 250-unit row carries its own exception — "except as otherwise authorized in this table for building conversions" — so a building conversion may sit on a different line of Table 555-10; check the table before assuming the major plan. You pick strategies from Table 555-11 — transit passes, bike facilities, unbundled parking, car-share — until you hit the point total, and you must keep complying afterward. A written exemption request is possible.'
             : 'At 50 or more (and fewer than 250) new or additional dwelling units or rooming units, Minneapolis requires a MINOR travel demand management plan scoring at least 4 points with the application; at 250 units it becomes a major plan requiring 6 points plus a licensed engineer’s traffic study (Minneapolis Code of Ordinances § 555.1310 and Table 555-10). You pick strategies from Table 555-11 — transit passes, bike facilities, unbundled parking, car-share — until you hit the point total, and you must keep complying afterward. This is the practical replacement for the parking minimums Minneapolis abolished.',
       })
     }
 
-    if (isResidential) {
+    // § 598.370(a) fires on a NET INCREASE in residential dwelling units, not on
+    // residential use — the ordinance's own exclusion list is entirely made of
+    // things that add no units (tax parcel combinations and splits, minor
+    // subdivisions, lot line adjustments, apartment-to-condominium conversions,
+    // internal leasehold improvements). A residential job adding no units owes
+    // nothing, so the zero/non-zero test is part of the trigger. NOT tagged
+    // sizeDependent: the research row states sizeDependent False, and this is an
+    // applicability test (any units at all), not a magnitude threshold.
+    if (isResidential && units >= 1) {
       hurdles.push({
         category: 'fees',
         label: 'Parkland dedication: land or fee in lieu',
         status: 'required',
         note: 'Any development needing a building permit that produces a net increase in residential dwelling units must dedicate parkland or pay a fee in lieu (Minneapolis Code of Ordinances § 598.370(a)–(d)). There is no minimum project size — it applies from the first added unit. The land option is .0066 acres per new unit downtown (the area bounded by I-35W, I-94, Plymouth Avenue and the Mississippi River) or .01 acres per new unit outside downtown, capped at 10% of the area being platted or developed. The cash alternative is written into the ordinance at $1,500 per non-exempt unit — but that is the 2013 base figure, adjusted every April 1 by the Minneapolis–St. Paul CPI-U and never reduced, so what you will actually owe is materially higher. The current per-unit figure is published in the city’s parkland dedication fee schedule; get it from Minneapolis Development Review before you underwrite, because no current dollar amount is asserted here. Affordable housing units as defined in § 598.360 (including inclusionary units) are exempt, as are lot combinations and splits, minor subdivisions, lot line adjustments, apartment-to-condominium conversions and internal leasehold improvements.',
       })
+    }
 
+    if (isResidential) {
       // ABSENCE by threshold: state environmental review sits far above the size
       // of an ordinary Minneapolis building, so most projects never see it.
       hurdles.push({
@@ -794,7 +852,18 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       // wave it through (same rule as Austin's 50-year screen).
       const yb = existing.ex?.yearBuilt
       const age = yb == null ? null : new Date().getFullYear() - yb
-      if (units >= 100 && (age == null || age >= 50)) {
+      // The rule counts DWELLING UNITS demolished ("will demolish units that are
+      // 50 or more years old"). Tearing down a warehouse or a store demolishes
+      // none, and the inclusionary requirement stays at the ordinary 8% — but
+      // the gate read only `teardown`, so any old building on the site raised a
+      // replacement duty. Fails closed: a positive unit count, a residential
+      // land use, or an unlabelled building all still fire; only an
+      // affirmatively non-residential land use with no units suppresses it.
+      const exLu = existing.lu
+      const luResidential = /apartment|condo|multi-?family|town ?house|triplex|fourplex|duplex|dwelling|residen|housing|\bflats\b/i.test(exLu)
+      const luNonResidential = /commercial|retail|office|industrial|warehouse|storage|parking|church|school|hotel|motel|restaurant|manufactur/i.test(exLu)
+      const demolishesDwellings = existing.exUnits > 0 || luResidential || !luNonResidential
+      if (units >= 100 && demolishesDwellings && (age == null || age >= 50)) {
         hurdles.push({
           category: 'demolition',
           label: 'No net loss: demolishing 50-year-old units raises a replacement duty',
@@ -832,8 +901,29 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // separated only by an alley, or is within 200 ft on the same or facing
     // blockface (§ 14-304(5)(b)(.2)). We hold no adjacency data, so the halved
     // band is 'likely' with the condition named, not asserted.
-    const cdrCase1 = project.gfa > 100000 || (isResidential && units > 100)
-    const cdrCase2 = project.gfa > 50000 || (isResidential && units > 50)
+    //
+    // Two qualifiers sit ahead of both cases and neither was implemented.
+    // (a) Each case requires "new construction or an expansion" and counts only
+    //     floor area / units created OUTSIDE an existing structure — Table
+    //     14-304-2 excludes "any floor area within an existing structure" and
+    //     "any dwelling units within an existing structure". A change of use
+    //     inside an existing building creates neither, so it cannot meet either
+    //     case however large the building is.
+    // (b) Both cases open "located in any district, except as provided in
+    //     § 14-304(5)(b)(.1)" — SP-ENT, SP-PO and SP-STA are excluded outright.
+    // The industrial exclusion is "certain I-1/I-2/I-3/I-P buildings" — the
+    // source qualifies it with "certain", so it stays in the note rather than
+    // becoming a gate we would have to invent the boundary of.
+    const phlDistrict = parcel.zoning.districtCode ?? ''
+    const cdrEligible = project.projectType !== 'change_of_use' && !/^SP-(ENT|PO|STA)\b/i.test(phlDistrict)
+    const cdrCase1 = cdrEligible && (project.gfa > 100000 || (isResidential && units > 100))
+    const cdrCase2 = cdrEligible && (project.gfa > 50000 || (isResidential && units > 50))
+    // § 14-303(12)(a)(.3) and § 18-502(2)(c) both trigger on "meets the
+    // requirements for Civic Design Review in § 14-304(5)" — which is Case 1 OR
+    // Case 2. Reading only Case 1 made both rows NARROWER than their source: a
+    // 60-unit project in the halved band was never told RCO notice or a Project
+    // Information Form might apply at all. Case 2 turns on adjacency we do not
+    // hold, so that arm carries the CDR row's own 'likely', not 'required'.
     if (cdrCase1 || cdrCase2) {
       hurdles.push({
         category: 'review',
@@ -883,16 +973,18 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // Commission building-permit review, OR /UCO Planning Commission approval.
     // The CDR arm makes this fire on a purely as-of-right, size-triggered
     // permit — so when it fires that way it is size-gated and tagged as such.
-    if (discretionary || cdrCase1) {
+    if (discretionary || cdrCase1 || cdrCase2) {
       hurdles.push({
         category: 'review',
         label: 'RCO neighborhood notice and public meeting',
-        status: 'required',
+        status: discretionary || cdrCase1 ? 'required' : 'likely',
         ...(discretionary ? {} : { sizeDependent: true }),
         note: `${
           discretionary
             ? 'An application needing Zoning Board approval — a special exception under § 14-303(7) or a variance under § 14-303(8) — must be noticed to the Registered Community Organizations covering the parcel, and a public meeting held, before the hearing'
-            : 'This project meets the Civic Design Review criteria of § 14-304(5), which is an independent trigger for RCO notice even on an as-of-right permit: the parcel must be noticed to the Registered Community Organizations covering it, and a public meeting held'
+            : cdrCase1
+              ? 'This project meets the Civic Design Review criteria of § 14-304(5), which is an independent trigger for RCO notice even on an as-of-right permit: the parcel must be noticed to the Registered Community Organizations covering it, and a public meeting held'
+              : 'This project sits in the HALVED Civic Design Review band (Table 14-304-2, Case 2), which applies only where the property affects a property in a Residential district. If it does, the project meets the Civic Design Review criteria of § 14-304(5) — an independent trigger for RCO notice even on an as-of-right permit — and the parcel must be noticed to the Registered Community Organizations covering it, with a public meeting held. Confirm the adjacency, because the whole row turns on it'
         } (Phila. Code § 14-303(12)(a), (b)(.4), (e)(.1)). The Planning Commission names a Coordinating RCO, and you must mail written notice to every RCO covering the site, the district Councilmember, and every property within 250 ft plus the whole blockface and the facing blockface. The Coordinating RCO convenes the public meeting — which you or your representative must attend — within 45 days of the appeal filing or of L&I’s notice that CDR is required, and Civic Design Review will not meet on your application until you document that it happened. Practically, the district Councilmember’s involvement is the point: councilmanic prerogative means their read of that meeting often decides a project.`,
       })
     }
@@ -903,16 +995,18 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // a ZBA special exception or variance, or meets the CDR criteria. The
     // truncated table lost the second half, so this fired on size alone.
     const pifExemptSmallResidential = project.use === 'residential' && units >= 1 && units <= 3
-    if (project.gfa > 2500 && (discretionary || cdrCase1) && !pifExemptSmallResidential) {
+    if (project.gfa > 2500 && (discretionary || cdrCase1 || cdrCase2) && !pifExemptSmallResidential) {
       hurdles.push({
         category: 'review',
         label: 'Project Information Form (Chapter 18-500)',
         sizeDependent: true,
-        status: 'required',
+        status: discretionary || cdrCase1 ? 'required' : 'likely',
         note: `A structure — or a resulting structure — of more than 2,500 sq ft gross floor area is a "covered development project" and must file a sworn Project Information Form when it ${
           discretionary
             ? 'requires a Zoning Board special exception or variance'
-            : 'meets the Civic Design Review criteria of § 14-304(5)'
+            : cdrCase1
+              ? 'meets the Civic Design Review criteria of § 14-304(5)'
+              : 'meets the Civic Design Review criteria of § 14-304(5) — which here depends on the halved Case 2 threshold, so it applies only if the property affects a property in a Residential district; confirm that adjacency'
         }; a Council ordinance or resolution is a third trigger (Phila. Code § 18-502(2), § 18-503, ch. 18-500). Purely residential developments of three or fewer dwelling units are exempt, as are signage-only applications. The form must state net change in units and floor area, projected construction period, parking, any bonuses sought, stormwater and remediation plans, and headcount and wage ranges for construction and permanent jobs. Civic Design Review will not meet on the project until the form is delivered, and Council cannot pass an enabling ordinance unless it is filed 10 days before the hearing and attached to the bill. It is published on the City’s website and stays there five years.`,
       })
     }
@@ -934,7 +1028,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         category: 'demolition',
         label: 'Licensed demolition contractor and 21-day posted notice',
         status: 'required',
-        note: 'Demolition in Philadelphia must be carried out by a Demolition Contractor licensed under § 9-1008, and L&I issues a notice the contractor must post on EVERY street frontage; demolition cannot commence less than 21 days from the date of that initial posting (Phila. Code Title 4, Subcode "A" §§ A-303.1, A-303.2, A-303.2.1, A-303.3). The permit is valid only for the contractor named on it, so swapping contractors requires a permit amendment. A separate demolition permit is required wherever the work demolishes, moves or removes a structure greater than one story or greater than 500 sq ft (§ A-301.1). The Department also distributes an informational bulletin to every property within 250 ft, the district Councilmember, and any RCO covering the site. Plan the 21 days into the schedule — it runs before any machine moves.',
+        note: 'Demolition in Philadelphia must be carried out by a Demolition Contractor licensed under § 9-1008, and L&I issues a notice the contractor must post on EVERY street frontage; demolition cannot commence less than 21 days from the date of that initial posting (Phila. Code Title 4, Subcode "A" §§ A-303.1, A-303.2, A-303.2.1, A-303.3). The permit is valid only for the contractor named on it, so swapping contractors requires a permit amendment. A separate demolition permit is required wherever the work demolishes, moves or removes a structure greater than one story or greater than 500 sq ft (§ A-301.1). The posting — and with it the 21-day wait — has three stated exceptions: a structure L&I has declared imminently dangerous, a structure already posted under § 14-303(13), and a structure that was the subject of a Zoning Board variance. The Department also distributes an informational bulletin to every property within 250 ft, the district Councilmember, and any RCO covering the site. Plan the 21 days into the schedule — it runs before any machine moves.',
       })
 
       // The trigger has TWO parts: current-or-former religious use AND at least
@@ -967,14 +1061,27 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // City of Miami Code of Ordinances and Miami 21 (the zoning code), plus the
     // Miami-Dade County Code for the two county-wide impact fees and the 2025
     // Florida Statutes for the two state-level absences.
-    if (isResidential) {
+    // § 13-6's own exemption is a net-increase test, not a use test: a building
+    // permit for "additions, remodels, rehabilitation or other improvements to
+    // an existing structure and reconstruction of a demolished structure which
+    // result in ... no net increase in the number of residential dwelling
+    // units" pays nothing. The gate read residential use alone. Not tagged
+    // sizeDependent — the research row states False, and this is a zero /
+    // non-zero applicability test rather than a magnitude threshold.
+    if (isResidential && units >= 1) {
       hurdles.push({
         category: 'fees',
         label: 'City of Miami development impact fees',
         status: 'required',
         note: 'Any new development producing a net increase in dwelling units pays FOUR separate City of Miami impact fees, collected before the building permit issues (City of Miami Code §§ 13-6, 13-7, 13-9, 13-10, 13-11, 13-12; Ord. No. 12750, adopted 12-15-2005 — Chapter 13 carries no CPI escalator, so these remain the operative amounts). There is no size threshold, but the per-unit rate tiers by units per building. In a building of 10 or more units ("high rise") each unit pays police $95.00 + fire-rescue $409.00 + general services $239.00 + parks and recreation $3,959.00. In a 3–9-unit building ("low rise") each unit pays $144.00 + $619.00 + $363.00 + $5,998.00. A single-family detached house pays $164.00 + $704.00 + $413.00 + $6,818.00. A remodel or addition with no net increase in dwelling units is exempt.',
       })
+    }
 
+    if (isResidential) {
+      // Kept on residential use rather than a net-unit test: § 33K-5 is charged
+      // per new unit BUT the same section reaches "expansions of existing
+      // units", so a residential job adding floor area and no units can still
+      // owe it. Narrowing this to units >= 1 would under-fire.
       hurdles.push({
         category: 'fees',
         label: 'Miami-Dade educational facilities impact fee',
@@ -1022,7 +1129,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       category: 'environmental',
       label: 'No state environmental review act',
       status: 'info',
-      note: 'Florida has no state environmental review statute of the CEQA or SEPA kind — the Development of Regional Impact program was largely repealed, so an ordinary Miami project files no state environmental document at all (Fla. Stat. § 380.06(12)(a) (2025)).',
+      note: 'Florida has no state environmental review statute of the CEQA or SEPA kind. The absence is conditional, not flat, and § 380.06(12)(a) states the condition: a proposed development that EXCEEDS the statewide guidelines and standards of Fla. Stat. § 380.0651, and is not otherwise exempt, must still be approved by the LOCAL government under Fla. Stat. § 163.3184(4) — and only where the development is consistent with the comprehensive plan (§ 163.3194(3)(b)) does even that review drop away (Fla. Stat. § 380.06(12)(a) (2025), as rewritten by ch. 2018-158). For a Miami project consistent with the Miami Comprehensive Neighborhood Plan there is no state-level environmental or regional-impact review to run at all, which removes what is usually the largest schedule risk in the California and Washington cities — but consistency is the thing that buys it, not project type. Federal review (NEPA, Army Corps § 404) still applies where a federal permit or federal money is involved, and Miami-Dade County’s environmental code (ch. 24 — wetlands, mangroves, natural forest communities, tidal waters) is a separate permitting layer this tool does not model.',
     })
 
     hurdles.push({
@@ -1033,16 +1140,38 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     })
 
     if (teardown) {
-      hurdles.push({
-        category: 'demolition',
-        label: 'Historic demolition delay',
-        status: 'likely',
-        note: 'Demolishing or relocating a contributing structure or landscape feature in a designated historic district can be delayed while alternatives are explored: the HEPB may approve the demolition but defer the effective date of that approval by up to six months (City of Miami Code § 23-6.2(b)(4)b.4). Ground-disturbing work touching an archaeological site, zone or conservation area can be deferred up to 45 calendar days on the same mechanism. Both are stated CEILINGS, not scheduled durations, so no fixed delay is added to the timeline here. Confirm whether the existing building is contributing.',
-      })
+      // § 23-6.2(b)(4)b.4's deferral has TWO arms and only the second is
+      // citywide. The six-month arm applies to "demolition or relocation of a
+      // contributing structure or landscape feature" — inside a designated
+      // historic district or site, since that is what "contributing" is
+      // contributing TO, and the certificate of appropriateness the deferral
+      // attaches to is itself required only there (§ 23-6.2(a)). The gate read
+      // `teardown` alone, so every Miami teardown in the city was told a
+      // six-month historic delay was 'likely'. The 45-day archaeological arm
+      // does reach any ground-disturbing work, so it keeps a row of its own
+      // rather than disappearing with the district test.
+      if (parcel.overlays.historicDistrict) {
+        hurdles.push({
+          category: 'demolition',
+          label: 'Historic demolition delay',
+          status: 'likely',
+          note: 'This parcel is in a designated historic district, so demolishing or relocating a CONTRIBUTING structure or landscape feature here can be delayed while alternatives are explored: the HEPB may approve the demolition but defer the effective date of that approval by up to six months (City of Miami Code § 23-6.2(b)(4)b.4). Ground-disturbing work touching an archaeological site, zone or conservation area can be deferred up to 45 calendar days on the same mechanism. Both are stated CEILINGS, not scheduled durations, so no fixed delay is added to the timeline here. Confirm whether the existing building is contributing — a non-contributing building in the district is not reached by the six-month arm.',
+        })
+      } else {
+        hurdles.push({
+          category: 'demolition',
+          label: 'Archaeological zone: certificate to dig and possible deferral',
+          status: 'info',
+          note: 'This parcel is not in a designated historic district, so the six-month HEPB demolition deferral — which reaches contributing structures in a designated district or site — does not apply. The other arm of the same provision does not depend on a district: a certificate to dig is required for any ground-disturbing activity within a designated archaeological site, archaeological zone or archaeological conservation area, and the HEPB may defer the effective date of that approval by up to 45 calendar days (City of Miami Code § 23-6.2(a), (b)(4)b.4). The designated zones cover substantial stretches of the Miami River, Brickell and the Biscayne Bay shoreline, so a teardown-and-rebuild near the water should check the archaeological map before assuming clear ground. This is a stated CEILING, not a scheduled duration, so no delay is added to the timeline here.',
+        })
+      }
 
       // ABSENCE: unusual among the cities we cover, and it cuts the other way —
-      // no tenant-relocation duty on a Miami teardown outside a historic district.
-      if (existing.rentalMultifamily) {
+      // no tenant-relocation duty on a Miami teardown outside a historic
+      // district. The trigger says "outside a designated historic district" in
+      // as many words; inside one, demolition runs the certificate-of-
+      // appropriateness process above and the absence is not the whole story.
+      if (existing.rentalMultifamily && !parcel.overlays.historicDistrict) {
         hurdles.push({
           category: 'demolition',
           label: 'No tenant relocation or replacement-housing requirement',
@@ -1069,7 +1198,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // The set-aside itself, stated once — it is the same either side of the
     // coastal threshold, and only the unit trigger moves (§ 142.1304 / § 142.1306).
     const SD_INCLUSIONARY_TERMS =
-      'A rental project must set aside at least 10% of its units at 30% of 60% of median income, affordable for 55 years; a for-sale project 10% at median income or 15% at moderate income (§ 142.1304(a)–(b)). The alternative is the Inclusionary In Lieu Fee, which § 142.1306(a) sets at $25.00 per square foot of net market-rate building area effective July 1, 2024, escalated annually by the ENR Los Angeles Construction Cost Index — so today’s published rate is above $25.00 and must be confirmed with the City rather than assumed. A condominium conversion triggers the division at just 2 dwelling units.'
+      'A rental project must set aside at least 10% of its units at 30% of 60% of median income, affordable for 55 years; a for-sale project 10% at median income or 15% at moderate income (§ 142.1304(a)–(b)). The alternative is the Inclusionary In Lieu Fee, which § 142.1306(a) sets at $25.00 per square foot of net market-rate building area effective July 1, 2024, escalated annually by the ENR Los Angeles Construction Cost Index — so today’s published rate is above $25.00 and must be confirmed with the City rather than assumed. A condominium conversion triggers the division at just 2 dwelling units. One caveat on the trigger itself: § 142.1302 applies the division "except as provided in Section 142.1303", and § 142.1303 was not read here — check it before assuming the requirement attaches to your project.'
 
     // The inclusionary threshold is 10 units — but 5 inside the Coastal Overlay
     // Zone, which is why the trigger reads off the overlay rather than a constant.
@@ -1116,32 +1245,51 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       }
     }
 
-    // Historical resource present + multiple-dwelling-unit residential. Tagged
-    // sizeDependent because the code condition reads a unit count (rule 1); the
-    // tag only ever downgrades, so it fails closed.
-    if (parcel.overlays.historicDistrict && isResidential && units >= 2) {
+    // Historical resource present. § 143.0210(e)(2)(B) reaches "Multiple dwelling
+    // unit residential, COMMERCIAL, OR INDUSTRIAL development on any size lot, or
+    // any subdivision on any size lot" — the residential-only gate here was
+    // NARROWER than the code and left a commercial project on a historical-resource
+    // parcel with no Process Four row at all. Tagged sizeDependent because the
+    // residential limb reads a unit count (rule 1); the tag only ever downgrades,
+    // so it fails closed.
+    if (parcel.overlays.historicDistrict && ((isResidential && units >= 2) || isCommercial)) {
       hurdles.push({
         category: 'historic',
         label: 'Site Development Permit (Process Four) where a historical resource is present',
         sizeDependent: true,
         status: 'required',
-        note: 'Multiple-dwelling-unit residential development on premises holding a historical resource needs a Site Development Permit decided through Process Four — a Planning Commission public hearing, appealable to the City Council (San Diego Municipal Code § 143.0210(e)(2), (e)(2)(B); Process Four defined at § 112.0507). Lot size does not matter: the code says "on any size lot". And § 143.0210(b) applies the division to the WHOLE premises if any portion of it contains historical resources, so a resource in one corner pulls the entire site in.',
+        note: 'Multiple-dwelling-unit residential, commercial or industrial development on premises holding a historical resource — and any subdivision — needs a Site Development Permit decided through Process Four: a Planning Commission public hearing, appealable to the City Council (San Diego Municipal Code § 143.0210(e)(2), (e)(2)(B); Process Four defined at § 112.0507). Lot size does not matter: the code says "on any size lot". The only carve-outs on this row are capital improvement program projects, public projects and project-specific land use plans, none of which a private development is. And § 143.0210(b) applies the division to the WHOLE premises if any portion of it contains historical resources, so a resource in one corner pulls the entire site in. Separate exemptions at § 143.0220 were not read here — check them before assuming the permit is unavoidable.',
       })
     }
 
-    hurdles.push({
-      category: 'environmental',
-      label: 'Environmentally Sensitive Lands: Site Development Permit',
-      status: 'likely',
-      note: 'If any portion of the premises contains sensitive biological resources, steep hillsides, coastal beaches (including V zones), sensitive coastal bluffs, or a FEMA Special Flood Hazard Area (except V zones), multiple-dwelling-unit development needs a Site Development Permit decided through Process Three — a Hearing Officer at a public hearing, appealable to the Planning Commission (San Diego Municipal Code § 143.0110(a), (b)(1), Table 143-01A row 3; Process Three at §§ 112.0505, 112.0506). Any deviation from the ESL regulations pushes the permit up to Process Four. The trigger is what is on the ground, not project size — and note that a FEMA A-zone designation here is not just a build-higher problem, it is a discretionary hearing, which is what pulls CEQA in.',
-    })
+    // The permit assignment we actually read is Table 143-01A ROW 3, which covers
+    // MULTIPLE DWELLING UNIT development. Firing this on a single-dwelling or a
+    // commercial project would publish a Process Three claim off a row nobody
+    // read (rule 5: a gap must not render as an answer). The site conditions
+    // themselves — biological resources, steep hillsides, coastal bluffs — are
+    // not in any dataset we hold, so the copy stays conditional on them.
+    if (isResidential && units >= 2) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Environmentally Sensitive Lands: Site Development Permit',
+        sizeDependent: true,
+        status: 'likely',
+        note: 'If any portion of the premises contains sensitive biological resources, steep hillsides, coastal beaches (including V zones), sensitive coastal bluffs, or a FEMA Special Flood Hazard Area (except V zones), multiple-dwelling-unit development needs a Site Development Permit decided through Process Three — a Hearing Officer at a public hearing, appealable to the Planning Commission (San Diego Municipal Code § 143.0110(a), (b)(1), Table 143-01A row 3; Process Three at §§ 112.0505, 112.0506). Any deviation from the ESL regulations pushes the permit up to Process Four. The trigger is what is on the ground, not project size — and note that a FEMA A-zone designation here is not just a build-higher problem, it is a discretionary hearing, which is what pulls CEQA in. Row 3 is the multiple-dwelling-unit row; other development types sit on rows this analysis has not read.',
+      })
+    }
 
-    hurdles.push({
-      category: 'environmental',
-      label: 'CEQA environmental review',
-      status: 'likely',
-      note: 'The California Environmental Quality Act attaches to any private activity needing a discretionary City approval — a development permit, a use permit, a variance (San Diego Municipal Code § 128.0202(a)(3), (b)). If your project clears entirely as-of-right there is no CEQA document; the moment it needs a discretionary permit, there is.',
-    })
+    // CEQA attaches to DISCRETIONARY approvals, and § 128.0202(b) says so from
+    // the other direction: an activity is not subject to CEQA if it does not
+    // involve the exercise of discretionary powers. An unconditional row told
+    // every as-of-right San Diego project it carried environmental review.
+    if (discretionary) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'CEQA environmental review',
+        status: 'likely',
+        note: 'The California Environmental Quality Act attaches to any private activity needing a discretionary City approval — a development permit, a use permit, a variance (San Diego Municipal Code § 128.0202(a)(3), (b)). § 128.0202(b) states the converse: an activity is not subject to CEQA if it does not involve the exercise of discretionary powers, so a project that clears entirely as-of-right carries no CEQA document. Watch what can push you off the ministerial path even when the zoning works: a Site Development Permit for environmentally sensitive lands, a historical resource on the premises, a CPIO "Type B" mapping, or any deviation from a development regulation.',
+      })
+    }
 
     if (teardown && (existing.exUnits > 0 || existing.multifamilyExisting)) {
       hurdles.push({
@@ -1167,12 +1315,17 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       }
     }
 
-    hurdles.push({
-      category: 'fees',
-      label: 'Development Impact Fees for public facilities',
-      status: 'required',
-      note: 'Development in an area where the City has adopted Development Impact Fees pays them toward parks, mobility, library and fire facilities, and the final inspection will not occur until they are paid (San Diego Municipal Code § 142.0640(b)). There is no size threshold in the code, and the code states no amounts either — they are adopted separately by City Council resolution (e.g. R-313688 for the Citywide Park DIF), so no dollar figure should be taken from the ordinance. Exemptions written into the code: the first two ADUs on a premises, permanent supportive housing, low-barrier navigation centers, transitional housing, and inclusionary units provided on the same premises as the market-rate units.',
-    })
+    // § 142.0640 exempts the FIRST TWO ADUs on a premises outright, so asserting
+    // a required fee on an ADU project contradicts the ordinance for all but the
+    // third-and-later ADU — a case no field on the record distinguishes.
+    if (project.projectType !== 'adu') {
+      hurdles.push({
+        category: 'fees',
+        label: 'Development Impact Fees for public facilities',
+        status: 'required',
+        note: 'Development in an area where the City has adopted Development Impact Fees pays them toward parks, mobility, library and fire facilities, and the final inspection will not occur until they are paid (San Diego Municipal Code § 142.0640(b)). There is no size threshold in the code, and the code states no amounts either — they are adopted separately by City Council resolution (e.g. R-313688 for the Citywide Park DIF), so no dollar figure should be taken from the ordinance. Exemptions written into the code: the first two ADUs on a premises, permanent supportive housing, low-barrier navigation centers, transitional housing, and inclusionary units provided on the same premises as the market-rate units.',
+      })
+    }
 
     hurdles.push({
       category: 'review',
@@ -1206,12 +1359,19 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       })
     }
 
-    hurdles.push({
-      category: 'environmental',
-      label: 'CEQA environmental review',
-      status: 'likely',
-      note: 'CEQA attaches to discretionary approvals (San José Municipal Code § 21.04.010.A) — and because a Site Development Permit is discretionary, an ordinary San José project carries environmental review with it rather than escaping it. Title 21 adopts CEQA wholesale, with local procedures for negative declarations (Ch. 21.06) and EIRs (Ch. 21.07) that are each separately appealable (§§ 21.06.020, 21.07.040). The code publishes no processing duration.',
-    })
+    // CEQA rides on the Site Development Permit, so it has to carry the SDP's
+    // own exception: the single one-family dwelling that § 20.100.610.A exempts
+    // takes no discretionary approval, and § 21.04.010.A attaches CEQA to
+    // discretionary approvals. Firing here where the SDP row does not would be
+    // an environmental-review claim with nothing discretionary under it.
+    if (!(isResidential && units > 0 && units <= 1)) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'CEQA environmental review',
+        status: 'likely',
+        note: 'CEQA attaches to discretionary approvals (San José Municipal Code § 21.04.010.A) — and because a Site Development Permit is discretionary, an ordinary San José project carries environmental review with it rather than escaping it. The single one-family dwelling the SDP exempts, and the ministerial routes in Ch. 20.195, are the way out. Title 21 adopts CEQA wholesale, with local procedures for negative declarations (Ch. 21.06) and EIRs (Ch. 21.07) that are each separately appealable (§§ 21.06.020, 21.07.040). The code publishes no processing duration.',
+      })
+    }
 
     if (isResidential) {
       hurdles.push({
@@ -1338,7 +1498,15 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       note: 'Metro’s sidewalk exaction — build the sidewalk along your whole frontage or pay into the pedestrian benefit zone fund — would otherwise apply to multi-family and non-residential development in the urban services district, in a designated center, or on a Major and Collector Street Plan street, but the code section carries an editor’s note recording that it is no longer enforced under a permanent injunction (Metro Nashville & Davidson County Code § 17.20.120, editor’s note; Agreed Entry of Judgment and Injunction entered 9/22/23 in Knight v. Metropolitan Government, M.D. Tenn. No. 3:20-cv-00922). Treat the sidewalk cost as not currently required but confirm at permit — Metro may re-adopt a compliant version, and if it does, § 17.20.120.D.1 caps the in-lieu payment at three percent of the total construction value of the permit.',
     })
 
-    if (units > 75 || (isCommercial && project.gfa > 50000)) {
+    // § 17.20.140.B.2 reads "NONRESIDENTIAL developments of more than fifty
+    // thousand square feet". `isCommercial` is true for use === 'mixed' too, and
+    // `project.gfa` is the WHOLE building — so a mixed-use project was being
+    // measured against a non-residential threshold using its residential floor
+    // area. We hold no split of gfa, so the floor-area limb is restricted to a
+    // wholly non-residential project; the unit limb still catches large mixed
+    // programs. (Criterion 3, the 750-daily / 100-peak-hour trip test, needs a
+    // trip generation figure we do not compute, so it is stated, not gated.)
+    if (units > 75 || (project.use === 'commercial' && project.gfa > 50000)) {
       hurdles.push({
         category: 'review',
         label: 'Multimodal transportation analysis (NDOT)',
@@ -1380,12 +1548,19 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       note: 'The mere filing of an ordinance to designate your parcel’s area as a historic overlay district freezes permits for demolition, relocation, new construction, exterior alteration and additions on the land recommended for designation (Metro Nashville & Davidson County Code § 17.40.430). The freeze runs until Council approves, rejects, withdraws or indefinitely defers the ordinance — or has deferred it for ninety days in total. A neighbourhood that objects can start that clock without Council ever voting, so check whether a designation ordinance is filed for the area before you count on a permit date.',
     })
 
-    hurdles.push({
-      category: 'environmental',
-      label: 'Hillside development standards (15% natural slope)',
-      status: 'likely',
-      note: 'New construction on land in an undeveloped state with natural slopes of 15% or more must meet Metro’s hillside development standards (Metro Nashville & Davidson County Code §§ 17.28.020.A, 17.28.030.A). In residential districts, development must minimise grading and cut/fill on the portions at 20% or more natural slope; on single- or two-family lots under one acre, natural slopes of 25% or more must be platted outside the building envelope and the lot becomes a "critical lot" needing Planning Commission and Public Works sign-off. The trigger is the topography, not the size of the building — but it can materially shrink the buildable area on a hilly parcel.',
-    })
+    // § 17.28.020.A: "new construction on land in an UNDEVELOPED STATE where
+    // natural slopes are of fifteen percent or greater." Two conditions, and the
+    // first one is on the record — a parcel already carrying a building is not
+    // land in an undeveloped state. The slope itself is in no dataset we hold,
+    // so the copy stays conditional on it rather than the gate.
+    if (project.projectType === 'new' && !existing.hasBuilding) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Hillside development standards (15% natural slope)',
+        status: 'likely',
+        note: 'New construction on land in an undeveloped state with natural slopes of 15% or more must meet Metro’s hillside development standards (Metro Nashville & Davidson County Code §§ 17.28.020.A, 17.28.030.A). In residential districts, development must minimise grading and cut/fill on the portions at 20% or more natural slope; on single- or two-family lots under one acre, natural slopes of 25% or more must be platted outside the building envelope and the lot becomes a "critical lot" needing Planning Commission and Public Works sign-off. The trigger is the topography, not the size of the building — but it can materially shrink the buildable area on a hilly parcel. The standards reach land in an undeveloped state, so a parcel already carrying a building is outside them.',
+      })
+    }
 
     hurdles.push({
       category: 'environmental',
