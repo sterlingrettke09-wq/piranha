@@ -61,6 +61,76 @@ const HOST = 'data.seattle.gov'
 //     excluded records were the slow tail. The direction is a property of what
 //     the criterion selects on, and does not carry between cities.
 //
+//     (A2) THE GATE ABOVE WAS ITSELF A CENSORING DEFECT — fixed 2026-08-06, same
+//     day it shipped. The arm originally gated on `dwellingunittype LIKE
+//     '%Accessory Dwelling Detached%'`. That column is written AT ISSUANCE, so
+//     the gate selected only issued permits BY CONSTRUCTION. Measured on the
+//     live feed, Addition/Alteration Building filings applied since 2022-01-01:
+//
+//       dwellingunittype non-null, NON-ISSUED filings      0 / 2001   (0.0%)
+//       dwellingunittype non-null, issued filings       1204 / 17007  (7.1%)
+//
+//     `standardplan` and `zoning` show the identical 0% / 7.1% split — the same
+//     fill-at-issuance cluster, which is what identifies the mechanism rather
+//     than a coincidence. The consequence is not a biased number, it is an
+//     UNINTERPRETABLE one: the tier this arm feeds had no denominator, so no
+//     issuance rate could be computed for it and the 5.8-month figure could not
+//     be read as a wait.
+//
+//     Note the second, independent censoring in the same column: all 308 of the
+//     issued DADU rows the replacement finds that the old gate missed are
+//     `housingcategory = 'Single-Family Add/Alt'`, a category where
+//     `dwellingunittype` is populated for 4 of 11,623 rows. The old gate was
+//     therefore censoring twice — by issuance AND by housing category — and the
+//     n=714 above is BOTH right-censored and category-censored.
+//
+//     REPLACEMENT: `description`, gated client-side. Non-null on 2001/2001
+//     (100.0%) non-issued filings, and 100% at every pre-issuance status
+//     including 'Ready for Intake', the earliest — it is written by the
+//     applicant at intake, which is the whole point of the change.
+//
+//     Fields evaluated and rejected, all measured on the same 2001 non-issued
+//     filings rather than assumed:
+//       · housingunitsadded / housingunitsremoved — 55.9% non-null. Sparse, and
+//         sparse in the issuance-correlated direction (62.1% on issued). Same
+//         defect class, smaller.
+//       · permitclass / permitclassmapped / estprojectcost — 100% non-null but
+//         they do not IDENTIFY a detached ADU; no value of any of them is
+//         specific to one.
+//       · housingcategory — 100% non-null, and it has DADU-bearing values, but
+//         neither is usable alone: 'Pre-Approved DADU Plans' is 98.9% precise
+//         and finds only 26.1% of them, while 'Middle Housing' mixes 518
+//         detached ADUs with 379 ATTACHED ones, which this pipeline
+//         deliberately excludes (see below).
+//
+//     The description gate was scored against `dwellingunittype` as ground truth
+//     on the 1204 issued rows that carry it — the label exists only there, which
+//     is exactly why the label cannot be the filter:
+//
+//       detached-mention only                  precision 92.7%  recall 97.5%
+//       detached-mention AND NOT attached      precision 96.1%  recall 93.7%   <- used
+//       'construct'-verb adjacent to DADU      precision 91.0%  recall 37.8%
+//
+//     The rejected false positives are one failure mode, not scatter: AADU
+//     permits carrying the land-use clause "allow new attached and detached
+//     accessory dwelling units". Excluding on the attached mention also drops 27
+//     genuine mixed AADU+DADU projects, so this is a trade, and PERTURBATION
+//     says the trade does not matter: the 28 false positives run a 4.1-month
+//     median and the 27 true positives lost run 4.4, and the arm's median moves
+//     3.1 -> 3.0 between the two rules. The choice is not load-bearing; it is
+//     made on precision.
+//
+//     WHAT THE REPLACEMENT ARM MEASURES (vs the 714 the old gate found):
+//
+//       old gate (dwellingunittype)   714 issued,    0 non-issued,  714 filings
+//                                     median 2.8 mo, issuance rate NOT COMPUTABLE
+//       new gate (description)       1008 issued,  138 non-issued, 1146 filings
+//                                     median 3.0 mo, issuance rate 88.0%
+//
+//     The replacement recovers 294 MORE issued detached ADUs than the old gate
+//     (1008 vs 714) while running only 0.2 months slower, and it is the arm
+//     acquiring a denominator — not the count — that is the point of the change.
+//
 // (B) OVER-INCLUSION — STFI permits are not plan-reviewed construction.
 //     "Subject-to-Field-Inspection" is a distinct SDCI product: no code review
 //     before issuance, compliance verified in the field by the inspector
@@ -98,7 +168,45 @@ const HOST = 'data.seattle.gov'
 //   · Right-censoring is NOT corrected here. Permits applied for but never
 //     issued are absent from the sample entirely, so both figures understate
 //     the true wait. That is a separate pass; a censoring correction applied to
-//     a contaminated population is a precise wrong number.
+//     a contaminated population is a precise wrong number. What (A2) buys is
+//     that the censoring is now MEASURABLE for every arm — the correction still
+//     has to be done.
+//
+// ── RESULTS after the (A2) re-specification, measured 2026-08-06 ─────────────
+// Applied 2022-01-01 onward, STFI removed. Medians are over ISSUED rows; the
+// issuance rate is issued / all filings.
+//
+//   aggregate      6746 filings, 4996 issued (74.1%)   median 5.7 mo   p80 10.0
+//   New arm alone  5600 filings, 3988 issued (71.2%)   median 6.3 mo   p80 10.9
+//   DADU arm       1146 filings, 1008 issued (88.0%)   median 3.0 mo
+//
+// The aggregate moves 5.8 -> 5.7 against the old gate. That the number barely
+// moved is not evidence the old gate was fine: it was uninterpretable, not
+// wrong by much.
+//
+// PER TIER — medians publish, issuance rates DO NOT. This is a real limit, not
+// an omission:
+//
+//   tier        issued   median   p80    issuance rate
+//   single        2623    5.0     8.5    71.1% - 88.4%   (bounded, not a point)
+//   multi         1667    6.3    10.3    59.9% - 80.8%   (bounded, not a point)
+//   apartment      424   10.4    18.5    29.6% - 59.6%   (bounded, not a point)
+//
+// WHY BOUNDS. tierOf() keys on `housingunitsadded`, and that column is subject
+// to the SAME issuance censoring this pass was sent to remove — 97.0% populated
+// on issued filings, 58.2% on non-issued. So 720 non-issued filings cannot be
+// assigned to any tier. The naive per-tier rate silently drops all 720 from the
+// denominators and is therefore biased HIGH; it is the upper bound above. The
+// lower bound assigns all 720 to the tier in question. The true rate is inside
+// the interval and nothing in this dataset narrows it further.
+//
+// `permitclass` is 100% populated and looks like the fix, and is not: within the
+// issued rows, 'Single Family/Duplex' splits 2557 single / 1419 multi / 81
+// apartment and 'Multifamily' splits 242 multi / 206 apartment / 50 single. It
+// straddles both tier boundaries, so tiering the 720 by it would be a guess
+// wearing a 100%-populated column. Publishing a point per-tier issuance rate
+// here would repeat, one level down, the exact defect (A2) fixed — so the
+// interval is the honest output and the point estimate is withheld.
 //
 // KNOWN LIMITATION, disclosed rather than silently fixed: within the 714 added
 // rows, ~99 use conversion/remodel wording, and a minority of those are genuine
@@ -109,7 +217,6 @@ const HOST = 'data.seattle.gov'
 // of the correction; it can only slightly overstate its size.
 const TYPE_FIELD = 'permittypedesc'
 const TYPE_MAPPED_FIELD = 'permittypemapped'
-const DWELLING_TYPE_FIELD = 'dwellingunittype'
 const PERMITCLASS_FIELD = 'permitclass'
 const UNITS_ADDED_FIELD = 'housingunitsadded'
 const DESCRIPTION_FIELD = 'description'
@@ -117,6 +224,25 @@ const DESCRIPTION_FIELD = 'description'
 // SDCI's own tag for a no-plan-review permit. Case-insensitive; Socrata's LIKE
 // is not, so this is applied client-side where it can also be counted.
 const STFI_RE = /\bstfi\b|subject to field inspection/i
+
+// The detached-ADU gate for the Addition/Alteration arm — see (A2) above. Read
+// off `description`, which is populated at intake, and NOT off
+// `dwellingunittype`, which is written at issuance and would re-censor the arm.
+// DADU_RE selects; AADU_RE vetoes, because an attached ADU is an alteration to
+// the existing house and is deliberately out of scope, and because the AADU
+// land-use clause "allow new attached and detached accessory dwelling units" is
+// the single source of this gate's false positives.
+const DADU_RE = /\bDADU\b|detached\s+accessory\s+dwelling/i
+const AADU_RE = /\bAADU\b|attached\s+accessory\s+dwelling/i
+
+// Server-side prefilter for the same arm. Socrata's LIKE is case-sensitive, so
+// this lowercases first; it is deliberately LOOSER than DADU_RE (bare substring,
+// single space) so the exact gate above can run client-side where it is
+// countable. Verified a strict superset on the live feed: 1231 rows prefiltered,
+// all 1146 of the final selection inside it, 0 lost.
+const DADU_SQL =
+  `(lower(${DESCRIPTION_FIELD}) LIKE '%dadu%' ` +
+  `OR lower(${DESCRIPTION_FIELD}) LIKE '%detached accessory dwelling%')`
 
 // Filter to permits APPLIED on/after this date. Widen if the recent slice is thin.
 const SINCE = '2022-01-01'
@@ -128,7 +254,8 @@ const ISSUED_DATE_FIELD = 'issueddate'
 const OUT_PATH = new URL('../../netlify/functions/lib/data/permitStats.json', import.meta.url)
 const DATASET_NAME =
   'data.seattle.gov Building Permits (permittypedesc = New, plus ' +
-  'Addition/Alteration rows creating a detached ADU; STFI excluded)'
+  'Addition/Alteration rows whose filing-time description states a detached ADU ' +
+  'and not an attached one; STFI excluded)'
 
 import { readFile, writeFile } from 'node:fs/promises'
 
@@ -180,6 +307,12 @@ const daysToMonths = (days) => Math.round((days / 30.44) * 10) / 10
 // `housingunitsadded` gives the unit count buildingTier() actually keys on but
 // is null-or-zero for ~5% of rows.
 //
+// That ~5% is measured on ISSUED rows and does not generalise: `housingunitsadded`
+// is 97.0% populated on issued filings but only 58.2% on non-issued ones. Every
+// row this function tiers is issued, so the medians it feeds are unaffected — but
+// it is why no per-tier ISSUANCE RATE is published, only an interval. See the
+// RESULTS block at the top before adding one.
+//
 // Returns null when the tier is UNKNOWN — such a row is counted in the aggregate
 // but assigned to no tier. A row with no recorded unit count is a GAP, and
 // defaulting it into 'single' (the shape a missing count most resembles) would
@@ -200,15 +333,16 @@ function tierOf(row) {
 
 async function pull(since) {
   // See the block comment at the top for why the Addition/Alteration arm exists
-  // and why it is limited to detached ADUs. `permittypemapped = 'Building'`
+  // and why it is limited to detached ADUs. DADU_SQL is only the loose server-side
+  // prefilter; the exact gate (DADU_RE / AADU_RE) runs in main() so its rejects
+  // can be counted. `permittypemapped = 'Building'`
   // keeps the union on building permits — it is redundant for the 'New' arm
   // (all 31,941 'New' rows are Building) but is the gate that stops the
   // Addition/Alteration arm from ever reaching a non-building permit type.
   const where =
     `${TYPE_MAPPED_FIELD} = 'Building' ` +
     `AND (${TYPE_FIELD} = 'New' ` +
-    `     OR (${TYPE_FIELD} = 'Addition/Alteration' ` +
-    `         AND ${DWELLING_TYPE_FIELD} LIKE '%Accessory Dwelling Detached%')) ` +
+    `     OR (${TYPE_FIELD} = 'Addition/Alteration' AND ${DADU_SQL})) ` +
     `AND ${APPLIED_DATE_FIELD} >= '${since}T00:00:00.000' ` +
     `AND ${APPLIED_DATE_FIELD} IS NOT NULL ` +
     `AND ${ISSUED_DATE_FIELD} IS NOT NULL`
@@ -227,12 +361,15 @@ async function main() {
 
   // 1. Confirm every column the filter reads exists in the live schema. A
   //    missing one must halt the run, not silently narrow the population:
-  //    dropping `dwellingunittype` would quietly restore the old under-inclusive
-  //    filter and re-publish a figure biased ~7% high with no warning.
+  //    dropping `description` would quietly delete the entire detached-ADU arm
+  //    and re-publish the old under-inclusive figure with no warning.
+  //    `dwellingunittype` is deliberately NOT checked — the pipeline no longer
+  //    reads it (see (A2)), and requiring a column nothing reads would make a
+  //    schema change halt a run it cannot affect.
   const fields = await fieldNames()
   for (const f of [
     APPLIED_DATE_FIELD, ISSUED_DATE_FIELD, TYPE_FIELD, TYPE_MAPPED_FIELD,
-    DWELLING_TYPE_FIELD, PERMITCLASS_FIELD, UNITS_ADDED_FIELD, DESCRIPTION_FIELD,
+    PERMITCLASS_FIELD, UNITS_ADDED_FIELD, DESCRIPTION_FIELD,
   ]) {
     if (!fields.has(f)) {
       throw new Error(
@@ -258,12 +395,22 @@ async function main() {
   let stfi = 0
   let untiered = 0
   let dadusAdded = 0
+  let notDadu = 0
   for (const row of rows) {
     // The STFI gate. A no-plan-review counter permit is not a new-construction
     // review time; its applied->issued span is a transaction, not a wait.
     if (STFI_RE.test(String(row.descr ?? ''))) {
       stfi++
       continue
+    }
+    // The exact detached-ADU gate for the Addition/Alteration arm. The 'New' arm
+    // is not subject to it. DADU_RE must hit and AADU_RE must not — see (A2).
+    if (row.ptype !== 'New') {
+      const descr = String(row.descr ?? '')
+      if (!DADU_RE.test(descr) || AADU_RE.test(descr)) {
+        notDadu++
+        continue
+      }
     }
     const a = Date.parse(row.applied)
     const i = Date.parse(row.issued)
@@ -277,6 +424,7 @@ async function main() {
     else byTier[tier].push(d)
   }
   console.log(`  excluded ${stfi} STFI rows (no-plan-review field-inspection permits)`)
+  console.log(`  excluded ${notDadu} prefiltered Add/Alt rows the exact DADU gate rejected`)
   console.log(`  included ${dadusAdded} detached-ADU rows SDCI typed as Addition/Alteration`)
   console.log(`  ${untiered} rows carry no usable unit count — in the aggregate, in no tier`)
 
@@ -301,9 +449,9 @@ async function main() {
   const vintage = `applied ${since} onward; computed ${stamp}; ${DATASET_NAME}`
 
   // Per-tier figures. The aggregate is kept for compatibility but is the WEAKER
-  // number: Seattle's new-construction population is 51% single-tier at 5.1
-  // months and 9% apartment-tier at 10.4, so the 5.8-month headline understates
-  // a 5+-unit project by nearly 2x. A consumer that knows the tier should always
+  // number: of the 4996 issued rows, 52.5% are single-tier at 5.0 months and
+  // 8.5% are apartment-tier at 10.4, so the 5.7-month headline understates a
+  // 5+-unit project by nearly 2x. A consumer that knows the tier should always
   // prefer byTier (see measuredFor()).
   const tiers = {}
   for (const [tier, arr] of Object.entries(byTier)) {

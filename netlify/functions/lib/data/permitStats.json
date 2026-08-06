@@ -110,7 +110,7 @@
       "medianMonths": 8.3,
       "p80Months": 17,
       "n": 4403,
-      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.cityofnewyork.us DOB NOW: Build \u2013 Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
+      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.cityofnewyork.us DOB NOW: Build – Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
     }
   },
   "philadelphia": {
@@ -123,29 +123,29 @@
   },
   "seattle": {
     "newConstruction": {
-      "medianMonths": 5.8,
-      "p80Months": 10.2,
-      "n": 4702,
-      "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
+      "medianMonths": 5.7,
+      "p80Months": 10,
+      "n": 4996,
+      "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
     },
     "byTier": {
       "single": {
-        "medianMonths": 5.1,
+        "medianMonths": 5,
         "p80Months": 8.5,
-        "n": 2407,
-        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
+        "n": 2623,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
       },
       "multi": {
         "medianMonths": 6.3,
-        "p80Months": 10.4,
-        "n": 1646,
-        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
+        "p80Months": 10.3,
+        "n": 1667,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
       },
       "apartment": {
         "medianMonths": 10.4,
-        "p80Months": 18.4,
-        "n": 425,
-        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
+        "p80Months": 18.5,
+        "n": 424,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
       }
     }
   }

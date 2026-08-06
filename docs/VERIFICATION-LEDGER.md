@@ -2634,3 +2634,68 @@ an unconditional one.
 **Open:** does the same filing-year gradient appear in Denver, Miami and
 Philadelphia? If so the older-cohort restriction applies to all four. Austin is
 the only one measured so far.
+
+---
+
+## 2026-08-06 — The gradient is in all four, and Seattle's arm is fixed
+
+### Right-truncation confirmed in Denver, Miami, Philadelphia
+
+| city | gradient | published | after cohort cutoff |
+|---|---|---|---|
+| denver | YES_STRONG | 4.4 pooled · single 5.4 · apt 5.3 | **5.1 · 6.0 · 5.9** |
+| miami | YES_STRONG | single 11.3 · multi 11.0 · apt 20.2 | **13.3 · 14.0 · 23.2** |
+| philadelphia | YES_WEAK | 2.9 | — |
+
+**Every published figure in these cities is biased SHORT**, and the older-cohort
+restriction applies to all four, as predicted.
+
+**Denver settled artifact-vs-speed-up by measurement, not argument** — the check I
+was most worried an agent would skip. Two matched-window tests: the conditional
+median given D ≤ 6 months is FLAT across cohorts (1.9 / 2.3 / 2.2 / 1.9), and at
+equal cohort AGE the 2026 cohort is the **slowest** in every tier. So there is no
+real speed-up to erase. It also found the mechanism directly: the max observed
+duration falls 49.7 → 41.9 → 26.2 → 18.4 → 6.3 months by filing year, and the
+24-months-and-over band holds 102 / 191 / 3 / 0 / 0. A 2025 filing cannot be
+observed taking 20 months — the row does not exist yet.
+
+Denver's cutoff also survives its own sensitivity check: the looser cutoff moves
+nothing beyond 0.1 months, which is the test against having picked a pleasing one.
+
+Miami's decline is monotone WITHIN each tier, so it is not composition. Its
+apartment n collapses 70 → 73 → 24 → 19 → 3 because a tier with a 23.8-month
+median filed in 2024 has ~24 months of window and most of that cohort simply has
+not issued yet.
+
+### Philadelphia may not belong with the other three
+
+It is the ONE city where the never-issued denominator is **directly observable** —
+the eCLIPSE layer carries a STATUS field, so pending applications are counted
+rather than inferred. That makes an issuance rate, and possibly KM, actually
+available. It should be re-examined out of the issued-only group.
+
+### Seattle's arm re-specified — the tier has a denominator again
+
+The defect I introduced today is fixed, and the fix was verified the right way
+round. `description` is **100% non-null (2001/2001) on non-issued filings**, at
+every pre-issuance status including the earliest. Gate: match DADU / detached
+accessory dwelling, exclude AADU / attached.
+
+The old `dwellingunittype` gate was **0 of 2001** on non-issued and 7.1% on
+issued — and `standardplan` and `zoning` show the identical 0%/7.1% split, which
+identifies a fill-at-issuance cluster rather than a coincidence.
+
+Recovery: **1,146 filings (1,008 issued) at median 3.0 months and an 88.0%
+issuance rate**, against the old gate's 714 whose issuance rate was 100% *by
+construction*. Scored against `dwellingunittype` as ground truth: precision 96.1%,
+recall 93.7% — and perturbation shows the trade is not load-bearing, moving the
+arm 3.1 → 3.0.
+
+Seattle now publishes **5.7 / p80 10.0 / n 4,996**, tiers single 5.0, multi 6.3,
+apartment 10.4 — with a real denominator (74.1% overall issuance).
+
+### Still queued
+
+Six restatements (austin, denver, miami, nashville, nyc, philadelphia), four of
+them as CONDITIONAL medians with the condition in the label. Nashville's p80 to be
+withdrawn. Philadelphia to be re-examined for KM.
