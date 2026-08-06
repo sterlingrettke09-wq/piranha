@@ -2345,3 +2345,30 @@ a dedupe, not a filter change.
 4. Censoring (KM where supported, floor-labelled median otherwise, issuance rate
    always).
 5. Restated bases.
+
+#### Sharpened, 2026-08-05 — two corrections to the notes above
+
+**The exclusion CRITERION determines the sign, and it is usually project size.**
+Small projects permit faster. So an exclusion that drops small projects biases the
+published figure UP; one that drops large projects biases it DOWN. Seattle's DADU
+case is the concrete instance (SDCI files detached accessory dwellings under both
+"New" and "Addition", so the exclusion is non-random with respect to duration) —
+but the exposure belongs to **any city whose exclusion criterion correlates with
+project size**, which is most of them. Do not carry a single expected direction
+into the next pass; derive it per city from what the criterion selects on.
+
+**Duplication does not merely inflate `n` — it re-weights the distribution, and in
+the OPPOSITE direction from contamination.** The note above said n over-counts
+projects. That understates it. If the duplicated rows share a project key, a
+project filing twelve permits contributes **twelve observations to the median**,
+not one. Large projects file more permits (Austin: one parking garage as twelve
+"Module C/E/F/G…" rows), so duplication over-weights SLOW projects and biases the
+median UP — while the contamination in those same cities biases it down. Two
+mechanisms, opposite signs, same figure. Neither can be corrected by assuming the
+other's direction.
+
+So the first question for SF's 18.1% is not how to fix it but **what it is**:
+check whether the duplicated rows share a project key. Genuine duplicate permits,
+a multi-permit project, and a join fanning out rows are three different defects
+with three different corrections, and only the middle one requires re-weighting
+the distribution rather than deduping it.
