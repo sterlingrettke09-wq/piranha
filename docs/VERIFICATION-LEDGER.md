@@ -2524,3 +2524,79 @@ before it is explained.
 **Still open:** right-censoring on every one of these (all are issued-permits-only
 samples, so all are floors), Nashville's per-unit child permits (24.9% of rows
 cite a master), and Austin's `masterpermitnum` module-splitting.
+
+---
+
+## 2026-08-06 — Censoring, per tier. KM is UNDEFINED for half these cities.
+
+Eight agents, each required to declare its maturity rule before computing, run on
+the post-filter population, and publish the issuance rate regardless.
+
+### The structural finding: selection on the outcome is not censoring
+
+**Four cities publish ISSUED-ONLY feeds** — Austin, Denver, Miami, and
+Philadelphia for new construction specifically. A filing that dies in plan review
+never becomes a row. Austin: `issue_date IS NULL` returns **0 of 18,241** in-scope
+rows and 0 dataset-wide.
+
+So the issuance rate is **not computable**, and KM is not merely hard — **its
+required input is absent.** There are no censored observations, so there is no
+risk set to decrement and no survival curve to build.
+
+Austin's agent drew the distinction that matters: this is not administrative
+censoring (a random cut at extract date, which KM handles) but **selection on the
+outcome** — the event determines membership, under which KM is undefined. Naming
+that is what stopped a plausible KM number being produced for four cities.
+
+The same feed shape also creates **right-TRUNCATION**, distinct from censoring:
+Austin's apartment median by application year runs 11.1 (2022) → 9.7 → 6.2 → 4.8
+→ 1.6 (2026). A recent filing enters the sample ONLY if it issued fast.
+
+### SF WITHDRAWN — the statistic does not exist
+
+**37.7% of SF new-construction filings ever issue.** Matured 2022 cohort: single
+32.4%, multi 23.4%, apartment 44.4%. When most filings never issue, the
+unconditional median time-to-issuance **does not exist**, and a floor label does
+not rescue it — it makes an absent number look cautious. LA was withdrawn at
+64.1%; SF is far below that.
+
+### Where KM IS computable
+
+| city | tier | published | KM | issuance |
+|---|---|---|---|---|
+| nyc | single | — | **12.6** | 69.1% |
+| nyc | multi | — | 11.9 | 73.3% |
+| nyc | apartment | — | **23.7** | 64.8% |
+| nashville | single | 1.1 | 1.2 | 89.4% |
+| nashville | multi | 2.2 | **5.3** | 61.8% |
+
+NYC's aggregate 8.3 becomes 12.6–23.7 by tier. **Nashville's multi is 2.4× its
+published figure**, and its p80 must be WITHDRAWN outright — the curve bottoms at
+S=0.382, so an 80th percentile does not exist.
+
+Note Nashville also **superseded its own committed limitation**: the script's
+header says the issuance rate is not computable. It is. A stated limitation is a
+claim, and claims go stale.
+
+### My Seattle fix introduced a denominator defect, and the audit caught it
+
+The ADU arm I shipped today gates on `dwellingunittype LIKE '%Accessory Dwelling
+Detached%'` — and that field is **NULL for 100% of non-issued filings (0 of
+1,612)**. So the arm selects only issued permits by construction, and the
+currently published single tier has no denominator at all. Interim: publish 7.0
+(New arm only, fully observable) rather than 5.6 until the arm is re-specified on
+a criterion populated at filing time.
+
+Fixing contamination created a censoring defect. The passes are ordered for a
+reason, and the ordering does not make them independent.
+
+### Floors, where KM is undefined
+
+Austin single 1.7 (was 1.6), multi **3.8** (was 2.9), apartment **9.8** (was 8.6).
+Miami single **13.1** (was 11.3), multi **14.1** (was 11.0), apartment **23.5**
+(was 20.2). Denver single/apartment 6.0; multi withdrawn (n=18). Philadelphia
+2.9, with 69.8% as a *context* figure from all work types — not the
+new-construction rate, which the city does not publish.
+
+**Not yet applied.** SF is withdrawn and Seattle's defect is recorded; the seven
+restatements are the next pass.

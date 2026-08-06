@@ -96,8 +96,17 @@ describe('measured permit timing', () => {
   }
 
   it('a city present in permitStats → measured is populated for a new build', () => {
-    const t = resolveTimeline('sf', project({ city: 'sf' }), feas('by-right'), false)
+    const t = resolveTimeline('miami', project({ city: 'miami' }), feas('by-right'), false)
     expectMeasuredShape(t.measured)
+  })
+
+  // ⚠️ SF WITHDRAWN 2026-08-06 — only 37.7% of its new-construction filings ever
+  // issue, so an unconditional median time-to-issuance does not exist. A floor
+  // label cannot rescue an undefined statistic. Asserted so it cannot be
+  // reinstated by a stale script.
+  it('SF resolves to no measurement — most of its filings never issue', () => {
+    const t = resolveTimeline('sf', project({ city: 'sf' }), feas('by-right'), false)
+    expect(t.measured).toBeUndefined()
   })
 
   it('Seattle (also present) → measured is populated', () => {
@@ -143,14 +152,14 @@ describe('measured permit timing', () => {
   })
 
   it('measured is carried through on the prohibited path too (UI gates on months, not measured)', () => {
-    const t = resolveTimeline('sf', project({ city: 'sf' }), feas('prohibited'), false)
+    const t = resolveTimeline('miami', project({ city: 'miami' }), feas('prohibited'), false)
     expect(t.months).toBe(0)
     // present + new → measured still resolved; the component only renders it when months > 0.
     expectMeasuredShape(t.measured)
   })
 
   it('measuredFor mirrors the artifact: present cities resolve, unknown cities do not', () => {
-    expect(measuredFor('sf')).toBeDefined()
+    expect(measuredFor('miami')).toBeDefined()
     expect(measuredFor('atlantis')).toBeUndefined()
   })
 })

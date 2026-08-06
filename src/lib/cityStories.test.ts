@@ -41,20 +41,16 @@ describe('storyFor', () => {
   // correctly stopped claiming it. The superlative is computed from the measured
   // set, so it moves whenever the set grows — a test asserting it belongs to one
   // named city is pinning a fact about our COVERAGE, not about San Francisco.
-  it('reports SF from its measurement and no longer claims a superlative it lost', () => {
+  // ⚠️ SF's measurement was WITHDRAWN 2026-08-06: only 37.7% of its
+  // new-construction filings ever issue (matured 2022 cohort: single 32.4%,
+  // multi 23.4%, apartment 44.4%), so the unconditional median does not exist.
+  // Its story now falls back to the lifecycle estimate.
+  it('SF renders no measured median — most of its filings never issue', () => {
     const sf = byCity('sf')
     const story = storyFor(sf, ranked)
-    // SF median 12.5 → rounds to "about 13 months". Was 11.8/"about 12" until
-    // 2026-08-06, when the filter was corrected: an address fan-out (18.1% of
-    // rows, median 9.1 mo) and non-building accessory permits (9.0%, median 7.7)
-    // were both FASTER than the retained set, so removing them raised the figure.
-    expect(story).toContain('about 13 months')
+    expect(sf.measuredMedianMonths).toBeNull()
     expect(story).not.toContain('the slowest we measure')
-    // SF relief adder is 12 months.
-    expect(sf.reliefAddMonths).toBe(12)
-    expect(story).toContain('12 months')
   })
-
   it('LA no longer renders a measured median — 45% of its cohort never issued', () => {
     const la = byCity('la')
     const story = storyFor(la, ranked)

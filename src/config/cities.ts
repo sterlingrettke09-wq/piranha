@@ -170,8 +170,14 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 //   · la — 45.4% of the cohort never issued. The p80 of 13.0 is unsalvageable:
 //     only 64.1% of the matured 2022 cohort ever issued, so no 80th percentile
 //     exists. A caveat cannot repair a statistic that is undefined.
+//   · sf — WITHDRAWN 2026-08-06. Only 37.7% of new-construction filings since
+//     2022 ever issue (matured 2022 cohort: single 32.4%, multi 23.4%, apartment
+//     44.4%). When most filings never issue, the unconditional median
+//     time-to-issuance DOES NOT EXIST — and a "floor" label cannot rescue an
+//     undefined statistic, it just makes an absent number look cautious. LA was
+//     withdrawn at 64.1%; SF is far below it.
 export const CITIES_WITH_MEASURED_PERMITS = [
-  'austin', 'denver', 'miami', 'nashville', 'nyc', 'philadelphia', 'seattle', 'sf',
+  'austin', 'denver', 'miami', 'nashville', 'nyc', 'philadelphia', 'seattle',
 ] as const
 
 export function hasMeasuredPermitTiming(slug: string): boolean {

@@ -110,7 +110,7 @@
       "medianMonths": 8.3,
       "p80Months": 17,
       "n": 4403,
-      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.cityofnewyork.us DOB NOW: Build – Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
+      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.cityofnewyork.us DOB NOW: Build \u2013 Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
     }
   },
   "philadelphia": {
@@ -146,34 +146,6 @@
         "p80Months": 18.4,
         "n": 425,
         "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows creating a detached ADU; STFI excluded)"
-      }
-    }
-  },
-  "sf": {
-    "newConstruction": {
-      "medianMonths": 12.5,
-      "p80Months": 25.3,
-      "n": 132,
-      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.sfgov.org Building Permits (permit_type 1,2 = new construction; primary_address_flag = Y to collapse the one-row-per-address fan-out; proposed_use allowlist = buildings only)"
-    },
-    "byTier": {
-      "single": {
-        "medianMonths": 13.1,
-        "p80Months": 24.4,
-        "n": 50,
-        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.sfgov.org Building Permits (permit_type 1,2 = new construction; primary_address_flag = Y to collapse the one-row-per-address fan-out; proposed_use allowlist = buildings only)"
-      },
-      "multi": {
-        "medianMonths": 17.9,
-        "p80Months": 31.7,
-        "n": 34,
-        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.sfgov.org Building Permits (permit_type 1,2 = new construction; primary_address_flag = Y to collapse the one-row-per-address fan-out; proposed_use allowlist = buildings only)"
-      },
-      "apartment": {
-        "medianMonths": 10.5,
-        "p80Months": 19,
-        "n": 48,
-        "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.sfgov.org Building Permits (permit_type 1,2 = new construction; primary_address_flag = Y to collapse the one-row-per-address fan-out; proposed_use allowlist = buildings only)"
       }
     }
   }
