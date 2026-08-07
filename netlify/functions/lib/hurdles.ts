@@ -347,12 +347,49 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
             },
       )
     }
-    if (units >= 20 || project.gfa >= 12000) {
+    // OVER-fire, corrected (2026-08-07) — same shape as San José's TDM gate.
+    // SMC 25.05.800.A sorts the minor-new-construction exemption by USE, and it
+    // gives each use its own unit of measure: "The construction or location of
+    // residential or mixed-use development" is exempt up to "the number of
+    // DWELLING UNITS identified in Table A", while "the construction of office,
+    // school, commercial, recreational, service, or storage buildings" is exempt
+    // up to "the GROSS FLOOR AREA listed in Table B". The section says so
+    // explicitly for a building that is both: "residential uses are evaluated
+    // according to number of dwelling units, and non-residential uses are
+    // evaluated according to square footage of gross floor area." The state
+    // provision Seattle's thresholds flex, WAC 197-11-800(1)(b), has the same
+    // split — its unit limbs read "four attached or detached single family
+    // residential units" and "four multifamily residential units", and its
+    // non-residential limb is "an office, school, commercial, recreational,
+    // service or storage building with 4,000 square feet of gross floor area".
+    // A unit count is therefore a RESIDENTIAL measure in this code; there is no
+    // limb under which a wholly commercial or institutional project is screened
+    // on units. `units` arrives off the query string independent of `use`
+    // (analyze.ts reads them separately), so the unguarded `units >= 20` was
+    // applying Table A's residential number to non-residential projects.
+    //
+    // The floor-area limb is deliberately left UNGUARDED. Table B's own list of
+    // buildings — "office, school, commercial, recreational, service or storage"
+    // — spans both `commercial` and `institutional` (a school is institutional
+    // here), so narrowing it to `isCommercial` would drop institutional projects
+    // out of a limb the source plainly covers. That would be an under-fire, and
+    // an under-fire never tells the user the rule applies at all.
+    //
+    // NOT fixed here, recorded instead (never invent a threshold): Table A is a
+    // TABLE, not one number — its exempt level varies by zone and by whether the
+    // site is inside an Urban Center / Urban Village, and the state limbs above
+    // separate single-family from multifamily. The single `20` collapses all of
+    // that, so it is right only where Table A happens to read 20. Same for
+    // `12000` against Table B: SDCI's own SEPA page publishes 30,000 sq ft for
+    // retail-commercial and institutional uses and 65,000 sq ft for offices,
+    // lodging, storage and warehouses, so 12,000 is below both figures we can
+    // actually cite. Reading the two tables is the fix; guessing at them is not.
+    if ((isResidential && units >= 20) || project.gfa >= 12000) {
       hurdles.push({
         category: 'environmental',
         label: 'SEPA environmental review',
         status: 'likely',
-        note: 'Washington’s State Environmental Policy Act applies above local thresholds (roughly 20+ units or larger commercial), adding review time.',
+        note: 'Washington’s State Environmental Policy Act applies above Seattle’s local exemption thresholds, adding review time. The thresholds are sorted by use: a residential or mixed-use project is screened on its number of dwelling units, and an office, school, commercial, recreational, service or storage building is screened on its gross floor area (SMC 25.05.800.A, Tables A and B). The exempt level varies by zone and by whether the site sits inside an Urban Center or Urban Village, so confirm the figure for this parcel — the numbers this tool applies are approximate.',
         addsMonths: 4,
       })
     }
@@ -799,7 +836,25 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // so a 6-unit project that also needs a variance (itself a land use
     // application heard in public) was told its review would be administrative
     // with "no hearing, no commission" — false on the variance path.
-    if (units >= 4) {
+    //
+    // OVER-fire, corrected (2026-08-07). Both thresholds on this row are written
+    // in RESIDENTIAL UNIT TYPES: Table 550-1 reads "four (4) or more new or
+    // additional DWELLING UNITS OR ROOMING UNITS", and the administrative-review
+    // limb reads "fewer than twenty (20) new or additional dwelling units or
+    // rooming units". An office block or a warehouse contains none of either, so
+    // this row cannot reach it. `units` arrives straight off the query string
+    // independent of `use` (analyze.ts reads them separately), so an unguarded
+    // `units >= 4` applied a dwelling-unit threshold to a wholly non-residential
+    // project. Mixed-use still fires — its dwellings are dwelling units.
+    // Table 550-1's OTHER rows (the non-residential triggers) were not read for
+    // this repo, so a commercial project now gets nothing here rather than a
+    // borrowed number — rule 5: a gap must not render as an answer.
+    // Two collapses the source makes and this gate cannot: it counts dwelling
+    // units and rooming units TOGETHER against one threshold (we carry a single
+    // count), and footnote 2 aggregates additions "in any three (3) year period"
+    // (we see only this project). Both are under-fires, disclosed in the note
+    // rather than modelled.
+    if (isResidential && units >= 4) {
       const mplsHearing = units >= 20 || discretionary
       hurdles.push({
         category: 'review',
@@ -815,7 +870,18 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       })
     }
 
-    if (units >= 50) {
+    // OVER-fire, corrected (2026-08-07) — the same shape as San José's TDM gate.
+    // Both Table 555-10 rows encoded here are written in residential unit types:
+    // "fifty (50) or more and less than two hundred fifty (250) new or additional
+    // DWELLING UNITS OR ROOMING UNITS" and "two hundred fifty (250) or more new
+    // or additional dwelling units or rooming units". These are the table's
+    // residential rows; a commercial or institutional building has no dwelling
+    // units to count against them. Table 555-10's non-residential rows were not
+    // read for this repo — and the planning director's discretionary TDM power
+    // over "any project not listed in the table" states no threshold at all — so
+    // a non-residential project gets no TDM claim here rather than a borrowed
+    // one. Mixed-use still fires on its dwellings.
+    if (isResidential && units >= 50) {
       hurdles.push({
         category: 'review',
         label: 'Travel demand management plan',
@@ -881,7 +947,18 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       const luResidential = /apartment|condo|multi-?family|town ?house|triplex|fourplex|duplex|dwelling|residen|housing|\bflats\b/i.test(exLu)
       const luNonResidential = /commercial|retail|office|industrial|warehouse|storage|parking|church|school|hotel|motel|restaurant|manufactur/i.test(exLu)
       const demolishesDwellings = existing.exUnits > 0 || luResidential || !luNonResidential
-      if (units >= 100 && demolishesDwellings && (age == null || age >= 50)) {
+      // OVER-fire, corrected (2026-08-07). The 100 is a count of the NEW
+      // project's dwelling units, and what it modifies is "the Inclusionary
+      // Zoning requirement" — which § 550.810(a) attaches only to "a building or
+      // use containing twenty (20) or more new or additional dwelling units".
+      // A commercial or institutional project has no inclusionary requirement
+      // for No Net Loss to raise, so the row cannot reach it however many units
+      // the query string carries. Guarded to match the IZ gate above, which is
+      // already `isResidential && units >= 50`; mixed-use still fires.
+      // Under-fire the source names and this gate does not model: the duty is
+      // sized by the NUMBER of 50-plus-year-old units demolished, which we do
+      // not carry — the note states the rule rather than computing a figure.
+      if (isResidential && units >= 100 && demolishesDwellings && (age == null || age >= 50)) {
         hurdles.push({
           category: 'demolition',
           label: 'No net loss: demolishing 50-year-old units raises a replacement duty',
@@ -1507,6 +1584,12 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       // becomes negotiable. Discretionary-only, because that is the trigger —
       // and there is a published floor under it: developments of fewer than five
       // residential units are exempt outright (§ 17.40.780(B)).
+      // The five is a RESIDENTIAL unit count — § 17.40.055 reaches "all proposed
+      // residential development", § 17.40.780(B) reads "For residential uses" —
+      // so this gate must not fire on a commercial project carrying a unit
+      // count. It cannot: the enclosing `if (isResidential)` is the guard, and
+      // an added `isResidential &&` here would be redundant. Pinned by the
+      // commercial-at-5-units test in hurdles.test.ts; do not unnest.
       if (discretionary && units >= 5) {
         hurdles.push({
           category: 'affordability',

@@ -113,6 +113,43 @@ describe('assessHurdles — other cities', () => {
     expect(hs.some((h) => /SEPA/.test(h.label))).toBe(true)
   })
 
+  // SMC 25.05.800.A screens by use: "residential or mixed-use development" on
+  // the number of dwelling units (Table A), "office, school, commercial,
+  // recreational, service, or storage buildings" on gross floor area (Table B).
+  // A unit count is a residential measure, so the unit limb must not reach a
+  // non-residential project. `units` is independent of `use` in AnalysisInput,
+  // so all of these are reachable, not theoretical.
+  const seattleSepa = (over: Partial<AnalysisInput>) =>
+    assessHurdles('seattle', parcel({}), project({ city: 'seattle', ...over })).some((h) => /SEPA/.test(h.label))
+
+  it('Seattle SEPA: the UNIT limb is residential — 20 units fires for residential and mixed use', () => {
+    expect(seattleSepa({ use: 'residential', units: 20, gfa: 8000 })).toBe(true)
+    // Mixed use is named in the same clause as residential, so it fires too.
+    expect(seattleSepa({ use: 'mixed', units: 20, gfa: 8000 })).toBe(true)
+  })
+
+  it('Seattle SEPA: a COMMERCIAL project at the same unit count must NOT fire', () => {
+    // 20 units, floor area held under the Table B limb so only the unit limb
+    // could fire it. Table A is residential; commercial is measured in sq ft.
+    expect(seattleSepa({ use: 'commercial', units: 20, gfa: 8000 })).toBe(false)
+    expect(seattleSepa({ use: 'commercial', units: 200, gfa: 8000 })).toBe(false)
+    expect(seattleSepa({ use: 'institutional', units: 20, gfa: 8000 })).toBe(false)
+  })
+
+  it('Seattle SEPA: the FLOOR-AREA limb stays open to every non-residential use', () => {
+    // Table B lists "office, school, commercial, recreational, service or
+    // storage" buildings — a school is `institutional` in our Use union, so
+    // guarding this limb to `commercial` would under-fire on the source's own
+    // list. Units held under the Table A limb so only floor area can fire it.
+    expect(seattleSepa({ use: 'commercial', units: 0, gfa: 12000 })).toBe(true)
+    expect(seattleSepa({ use: 'institutional', units: 0, gfa: 12000 })).toBe(true)
+  })
+
+  it('Seattle SEPA: under both limbs, nothing fires', () => {
+    expect(seattleSepa({ use: 'residential', units: 19, gfa: 8000 })).toBe(false)
+    expect(seattleSepa({ use: 'commercial', units: 19, gfa: 8000 })).toBe(false)
+  })
+
   it('Seattle: design-review suspension surfaces as INFO with no added months', () => {
     // CB 121048 (Sept 2025) made design review voluntary pending HB 1293 rules.
     const hs = assessHurdles('seattle', parcel({}), project({ city: 'seattle', projectType: 'new' }))
@@ -202,6 +239,56 @@ describe('assessHurdles — labor / DEI', () => {
     const labor = hs.find((h) => h.category === 'labor')
     expect(labor?.status).toBe('required')
     expect(labor?.note).toMatch(/procurement|prevailing-wage|Davis-Bacon/i)
+  })
+
+  // ---- The `gfa >= 50000 || units >= 25` subsidy-strings gate takes NO use
+  // guard. Decided in the unit-gate sweep, not skipped: San José's TDM gate
+  // needed `isResidential &&` because § 20.90.900.B.2's exemption list is
+  // written in HOME END USES. This gate has no source threshold at all — no
+  // entry in docs/HURDLE-PROPOSALS.md, no citation — so there is no home-end-use
+  // limb to respect. 50,000 sf OR 25 units is this repo's own size proxy for
+  // "big enough to plausibly chase a subsidy", which is why the row is 'info'
+  // and hedged in its own label rather than asserting that a rule applies.
+  //
+  // The subject matter is use-agnostic in the research we do have: the strings
+  // attach to taking city money, not to building housing (Minneapolis § 38.30's
+  // "City business subsidy … given to a business"; Miami's preemption carve-out
+  // for "an employer receiving a direct tax abatement or subsidy"; San José's
+  // subsidy definition scoped to a "Private Construction Project"; DC's First
+  // Source dollar tiers). Guarding it would UNDER-fire on exactly the reader it
+  // is written for.
+  const subsidy = (over: Partial<AnalysisInput>) =>
+    assessHurdles('sf', parcel({}), project({ city: 'sf', funding: 'private', ...over })).find((h) =>
+      /^Subsidy strings/.test(h.label),
+    )
+
+  it('fires subsidy strings for a COMMERCIAL project on the unit limb alone — the 25 is not a residential threshold', () => {
+    // gfa under 50,000 so only `units >= 25` can carry it. A commercial or
+    // institutional developer pursuing TIF or an abatement gets the same
+    // prevailing-wage/MWBE strings; withholding the note would be an under-fire.
+    expect(subsidy({ use: 'commercial', gfa: 20000, units: 25 })?.status).toBe('info')
+    expect(subsidy({ use: 'institutional', gfa: 20000, units: 25 })?.note).toMatch(/prevailing-wage|MWBE/i)
+    // …and for residential and mixed at the same count, so the gate is not
+    // silently use-split in either direction.
+    expect(subsidy({ use: 'residential', gfa: 20000, units: 25 })?.status).toBe('info')
+    expect(subsidy({ use: 'mixed', gfa: 20000, units: 25 })?.status).toBe('info')
+  })
+
+  it('fires subsidy strings on the floor-area limb for any use, with no units at all', () => {
+    // `units` is optional and independent of `use`; the 50,000 sf limb must not
+    // depend on a unit count being supplied.
+    expect(subsidy({ use: 'commercial', gfa: 50000 })?.status).toBe('info')
+    expect(subsidy({ use: 'residential', gfa: 50000 })?.status).toBe('info')
+  })
+
+  it('holds the unit limb at exactly 25 and stays silent below it', () => {
+    expect(subsidy({ use: 'commercial', gfa: 20000, units: 24 })).toBeFalsy()
+    expect(subsidy({ use: 'residential', gfa: 20000, units: 24 })).toBeFalsy()
+    expect(subsidy({ use: 'commercial', gfa: 49999, units: 0 })).toBeFalsy()
+  })
+
+  it('never doubles up: a publicly funded project gets the required process, not the heads-up', () => {
+    expect(subsidy({ use: 'commercial', gfa: 200000, units: 100, funding: 'public' })).toBeFalsy()
   })
 })
 
@@ -1135,6 +1222,67 @@ describe('assessHurdles — Minneapolis', () => {
     expect(major?.note).toMatch(/except as otherwise authorized in this table for building conversions/)
   })
 
+  it('every unit-count gate is a DWELLING-unit gate: a commercial project at the same count fires none', () => {
+    // `units` arrives off the query string independent of `use` (analyze.ts
+    // reads them separately), so a commercial or institutional project can carry
+    // a unit count. Each Minneapolis unit threshold is written in residential
+    // unit types, so none of them may read that count:
+    //   · Table 550-1  — "four (4) or more new or additional DWELLING UNITS OR
+    //     ROOMING UNITS", and administratively "fewer than twenty (20)" of same
+    //   · Table 555-10 — "fifty (50) or more and less than two hundred fifty
+    //     (250) new or additional dwelling units or rooming units"
+    //   · UHP § III(A)(1)(viii) — a 100-unit project's INCLUSIONARY ZONING
+    //     requirement, which § 550.810(a) attaches to dwelling units only
+    // 300 units clears all four thresholds at once, so one project proves it.
+    for (const use of ['commercial', 'institutional'] as const) {
+      const hs = mpls({ use, units: 300, gfa: 300000 })
+      expect(byLabel(hs, /Site plan review/), `${use} / site plan review`).toBeFalsy()
+      expect(byLabel(hs, /Travel demand management/), `${use} / TDM`).toBeFalsy()
+      // ...and on a teardown of a 1920s apartment building, no replacement duty.
+      const td = mpls({ use, units: 300, gfa: 300000, projectType: 'new' }, { existing: { landUse: 'Apartment', units: 20, yearBuilt: 1920 } })
+      expect(byLabel(td, /No net loss/), `${use} / no net loss`).toBeFalsy()
+      // The use-blind rows are NOT narrowed with them: the demolition screen
+      // reaches every principal building (§ 599.910(a)), and the parking and
+      // prevailing-wage absences are findings about the city, not about units.
+      expect(byLabel(td, /screened for historic significance/)?.status, `${use} / demo screen`).toBe('required')
+      expect(byLabel(hs, /No prevailing-wage rule/)?.status, `${use} / labour absence`).toBe('info')
+    }
+    // The residential control at the identical unit count — the guards narrow
+    // the gates, they do not disable them.
+    const res = mpls({ use: 'residential', units: 300, gfa: 300000 })
+    expect(byLabel(res, /Site plan review/)?.status).toBe('required')
+    expect(byLabel(res, /Travel demand management/)?.status).toBe('required')
+    const resTd = mpls({ use: 'residential', units: 300, gfa: 300000, projectType: 'new' }, { existing: { landUse: 'Apartment', units: 20, yearBuilt: 1920 } })
+    expect(byLabel(resTd, /No net loss/)?.status).toBe('required')
+  })
+
+  it('mixed use still fires every unit gate — its dwellings are dwelling units', () => {
+    // The guard is `isResidential`, which includes 'mixed'. A commercial ground
+    // floor under apartments does not exempt the apartments from Table 550-1.
+    const hs = mpls({ use: 'mixed', units: 300, gfa: 300000 })
+    expect(byLabel(hs, /Site plan review/)?.status).toBe('required')
+    expect(byLabel(hs, /Travel demand management/)?.note).toMatch(/MAJOR/)
+    const td = mpls({ use: 'mixed', units: 300, gfa: 300000, projectType: 'new' }, { existing: { landUse: 'Apartment', units: 20, yearBuilt: 1920 } })
+    expect(byLabel(td, /No net loss/)?.status).toBe('required')
+  })
+
+  it('the boundaries survive the use guard: 4/20/50/250/100 still land where the source puts them', () => {
+    // Adding a guard must not move a threshold. Pinned on the residential path,
+    // one below and one at each line the code states.
+    expect(byLabel(mpls({ use: 'residential', units: 3 }), /Site plan review/)).toBeFalsy()
+    expect(byLabel(mpls({ use: 'residential', units: 4 }), /Site plan review/)?.status).toBe('required')
+    expect(byLabel(mpls({ use: 'residential', units: 19 }), /Site plan review/)?.note).toMatch(/administrative/)
+    expect(byLabel(mpls({ use: 'residential', units: 20 }), /Site plan review/)?.note).toMatch(/NOT eligible for administrative review/)
+    expect(byLabel(mpls({ use: 'residential', units: 49 }), /Travel demand management/)).toBeFalsy()
+    expect(byLabel(mpls({ use: 'residential', units: 50 }), /Travel demand management/)?.note).toMatch(/MINOR/)
+    expect(byLabel(mpls({ use: 'residential', units: 249 }), /Travel demand management/)?.note).toMatch(/MINOR/)
+    expect(byLabel(mpls({ use: 'residential', units: 250 }), /Travel demand management/)?.note).toMatch(/MAJOR/)
+    const nnl = (units: number) =>
+      byLabel(mpls({ use: 'residential', units, projectType: 'new' }, { existing: { landUse: 'Apartment', units: 20, yearBuilt: 1920 } }), /No net loss/)
+    expect(nnl(99)).toBeFalsy()
+    expect(nnl(100)?.status).toBe('required')
+  })
+
   it('does NOT name a historic review body — none was researched for Minneapolis', () => {
     // Rule 4: no citation, no claim. The generic copy is correct here; an
     // invented commission name would read as sourced six months from now.
@@ -1173,6 +1321,42 @@ describe('assessHurdles — Philadelphia', () => {
     // project, however small.
     expect(byLabel(phl({ use: 'residential', units: 10 }), /Mixed Income Neighborhoods/)?.sizeDependent).toBe(true)
     expect(byLabel(phl({ use: 'residential', units: 9 }), /Mixed Income Neighborhoods/)).toBeFalsy()
+  })
+
+  it('the /MIN 10-unit gate is residential-only: a commercial project at 10 units does NOT fire', () => {
+    // AnalysisInput.units is optional and INDEPENDENT of use, so a commercial
+    // or institutional project can carry a unit count. § 14-533(2) defines the
+    // trigger entirely in home end uses — "ten or more dwelling units, twenty
+    // or more sleeping units" — so 10 is a RESIDENTIAL threshold, not an
+    // any-use one. The guard is the enclosing `if (isResidential)` block, and
+    // this pins it: without it, a 10-unit office project would be told it owes
+    // 15% affordable dwelling units it does not have.
+    expect(byLabel(phl({ use: 'commercial', units: 10 }), /Mixed Income Neighborhoods/)).toBeFalsy()
+    expect(byLabel(phl({ use: 'commercial', units: 400 }), /Mixed Income Neighborhoods/)).toBeFalsy()
+    expect(byLabel(phl({ use: 'institutional', units: 10 }), /Mixed Income Neighborhoods/)).toBeFalsy()
+    // 'mixed' stays in: a mixed-use building with 10+ dwelling units is a
+    // Residential Housing Project. Its escape is the use-based exemption the
+    // note carries (under 25% of GFA residential), not the unit count.
+    expect(byLabel(phl({ use: 'mixed', units: 10 }), /Mixed Income Neighborhoods/)?.status).toBe('likely')
+    expect(byLabel(phl({ use: 'mixed', units: 10 }), /Mixed Income Neighborhoods/)?.note).toMatch(
+      /under 25% of gross floor area is residential/,
+    )
+  })
+
+  it('records the /MIN sleeping-unit limb as an UNDER-fire, not an invented threshold', () => {
+    // § 14-533(2) is a THREE-limbed definition the gate collapses to one:
+    // "ten or more dwelling units, twenty or more sleeping units, or both",
+    // and "itself, or in combination with any closely related development".
+    // AnalysisInput carries no sleeping-unit count and no related-development
+    // field, so a 20-sleeping-unit / 0-dwelling-unit project (or a 6-unit
+    // phase of a 30-unit assemblage) is MISSED. That is a known under-fire,
+    // recorded rather than papered over by lowering the dwelling-unit number —
+    // guessing a proxy threshold would be inventing one.
+    expect(byLabel(phl({ use: 'residential', units: 0 }), /Mixed Income Neighborhoods/)).toBeFalsy()
+    // The note must at least name both limbs so a reader can self-check.
+    const min = byLabel(phl({ use: 'residential', units: 10 }), /Mixed Income Neighborhoods/)
+    expect(min?.note).toMatch(/20 or more sleeping units/)
+    expect(min?.note).toMatch(/closely related development/)
   })
 
   it('Civic Design Review: required over 100,000 sq ft / 100 units, likely in the halved band', () => {
@@ -1807,6 +1991,37 @@ describe('assessHurdles — San José', () => {
     expect(tdm?.note).toMatch(/16 units/)
   })
 
+  // USE GUARD, decided per source rather than applied defensively.
+  // § 17.84.113: a "large residential project" is "a residential project that
+  // has ten (10) or more single family or multi-family dwelling units" — 10 is
+  // a dwelling-unit count, not a project of any use that happens to have ten
+  // units. `units` arrives off the query string independent of `use`
+  // (analyze.ts reads them separately), so a commercial project can carry one
+  // and the gate must not fire on it. The guard is the enclosing
+  // `if (isResidential)` block, not an inline test; this pins the behaviour so
+  // a refactor that hoists the gate out of that block fails here.
+  it('green building is a RESIDENTIAL threshold — a commercial project at the same unit count does not fire', () => {
+    expect(byLabel(sj({ use: 'residential', units: 10 }), /Green building certification/)?.status).toBe('required')
+    expect(byLabel(sj({ use: 'commercial', units: 10 }), /Green building certification/)).toBeFalsy()
+    expect(byLabel(sj({ use: 'commercial', units: 400 }), /Green building certification/)).toBeFalsy()
+    // The two absences above are non-vacuous: the same commercial call still
+    // returns San José rows, so the green-building row is missing because the
+    // use guard excluded it, not because the call produced nothing. Without
+    // this, a `toBeFalsy()` would pass just as happily on an empty result.
+    expect(byLabel(sj({ use: 'commercial', units: 10 }), /Site Development Permit/)?.status).toBe('required')
+    // Mixed use still fires: its dwelling units ARE dwelling units, the same
+    // reading that keeps mixed use inside the TDM row's home-end-use limb.
+    expect(byLabel(sj({ use: 'mixed', units: 10 }), /Green building certification/)?.status).toBe('required')
+  })
+
+  // The already-corrected TDM gate, held to the same standard so both San José
+  // unit-count rows are pinned rather than only the one under review.
+  it('TDM is a RESIDENTIAL threshold — a commercial project at 26 units does not fire', () => {
+    expect(byLabel(sj({ use: 'commercial', units: 26 }), /Transportation Demand Management/)).toBeFalsy()
+    expect(byLabel(sj({ use: 'commercial', units: 26 }), /Site Development Permit/)?.status).toBe('required')
+    expect(byLabel(sj({ use: 'mixed', units: 26 }), /Transportation Demand Management/)?.status).toBe('required')
+  })
+
   it('the Site Development Permit exempts only the single-dwelling case', () => {
     expect(byLabel(sj({ use: 'residential', units: 1 }), /Site Development Permit/)).toBeFalsy()
     expect(byLabel(sj({ use: 'residential', units: 2 }), /Site Development Permit/)?.status).toBe('required')
@@ -1976,6 +2191,36 @@ describe('assessHurdles — Nashville', () => {
     expect(five?.note).toMatch(/17\.40\.790/)
     // The sunset question the research could not resolve is carried, not dropped.
     expect(five?.note).toMatch(/17\.40\.820/)
+  })
+
+  // USE GUARD, pinned rather than added: `units` is optional and independent of
+  // `use`, so a commercial project can carry a unit count (this is what
+  // over-fired San José's TDM gate). Nashville's five-unit floor is written in
+  // residential units — § 17.40.055 reaches "all proposed residential
+  // development that seeks to increase development entitlements", and
+  // § 17.40.780(B) exempts "For residential uses, developments fewer than five
+  // units". So the threshold is residential-only, and the gate is already
+  // residential-only: it sits inside the `if (isResidential)` block. No
+  // `isResidential &&` was added — it would be redundant. This test is what
+  // keeps that structural guard from being refactored away silently.
+  it('the five-unit inclusionary floor is residential-only — a commercial project at the same unit count does not fire it', () => {
+    const inc = (use: AnalysisInput['use'], units: number) =>
+      byLabel(
+        assessHurdles('nashville', parcel({}), project({ city: 'nashville', use, units }), { path: 'variance' }),
+        /Inclusionary housing — only if you seek more than base zoning/,
+      )
+    // Same unit count, same discretionary path — only the use differs.
+    expect(inc('residential', 5)?.status).toBe('likely')
+    expect(inc('commercial', 5)).toBeFalsy()
+    expect(inc('commercial', 40)).toBeFalsy()
+    // Mixed use carries dwelling units, so it IS residential development here.
+    expect(inc('mixed', 5)?.status).toBe('likely')
+    // The state-law absence row is inside the same residential block: a
+    // commercial project is not told about an inclusionary rule at all.
+    expect(byLabel(
+      assessHurdles('nashville', parcel({}), project({ city: 'nashville', use: 'commercial', units: 40 }), { path: 'variance' }),
+      /State law bars mandatory inclusionary zoning/,
+    )).toBeFalsy()
   })
 
   // UNDER-stated scope: the source trigger for § 17.20.120 has TWO limbs — the

@@ -3050,3 +3050,43 @@ implements only the Table 555-10 rows and not the director's discretionary power
 **Batch 3 returned PARTIAL.** Some San Diego / San Jose / Nashville gates in the
 29 were not reached. The unreached-of-the-unreached is the remaining gap, and it
 should be enumerated the same way rather than estimated.
+
+---
+
+## 2026-08-06 — Unit gates decided per source, and an unsourced hurdle surfaced
+
+Nine unguarded `units >=` gates, decided individually rather than blanket-guarded
+— adding a guard the source does not call for is an UNDER-fire, the worse
+direction.
+
+**Guarded** (source threshold written in dwelling/rooming units): Minneapolis
+Site plan review (Table 550-1: "four or more new or additional DWELLING UNITS OR
+ROOMING UNITS"), Minneapolis TDM (Table 555-10, the residential row — the direct
+analogue of San Jose's), Minneapolis No Net Loss (UHP § III(A)(1)(viii) modifies
+an IZ requirement that only attaches to residential), and Seattle's SEPA unit
+limb — its floor-area limb left unguarded, correctly.
+
+**Already guarded by ENCLOSURE**: Philadelphia /MIN, San Jose green building,
+Nashville inclusionary and three nested Minneapolis selectors all sit inside an
+outer `if (isResidential)`. **A line-level grep reported all seven as unguarded —
+false positives, because the grep cannot see nesting.** The instrument was
+narrower than the structure it measured; the agents' per-gate reads were right and
+the grep was not.
+
+### The finding: an unsourced hurdle in a city nobody researched
+
+**SF's "Subsidy strings" hurdle has NO source and NO citation** — not in
+`HURDLE-PROPOSALS.md`, and `grep -rn "Subsidy strings"` returns nothing anywhere
+in the repo. It carries a live `gfa >= 50000 || units >= 25` threshold that
+cannot be traced to anything.
+
+It is not truncated, not over-broad, not mis-transcribed. It is **unsourced**, and
+it surfaced only because a use-guard decision required reading its source and
+there was none to read.
+
+**The six original cities — boston, chicago, la, nyc, seattle, sf — were never
+part of the hurdle research.** Their hurdles predate this session, and none has
+been audited against a source the way the nine just were. Every finding tonight
+about truncation, over-firing and disclosure copy concerns the NINE. The six are
+unexamined, and at least one of them carries a threshold with no provenance at
+all.
