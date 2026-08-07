@@ -709,6 +709,29 @@ describe('assessHurdles — DC', () => {
     expect(byLabel(dc({ projectType: 'new', units: 40 }, { existing: { landUse: 'Apartment', units: 12 } }), /TOPA/)?.status).toBe('likely')
   })
 
+  // Restored-source sweep (2026-08-07), unreached-gate batch. 21 DCMR § 599
+  // triggers on the area an activity DISTURBS; the gate read lot area instead.
+  it('stormwater retention needs an activity that disturbs land, not just a big lot', () => {
+    const big = { lot: { sizeSqFt: 6000, lotType: null } }
+    // MUST NOT FIRE: a change of use disturbs no land at all, so the § 599
+    // definition is never met however large the lot is.
+    expect(byLabel(dc({ projectType: 'change_of_use' }, big), /Stormwater Retention/)).toBeFalsy()
+    // Ground-up construction works the whole site: lot area is a sound stand-in
+    // for disturbed area, and the requirement is asserted.
+    expect(byLabel(dc({ projectType: 'new' }, big), /Stormwater Retention/)?.status).toBe('required')
+    // An addition or an ADU disturbs an unknown fraction of the lot. The hurdle
+    // stays — under-firing is the worse direction — but it stops asserting
+    // 'required' off a quantity the source does not measure.
+    for (const pt of ['addition', 'adu'] as const) {
+      const h = byLabel(dc({ projectType: pt }, big), /Stormwater Retention/)
+      expect(h?.status, pt).toBe('likely')
+      expect(h?.note, pt).toMatch(/area your work actually disturbs/)
+    }
+    // The ground-up note carries no such hedge, and the lot floor still holds.
+    expect(byLabel(dc({ projectType: 'new' }, big), /Stormwater Retention/)?.note).not.toMatch(/actually disturbs/)
+    expect(byLabel(dc({ projectType: 'addition' }, { lot: { sizeSqFt: 3000, lotType: null } }), /Stormwater Retention/)).toBeFalsy()
+  })
+
   it('stormwater states the 1.2-inch retention, and DCEPA names both exemptions', () => {
     const sw = byLabel(dc({}, { lot: { sizeSqFt: 6000, lotType: null } }), /Stormwater Retention/)
     expect(sw?.note).toMatch(/1\.2-inch/)
@@ -998,6 +1021,21 @@ describe('assessHurdles — Minneapolis', () => {
     expect(major?.note).toMatch(/MAJOR/)
     expect(major?.note).toMatch(/6 points/)
     expect(major?.note).toMatch(/licensed engineer/)
+  })
+
+  it('the TDM row carries its softener on BOTH branches, and starts at 50 units exactly', () => {
+    // The source states "A written exemption request is possible" as a property
+    // of the TDM requirement, not of the major plan — but it was written into
+    // the 250+ branch only, so a 60-unit project was told the plan was
+    // unconditional. Same shape as ledger rule 17: text true in one context and
+    // silently absent from the sibling context a reader actually lands in.
+    const minor = byLabel(mpls({ use: 'residential', units: 60 }), /Travel demand management/)
+    const major = byLabel(mpls({ use: 'residential', units: 250 }), /Travel demand management/)
+    expect(minor?.note).toMatch(/written exemption request/)
+    expect(major?.note).toMatch(/written exemption request/)
+    // Boundary, pinned exactly: Table 555-10 reads "fifty (50) or more".
+    expect(byLabel(mpls({ use: 'residential', units: 50 }), /Travel demand management/)?.status).toBe('required')
+    expect(byLabel(mpls({ use: 'residential', units: 49 }), /Travel demand management/)).toBeFalsy()
   })
 
   it('demolition screen on every teardown; no-net-loss only at 100+ units over an old building', () => {
@@ -1351,6 +1389,32 @@ describe('assessHurdles — Miami', () => {
     expect(dri?.note).toMatch(/CPI/)
     // Trees: the replacement schedule is priced.
     expect(byLabel(hs, /Tree removal permit/)?.note).toMatch(/\$6,000\.00/)
+  })
+
+  it('the DRI and tree rows carry the exception clause their own source opens with', () => {
+    // Both verbatims are qualified and both qualifiers were dropped: § 13-56
+    // opens "Except as may be provided section 13-58, no ... permits shall be
+    // issued", and the tree article applies to all property "unless expressly
+    // exempted by law". Neither exception was read, so each is named as an
+    // unresolved GAP rather than either asserted or silently discarded
+    // (ledger rule 5). No gate condition changed — these rows fire exactly
+    // where they did before, so the boundary tests below still hold.
+    const hs = mia({ use: 'residential', units: 40, gfa: 40000 })
+    const dri = byLabel(hs, /Downtown DRI/)
+    expect(dri?.status).toBe('info')
+    expect(dri?.note).toMatch(/Except as may be provided section 13-58/)
+    expect(dri?.note).toMatch(/NOT read here/)
+    const trees = byLabel(hs, /Tree removal permit/)
+    expect(trees?.status).toBe('likely')
+    expect(trees?.note).toMatch(/unless expressly exempted by law/)
+    expect(trees?.note).toMatch(/NOT read here/)
+    // Neither row is size- or use-triggered in its source, so neither may carry
+    // the sizeDependent tag that a placeholder floor area would downgrade.
+    expect(dri?.sizeDependent).toBeFalsy()
+    expect(trees?.sizeDependent).toBeFalsy()
+    // ...and neither invents a duration.
+    expect(dri?.addsMonths).toBeUndefined()
+    expect(trees?.addsMonths).toBeUndefined()
   })
 
   it('the three absences are encoded as findings, not omissions', () => {
@@ -1805,6 +1869,43 @@ describe('assessHurdles — San José', () => {
     expect(byLabel(sj({ use: 'commercial', gfa: 60000 }), /Commercial linkage fee/)?.status).toBe('info')
   })
 
+  // OVER-fire: § 20.90.900.B.2's exemption list is written in HOME END USES —
+  // "fewer than 16 single-family detached housing units" or "fewer than 26 units
+  // of all other home end uses" — so 26 is a residential threshold. `units` is
+  // read off the query string independently of `use`, so the unguarded
+  // `units >= 26` published a home-end-use trigger against a wholly commercial
+  // project, whose TDM threshold is floor-area based and was never read.
+  it('the TDM threshold is a home-end-use one: a commercial project does NOT fire on 26 units', () => {
+    // Must NOT fire — the 26 is not a non-residential threshold.
+    expect(byLabel(sj({ use: 'commercial', gfa: 200000, units: 30 }), /Transportation Demand Management/)).toBeFalsy()
+    expect(byLabel(sj({ use: 'commercial', gfa: 200000 }), /Transportation Demand Management/)).toBeFalsy()
+    // Still fires for residential and for mixed-use, whose dwellings are a home end use.
+    expect(byLabel(sj({ use: 'residential', units: 26 }), /Transportation Demand Management/)?.status).toBe('required')
+    expect(byLabel(sj({ use: 'mixed', units: 26, gfa: 60000 }), /Transportation Demand Management/)?.status).toBe('required')
+  })
+
+  // The dormant all-electric chapter's operative clause has a purpose qualifier
+  // on its legislative limb — "modified by the legislature TO AUTHORIZE LOCAL
+  // CONTROL OF NATURAL GAS INFRASTRUCTURE" (§ 17.845.030.A). Dropping it told the
+  // reader any legislative amendment would switch the ban on.
+  it('states the all-electric chapter’s operative clause with its purpose qualifier', () => {
+    const ae = byLabel(sj({ use: 'residential', units: 30 }), /All-electric mandate/)
+    expect(ae?.status).toBe('info')
+    expect(ae?.note).toMatch(/to authorize local control of natural gas infrastructure/)
+    expect(ae?.note).toMatch(/or other similar legislation/)
+  })
+
+  // The construction-tax percentages are levied on the building "or portion
+  // thereof" designed for residential purposes (§§ 4.46.050.A.1, 4.47.040.A.1).
+  // On a mixed-use building the base is the residential portion, not the whole
+  // valuation — the note asserted ~3.96% of the whole.
+  it('scopes the construction-tax percentages to the residential portion', () => {
+    const tax = byLabel(sj({ use: 'mixed', units: 30, gfa: 60000 }), /Stacked San José construction taxes/)
+    expect(tax?.status).toBe('required')
+    expect(tax?.note).toMatch(/portion thereof/)
+    expect(tax?.note).toMatch(/the base is the residential portion/)
+  })
+
   // OVER-fire: § 21.04.010.A attaches CEQA to DISCRETIONARY approvals, and the
   // only thing making an ordinary San José project discretionary is the Site
   // Development Permit — which § 20.100.610.A.1 exempts for one one-family
@@ -1875,6 +1976,21 @@ describe('assessHurdles — Nashville', () => {
     expect(five?.note).toMatch(/17\.40\.790/)
     // The sunset question the research could not resolve is carried, not dropped.
     expect(five?.note).toMatch(/17\.40\.820/)
+  })
+
+  // UNDER-stated scope: the source trigger for § 17.20.120 has TWO limbs — the
+  // multi-family / non-residential one AND "new single- or two-family
+  // construction in the UZO or a designated center". Only the first was carried,
+  // so a small-scale builder read the row as inapplicable to them. The row is
+  // unconditional, so nothing widened here — the copy now states both limbs.
+  it('the sidewalk row names both limbs of the exaction’s scope', () => {
+    const note = (over: Partial<AnalysisInput>) => byLabel(nash(over), /Sidewalk construction or in-lieu fee/)?.note ?? ''
+    for (const over of [{ use: 'residential' as const, units: 90 }, { use: 'residential' as const, units: 2 }, { use: 'commercial' as const, gfa: 60000 }]) {
+      expect(note(over)).toMatch(/multi-family and non-residential development/)
+      expect(note(over)).toMatch(/single- or two-family construction inside the Urban Zoning Overlay or a designated center/)
+      // Still an absence, not a cost line: the injunction claim must survive.
+      expect(note(over)).toMatch(/no longer enforced under a permanent injunction/)
+    }
   })
 
   it('carries the sidewalk in-lieu cap, the tree factors, and the floodplain variance limit', () => {

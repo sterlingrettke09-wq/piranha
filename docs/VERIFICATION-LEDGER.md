@@ -2992,3 +2992,61 @@ parcel polygons returns an arbitrary one, because every candidate contains it an
 18's shape exactly — so the only detection is calling repeatedly and comparing.
 This inventory already hits every city, which makes it the cheapest place to run
 that check. All fifteen probes are currently stable.
+
+---
+
+## 2026-08-06 — Fixing the denominator found 29 unreached gates, not ~15
+
+The previous sweep's counts did not reconcile: 64 clean + 19 over + 7 under = 90,
+against 105 claimed covered, against **96 gates actually present** in the nine
+city branches. Three numbers that should agree and didn't.
+
+**The fix was to change the unit.** The sweep counted *rendered* hurdles — which
+include parking emitted from `PARKING_RULES` and historic from `HISTORIC_BODY`,
+neither of which is a branch gate. Enumerating `label:` declarations inside each
+`city === '…'` block, then matching each against everything the agents wrote,
+gives the real figure: **96 gates, 67 mentioned by some report, 29 never
+mentioned at all.** Nearly a third, not ~15.
+
+A coverage claim that does not reconcile with the file is not coverage. The
+enumeration is checkable against `hurdles.ts`; the agents' counts were only
+checkable against each other.
+
+### What the 29 contained
+
+**8 more over-firing** (5 fixed, 3 flagged where tightening needs a field we lack)
+and **12 more under-firing**.
+
+- **DC Stormwater Retention Volume** — gate read `lotSqFt >= 5000`. 21 DCMR § 599
+  triggers on "activity that DISTURBS five thousand square feet or greater of land
+  area". Lot area substituted for disturbed area, with **no activity limb at
+  all**: a `change_of_use` project on any 6,000 sq ft DC lot was told it owed a
+  retention volume.
+- **San Jose TDM** — `units >= 26` applied to commercial projects, but
+  § 20.90.900.B.2's exemptions are written entirely in HOME END USES, so 26 is a
+  residential threshold. `units` is independent of `use` in `AnalysisInput`, so
+  this was reachable, not theoretical.
+
+### A distinct defect class: the condition is right, the copy over-claims
+
+Batch 2 found **none of its 11 gates had an over-broad condition** — every
+over-fire was a dropped qualifier in the DISCLOSURE COPY. Miami's Downtown DRI
+fee note omitted the source's opening exception ("Except as may be provided
+section 13-58…"). Per rule 9's corollary, disclosure copy is code: a note that
+states a rule applies makes the same claim the condition would, and is read by
+more people.
+
+### The broadening vocabulary confirmed 7 was a floor
+
+12 under-fires found here against 7 in the whole previous sweep, once `or`,
+`including`, `any`, `at least one of` were specified alongside the narrowing
+terms. **None were widened** — widening asserts a rule applies. Austin's parkland
+dedication cannot reach its hotel/motel limb because `Use` has no hotel member;
+San Jose's TDM misses the 16-unit single-family-detached limb; Minneapolis's TDM
+implements only the Table 555-10 rows and not the director's discretionary power.
+
+### Not finished
+
+**Batch 3 returned PARTIAL.** Some San Diego / San Jose / Nashville gates in the
+29 were not reached. The unreached-of-the-unreached is the remaining gap, and it
+should be enumerated the same way rather than estimated.

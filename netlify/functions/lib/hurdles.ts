@@ -533,12 +533,30 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       note: 'Any action requiring a District permit that costs over $1,000,000 in 1989 dollars — CPI-adjusted annually, so the live figure is roughly $2.6M today — and that may significantly affect the environment must file an Environmental Impact Screening Form; if screening shows significant impact, a full Environmental Impact Statement follows and no agency may issue the permit until review completes (D.C. Official Code §§ 8-109.02(2), 8-109.03, 8-109.06(a)(7); rules at 20 DCMR §§ 7201.1, 7202.1–7202.2). Issuing a building permit is itself an "action", so this reaches private projects. Two exemptions do most of the work: projects inside the Central Employment Area are exempt by statute (§ 8-109.06(a)(7)), and 20 DCMR § 7202.2 exempts residential projects in the former R-1 through R-5-A zones — pre-2016 zone names, so check the mapping against the current zone map.',
     })
 
-    if (lotSqFt >= 5000) {
+    // DISTURBED AREA, NOT LOT AREA (2026-08-07). 21 DCMR § 599 triggers on the
+    // area an activity DISTURBS; this gate used lot area as a stand-in. That
+    // stand-in only holds for ground-up construction, where the whole site is
+    // worked. A change of use disturbs no land at all — yet any 5,000 sq ft lot
+    // was being told a Stormwater Retention Volume was REQUIRED with no site
+    // work in the project. An addition or an ADU disturbs some unknown fraction
+    // of the lot; we hold no footprint input, so the hurdle stays and names the
+    // condition rather than asserting a requirement off a quantity the source
+    // does not measure. NOT modelled, and reported rather than invented: the
+    // second qualifying case in the source (a major substantial improvement
+    // activity whose combined improved-building and land-disturbance footprint
+    // reaches 5,000 sq ft), which can bite on a lot below 5,000 sq ft.
+    const dcDisturbsLand = project.projectType !== 'change_of_use'
+    const dcWholeSiteWork = project.projectType === 'new'
+    if (lotSqFt >= 5000 && dcDisturbsLand) {
       hurdles.push({
         category: 'environmental',
         label: 'Stormwater Retention Volume (major land-disturbing activity)',
-        status: 'required',
-        note: 'Disturbing 5,000 sq ft or more of land — or being part of a common plan of development that does — makes this a "major land-disturbing activity" and triggers DC’s Stormwater Retention Volume requirement: retain on site the runoff from a 1.2-inch rainfall event, with at least half of that volume retained on the site itself absent DOEE relief for extraordinarily difficult conditions (21 DCMR § 599 for the definition, §§ 520.3 and 520.4(a) for the standard). On a tight urban lot this drives real design cost — green roofs, cisterns, permeable paving — and the shortfall can be bought as Stormwater Retention Credits in a live DC market. The threshold is land disturbance, not building size, so a small building on a large site still triggers it.',
+        status: dcWholeSiteWork ? 'required' : 'likely',
+        note:
+          'Disturbing 5,000 sq ft or more of land — or being part of a common plan of development that does — makes this a "major land-disturbing activity" and triggers DC’s Stormwater Retention Volume requirement: retain on site the runoff from a 1.2-inch rainfall event, with at least half of that volume retained on the site itself absent DOEE relief for extraordinarily difficult conditions (21 DCMR § 599 for the definition, §§ 520.3 and 520.4(a) for the standard). On a tight urban lot this drives real design cost — green roofs, cisterns, permeable paving — and the shortfall can be bought as Stormwater Retention Credits in a live DC market. The threshold is land disturbance, not building size, so a small building on a large site still triggers it.' +
+          (dcWholeSiteWork
+            ? ''
+            : ' This project is not ground-up construction, so the 5,000 sq ft is measured against the area your work actually disturbs — not against the whole lot, which is all this tool can see. Confirm the disturbed footprint before pricing the retention volume.'),
       })
     }
 
@@ -806,7 +824,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         note:
           units >= 250
             ? 'At 250 or more new or additional dwelling units or rooming units, Minneapolis requires a MAJOR travel demand management plan scoring at least 6 points, including a traffic study prepared to industry standards and certified by a licensed engineer (Minneapolis Code of Ordinances § 555.1310(c) and Table 555-10). The 250-unit row carries its own exception — "except as otherwise authorized in this table for building conversions" — so a building conversion may sit on a different line of Table 555-10; check the table before assuming the major plan. You pick strategies from Table 555-11 — transit passes, bike facilities, unbundled parking, car-share — until you hit the point total, and you must keep complying afterward. A written exemption request is possible.'
-            : 'At 50 or more (and fewer than 250) new or additional dwelling units or rooming units, Minneapolis requires a MINOR travel demand management plan scoring at least 4 points with the application; at 250 units it becomes a major plan requiring 6 points plus a licensed engineer’s traffic study (Minneapolis Code of Ordinances § 555.1310 and Table 555-10). You pick strategies from Table 555-11 — transit passes, bike facilities, unbundled parking, car-share — until you hit the point total, and you must keep complying afterward. This is the practical replacement for the parking minimums Minneapolis abolished.',
+            : 'At 50 or more (and fewer than 250) new or additional dwelling units or rooming units, Minneapolis requires a MINOR travel demand management plan scoring at least 4 points with the application; at 250 units it becomes a major plan requiring 6 points plus a licensed engineer’s traffic study (Minneapolis Code of Ordinances § 555.1310 and Table 555-10). You pick strategies from Table 555-11 — transit passes, bike facilities, unbundled parking, car-share — until you hit the point total, and you must keep complying afterward. A written exemption request is possible. This is the practical replacement for the parking minimums Minneapolis abolished.',
       })
     }
 
@@ -1109,7 +1127,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       category: 'fees',
       label: 'Downtown DRI supplemental fee (Downtown Miami only)',
       status: 'info',
-      note: 'Net new development inside the Downtown Development of Regional Impact area pays a fourth layer of fee on top of the city and county impact fees, charged per gross square foot of floor area so it scales with the building (City of Miami Code §§ 13-55, 13-56, 13-56.1). The codified residential coefficient is $0.3846 per gross sq ft — transportation mitigation $0.1531 + master-plan recovery $0.156223 + DRI administration $0.07521 — but § 13-56.1 escalates every fee by CPI each March 1 since 2018, capped at 10% a year, so the amount actually collected today is materially higher than the codified figure; confirm the current published coefficient with the Planning Department rather than budgeting the codified one. It applies only downtown — confirm whether your parcel is inside the DRI boundary. A parallel supplemental fee exists for the Southeast Overtown/Park West area under §§ 13-96 et seq.',
+      note: 'Net new development inside the Downtown Development of Regional Impact area pays a fourth layer of fee on top of the city and county impact fees, charged per gross square foot of floor area so it scales with the building (City of Miami Code §§ 13-55, 13-56, 13-56.1). The imposing provision opens with an exception in as many words — "Except as may be provided section 13-58, no zoning permits, building permits or other development permits shall be issued for any net new development ... unless the applicant has paid the downtown development supplemental fee" — and § 13-58 was NOT read here, so treat the fee as presumptively owed but check that section before assuming it is unavoidable. The codified residential coefficient is $0.3846 per gross sq ft — transportation mitigation $0.1531 + master-plan recovery $0.156223 + DRI administration $0.07521 — but § 13-56.1 escalates every fee by CPI each March 1 since 2018, capped at 10% a year, so the amount actually collected today is materially higher than the codified figure; confirm the current published coefficient with the Planning Department rather than budgeting the codified one. It applies only downtown — confirm whether your parcel is inside the DRI boundary. A parallel supplemental fee exists for the Southeast Overtown/Park West area under §§ 13-96 et seq.',
     })
 
     // Floor-area trigger → sizeDependent (rule 1).
@@ -1136,7 +1154,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       category: 'environmental',
       label: 'Tree removal permit and replacement / Tree Trust Fund',
       status: 'likely',
-      note: 'Any tree activity on any property in the city — public or private — needs a permit before you clear a site, with replacement trees or a payment into the Tree Trust Fund (City of Miami Code §§ 17-3, 17-4, 17-6 and Chart 17.6.1.1). Removal is priced on a sliding scale by the summed diameter of what you take out: a single 13"–18" DBH tree requires six 2"-caliper replacement trees, or three 4"-caliper trees, or a $6,000.00 contribution to the Tree Trust Fund; 49"–60" requires 20 trees, 10 trees, or $20,000.00, and totals above 60 inches accumulate from the top of the chart down. On a mature Coconut Grove or Shenandoah lot this is a real line item. The trigger is the trees on your site, not the size of the building. Trees in an Environmental Preservation District (ch. 17, art. II) or in a Miami-Dade natural forest community or wetland carry additional county review under ch. 24 of the county code.',
+      note: 'Any tree activity on any property in the city — public or private — needs a permit before you clear a site, with replacement trees or a payment into the Tree Trust Fund (City of Miami Code §§ 17-3, 17-4, 17-6 and Chart 17.6.1.1). The applicability clause is qualified in as many words — the article applies to all public or private property in the city "unless expressly exempted by law" — and that exemption list was NOT read here, so confirm whether a particular tree is exempt rather than assuming every tree on the lot is covered. Removal is priced on a sliding scale by the summed diameter of what you take out: a single 13"–18" DBH tree requires six 2"-caliper replacement trees, or three 4"-caliper trees, or a $6,000.00 contribution to the Tree Trust Fund; 49"–60" requires 20 trees, 10 trees, or $20,000.00, and totals above 60 inches accumulate from the top of the chart down. On a mature Coconut Grove or Shenandoah lot this is a real line item. The trigger is the trees on your site, not the size of the building. Trees in an Environmental Preservation District (ch. 17, art. II) or in a Miami-Dade natural forest community or wetland carry additional county review under ch. 24 of the county code.',
     })
 
     if (teardown) {
@@ -1378,7 +1396,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         category: 'fees',
         label: 'Stacked San José construction taxes',
         status: 'required',
-        note: 'Every residential building permit in San José pays four separate construction taxes (San José Municipal Code §§ 4.46.050.A.1, 4.47.040.A.1, 4.54.050 and ch. 4.64). The two percentage taxes stack: 1.75% and 2.75%, each applied to 88% of the building official’s valuation — about 3.96% of assessed construction valuation. On top of that, Ch. 4.54 charges $75–$150 per unit and Ch. 4.64 charges $90–$180 per unit, both sliding down as unit count rises. There is no size threshold; they apply from the first unit. Time-limited suspensions exist for downtown high-rises and for projects on the Council’s Multifamily Housing Incentive list, but those are programs you must qualify for, not the baseline.',
+        note: 'Every residential building permit in San José pays four separate construction taxes (San José Municipal Code §§ 4.46.050.A.1, 4.47.040.A.1, 4.54.050 and ch. 4.64). The two percentage taxes stack: 1.75% and 2.75%, each applied to 88% of the building official’s valuation — about 3.96% of assessed construction valuation. Both are levied on the building "or portion thereof" designed or intended for residential purposes, so on a mixed-use building the base is the residential portion, not the whole valuation; the non-residential rates sit elsewhere in §§ 4.46/4.47 and were not read here. On top of that, Ch. 4.54 charges $75–$150 per unit and Ch. 4.64 charges $90–$180 per unit, both sliding down as unit count rises. There is no size threshold; they apply from the first unit. Time-limited suspensions exist for downtown high-rises and for projects on the Council’s Multifamily Housing Incentive list, but those are programs you must qualify for, not the baseline.',
       })
 
       hurdles.push({
@@ -1402,7 +1420,16 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
 
     // 26 units for attached/multifamily; the single-family trigger is lower (16),
     // and the note says so rather than the code assuming the project's form.
-    if (units >= 26) {
+    // OVER-fire, corrected: § 20.90.900.B.2's exemption list is written entirely
+    // in HOME END USES — "fewer than 16 single-family detached housing units" or
+    // "fewer than 26 units of all other home end uses" — so 26 is a residential
+    // threshold. `units` arrives straight off the query string independent of
+    // `use` (analyze.ts reads them separately), so an unguarded `units >= 26`
+    // applied the home-end-use number to a wholly non-residential project. The
+    // non-residential TDM thresholds sit on floor area and were not read here, so
+    // there is nothing to assert for that case (rule 5: a gap must not render as
+    // an answer). Mixed-use still fires — its dwellings are a home end use.
+    if (isResidential && units >= 26) {
       hurdles.push({
         category: 'review',
         label: 'Transportation Demand Management (TDM) plan',
@@ -1457,7 +1484,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       category: 'environmental',
       label: 'All-electric mandate: enacted but dormant',
       status: 'info',
-      note: 'San José’s ban on natural-gas infrastructure in newly constructed buildings is on the books but suspended by its own operative clause: it switches on only if California Restaurant Association v. City of Berkeley, 89 F.4th 1094 (9th Cir. 2023, as amended) is overturned or disapproved by a court of competent jurisdiction or modified by the legislature, or if the Energy Policy and Conservation Act (42 U.S.C. § 6297) is clarified or modified (San José Municipal Code §§ 17.845.010.E, 17.845.030.A). So there is no all-electric requirement to design around today — state Title 24 energy rules and project-specific conditions of approval still apply, and the chapter would switch on automatically if the case law changes. Confirm its status when you file.',
+      note: 'San José’s ban on natural-gas infrastructure in newly constructed buildings is on the books but suspended by its own operative clause: it switches on only if California Restaurant Association v. City of Berkeley, 89 F.4th 1094 (9th Cir. 2023, as amended) is overturned or disapproved by a court of competent jurisdiction, or modified by the legislature to authorize local control of natural gas infrastructure; or if the Energy Policy and Conservation Act (42 U.S.C. § 6297) or other similar legislation is clarified or modified (San José Municipal Code §§ 17.845.010.E, 17.845.030.A). So there is no all-electric requirement to design around today — state Title 24 energy rules and project-specific conditions of approval still apply, and the chapter would switch on automatically if the case law changes. Confirm its status when you file.',
     })
   } else if (city === 'nashville') {
     // Metro Nashville & Davidson County Code, read from Municode's content API
@@ -1495,7 +1522,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       category: 'fees',
       label: 'Sidewalk construction or in-lieu fee — not currently in force',
       status: 'info',
-      note: 'Metro’s sidewalk exaction — build the sidewalk along your whole frontage or pay into the pedestrian benefit zone fund — would otherwise apply to multi-family and non-residential development in the urban services district, in a designated center, or on a Major and Collector Street Plan street, but the code section carries an editor’s note recording that it is no longer enforced under a permanent injunction (Metro Nashville & Davidson County Code § 17.20.120, editor’s note; Agreed Entry of Judgment and Injunction entered 9/22/23 in Knight v. Metropolitan Government, M.D. Tenn. No. 3:20-cv-00922). Treat the sidewalk cost as not currently required but confirm at permit — Metro may re-adopt a compliant version, and if it does, § 17.20.120.D.1 caps the in-lieu payment at three percent of the total construction value of the permit.',
+      note: 'Metro’s sidewalk exaction — build the sidewalk along your whole frontage or pay into the pedestrian benefit zone fund — would otherwise apply to multi-family and non-residential development in the urban services district, in a designated center, or on a Major and Collector Street Plan street, and also to new single- or two-family construction inside the Urban Zoning Overlay or a designated center — but the code section carries an editor’s note recording that it is no longer enforced under a permanent injunction (Metro Nashville & Davidson County Code § 17.20.120, editor’s note; Agreed Entry of Judgment and Injunction entered 9/22/23 in Knight v. Metropolitan Government, M.D. Tenn. No. 3:20-cv-00922). Treat the sidewalk cost as not currently required but confirm at permit — Metro may re-adopt a compliant version, and if it does, § 17.20.120.D.1 caps the in-lieu payment at three percent of the total construction value of the permit.',
     })
 
     // § 17.20.140.B.2 reads "NONRESIDENTIAL developments of more than fifty
