@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Reveal } from '../components/Reveal'
 import { getCity } from '../config/cities'
-import { computeRedTapeIndex, REFERENCE, type RankedCity } from '../lib/redTapeIndex'
+import { computeRedTapeIndex, citiesWithoutProcessConstants, REFERENCE, type RankedCity } from '../lib/redTapeIndex'
 import { storyFor } from '../lib/cityStories'
 
 // The Red Tape Index — a shareable ranking of the cities we cover, ordered by
@@ -73,8 +73,13 @@ function StatChips({ city }: { city: RankedCity }) {
 
 export default function RedTape() {
   const ranked = computeRedTapeIndex()
+  // Live cities the index cannot rank, because no city-specific lifecycle
+  // duration has been established for them. Naming them under the table is what
+  // keeps their omission a disclosed gap instead of an implied verdict — a city
+  // missing from a red-tape ranking otherwise reads as one that did not rate.
+  const unranked = citiesWithoutProcessConstants()
   const [open, setOpen] = useState<string | null>(null)
-  // Longest total process across the ten cities — sets the full-width bar.
+  // Longest total process across the ranked cities — sets the full-width bar.
   const maxMonths = Math.max(...ranked.map((r) => r.lifecycleMonths + r.reliefAddMonths), 1)
 
   return (
@@ -85,7 +90,7 @@ export default function RedTape() {
             The Red Tape Index
           </p>
           <h1 className="mt-4 max-w-3xl font-serif text-[clamp(2.4rem,6vw,4.2rem)] leading-[1.04] tracking-tight">
-            One building. Ten cities. Wildly different answers.
+            One building. {ranked.length} cities. Wildly different answers.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-piranha-bone/70">
             Take the same 40,000 sq ft apartment building and ask every city: how long, and how
@@ -258,6 +263,20 @@ export default function RedTape() {
               months and lighter fees standing between an idea and a building — not that a city is
               better or worse to live in, only that it asks less of someone trying to add housing.
             </p>
+            {unranked.length > 0 && (
+              <p>
+                <span className="font-semibold text-piranha-bone/80">
+                  Not ranked: {unranked.map((s) => getCity(s).name).join(', ')}.
+                </span>{' '}
+                {unranked.length === 1 ? 'This city is' : 'These cities are'} live for parcel
+                analysis, but no city-specific development timeline has been established for{' '}
+                {unranked.length === 1 ? 'it' : 'them'} yet — and that duration is most of this
+                score. Ranking {unranked.length === 1 ? 'it' : 'them'} on a national average would
+                produce a position, not a measurement, so{' '}
+                {unranked.length === 1 ? 'it is' : 'they are'} left out until there is something
+                real to rank {unranked.length === 1 ? 'it' : 'them'} on.
+              </p>
+            )}
             <p>
               These are estimates, labeled as estimates, drawn entirely from public data and the
               engine&rsquo;s published constants. Want to see the same math run against a real

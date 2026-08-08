@@ -20,6 +20,7 @@ import {
   type BuildingTier,
 } from '../config/estimates'
 import { PARKING_RULES, type ParkingRule } from '../config/parkingRules'
+import { CITIES } from '../config/cities'
 import type { Use } from '../types/analysis'
 // Empirical artifacts — the SAME static JSON the analysis functions inline
 // (netlify/functions/lib/{timeline,relief}.ts). Imported here so the Red Tape
@@ -120,6 +121,35 @@ const FEES_WEIGHT = 0.3
 function normalize(value: number, min: number, max: number): number {
   if (max <= min) return 0
   return ((value - min) / (max - min)) * 100
+}
+
+/**
+ * Live cities that CANNOT be ranked, because no city-specific lifecycle duration
+ * has been established for them — the index's primary input, 70% of the score.
+ *
+ * Derived, never hand-listed: it is exactly `CITIES` minus the keys of
+ * `lifecycleMonths`, so it cannot go stale, and a city that gains constants
+ * drops off it the moment the table is edited.
+ *
+ * Why this exists rather than a fallback number. `computeRedTapeIndex` ranks
+ * cities against each other and prints a position. Feeding an unmeasured city
+ * the national fallback would not produce a missing answer, it would produce a
+ * CONFIDENT one — a rank, computed from a duration nobody measured, sitting in
+ * the same column as Boston's. That is CLAUDE.md rule 18 exactly: the output
+ * that looks like an answer gets less scrutiny than the one that looks like a
+ * gap. And the direction is not neutral — the fallback is faster than 9 of the
+ * 15 ranked cities, so the invented row would land in the "less red tape" half
+ * of a table whose whole purpose is that comparison.
+ *
+ * Omission alone is not enough either — a city silently absent from a ranking
+ * reads as a city that was not worth ranking. The RedTape page names this list
+ * under the table, which is what turns the absence back into a disclosure.
+ */
+export function citiesWithoutProcessConstants(
+  constants: Partial<RedTapeConstants> = {},
+): string[] {
+  const lifecycle = constants.lifecycleMonths ?? DEFAULTS.lifecycleMonths
+  return CITIES.filter((c) => !(c.slug in lifecycle)).map((c) => c.slug)
 }
 
 export function computeRedTapeIndex(constants: Partial<RedTapeConstants> = {}): RankedCity[] {

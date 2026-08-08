@@ -45,6 +45,34 @@
 //                 guidelines rev. 4/29/2025). Citywide elimination only proposed.
 //   dc          — DC 2016 zoning regulations; eliminated downtown, cut roughly
 //                 in half near frequent transit; minimums remain elsewhere.
+//   raleigh     — Read 2026-08-07 from the City's own consolidated UDO text
+//                 (udo.raleighnc.gov/udo-book/print-all-chapters), NOT a summary.
+//                 Sec. 7.1.1 "Definitions" says verbatim: "Vehicle parking. This
+//                 refers to cars, trucks, and similar vehicles. No parking is
+//                 required for vehicles, but this code regulates the design and
+//                 other aspects of any vehicular parking spaces that are
+//                 provided." Sec. 7.1.2.C's table confirms it structurally — its
+//                 columns are "Vehicle Parking (max) | Short-Term Bicycle Parking
+//                 (min) | Long-Term Bicycle Parking (min)". There is no vehicle
+//                 minimum column at all, in any use category. That is the slot
+//                 test (CLAUDE.md rule 5) applied to a table: the row exists,
+//                 the minimum column does not.
+//
+//                 ⚠️ THE REFORM YEAR IS DELIBERATELY NOT ASSERTED. The UDO's own
+//                 history table shows Sec. 7.1.1 last amended by TC-11-21
+//                 (Ord. 2022-352-TC-464, effective 3-15-2022), which proves the
+//                 current text is no NEWER than 2022 — it does NOT prove that
+//                 amendment is what removed the minimums, and no pre-2025
+//                 snapshot of the section was retrievable to check (the Wayback
+//                 CDX index for the section returns nothing before 2025-06-20).
+//                 So `asOf` carries the date the ordinance was READ, and neither
+//                 the headline nor the detail names a year. Guessing "2022" here
+//                 would be a date-shaped claim resting on an inference — the
+//                 rule-7 failure, where a confidently wrong marker is worse than
+//                 no marker. Note that `parkingCell()` renders `Abolished
+//                 (${asOf})`; Raleigh is not in the Red Tape Index (see
+//                 citiesWithoutProcessConstants), so that label is never drawn
+//                 for it today. If Raleigh ever enters the index, date it first.
 
 export interface ParkingRule {
   status: 'abolished' | 'partial'
@@ -161,5 +189,14 @@ export const PARKING_RULES: Record<string, ParkingRule> = {
     detail:
       'Bill 250524, signed June 2025, removed the on-site parking requirement for new residential development in the CMX-4 and CMX-5 districts — mainly Center City, University City, and North Broad — replacing a ratio of three spaces per ten dwelling units. Minimums still apply in the rest of the city.',
     asOf: '2025',
+  },
+  raleigh: {
+    status: 'abolished',
+    headline: 'Abolished citywide — the UDO sets parking maximums, not minimums',
+    detail:
+      'The Raleigh Unified Development Ordinance requires no vehicle parking anywhere, for any use. Sec. 7.1.1 states it outright — “No parking is required for vehicles, but this code regulates the design and other aspects of any vehicular parking spaces that are provided” — and the parking table in Sec. 7.1.2.C carries a “Vehicle Parking (max)” column with no minimum counterpart. The code caps parking instead: no more than 2 spaces per dwelling unit downtown (DX-) or in a Transit Overlay (-TOD), 1.5 for studios and one-bedrooms, and projects over 16 units that exceed the table trigger mitigation under Sec. 7.1.4. Bicycle parking minimums do still apply.',
+    // The date the ordinance text was read, NOT a reform year — see the source
+    // note at the top of this file for why no year is asserted.
+    asOf: '2026',
   },
 }

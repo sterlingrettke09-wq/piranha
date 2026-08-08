@@ -14,6 +14,7 @@ import {
   SAN_DIEGO_BBOX,
   SAN_JOSE_BBOX,
   NASHVILLE_BBOX,
+  RALEIGH_BBOX,
   type Bbox,
 } from '../types/parcel'
 
@@ -90,6 +91,20 @@ export const CITIES: City[] = [
     zoningLayer: undefined },
   { slug: 'nashville', stateLabel: 'Nashville, TN', name: 'Nashville', live: true, center: [-86.7816, 36.1627], zoom: 12.2, bbox: NASHVILLE_BBOX, permitName: 'Metro Nashville Codes & Building Safety', permitUrl: 'https://www.nashville.gov/departments/codes', tagline: 'Boomtown, building fast.', landmark: [-86.7816, 36.1627],
     // Server-side only: maps.nashville.gov would need a CSP connect-src entry.
+    zoningLayer: undefined },
+  { slug: 'raleigh', stateLabel: 'Raleigh, NC', name: 'Raleigh', live: true, center: [-78.6423, 35.7813], zoom: 12.6, bbox: RALEIGH_BBOX, permitName: 'Raleigh Planning & Development', permitUrl: 'https://raleighnc.gov/planning-and-development', tagline: 'Pines, research parks, and permits that move.', landmark: [-78.6423, 35.7813],
+    // center/landmark are MEASURED, not eyeballed off a map: the midpoint of the
+    // DX (Downtown Mixed Use) districts' own extent, from
+    // Planning/Zoning/MapServer/0 queried with returnExtentOnly, 2026-08-07.
+    // permitUrl is the department page's own canonical URL (read from the page's
+    // <link rel="canonical">, not guessed — CLAUDE.md rule 8).
+    //
+    // Server-side only: maps.raleighnc.gov is NOT in netlify.toml's CSP
+    // connect-src (checked, 2026-08-07 — the file contains no raleigh host), so a
+    // browser fetch of the zoning layer would be blocked. This is a CSP gap, not
+    // a CORS finding: no cross-origin probe of the host was run, so nothing is
+    // claimed about whether it would send Access-Control-Allow-Origin. The
+    // provider still resolves every limit server-side; only the map fill is absent.
     zoningLayer: undefined },
 ]
 

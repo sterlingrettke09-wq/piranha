@@ -100,6 +100,13 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   // limit is still shown in the envelope) instead of claiming "height could not
   // be evaluated," which falsely reads as missing city data.
   const effHeight = project.heightFt ?? (project.stories != null ? project.stories * ftPerStory(project.use) : null)
+  // A district whose code states a STORY count but no feet. Raleigh's mixed-use
+  // designations -7 and above are exactly this (UDO Sec. 3.3.2 row A2 is blank
+  // from -7 up while row A1 states 7/12/20/30/40 stories), and Miami 21
+  // regulates in stories throughout.
+  const statedStories = parcel.zoning.maxStories != null && parcel.zoning.maxStories > 0
+    ? parcel.zoning.maxStories
+    : null
   if (effHeight != null && limits.maxHeightFt != null) {
     const status = classifyOverage(effHeight, limits.maxHeightFt, RELIEF_FACTOR_HEIGHT)
     const note =
@@ -109,7 +116,38 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
           ? `Proposed height is ${(effHeight / limits.maxHeightFt).toFixed(1)}× the district limit — well past what a variance grants; it would require a rezoning, so it isn't buildable as proposed.`
           : null
     checks.push({ dimension: 'height', status, proposed: `${effHeight} ft`, allowed: `max ${limits.maxHeightFt} ft`, note })
-  } else if (effHeight != null && limits.maxHeightFt == null) {
+  } else if (project.stories != null && statedStories != null) {
+    // ── The code states STORIES and the user proposed STORIES, so compare them
+    // directly. Do NOT convert either side to feet to reuse the branch above:
+    // that is the round-trip that published 87 stories for a Miami district
+    // whose code says 80 (CLAUDE.md rule 12), and Raleigh's own table disproves
+    // any single ft/story constant (16.67 / 17.00 / 16.00 across -3/-4/-5).
+    // A relief factor is a ratio, so it is unit-free and carries over intact.
+    const status = classifyOverage(project.stories, statedStories, RELIEF_FACTOR_HEIGHT)
+    const note =
+      status === 'NEEDS_RELIEF'
+        ? 'Proposed height exceeds the district limit; dimensional relief (a variance) would be required.'
+        : status === 'PROHIBITED'
+          ? `Proposed height is ${(project.stories / statedStories).toFixed(1)}× the district limit — well past what a variance grants; it would require a rezoning, so it isn't buildable as proposed.`
+          : null
+    const s = (n: number) => `${n} ${n === 1 ? 'story' : 'stories'}`
+    checks.push({ dimension: 'height', status, proposed: s(project.stories), allowed: `max ${s(statedStories)}`, note })
+  } else if (effHeight != null && statedStories != null) {
+    // The limit is KNOWN — just not in the unit the proposal is in. This must not
+    // render as the "no limit on record" case below. That is CLAUDE.md rule 5 one
+    // notch finer: an absence and a gap already must not look alike, and neither
+    // may a published limit we declined to convert. Before this branch existed,
+    // Raleigh's DX-7-SH and DX-40-SH printed "No district height limit is
+    // available in public data" over districts whose limit the code states
+    // outright — telling the user the city publishes nothing, which is false.
+    checks.push({
+      dimension: 'height',
+      status: 'INDETERMINATE',
+      proposed: `${effHeight} ft`,
+      allowed: `max ${statedStories} ${statedStories === 1 ? 'story' : 'stories'}`,
+      note: `This district's limit is stated in STORIES (${statedStories}), not feet, so a height in feet cannot be checked against it — converting between the two would invent a floor-to-floor assumption the code does not make. Enter a story count to have this checked.`,
+    })
+  } else if (effHeight != null) {
     // A proposed height we genuinely can't check — no limit on record. Worth noting.
     checks.push({ dimension: 'height', status: 'INDETERMINATE', proposed: `${effHeight} ft`, allowed: 'not derivable', note: 'No district height limit is available in public data to check this against.' })
   }
@@ -244,6 +282,13 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   // independent of whether the user proposed a value to compare. (Previously this
   // keyed off check status, so an unspecified proposed height made us claim there
   // was "no height limit" even when the limit was known and displayed.)
-  const envelopeKnown = farForUse != null || limits.maxHeightFt != null
+  //
+  // `statedStories` counts. A district capped at 7 stories has a published bulk
+  // limit; the fact that the code declines to name it in feet is a property of
+  // the ordinance, not a hole in our data. Omitting it made every Raleigh
+  // district from -7 up report envelopeKnown:false — the tool disclaiming
+  // knowledge it demonstrably had, which erodes the disclaimer everywhere it is
+  // true.
+  const envelopeKnown = farForUse != null || limits.maxHeightFt != null || statedStories != null
   return { overall, checks, path, envelopeKnown }
 }

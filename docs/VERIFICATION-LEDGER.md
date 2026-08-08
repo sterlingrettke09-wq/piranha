@@ -3090,3 +3090,126 @@ been audited against a source the way the nine just were. Every finding tonight
 about truncation, over-firing and disclosure copy concerns the NINE. The six are
 unexamined, and at least one of them carries a threshold with no provenance at
 all.
+
+---
+
+## 2026-08-07 — Raleigh as a pipeline test: adding a city is repeatable, but not self-contained
+
+Raleigh was added end to end as a deliberate test of whether adding a city is a
+**procedure** rather than a one-off research effort. It shipped green — `tsc -b`
+clean, lint clean, 60 test files / 1401 tests (from 1393), four real parcels
+verified through the `/api/analyze` handler, and a null-inventory row reading
+`UNCONSTRAINED (an answer)`. The procedure it produced is now
+`docs/ADDING-A-CITY.md`.
+
+The result is that the process **is** repeatable. What follows is what it cost,
+because a run that only recorded the green result would be the same shape as
+every defect this ledger tracks.
+
+### The scout's summary was wrong four times, and it was the load-bearing claim that was wrong
+
+Provider work was fed by a scouting pass. Reading the official consolidated UDO
+(`udo.raleighnc.gov/udo-book/print-all-chapters`, reached from the site's own
+print index, not a guessed path) contradicted it on four points:
+
+1. **"The UDO sets no feet-per-story cap for mixed-use districts."** False. Sec.
+   3.3.1 states verbatim that the designation "establishes the maximum height in
+   stories and feet", worked example and all, and Sec. 3.3.2 row A2 tabulates
+   50'/68'/80' for `-3/-4/-5`. Trusting the summary would have shipped
+   `maxHeightFt: null` on **every `-3/-4/-5` parcel — a fabricated gap over the
+   majority of Raleigh's mixed-use land.**
+2. Townhouse height in R-6 and R-10 is 45', not 40'; civic in R-10 is 45'.
+3. The Frequent Transit Development Option does not raise height (its own rows
+   E1–E3 restate Article 2.2's figures) — it relaxes lot area and density.
+4. The `-TOD` mixed-use height increase is an **earned** bonus conditioned on
+   deed-restricted affordability, not an available one.
+
+All four are rule 18: plausible summaries, wrong in the direction that looks like
+an answer. **A scout's summary is an input to be checked, never a source** — and
+note that the most damaging error was in the claim the whole module rested on,
+not in a marginal one.
+
+One thing went the other way, usefully: Raleigh's own Sec. 3.3.2 table
+**disproves** the existence of a ft/story constant — 50/3, 68/4, 80/5 imply
+16.67, 17.00 and 16.00 — so the Miami-21 round-trip is now blocked here by a test
+asserting no constant in 10–18 reproduces all three rows. A source document
+carrying its own disproof is the cheapest structure available (rule 14); look for
+one in every new city.
+
+### The provider stage was self-contained. The wiring stage was not, and that is the finding
+
+The provider stage created five Raleigh-only files (zoning module + 96 tests,
+provider + 22 tests, fixtures) and reported, accurately, that **nothing shared
+was touched**. That report was true and still incomplete, because the defect it
+was hiding is only visible at the real handler.
+
+Raleigh is the first city whose code states a **story count and no feet** for a
+whole band of districts (`-7` and above). Run through `/api/analyze` as written,
+`DX-7-SH` and `DX-40-SH` printed *"No district height limit is available in
+public data"* and reported `envelopeKnown: false` — **the tool disclaiming
+knowledge it demonstrably had**, over districts whose limit the ordinance states
+outright.
+
+`netlify/functions/lib/feasibility.ts` gained three branches and six tests:
+stories compared against stories directly (never via feet), a separate
+`INDETERMINATE` for *the limit is known, just in another unit* with copy that
+says so, and `statedStories` counting toward `envelopeKnown`. The middle branch
+is **rule 5 one notch finer** — an absence and a gap must not render alike, and
+neither may a published limit we declined to convert.
+
+The generalisation for the next city: a required change to shared logic is not
+scope creep. A *city-specific branch* in shared logic is the thing to avoid.
+Splitting the work into a provider stage and a wiring stage is right, but the
+provider stage's "all green, nothing shared touched" must not be read as "the
+city is done".
+
+### An honest gap broke a green test that assumed completeness
+
+Raleigh has **no `lifecycleMonths` row**, deliberately. What was available was an
+argument — Southern metro, no state environmental-review statute, fast Census SOC
+durations, therefore "about Nashville's 16/25/40" — which is a mechanism argued
+aloud, and rule 1 gives it no direction at all. Nashville's own row is a peer-set
+calibration, so copying it sideways would have made Raleigh's number a derivative
+of a derivative wearing Boston's font.
+
+That omission **failed a passing test**: `redTapeIndex.test.ts` asserted
+`ranked.toHaveLength(CITIES.length)`. The two ways to restore green were to
+invent a duration (rule 1) or to drop Raleigh from the table quietly (an absence
+rendering as a finding) — both failures already in this ledger. The invariant was
+reformulated instead: **every city is either RANKED or DISCLOSED and never
+both**, cross-checked against `lifecycleMonths` in both directions, with a
+companion test proving the unranked list is derived from the constants rather
+than typed.
+
+Worth stating as an expectation rather than an incident: **adding an honest gap
+will break a test that assumed completeness, and the fix is to reformulate the
+invariant, not to fill the gap.**
+
+### What the existing guards caught, unprompted
+
+- **Probe stability** (added 2026-08-06 after San Diego) did its job before
+  adoption rather than after: 810 Daniels St was verified over two independent
+  runs of four isolated `getParcelInfo` calls, all eight returning parcelId
+  1704142690 and lot 9,433 sq ft. The probe was picked from a parcel *query*
+  filtered for a developable single-unit lot in Raleigh's own jurisdiction, and
+  from the polygon centroid rather than an address pin.
+- **Rule 16 reconciliation** on the cost index: the RSMeans pull that produced
+  Raleigh 84.4 (ZIP group 275-276) reproduced Nashville 89.0, Austin 82.9 and
+  Miami 85.1 — already-committed values — before the new row was trusted.
+- **Rule 2 on the handler output**: 9,500 sf × $340 × 0.84 = $2,713,200, exactly
+  the returned hard cost, confirming the city index *flows through* rather than
+  merely being displayed. A sum would not have discriminated that.
+- The `parkingRules` coverage test and the `PROHIBITED` verdict on `DX-40-SH`
+  (~306 existing homes vs. 102 proposed, generic no-net-loss) both resolved to
+  data on inspection, not to defects.
+
+### What Raleigh is still NOT claiming
+
+No city-specific hurdles (`CITIES_WITH_SPECIFIC_HURDLES` unchanged — the four
+verified parcels show 3 generic hurdles, and `analyze.ts`'s disclaimer names
+Raleigh as the current exception), no measured permit timing, no lifecycle
+duration, and no client-side zoning overlay — `maps.raleighnc.gov` is absent from
+the `netlify.toml` CSP `connect-src`, which is recorded as a **CSP gap and
+explicitly not a CORS finding**, since no cross-origin probe was run. Denver's
+adjacent entry records an actual CORS probe; the two reasons must not be copied
+onto each other.

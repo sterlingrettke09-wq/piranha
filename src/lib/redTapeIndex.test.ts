@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { computeRedTapeIndex, parkingCell, REFERENCE, type RedTapeConstants } from './redTapeIndex'
+import {
+  computeRedTapeIndex,
+  citiesWithoutProcessConstants,
+  parkingCell,
+  REFERENCE,
+  type RedTapeConstants,
+} from './redTapeIndex'
 import { lifecycleMonths } from '../config/estimates'
 import { PARKING_RULES } from '../config/parkingRules'
 import { CITIES } from '../config/cities'
@@ -7,16 +13,52 @@ import { CITIES } from '../config/cities'
 describe('computeRedTapeIndex', () => {
   const ranked = computeRedTapeIndex()
 
-  // Count is derived from the city registry, not hard-coded, so adding a city
-  // doesn't require editing this assertion — it just has to stay complete.
-  it('includes every city exactly once', () => {
-    expect(ranked).toHaveLength(CITIES.length)
+  // Counts are derived from the city registry, not hard-coded, so adding a city
+  // doesn't require editing these assertions — coverage just has to stay
+  // accounted for.
+  //
+  // This assertion used to read `toHaveLength(CITIES.length)`, i.e. every live
+  // city is ranked. Raleigh broke it, correctly: it is live and wired but has no
+  // measured lifecycle duration, and the index is 70% weighted on that number.
+  // The two ways to make the old assertion pass again were (a) invent a duration
+  // or (b) drop Raleigh out of the table quietly. Both are the failures this
+  // repo keeps recording — (a) is rule 1, (b) is an absence rendering as a
+  // finding. So the invariant is now "every city is either RANKED or DISCLOSED,
+  // and never both", which still fails loudly if a city goes missing for any
+  // reason nobody wrote down.
+  it('accounts for every city exactly once — ranked or disclosed', () => {
+    const missing = citiesWithoutProcessConstants()
     const slugs = new Set(ranked.map((r) => r.slug))
-    expect(slugs.size).toBe(CITIES.length)
-    // Cross-check against the source-of-truth timeline table.
+    expect(slugs.size).toBe(ranked.length) // no duplicates
+    expect(ranked).toHaveLength(CITIES.length - missing.length)
+
+    for (const c of CITIES) {
+      const isRanked = slugs.has(c.slug)
+      const isDisclosed = missing.includes(c.slug)
+      expect(isRanked !== isDisclosed, `${c.slug} must be exactly one of ranked/disclosed`).toBe(true)
+    }
+    // Cross-check against the source-of-truth timeline table, both directions.
     for (const slug of Object.keys(lifecycleMonths)) {
       expect(slugs.has(slug)).toBe(true)
     }
+    for (const slug of missing) {
+      expect(slug in lifecycleMonths, `${slug} is disclosed as missing but HAS constants`).toBe(false)
+    }
+  })
+
+  // A disclosed city must be a real live city, never a typo that quietly excuses
+  // a genuine gap.
+  it('only disclosed-as-unranked cities are real registry slugs', () => {
+    const known = new Set(CITIES.map((c) => c.slug))
+    for (const slug of citiesWithoutProcessConstants()) {
+      expect(known.has(slug), `${slug} is not a city slug`).toBe(true)
+    }
+  })
+
+  // The list is DERIVED, not typed. Prove it moves with the data: hand it a
+  // lifecycle table that covers nothing and every city must come back disclosed.
+  it('derives the unranked list from the constants, not a hard-coded list', () => {
+    expect(citiesWithoutProcessConstants({ lifecycleMonths: {} })).toHaveLength(CITIES.length)
   })
 
   it('ranks SF worst on months of process', () => {

@@ -14,6 +14,7 @@ import {
   demoCostPerSqFt,
   projectFactor,
   avgUnitGrossSqFt,
+  lifecycleMonths,
 } from '../../../src/config/estimates'
 
 export {
@@ -74,7 +75,18 @@ export function assumptionsSummary(
     permitFee: `$${PERMIT_BASE_FEE} + $${PERMIT_RATE_PER_1000} per $1,000 of hard cost`,
     varianceFiling: `$${VARIANCE_FILING_FEE} when relief required`,
     landCost: 'Not included (construction only)',
-    timeline: 'Full life-cycle (design to move-in), estimated by city and building type',
+    // "estimated by city" is a CLAIM, and it is false for a city with no row in
+    // `lifecycleMonths` — that project is timed by the national fallback. The
+    // string used to be unconditional, which is the disclosure-copy failure
+    // CLAUDE.md names under rule 9: text that is true in one context and false
+    // in the one it is read in. Branch on the table itself, so a city added to
+    // it later starts telling the truth without anyone editing this line.
+    timeline:
+      city in lifecycleMonths
+        ? 'Full life-cycle (design to move-in), estimated by city and building type'
+        : 'Full life-cycle (design to move-in). NO city-specific duration has been established for ' +
+          'this city, so a generic national estimate is used, varying by building type only. ' +
+          'Treat the schedule as a rough order of magnitude, not a local figure.',
     // Both of these reach substantive output, not just display — so both are
     // shown with their weak half named rather than left in a code comment.
     feetPerStory:

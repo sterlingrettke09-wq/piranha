@@ -51,11 +51,35 @@ const EXTRA: Record<string, [number, number]> = {
   sandiego: [32.735, -117.129], // RS-1-7, 7,958 sq ft, parcel 4536510700
   sanjose: [37.345, -121.9], // R-1-8, 5,018 sq ft, parcel 25919043
   nashville: [36.1627, -86.7816],
+  // 810 Daniels St — R-6, 9,433 sq ft, parcel 1704142690, privately owned,
+  // one existing dwelling, no historic/NCOD/TOD overlay, FEMA zone X.
+  //
+  // Chosen the way the San Diego and San Jose replacements were: from a parcel
+  // QUERY, not from a landmark. Filtered on the Wake County attributes for an
+  // ordinary developable residential lot (PLANNING_JURISDICTION 'RA' so it is
+  // Raleigh and not Cary or Apex, LAND_CLASS_DECODE 'Residential Less Than 10
+  // Acres', TOTUNITS 1, 7,000–11,000 sq ft), then took the polygon's own
+  // centroid rather than an address pin — an address pin is what put the old
+  // Philadelphia probe off a parcel edge.
+  //
+  // STABILITY VERIFIED BEFORE ADOPTION, through getParcelInfo (the real entry
+  // point), not the provider: two independent runs of four isolated calls each,
+  // 400 ms apart, eight calls total. Every one returned parcelId 1704142690 and
+  // lot 9,433 sq ft — one distinct value, not "close enough". This is the check
+  // San Diego's old probe failed by returning two parcelIds at four different
+  // lot sizes, and it is invisible to any single call.
+  //
+  // It is DEVELOPABLE, which is the second thing both replaced probes got
+  // wrong: a blocked parcel makes analyze.ts zero the hurdles, so the row
+  // measures the block rather than the city. This one runs the real path —
+  // verdict AS_OF_RIGHT, farBasis 'unconstrained'.
+  raleigh: [35.79544, -78.65841],
 }
 
 const CITIES = [
   'boston', 'nyc', 'chicago', 'sf', 'seattle', 'dc', 'austin', 'la',
   'denver', 'minneapolis', 'philadelphia', 'miami', 'sandiego', 'sanjose', 'nashville',
+  'raleigh',
 ]
 
 interface Row {

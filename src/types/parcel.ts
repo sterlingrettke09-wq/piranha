@@ -252,6 +252,27 @@ export const NASHVILLE_BBOX: Bbox = {
   east: -86.51,
 }
 
+// MEASURED, not drawn around a city label. This is the extent of the layer that
+// actually answers the question — the City of Raleigh Zoning layer
+// (Planning/Zoning/MapServer/0), queried 2026-08-07 with
+// `where=1=1&returnExtentOnly=true&outSR=4326`, which returned
+//   xmin -78.819399  ymin 35.706213  xmax -78.469890  ymax 35.971650
+// rounded OUTWARD to 2 dp below (~1 km of slack on each side).
+//
+// It is deliberately tighter than the parcel service. Raleigh's parcel layer is
+// Wake County property republished by the City, so it also covers Cary, Apex,
+// Garner and the rest of the county; the ZONING layer stops at the city limits.
+// A search box scoped to the county would let someone type a Cary address, get a
+// real parcel back, and see districtCode 'Unknown' with null limits — a correct
+// render of a gap, but a pointless answer. Scoping the search to the zoning
+// layer's own footprint keeps the two datasets aligned.
+export const RALEIGH_BBOX: Bbox = {
+  south: 35.7,
+  west: -78.83,
+  north: 35.98,
+  east: -78.46,
+}
+
 export function isInBbox(bbox: Bbox, lat: number, lng: number): boolean {
   return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east
 }

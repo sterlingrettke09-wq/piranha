@@ -242,6 +242,16 @@ export const cityCostIndex: Record<string, number> = {
   denver: 0.91, // 802-803 = 91.5
   nashville: 0.89, // 370-372 = 89.0
   miami: 0.85, // 330-332,340 = 85.1 (NOT Miami OK 743 = 80.3)
+  // 275-276 = 84.4. Extracted 2026-08-07 from the same PDF cited above, by the
+  // same method, and reconciled against three known-good rows in the SAME pull
+  // before being trusted (CLAUDE.md rule 16): Nashville 89.0, Austin 82.9 and
+  // Miami 85.1 all reproduced the values already committed here, which is what
+  // establishes that the extraction is reading the table this file was built
+  // from rather than a lookalike. "RALEIGH" occurs exactly twice in the
+  // document, both in the North Carolina block, so the name-collision trap the
+  // note above warns about does not arise here — and the ZIP group was still
+  // matched (275-276), not the name.
+  raleigh: 0.84,
   austin: 0.83, // 786-787 = 82.9
 }
 
@@ -364,6 +374,26 @@ export const lifecycleMonths: Record<string, Record<BuildingTier, number>> = {
   // SF is the slowest-permitting major US city: discretionary review, CEQA, and
   // Planning Commission routinely push even modest projects past 3 years.
   sf: { single: 30, multi: 46, apartment: 66 },
+  // ⚠️ NO raleigh ROW, DELIBERATELY. Raleigh is live and fully wired (provider,
+  // zoning module, dispatcher, probe), and every OTHER city in the registry has
+  // a row here — so its absence is a decision, not an oversight, and this is
+  // where a reader will look for it.
+  //
+  // There is no measurement behind a Raleigh lifecycle figure. What is available
+  // is an argument — Southern metro, no state environmental-review statute, fast
+  // Census SOC construction durations, therefore "about Nashville's 16/25/40".
+  // That is a mechanism argued aloud, and CLAUDE.md rule 1 gives it no direction
+  // at all, not a hedged one. Nashville's own row says in its comment that it is
+  // a peer-set CALIBRATION rather than a published figure; copying a calibration
+  // sideways would make Raleigh's number a derivative of a derivative wearing the
+  // same font as Boston's.
+  //
+  // Consequence, and it is the intended one: `lifecycleFallback` below carries
+  // the timeline (it is the documented behaviour for exactly this case), the
+  // assumptions disclosure says so in words instead of claiming a city-specific
+  // estimate — see `assumptionsSummary`, which branches on membership in THIS
+  // table — and `computeRedTapeIndex` omits Raleigh rather than ranking it on an
+  // invented duration. Removing this gap needs a real source, not a session.
 }
 export const lifecycleFallback: Record<BuildingTier, number> = { single: 16, multi: 26, apartment: 40 }
 

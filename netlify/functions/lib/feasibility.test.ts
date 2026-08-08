@@ -171,3 +171,76 @@ describe('assessFeasibility', () => {
     expect(r.checks.find((c) => c.dimension === 'historic')).toBeUndefined()
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Districts whose code states a STORY count and no height in feet.
+//
+// Raleigh's mixed-use designations -7 and above are the live case (UDO
+// Sec. 3.3.2: row A1 states 7/12/20/30/40 stories, row A2 — feet — is blank
+// from -7 up). Before these branches existed, DX-7-SH and DX-40-SH printed
+// "No district height limit is available in public data", asserting the city
+// publishes nothing about height for a district whose limit the ordinance
+// states outright, and reported envelopeKnown:false alongside it.
+describe('assessFeasibility — districts regulated in stories, not feet', () => {
+  const storiesOnly = (maxStories: number) =>
+    parcel({ districtCode: 'DX-7-SH', maxHeightFt: null, maxFAR: null, maxStories, allowedUses: ['residential', 'commercial', 'mixed'] })
+
+  it('checks stories against stories when the code states stories', () => {
+    const r = assessFeasibility(storiesOnly(7), project({ heightFt: undefined, stories: 6 }))
+    const h = r.checks.find((c) => c.dimension === 'height')!
+    expect(h.status).toBe('AS_OF_RIGHT')
+    expect(h.proposed).toBe('6 stories')
+    expect(h.allowed).toBe('max 7 stories')
+  })
+
+  it('carries the STORY count through untouched — no ft/story conversion anywhere', () => {
+    // The regression this pins is CLAUDE.md rule 12: Miami published 87 stories
+    // for a district whose code says 80, because one constant multiplied and a
+    // different one divided. If anyone reintroduces a conversion to reuse the
+    // feet branch, the numbers below stop being 40 and 40.
+    const r = assessFeasibility(storiesOnly(40), project({ heightFt: undefined, stories: 40 }))
+    const h = r.checks.find((c) => c.dimension === 'height')!
+    expect(h.status).toBe('AS_OF_RIGHT') // exactly at the limit, not over
+    expect(h.proposed).toBe('40 stories')
+    expect(h.allowed).toBe('max 40 stories')
+    // And nothing in the rendered check may be denominated in feet.
+    expect(`${h.proposed} ${h.allowed} ${h.note ?? ''}`).not.toMatch(/\bft\b|feet/)
+  })
+
+  it('needs relief modestly over the story limit, and is prohibited far over', () => {
+    expect(
+      assessFeasibility(storiesOnly(7), project({ heightFt: undefined, stories: 10 })).checks
+        .find((c) => c.dimension === 'height')?.status,
+    ).toBe('NEEDS_RELIEF')
+    expect(
+      assessFeasibility(storiesOnly(7), project({ heightFt: undefined, stories: 30 })).checks
+        .find((c) => c.dimension === 'height')?.status,
+    ).toBe('PROHIBITED')
+  })
+
+  it('does NOT claim the city publishes no limit when it publishes stories', () => {
+    // Proposal in feet, limit in stories: undecidable, but for a stated reason.
+    // The old copy said the data was missing. It is not — it is in another unit.
+    const r = assessFeasibility(storiesOnly(7), project({ heightFt: 120, stories: undefined }))
+    const h = r.checks.find((c) => c.dimension === 'height')!
+    expect(h.status).toBe('INDETERMINATE')
+    expect(h.allowed).toBe('max 7 stories')
+    expect(h.note).not.toMatch(/No district height limit is available/)
+    expect(h.note).toMatch(/stated in STORIES/)
+  })
+
+  it('still reports a genuine gap as a gap when nothing is on record', () => {
+    const r = assessFeasibility(
+      parcel({ districtCode: 'Unknown', maxHeightFt: null, maxFAR: null }),
+      project({ heightFt: 120 }),
+    )
+    const h = r.checks.find((c) => c.dimension === 'height')!
+    expect(h.allowed).toBe('not derivable')
+    expect(h.note).toMatch(/No district height limit is available/)
+  })
+
+  it('counts a stated story limit as a known envelope', () => {
+    // FAR unconstrained + no feet + 7 stories stated is still a published limit.
+    expect(assessFeasibility(storiesOnly(7), project({ heightFt: undefined, stories: 6 })).envelopeKnown).toBe(true)
+  })
+})

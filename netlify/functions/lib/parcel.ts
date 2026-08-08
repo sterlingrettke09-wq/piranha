@@ -15,6 +15,7 @@ import {
   SAN_DIEGO_BBOX,
   SAN_JOSE_BBOX,
   NASHVILLE_BBOX,
+  RALEIGH_BBOX,
   type Bbox,
   type ParcelInfo,
 } from '../../../src/types/parcel'
@@ -36,6 +37,7 @@ import { getMiamiParcelInfo } from './providers/miami'
 import { getSanDiegoParcelInfo } from './providers/sandiego'
 import { getSanJoseParcelInfo } from './providers/sanjose'
 import { getNashvilleParcelInfo } from './providers/nashville'
+import { getRaleighParcelInfo } from './providers/raleigh'
 import { computeEnvelope } from './envelope'
 import { resolveBostonFar } from './zoning/boston'
 
@@ -168,6 +170,7 @@ const CITIES: Record<string, CityConfig> = {
   sandiego: { bbox: SAN_DIEGO_BBOX, label: 'San Diego', provider: getSanDiegoParcelInfo },
   sanjose: { bbox: SAN_JOSE_BBOX, label: 'San Jose', provider: getSanJoseParcelInfo },
   nashville: { bbox: NASHVILLE_BBOX, label: 'Nashville', provider: getNashvilleParcelInfo },
+  raleigh: { bbox: RALEIGH_BBOX, label: 'Raleigh', provider: getRaleighParcelInfo },
 }
 
 export const LIVE_CITIES = Object.keys(CITIES)
