@@ -16,6 +16,10 @@ import {
   SAN_JOSE_BBOX,
   NASHVILLE_BBOX,
   RALEIGH_BBOX,
+  MILWAUKEE_BBOX,
+  COLUMBUS_BBOX,
+  CHARLOTTE_BBOX,
+  ATLANTA_BBOX,
   type Bbox,
   type ParcelInfo,
 } from '../../../src/types/parcel'
@@ -38,6 +42,10 @@ import { getSanDiegoParcelInfo } from './providers/sandiego'
 import { getSanJoseParcelInfo } from './providers/sanjose'
 import { getNashvilleParcelInfo } from './providers/nashville'
 import { getRaleighParcelInfo } from './providers/raleigh'
+import { getMilwaukeeParcelInfo } from './providers/milwaukee'
+import { getColumbusParcelInfo } from './providers/columbus'
+import { getCharlotteParcelInfo } from './providers/charlotte'
+import { getAtlantaParcelInfo } from './providers/atlanta'
 import { computeEnvelope } from './envelope'
 import { resolveBostonFar } from './zoning/boston'
 
@@ -171,6 +179,10 @@ const CITIES: Record<string, CityConfig> = {
   sanjose: { bbox: SAN_JOSE_BBOX, label: 'San Jose', provider: getSanJoseParcelInfo },
   nashville: { bbox: NASHVILLE_BBOX, label: 'Nashville', provider: getNashvilleParcelInfo },
   raleigh: { bbox: RALEIGH_BBOX, label: 'Raleigh', provider: getRaleighParcelInfo },
+  milwaukee: { bbox: MILWAUKEE_BBOX, label: 'Milwaukee', provider: getMilwaukeeParcelInfo },
+  columbus: { bbox: COLUMBUS_BBOX, label: 'Columbus', provider: getColumbusParcelInfo },
+  charlotte: { bbox: CHARLOTTE_BBOX, label: 'Charlotte', provider: getCharlotteParcelInfo },
+  atlanta: { bbox: ATLANTA_BBOX, label: 'Atlanta', provider: getAtlantaParcelInfo },
 }
 
 export const LIVE_CITIES = Object.keys(CITIES)

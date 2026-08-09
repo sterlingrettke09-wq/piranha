@@ -2305,6 +2305,221 @@ describe('assessHurdles — Nashville', () => {
   })
 })
 
+describe('assessHurdles — Raleigh', () => {
+  const ACRE = 43560
+  const ral = (over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('raleigh', parcel({ zoning: { districtCode: 'RX-3', subdistrict: null, article: null, maxHeightFt: 50, maxFAR: null, allowedUses: null }, ...p }), project({ city: 'raleigh', ...over }))
+
+  it('resolves a plausible project, headed by the two absences', () => {
+    const hs = ral({ use: 'residential', units: 90, gfa: 90000 })
+    expect(hs.length).toBeGreaterThan(5)
+    // ABSENCE 1 — no inclusionary requirement, and it must be framed as a rule
+    // Raleigh has not adopted, NOT as one the State forbids.
+    const aff = byLabel(hs, /No inclusionary requirement/)
+    expect(aff?.status).toBe('info')
+    expect(aff?.note).toMatch(/42-14\.1/)
+    expect(aff?.note).toMatch(/has not prohibited it by name/)
+    expect(aff?.note).not.toMatch(/state law bars|barred by state law|prohibits mandatory inclusionary/i)
+    // ABSENCE 2 — parking, carried by PARKING_RULES and never duplicated here.
+    expect(hs.filter((h) => h.category === 'parking')).toHaveLength(1)
+    expect(byLabel(hs, /Abolished citywide/)?.note).toMatch(/7\.1\.1/)
+    // The administrative-approval finding is the structural headline.
+    const sp = byLabel(hs, /Site plan review is administrative/)
+    expect(sp?.status).toBe('info')
+    expect(sp?.note).toMatch(/10\.2\.8/)
+    expect(byLabel(hs, /Thoroughfare and open space facility fees/)?.status).toBe('required')
+    expect(byLabel(hs, /Stormwater control permit/)?.note).toMatch(/3\.6 pounds per acre per year/)
+    expect(byLabel(hs, /Infrastructure sufficiency/)?.status).toBe('required')
+  })
+
+  // No dollar figure for the facility fees is asserted anywhere: Sec. 8.9.1.C
+  // sends the reader to a fee schedule the ordinance does not contain, and a
+  // plausible number here would be a fabrication wearing a citation (rule 4).
+  it('the facility-fee row names no rate, and is not size-gated', () => {
+    const fee = byLabel(ral({ use: 'residential', units: 2, gfa: 3000 }), /Thoroughfare and open space facility fees/)
+    expect(fee?.status).toBe('required')
+    expect(fee?.sizeDependent).toBeFalsy()
+    expect(fee?.note).toMatch(/City of Raleigh Fee Schedule/)
+    expect(fee?.note).not.toMatch(/\$[\d,]/)
+    // …and it does not fire on a change of use, which Sec. 8.9.2 treats apart.
+    expect(byLabel(ral({ projectType: 'change_of_use', gfa: 30000 }), /Thoroughfare and open space facility fees/)).toBeFalsy()
+  })
+
+  // Sec. 10.2.8.C.1.d joins its two conditions with "and". The size limb alone
+  // cannot make the notice REQUIRED, because the 100-foot proximity to R-1/R-2/
+  // R-4/R-6/R-10 is not in any field we hold.
+  it('the post-approval notice is conjunctive: size gates it, adjacency keeps it "likely"', () => {
+    expect(byLabel(ral({ gfa: 24999 }), /Post-approval mailed notice/)).toBeFalsy()
+    const n = byLabel(ral({ gfa: 25000 }), /Post-approval mailed notice/)
+    expect(n?.status).toBe('likely')
+    expect(n?.sizeDependent).toBe(true)
+    expect(n?.note).toMatch(/within 100 feet of a property that is zoned R-1, R-2, R-4, R-6 or R-10/)
+    expect(n?.note).toMatch(/confirm it/)
+  })
+
+  // The affordability bonus is an ELECTION with a mapped-area precondition, so
+  // it can never be 'required' — and it starts above twelve units, not at it.
+  it('the Frequent Transit affordability trade starts above 12 units and stays conditional', () => {
+    expect(byLabel(ral({ use: 'residential', units: 12 }), /Frequent Transit Development Option/)).toBeFalsy()
+    const h = byLabel(ral({ use: 'residential', units: 13 }), /Frequent Transit Development Option/)
+    expect(h?.status).toBe('likely')
+    expect(h?.sizeDependent).toBe(true)
+    expect(h?.note).toMatch(/twenty percent \(20%\) of the residential units over twelve \(12\)/)
+    expect(h?.note).toMatch(/Frequent Transit Area/)
+    // USE GUARD: `units` is independent of `use`, so a commercial project can
+    // carry a unit count. Sec. 2.7.1 note G4 is written for "a development site
+    // utilizing this option in a residential zoning district" — the enclosing
+    // isResidential check is what keeps this off a commercial project.
+    expect(byLabel(ral({ use: 'commercial', units: 40 }), /Frequent Transit Development Option/)).toBeFalsy()
+    expect(byLabel(ral({ use: 'commercial', units: 40 }), /No inclusionary requirement/)).toBeFalsy()
+  })
+
+  // Two acres is the line in Sec. 9.1.2 and Sec. 9.1.10 alike; four acres is
+  // where the -TOD carve-out at Sec. 5.5.1.I can no longer reach.
+  it('tree conservation fires at 2 acres and hardens at 4', () => {
+    const at = (acres: number, over: Partial<AnalysisInput> = {}) =>
+      byLabel(ral(over, { lot: { sizeSqFt: Math.round(acres * ACRE), lotType: null } }), /Tree conservation area/)
+    expect(at(1.99)).toBeFalsy()
+    expect(at(2)?.status).toBe('likely')
+    expect(at(2)?.note).toMatch(/less than 4 acres/)
+    expect(at(4)?.status).toBe('required')
+    expect(at(4)?.note).not.toMatch(/confirm whether the -TOD is mapped/)
+    // The trigger is LOT area, so it must not be softened by a placeholder GFA.
+    expect(at(4)?.sizeDependent).toBeFalsy()
+    // It is a new-construction gate; a change of use disturbs no trees.
+    expect(at(4, { projectType: 'change_of_use' })).toBeFalsy()
+  })
+
+  it('the tree percentage follows the district, and R-10 is not R-1', () => {
+    const pct = (districtCode: string) =>
+      byLabel(
+        ral({}, { lot: { sizeSqFt: 5 * ACRE, lotType: null }, zoning: { districtCode, subdistrict: null, article: null, maxHeightFt: 40, maxFAR: null, allowedUses: null } }),
+        /Tree conservation area/,
+      )?.note
+    expect(pct('R-1')).toMatch(/15% for the district mapped here/)
+    expect(pct('R-2')).toMatch(/15% for the district mapped here/)
+    // R-10 must take the 10% row — a naive /^R-1/ prefix test would misread it.
+    expect(pct('R-10')).toMatch(/10% for the district mapped here/)
+    expect(pct('DX-12')).toMatch(/10% for the district mapped here/)
+  })
+
+  // 12,000 sq ft is UNCOVERED area, not lot area — lot size is a proxy and the
+  // note has to say so, or a reader corrects in the wrong direction.
+  it('the erosion plan keys on 12,000 sq ft and labels lot area as a proxy', () => {
+    expect(byLabel(ral({}, { lot: { sizeSqFt: 12000, lotType: null } }), /Erosion and sedimentation control plan/)).toBeFalsy()
+    const e = byLabel(ral({}, { lot: { sizeSqFt: 12001, lotType: null } }), /Erosion and sedimentation control plan/)
+    expect(e?.status).toBe('likely')
+    expect(e?.note).toMatch(/UNCOVERED, not in lot area or floor area/)
+    expect(e?.sizeDependent).toBeFalsy()
+  })
+
+  // The -TOD row reads the overlay the provider actually fetches. A miss must be
+  // a silent non-render, never a guess — so no -TOD label, no row.
+  it('the Transit Overlay row renders only when the overlay is actually mapped', () => {
+    expect(byLabel(ral({}), /Transit Overlay District/)).toBeFalsy()
+    const tod = byLabel(
+      ral({}, { zoning: { districtCode: 'RX-3', subdistrict: 'Transit Overlay District', article: null, maxHeightFt: 50, maxFAR: null, allowedUses: null } }),
+      /Transit Overlay District \(-TOD\) standards/,
+    )
+    expect(tod?.status).toBe('required')
+    expect(tod?.note).toMatch(/5\.5\.1/)
+    expect(tod?.note).toMatch(/at least 2 storeys/)
+  })
+
+  it('the rezoning row is discretionary-only; the appeal window is not', () => {
+    const disc = assessHurdles('raleigh', parcel({}), project({ city: 'raleigh', use: 'residential', units: 40 }), { path: 'variance' })
+    const rz = byLabel(disc, /Conditional rezoning/)
+    expect(rz?.status).toBe('likely')
+    expect(rz?.note).toMatch(/second neighbourhood meeting|SECOND neighbourhood meeting/)
+    expect(rz?.note).toMatch(/24 months/)
+    const aor = assessHurdles('raleigh', parcel({}), project({ city: 'raleigh', use: 'residential', units: 40 }), { path: 'as_of_right' })
+    expect(byLabel(aor, /Conditional rezoning/)).toBeFalsy()
+    // …but Raleigh's appeal clock opens on an ordinary as-of-right permit.
+    const appeal = byLabel(aor, /Third-party appeal window/)
+    expect(appeal?.status).toBe('info')
+    expect(appeal?.addsMonths).toBeUndefined()
+  })
+
+  it('the historic demolition delay is an overlay power, not a citywide screen', () => {
+    const teardown = (historicDistrict: string | null) =>
+      assessHurdles(
+        'raleigh',
+        parcel({ overlays: { historicDistrict, floodZone: null }, existing: { landUse: 'Single Family', yearBuilt: 1912, units: 1 } }),
+        project({ city: 'raleigh', projectType: 'new', use: 'residential', units: 4 }),
+      )
+    expect(byLabel(teardown(null), /up to 365 days/)).toBeFalsy()
+    const inHod = byLabel(teardown('Oakwood Historic Overlay District'), /up to 365 days/)
+    expect(inHod?.status).toBe('required')
+    expect(inHod?.note).toMatch(/may not be denied except as provided below for Statewide Significance/)
+    // The pending-designation freeze applies on any teardown.
+    expect(byLabel(teardown(null), /pending historic designation/i)?.status).toBe('info')
+  })
+
+  // Rule 11, pinned. Raleigh's UDO was first read from the consolidated
+  // print-all-chapters export, which strips the A./B./C. labels off subsection
+  // headings — so counting paragraphs off it invents sub-letters that point at
+  // real provisions saying something else. Four were wrong before the
+  // per-section pages on udo.raleighnc.gov were checked. This test is the
+  // structure that stops them coming back: it names the letters that were
+  // VERIFIED and fails on the ones that were wrong.
+  it('the citations use the verified subsection letters, not the flattened-export guesses', () => {
+    const all = [
+      ...assessHurdles(
+        'raleigh',
+        parcel({ lot: { sizeSqFt: 300000, lotType: null }, overlays: { historicDistrict: 'Oakwood Historic Overlay District', floodZone: null }, existing: { landUse: 'Single Family', yearBuilt: 1912, units: 1 }, zoning: { districtCode: 'RX-3', subdistrict: 'Transit Overlay District', article: null, maxHeightFt: 50, maxFAR: null, allowedUses: null } }),
+        project({ city: 'raleigh', use: 'residential', units: 200, gfa: 250000 }),
+        { path: 'variance' },
+      ),
+    ]
+      .map((h) => h.note)
+      .join('\n')
+
+    // Verified against the per-section pages.
+    for (const cite of [
+      'Sec. 10.2.8.D.1.d', // Approval Process is D, not C
+      'Sec. 10.2.8.D.1.f',
+      'Sec. 10.2.8.F', //   Expiration of a Site Plan is F, not E
+      'Sec. 10.2.15.E.1', // Demolition of Buildings is E, not F
+      'Sec. 10.2.15.E.2',
+      'Sec. 5.5.1.H.3', //  -TOD Height is H, not G
+      'Sec. 5.5.1.I',
+      'Sec. 9.2.2.C.1',
+      'Sec. 9.2.2.B.1.a',
+    ]) {
+      expect(all, `expected the note text to cite ${cite}`).toContain(cite)
+    }
+
+    // The four wrong pointers, and the sub-items on sections whose top level is
+    // NUMBERED rather than lettered — none may reappear.
+    for (const wrong of [
+      'Sec. 10.2.8.C.1',
+      'Sec. 10.2.15.F.',
+      'Sec. 5.5.1.G',
+      'Sec. 5.4.1.G',
+      'Sec. 8.2.1.A',
+      'Sec. 8.9.1.A',
+      'Sec. 8.9.1.B',
+      'Sec. 8.9.1.C',
+      'Sec. 8.11.2.A',
+      'Sec. 9.4.6.B',
+    ]) {
+      expect(all, `${wrong} does not exist as printed — do not cite it`).not.toContain(wrong)
+    }
+  })
+
+  it('the Certificate of Appropriateness copy is Raleigh’s, not the generic fallback', () => {
+    const h = byLabel(
+      ral({}, { overlays: { historicDistrict: 'Oakwood Historic Overlay District', floodZone: null } }),
+      /Historic district design review/,
+    )
+    expect(h?.note).toMatch(/Historic Development Commission/)
+    expect(h?.note).toMatch(/5\.4\.1\.C\.1/)
+    // The 180-day figure at Sec. 10.2.15.D.1 is a CEILING on the Committee, so
+    // it must not have become the published duration for the review.
+    expect(h?.addsMonths).toBe(3)
+  })
+})
+
 // Rules 1 and 2 again, for this batch. Same shape as the two blocks above: no
 // duration the research did not publish, and every size trigger tagged so
 // softenSizeDependent() can fail it closed.
@@ -2384,6 +2599,1402 @@ describe('San Diego / San José / Nashville — no invented durations', () => {
     expect(byLabel(soft('sanjose'), /Inclusionary Housing Ordinance/)?.status).toBe('info')
     expect(byLabel(soft('sanjose'), /Green building certification/)?.status).toBe('info')
     expect(byLabel(soft('nashville'), /Multimodal transportation analysis/)?.status).toBe('info')
+  })
+})
+
+// Raleigh, on its own, because its answer to "what duration does the code
+// publish?" is NOTHING — and that is a finding, not a gap. The UDO states three
+// numbers that read like durations and none of them is one: the 180-day cap on
+// a Certificate of Appropriateness decision (Sec. 10.2.15.D.1), the 60 days a
+// Planning Commission has to recommend, and the 60 days Council has to schedule
+// its hearing (Sec. 10.2.4.E.2.d, .E.3). Each is a ceiling on a body, not an
+// expected elapsed time, and summing two ceilings would publish a number no
+// source states. So every Raleigh addsMonths must trace to a MODULE-level row.
+describe('Raleigh — no invented durations', () => {
+  function expectedMonths(label: string): number | undefined {
+    if (/^Historic district design review$/.test(label)) return 3 // module default; no override
+    if (/^Replacing existing housing$/.test(label)) return 6
+    if (/^Public-funding process/.test(label)) return 4
+    if (/^Coastal Development Permit$/.test(label)) return 9
+    return undefined
+  }
+
+  const scenarios: Array<{ p: Partial<ParcelInfo>; j: Partial<AnalysisInput> }> = [
+    { p: {}, j: { use: 'residential', units: 40, gfa: 60000 } },
+    { p: {}, j: { use: 'commercial', units: 0, gfa: 120000, funding: 'public' } },
+    { p: { lot: { sizeSqFt: 300000, lotType: null } }, j: { use: 'mixed', units: 200, gfa: 250000 } },
+    { p: { existing: { landUse: 'Apartment', units: 12, yearBuilt: 1930 } }, j: { projectType: 'new', use: 'residential', units: 4 } },
+    { p: { overlays: { historicDistrict: 'Oakwood Historic Overlay District', floodZone: 'AE' } }, j: { projectType: 'new', use: 'residential', units: 12 } },
+    { p: { zoning: { districtCode: 'RX-3', subdistrict: 'Transit Overlay District', article: null, maxHeightFt: 50, maxFAR: null, allowedUses: null } }, j: { use: 'residential', units: 60, gfa: 80000 } },
+  ]
+
+  it('every addsMonths traces to a published duration', () => {
+    for (const s of scenarios) {
+      for (const path of ['as_of_right', 'variance'] as const) {
+        const hs = assessHurdles('raleigh', parcel(s.p), project({ city: 'raleigh', ...s.j }), { path })
+        for (const h of hs) {
+          expect(h.addsMonths, `raleigh / ${h.label}`).toBe(expectedMonths(h.label))
+        }
+      }
+    }
+  })
+
+  it('every size-triggered hurdle carries sizeDependent, and no other one does', () => {
+    const hs = assessHurdles(
+      'raleigh',
+      parcel({ lot: { sizeSqFt: 300000, lotType: null }, overlays: { historicDistrict: 'Oakwood Historic Overlay District', floodZone: null } }),
+      project({ city: 'raleigh', use: 'residential', units: 200, gfa: 250000 }),
+    )
+    // Unit- and floor-area triggers, tagged.
+    for (const re of [/Frequent Transit Development Option/, /Post-approval mailed notice/]) {
+      const h = byLabel(hs, re)
+      expect(h, `raleigh expected a hurdle matching ${re}`).toBeTruthy()
+      expect(h?.sizeDependent, `raleigh / ${h?.label}`).toBe(true)
+    }
+    // LOT-area and always-on triggers, untagged. The tree and erosion rows key
+    // on measured lot area, not on a floor area that may be a placeholder, so
+    // softening them against gfaBasis would be softening the wrong input.
+    const untagged = hs.filter((h) =>
+      /No inclusionary requirement|Thoroughfare and open space facility fees|Site plan review is administrative|Third-party appeal window|Infrastructure sufficiency|Tree conservation area|Stormwater control permit|Erosion and sedimentation control plan/.test(h.label),
+    )
+    expect(untagged.length, 'raleigh expected several untagged rows').toBeGreaterThan(4)
+    for (const h of untagged) expect(h.sizeDependent, `raleigh / ${h.label}`).toBeFalsy()
+  })
+
+  it('a placeholder GFA downgrades Raleigh’s size-triggered rows but not its lot-area ones', () => {
+    const soft = assessHurdles(
+      'raleigh',
+      parcel({ lot: { sizeSqFt: 300000, lotType: null } }),
+      project({ city: 'raleigh', use: 'residential', units: 200, gfa: 250000, gfaBasis: 'assumed-far-1.0' }),
+    )
+    // Both Raleigh size-triggered rows are already 'likely', which
+    // softenSizeDependent leaves alone — their own text hedges. What must hold
+    // is that nothing REQUIRED here rests on the placeholder.
+    expect(byLabel(soft, /Frequent Transit Development Option/)?.status).toBe('likely')
+    expect(byLabel(soft, /Post-approval mailed notice/)?.status).toBe('likely')
+    // …and the lot-area rows keep their strength, because lot area was measured.
+    expect(byLabel(soft, /Tree conservation area/)?.status).toBe('required')
+    expect(byLabel(soft, /Stormwater control permit/)?.status).toBe('required')
+  })
+})
+
+// ─── The 2026-08-08 cohort ───────────────────────────────────────────────────
+// ⚠️ THE SCOPE NOTE THAT USED TO STAND HERE — "four cities encoded for PARKING
+// ONLY" — IS RETRACTED, and is left visible rather than overwritten because the
+// same sentence stood in three files at once (see the corrected block above the
+// constants in hurdles.ts, and src/config/cities.ts). All four now carry their
+// non-parking rows as well.
+//
+// The describes below are therefore in two layers. The original per-city blocks
+// pin the parcel-conditional PARKING rows and are unchanged — they remain the
+// record of the first pass. The "beyond parking" / "non-parking" blocks that
+// follow each of them pin the 2026-08-08 encoding of the rest. Underneath both,
+// the shared cohort describe pins the two properties that hold across every city
+// in this module: no invented duration, and every size-triggered row tagged.
+
+const zone = (districtCode: string, over: Partial<ParcelInfo['zoning']> = {}): Partial<ParcelInfo> => ({
+  zoning: { districtCode, subdistrict: null, article: null, maxHeightFt: 60, maxFAR: null, allowedUses: null, ...over },
+})
+
+describe('assessHurdles — Milwaukee', () => {
+  const mke = (over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('milwaukee', parcel({ ...zone('RM6'), ...p }), project({ city: 'milwaukee', ...over }))
+
+  it('resolves a plausible project and states the district ratio', () => {
+    const hs = mke({ use: 'residential', units: 40, gfa: 52000 })
+    expect(hs.length).toBeGreaterThan(4)
+    const min = byLabel(hs, /Off-street parking minimum/)
+    expect(min?.status).toBe('required')
+    expect(min?.label).toMatch(/2 spaces per 3 dwelling units/)
+    expect(min?.note).toMatch(/295-403-2-a/)
+    // The other dwelling-type rows must travel with it — a reader on the
+    // multi-family row needs to know the others carry no minimum at all.
+    expect(min?.note).toMatch(/no min\.; max\. of 4 spaces/)
+    // The citywide rule is carried separately by PARKING_RULES and still fires.
+    expect(hs.filter((h) => h.category === 'parking').length).toBeGreaterThan(2)
+  })
+
+  it('reads the 1:1 and 2:3 columns of Table 295-403-2-a off the district', () => {
+    for (const [code, ratio] of [['RM2', /1 space per dwelling unit/], ['RB1', /1 space per dwelling unit/], ['RM7', /2 spaces per 3/], ['CS', /2 spaces per 3/]] as const) {
+      const h = byLabel(mke({ use: 'residential', units: 20 }, zone(code)), /Off-street parking minimum/)
+      expect(h?.label, code).toMatch(ratio)
+    }
+  })
+
+  // THE HEADLINE MILWAUKEE FINDING, and the one a paraphrase destroys: downtown
+  // is exempt EXCEPT C9A, and C9A is the high-density residential district. A
+  // branch that matched /^C9/ and stopped would publish "no parking required"
+  // for exactly the downtown district that builds apartments.
+  it('C9A keeps its minimum while every other downtown district loses it', () => {
+    for (const code of ['C9A(A)', 'C9A(B)']) {
+      const hs = mke({ use: 'residential', units: 60 }, zone(code))
+      expect(byLabel(hs, /Off-street parking minimum/)?.label, code).toMatch(/2 spaces per 3/)
+      expect(byLabel(hs, /No off-street parking required in this district/), code).toBeUndefined()
+    }
+    for (const code of ['C9B(A)', 'C9C', 'C9F(C)', 'C9H']) {
+      const hs = mke({ use: 'residential', units: 60 }, zone(code))
+      const none = byLabel(hs, /No off-street parking required in this district/)
+      expect(none?.status, code).toBe('info')
+      expect(none?.note, code).toMatch(/Except for within the C9A district/)
+      expect(byLabel(hs, /Off-street parking minimum/), code).toBeUndefined()
+    }
+  })
+
+  it('the RED redevelopment district is the second exempting limb', () => {
+    const none = byLabel(mke({ use: 'residential', units: 30 }, zone('RED')), /No off-street parking required/)
+    expect(none?.status).toBe('info')
+    expect(none?.note).toMatch(/RED redevelopment district/)
+  })
+
+  // The minimum is written per dwelling-type ROW, so the strength of the claim
+  // has to track the program. A duplex is on a row that reads "no min.".
+  it('the status tracks the dwelling-type row, not the district alone', () => {
+    expect(byLabel(mke({ use: 'residential', units: 12 }), /Off-street parking minimum/)?.status).toBe('required')
+    expect(byLabel(mke({ use: 'residential', units: 2 }), /Off-street parking minimum/)?.status).toBe('info')
+    // Unknown count → never a hard requirement.
+    expect(byLabel(mke({ use: 'residential', units: 0 }), /Off-street parking minimum/)?.status).toBe('likely')
+  })
+
+  // Disjunctive, and the second limb is the broad one. A note that quoted only
+  // the boundary limb would understate this by most of the city.
+  it('quotes all three limbs of the 25% reduction, and only where a minimum exists', () => {
+    const red = byLabel(mke({ use: 'residential', units: 40 }), /25% parking reduction/)
+    expect(red?.status).toBe('likely')
+    expect(red?.note).toMatch(/one or more of the following criteria/)
+    expect(red?.note).toMatch(/Capitol Drive/)
+    expect(red?.note).toMatch(/within 1,000 feet of any regularly scheduled bus stop/)
+    expect(red?.note).toMatch(/1,320 feet/)
+    // No minimum in a downtown district ⇒ nothing to reduce ⇒ no row.
+    expect(byLabel(mke({ use: 'residential', units: 40 }, zone('C9C')), /25% parking reduction/)).toBeUndefined()
+  })
+})
+
+// ─── Milwaukee beyond parking ────────────────────────────────────────────────
+// The parking block above stays as the record of the first pass. These pin the
+// 2026-08-08 encoding of chs. 119, 120, 200, 218, 290, 295, 355 and Wis. Stat.
+// § 66.1015.
+describe('assessHurdles — Milwaukee, beyond parking', () => {
+  const mke2 = (over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('milwaukee', parcel({ ...zone('RM6'), ...p }), project({ city: 'milwaukee', ...over }))
+
+  // THE HEADLINE. An absence somebody established, rendered as an answer —
+  // and it must never soften into "confirm whether an inclusionary rule
+  // applies", because the statute names the thing and forbids it.
+  it('states the Wisconsin inclusionary-zoning ban as an ANSWER, for residential only', () => {
+    const h = byLabel(mke2({ use: 'residential', units: 40, gfa: 52000 }), /State law bars inclusionary zoning/)
+    expect(h?.status).toBe('info')
+    expect(h?.category).toBe('affordability')
+    expect(h?.note).toMatch(/66\.1015\(3\)\(b\)/)
+    expect(h?.note).toMatch(/No city, village, town, or county may enact, impose, or enforce/)
+    // The rezoning-conditioned workaround Nashville allows is closed here, and
+    // the case that closed it must travel with the row.
+    expect(h?.note).toMatch(/Apartment Ass’n of South Central Wisconsin/)
+    expect(h?.addsMonths).toBeUndefined()
+    // A commercial project has no affordability question to answer.
+    expect(byLabel(mke2({ use: 'commercial', units: 0, gfa: 60000 }), /State law bars inclusionary zoning/)).toBeUndefined()
+  })
+
+  it('always says permits are administrative — and names all four doors discretion enters through', () => {
+    const h = byLabel(mke2({ use: 'residential', units: 12 }), /permits are administrative/)
+    expect(h?.status).toBe('info')
+    expect(h?.note).toMatch(/295-301/)
+    // The caveat is the row. Without it the claim is true of the base case and
+    // false of any parcel carrying an overlay or a designation.
+    for (const door of [/Site Plan Review/, /Development Incentive/, /Neighborhood Conservation/, /historic designation/, /special use/, /rezoning/]) {
+      expect(h?.note, String(door)).toMatch(door)
+    }
+  })
+
+  // ⚠️ CROSS-MODULE STRING COUPLING. These three phrases are written into
+  // `zoning.article` by `buildArticle` in providers/milwaukee.ts and are matched
+  // here; neither overlay is on `parcel.overlays`. The provider end is pinned by
+  // providers/milwaukee.test.ts ("a Site Plan Review overlay and an NC overlay
+  // are disclosed too"). Change the phrasing in either file and one of the two
+  // suites fails — which is the point, because a silent drift here renders as
+  // "no overlay", the shape ledger rule 9 warns about.
+  const SPROZ_ARTICLE =
+    'Multi-family residential. Site Plan Review overlay zone (Messmer High School): under Milwaukee Code s. 295-1009-3-a the zone’s design standards may set building height and bulk and "shall supercede the standards of the underlying district".'
+  const DIZ_ARTICLE =
+    'Multi-family residential. Development Incentive Zone (30th Street Industrial Corridor): under Milwaukee Code s. 295-1007-3-a the zone’s performance standards may set building height and bulk and "shall supercede the standards of the underlying district".'
+  const NC_ARTICLE =
+    'Multi-family residential. Neighborhood Conservation overlay zone (Brewers Hill / Harambee): an adopted neighborhood conservation plan and guidelines apply (Milwaukee Code s. 295-1003).'
+
+  it('Site Plan Review overlay fires off the phrase the provider writes into zoning.article', () => {
+    const on = byLabel(
+      mke2({ use: 'residential', units: 40 }, zone('RM6', { article: SPROZ_ARTICLE })),
+      /Site Plan Review overlay/,
+    )
+    expect(on?.status).toBe('required')
+    expect(on?.note).toMatch(/295-1009-2-d/)
+    // It must also warn that the base district's height and bulk may not govern.
+    expect(on?.note).toMatch(/supercede the standards of the underlying district/)
+    // No article, no row — a miss is a false negative and never an assertion.
+    expect(byLabel(mke2({ use: 'residential', units: 40 }), /Site Plan Review overlay/)).toBeUndefined()
+  })
+
+  it('DIZ fires — but honours the single-family / 2-family exemption on the face of the same sentence', () => {
+    const big = byLabel(mke2({ use: 'residential', units: 40 }, zone('RM6', { article: DIZ_ARTICLE })), /Development Incentive Zone/)
+    expect(big?.status).toBe('required')
+    expect(big?.note).toMatch(/295-1007-2-e/)
+    expect(big?.note).toMatch(/single-family or 2-family dwellings shall be exempt/)
+    // The exemption is part of the condition, not a caveat in prose: a duplex
+    // must not be told a permit is being held.
+    for (const u of [1, 2]) {
+      expect(
+        byLabel(mke2({ use: 'residential', units: u }, zone('RM6', { article: DIZ_ARTICLE })), /Development Incentive Zone/),
+        `residential ${u} units`,
+      ).toBeUndefined()
+    }
+    // …but the exemption names DWELLINGS, so a two-unit MIXED program is still in.
+    expect(byLabel(mke2({ use: 'mixed', units: 2 }, zone('RM6', { article: DIZ_ARTICLE })), /Development Incentive Zone/)).toBeTruthy()
+    // The exemption limb is a unit count, so a placeholder unit count must not
+    // leave a hard requirement standing.
+    expect(big?.sizeDependent).toBe(true)
+    const soft = byLabel(
+      assessHurdles(
+        'milwaukee',
+        parcel(zone('RM6', { article: DIZ_ARTICLE })),
+        project({ city: 'milwaukee', use: 'residential', units: 40, gfa: 60000, gfaBasis: 'assumed-far-1.0' }),
+      ),
+      /Development Incentive Zone/,
+    )
+    expect(soft?.status).toBe('info')
+  })
+
+  it('NC overlay is “likely”, because the binding content is in a plan we do not hold', () => {
+    const h = byLabel(mke2({ use: 'residential', units: 40 }, zone('RM6', { article: NC_ARTICLE })), /Neighborhood Conservation overlay/)
+    expect(h?.status).toBe('likely')
+    expect(h?.note).toMatch(/295-1003-1/)
+    expect(h?.note).toMatch(/modifications to base district standards/)
+  })
+
+  it('states the Architectural Review Board districts without asserting them for a parcel', () => {
+    const h = byLabel(mke2({}), /Architectural Review Board districts/)
+    // Defined by Common Council resolution, not by any layer we fetch — so this
+    // can only ever be 'info', and the row must say we hold no boundary.
+    expect(h?.status).toBe('info')
+    expect(h?.note).toMatch(/200-61-5/)
+    expect(h?.note).toMatch(/HOLDS NO BOUNDARY/i)
+    // …and that it is a carve-OUT of the historic ordinance, not an addition to it.
+    expect(h?.note).toMatch(/320-21-2-a/)
+  })
+
+  it('historic demolition: the 8-month deferral is quoted and NOT scheduled', () => {
+    const hs = assessHurdles(
+      'milwaukee',
+      parcel({ ...zone('RM6'), overlays: { historicDistrict: 'Brewers Hill Historic District', floodZone: null }, existing: { landUse: 'Single family', units: 1, yearBuilt: 1890 } }),
+      project({ city: 'milwaukee', projectType: 'new', use: 'residential', units: 12 }),
+    )
+    const h = byLabel(hs, /Historic demolition/)
+    expect(h?.status).toBe('required')
+    expect(h?.note).toMatch(/for up to 8 months/)
+    expect(h?.note).toMatch(/320-21-11-f-1/)
+    // A deferral ceiling is not a schedule. This is the assertion that keeps it
+    // out of the timeline.
+    expect(h?.addsMonths).toBeUndefined()
+    // The financing condition and the digital-twin documentation both bite on
+    // schedule and cost, so they must survive any future trim of the note.
+    expect(h?.note).toMatch(/all debt and equity financing/)
+    expect(h?.note).toMatch(/permanent digital twin/)
+    // No teardown, no row.
+    expect(
+      byLabel(
+        assessHurdles(
+          'milwaukee',
+          parcel({ ...zone('RM6'), overlays: { historicDistrict: 'Brewers Hill Historic District', floodZone: null } }),
+          project({ city: 'milwaukee', projectType: 'addition', use: 'residential', units: 12 }),
+        ),
+        /Historic demolition/,
+      ),
+    ).toBeUndefined()
+  })
+
+  it('the historic row itself takes the module default of 3 months — no Milwaukee override', () => {
+    // Every Milwaukee figure in ch. 320 subch. 21 is a shot clock or a deferral
+    // ceiling, so HISTORIC_MONTHS deliberately has no milwaukee entry.
+    const h = byLabel(
+      assessHurdles(
+        'milwaukee',
+        parcel({ ...zone('RM6'), overlays: { historicDistrict: 'Brewers Hill Historic District', floodZone: null } }),
+        project({ city: 'milwaukee', use: 'residential', units: 12 }),
+      ),
+      /^Historic district design review$/,
+    )
+    expect(h?.addsMonths).toBe(3)
+    expect(h?.note).toMatch(/320-21-11-a/)
+    expect(h?.note).toMatch(/certificate of appropriateness/i)
+  })
+
+  describe('deconstruction (s. 218-10)', () => {
+    const demo = (existing: NonNullable<ParcelInfo['existing']>, historic: string | null = null) =>
+      assessHurdles(
+        'milwaukee',
+        parcel({ ...zone('RM6'), existing, overlays: { historicDistrict: historic, floodZone: null } }),
+        project({ city: 'milwaukee', projectType: 'new', use: 'residential', units: 8, gfa: 10000 }),
+      )
+
+    it('is REQUIRED where the year limb holds — pre-1930 and 1–4 units', () => {
+      const h = byLabel(demo({ landUse: 'Duplex', units: 2, yearBuilt: 1912 }), /Deconstruction required/)
+      expect(h?.status).toBe('required')
+      expect(h?.note).toMatch(/built in 1929 or earlier/)
+      expect(h?.note).toMatch(/85% landfill diversion rate/)
+      expect(h?.note).toMatch(/certified deconstruction contractor/)
+      // The trigger is the EXISTING building's occupancy and year, not the
+      // project's floor area, so the tag that softens placeholder-size claims
+      // must NOT be set (same reasoning as Raleigh's lot-area tree row).
+      expect(h?.sizeDependent).toBeFalsy()
+      expect(h?.addsMonths).toBeUndefined()
+    })
+
+    it('is only LIKELY where it fires on the historic-district limb alone', () => {
+      const h = byLabel(demo({ landUse: 'Single family', units: 1, yearBuilt: 1975 }, 'Brewers Hill Historic District'), /Deconstruction required/)
+      expect(h?.status).toBe('likely')
+    })
+
+    it('does not fire above 4 units, below 1, or on a modern non-historic house', () => {
+      // "Primary dwelling structure" is 1–4 units by definition (s. 218-10-2-c).
+      expect(byLabel(demo({ landUse: 'Apartment', units: 12, yearBuilt: 1905 }), /Deconstruction required/)).toBeUndefined()
+      // An unknown unit count could be a 40-unit block — a false negative, and
+      // never a false positive.
+      expect(byLabel(demo({ landUse: 'Apartment', buildingAreaSqFt: 9000, yearBuilt: 1905 }), /Deconstruction required/)).toBeUndefined()
+      expect(byLabel(demo({ landUse: 'Single family', units: 1, yearBuilt: 1996 }), /Deconstruction required/)).toBeUndefined()
+    })
+  })
+
+  it('stormwater uses lot area as a labelled PROXY, above half an acre only', () => {
+    const big = byLabel(
+      assessHurdles('milwaukee', parcel({ ...zone('RM6'), lot: { sizeSqFt: 30000, lotType: null } }), project({ city: 'milwaukee', projectType: 'new', use: 'residential', units: 30 })),
+      /Stormwater management plan/,
+    )
+    expect(big?.status).toBe('likely')
+    expect(big?.note).toMatch(/120-7-2/)
+    // The proxy must be disclosed as one — the live limbs are disturbed area
+    // and impervious increase, neither of which we hold.
+    expect(big?.note).toMatch(/lot area is only a proxy/i)
+    expect(
+      byLabel(
+        assessHurdles('milwaukee', parcel({ ...zone('RM6'), lot: { sizeSqFt: 6000, lotType: null } }), project({ city: 'milwaukee', projectType: 'new', use: 'residential', units: 2 })),
+        /Stormwater management plan/,
+      ),
+    ).toBeUndefined()
+  })
+
+  it('erosion control and landscaping fire on new construction only', () => {
+    const nw = mke2({ projectType: 'new', use: 'residential', units: 12 })
+    expect(byLabel(nw, /Erosion control plan/)?.status).toBe('likely')
+    expect(byLabel(nw, /Erosion control plan/)?.note).toMatch(/4,000 square feet or more/)
+    const land = byLabel(nw, /Landscaping and canopy trees/)
+    expect(land?.status).toBe('required')
+    expect(land?.note).toMatch(/295-405-1-b-1/)
+    expect(land?.note).toMatch(/every 4 parking spaces or fraction thereof/)
+    // The second finding in that row is an ABSENCE somebody looked for, and the
+    // scope of the look is part of the claim.
+    expect(land?.note).toMatch(/no tree-preservation ordinance/i)
+    expect(land?.note).toMatch(/Scope of that absence check/)
+
+    const add = mke2({ projectType: 'addition', use: 'residential', units: 12 })
+    expect(byLabel(add, /Erosion control plan/)).toBeUndefined()
+    expect(byLabel(add, /Landscaping and canopy trees/)).toBeUndefined()
+  })
+
+  it('records the impact-fee absence with the scope of the check, and the subdivision exaction that IS there', () => {
+    const h = byLabel(mke2({}), /No development impact fees/)
+    expect(h?.status).toBe('info')
+    expect(h?.note).toMatch(/119-12-1/)
+    expect(h?.note).toMatch(/at the subdivider’s own expense/)
+    // An absence is only an answer once someone has looked, and the note must
+    // say how far the looking went.
+    expect(h?.note).toMatch(/Scope of this absence check/)
+  })
+
+  it('rezoning and special use are discretionary-only, and neither invents a clock', () => {
+    const aor = mke2({ use: 'residential', units: 40 })
+    expect(byLabel(aor, /Rezoning or planned development/)).toBeUndefined()
+    expect(byLabel(aor, /Special use permit/)).toBeUndefined()
+
+    const hs = assessHurdles('milwaukee', parcel(zone('RM6')), project({ city: 'milwaukee', use: 'residential', units: 40 }), { path: 'variance' })
+    const rez = byLabel(hs, /Rezoning or planned development/)
+    expect(rez?.status).toBe('likely')
+    expect(rez?.note).toMatch(/295-307-3/)
+    // The protest-petition supersession is the applicant-favourable half and is
+    // easy to lose in a trim; it is the difference between a neighbour veto and
+    // a simple majority.
+    expect(rez?.note).toMatch(/66\.10015\(3\)\(a\)/)
+    expect(rez?.addsMonths).toBeUndefined()
+
+    const su = byLabel(hs, /Special use permit/)
+    expect(su?.status).toBe('likely')
+    expect(su?.note).toMatch(/295-311-2-c/)
+    expect(su?.note).toMatch(/30 days have elapsed/)
+    // A 30-day agency comment WINDOW is not a scheduled delay.
+    expect(su?.addsMonths).toBeUndefined()
+  })
+
+  it('the $1M city-assistance strings fire only on public funding, and stay “likely”', () => {
+    expect(byLabel(mke2({ funding: 'private', use: 'residential', units: 40, gfa: 60000 }), /Community-participation requirements/)).toBeUndefined()
+    const h = byLabel(mke2({ funding: 'public', use: 'residential', units: 40, gfa: 60000 }), /Community-participation requirements/)
+    // We do not hold the assistance amount, which IS the threshold limb — so
+    // this can never be 'required' off `funding === 'public'` alone.
+    expect(h?.status).toBe('likely')
+    expect(h?.note).toMatch(/\$1 million or more/)
+    expect(h?.note).toMatch(/355-1-2/)
+    expect(h?.note).toMatch(/presumed to be 40%/)
+    expect(h?.addsMonths).toBeUndefined()
+  })
+
+  it('no row in the Milwaukee branch publishes a duration', () => {
+    // Milwaukee's code is full of numbers — 10 days, 15 days, 30 days, 45 days,
+    // 5 weeks, 8 months — and every one is a shot clock on the city or a
+    // deferral ceiling. The only addsMonths a Milwaukee analysis may carry come
+    // from the module's shared rows.
+    // Deliberately UNANCHORED on the right: the shared public-funding row's
+    // label carries a parenthetical suffix, and an anchored alternative would
+    // silently fail to match it and then fail on its legitimate 4 months.
+    const shared = /^(Historic district design review$|Replacing existing housing$|Public-funding process|Coastal Development Permit$|Demolition of the existing building$)/
+    const scenarios: Array<{ p: Partial<ParcelInfo>; j: Partial<AnalysisInput> }> = [
+      { p: zone('RM6', { article: SPROZ_ARTICLE }), j: { use: 'residential', units: 40, gfa: 60000 } },
+      { p: zone('RM6', { article: DIZ_ARTICLE }), j: { use: 'mixed', units: 2, gfa: 9000, funding: 'public' } },
+      { p: zone('RM6', { article: NC_ARTICLE }), j: { use: 'commercial', units: 0, gfa: 120000 } },
+      {
+        p: { ...zone('RT4'), lot: { sizeSqFt: 40000, lotType: null }, overlays: { historicDistrict: 'Brewers Hill Historic District', floodZone: null }, existing: { landUse: 'Duplex', units: 2, yearBuilt: 1901 } },
+        j: { projectType: 'new', use: 'residential', units: 24 },
+      },
+    ]
+    for (const s of scenarios) {
+      for (const path of ['as_of_right', 'variance'] as const) {
+        for (const h of assessHurdles('milwaukee', parcel(s.p), project({ city: 'milwaukee', ...s.j }), { path })) {
+          if (shared.test(h.label)) continue
+          expect(h.addsMonths, `milwaukee / ${h.label}`).toBeUndefined()
+        }
+      }
+    }
+  })
+
+  it('a fully loaded Milwaukee parcel produces the whole set', () => {
+    const hs = assessHurdles(
+      'milwaukee',
+      parcel({
+        ...zone('RM6', { article: `${SPROZ_ARTICLE} ${DIZ_ARTICLE} ${NC_ARTICLE}` }),
+        lot: { sizeSqFt: 40000, lotType: null },
+        overlays: { historicDistrict: 'Brewers Hill Historic District', floodZone: 'AE' },
+        existing: { landUse: 'Duplex', units: 2, yearBuilt: 1901 },
+      }),
+      project({ city: 'milwaukee', projectType: 'new', use: 'residential', units: 24, gfa: 30000, funding: 'public' }),
+      { path: 'variance' },
+    )
+    // All three overlays are read off ONE article string — this is why the gate
+    // is on `article` and not on `subdistrict`, which carries at most one.
+    for (const re of [/Site Plan Review overlay/, /Development Incentive Zone/, /Neighborhood Conservation overlay/]) {
+      expect(byLabel(hs, re), String(re)).toBeTruthy()
+    }
+    for (const re of [/Deconstruction required/, /Historic demolition/, /Stormwater management plan/, /Erosion control plan/, /Landscaping and canopy trees/, /No development impact fees/, /Rezoning or planned development/, /Special use permit/, /Community-participation requirements/, /State law bars inclusionary zoning/]) {
+      expect(byLabel(hs, re), String(re)).toBeTruthy()
+    }
+    expect(cats(hs)).toContain('affordability')
+    expect(cats(hs)).toContain('demolition')
+    expect(cats(hs)).toContain('environmental')
+    expect(cats(hs)).toContain('fees')
+    expect(cats(hs)).toContain('labor')
+  })
+})
+
+describe('assessHurdles — Columbus', () => {
+  const col = (over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('columbus', parcel({ ...zone('R3'), ...p }), project({ city: 'columbus', ...over }))
+
+  it('resolves a plausible project and carries both codes’ answers', () => {
+    const hs = col({ use: 'residential', units: 40, gfa: 52000 })
+    expect(hs.length).toBeGreaterThan(4)
+    const dep = byLabel(hs, /depends on which of Columbus/)
+    expect(dep?.note).toMatch(/E\.20\.030\.E\.1/)
+    expect(dep?.note).toMatch(/3312\.49 Table 2/)
+    expect(dep?.note).toMatch(/1\.5 per unit/)
+  })
+
+  // ⚠️ THE LOAD-BEARING ONE. Which code governs is a joint dependency decided by
+  // the layer's category field, which ParcelInfo does not carry. This row must
+  // therefore never harden into 'required', and it must say why — including the
+  // UCRPD/LUCRPD trap that makes the district string an unsafe substitute.
+  it('never asserts a Columbus minimum as required, in any district or size', () => {
+    for (const code of ['R3', 'R4', 'UCR', 'UCRPD', 'LUCRPD', 'C4', 'Unknown']) {
+      for (const units of [0, 2, 40, 300]) {
+        const dep = byLabel(col({ use: 'residential', units }, zone(code)), /depends on which of Columbus/)
+        expect(dep?.status, `${code} @ ${units}`).toBe('likely')
+      }
+    }
+    expect(byLabel(col({ use: 'residential', units: 40 }), /depends on which of Columbus/)?.note).toMatch(/UCRPD and LUCRPD/)
+  })
+
+  it('the Downtown District answers instead of deferring', () => {
+    const hs = col({ use: 'residential', units: 40 }, zone('DD'))
+    const dd = byLabel(hs, /Downtown District/)
+    expect(dd?.status).toBe('info')
+    expect(dd?.note).toMatch(/There are no requirements for off-street parking within the downtown district/)
+    expect(dd?.note).toMatch(/3359\.27/)
+    // …and the two-code row must not also fire, or the page says both.
+    expect(byLabel(hs, /depends on which of Columbus/)).toBeUndefined()
+  })
+
+  it('states the Special Parking Areas, including the clause that closes the variance route', () => {
+    const spa = byLabel(col({ use: 'residential', units: 40 }), /Special Parking Areas/)
+    expect(spa?.status).toBe('info')
+    expect(spa?.note).toMatch(/no further reduction or variance/)
+    expect(spa?.note).toMatch(/is thereby excluded/)
+  })
+
+  // ── The Title 33 / Title 34 discriminator ─────────────────────────────────
+  // MEASURED as a biconditional against GENERAL_ZONING_CATEGORY across all
+  // 18,804 polygons (2026-08-08). It is an EXACT-SET test and must stay one:
+  // UCRPD and LUCRPD are Title 33 research-park districts that a prefix match
+  // would sweep into Title 34 and hand a "no minimum, Chapter 4310 instead"
+  // answer they do not have.
+  it('the Title 34 set is exact — UCRPD and LUCRPD are NOT Title 34', () => {
+    for (const code of ['UGN-1', 'UGN-2', 'UCT', 'UCR', 'UCR-R', 'CAC', 'RAC']) {
+      const hs = col({ use: 'residential', units: 40 }, zone(code))
+      expect(byLabel(hs, /Parking Impact Study/), code).toBeTruthy()
+      // Title 33-only rows must be absent on a Title 34 parcel.
+      expect(byLabel(hs, /On-lot tree requirement/), code).toBeUndefined()
+    }
+    for (const code of ['UCRPD', 'LUCRPD', 'R3', 'C4', 'Unknown']) {
+      const hs = col({ use: 'residential', units: 40 }, zone(code))
+      expect(byLabel(hs, /Parking Impact Study/), code).toBeUndefined()
+      expect(byLabel(hs, /On-lot tree requirement/), code).toBeTruthy()
+    }
+    // Case and whitespace are normalised, so a lower-cased feed still resolves.
+    expect(byLabel(col({ use: 'residential', units: 40 }, zone(' ucr-r ')), /Parking Impact Study/)).toBeTruthy()
+  })
+
+  // ── Affordability: the absence, and the sentence it must not contain ──────
+  it('the inclusionary absence is a rule Columbus has not adopted, not one Ohio forbids', () => {
+    const a = byLabel(col({ use: 'residential', units: 40 }), /No inclusionary requirement/)
+    expect(a?.status).toBe('info')
+    expect(a?.note).toMatch(/4565\.01/)
+    expect(a?.note).toMatch(/Participation in the Height Bonus Program is voluntary/)
+    // Rule 8: say which check was run. Chapter 713 was read; the rest was not.
+    expect(a?.note).toMatch(/Chapter 713/)
+    expect(a?.note).toMatch(/the rest of the Revised Code was not searched/)
+    // Nashville's sentence, which Columbus has not earned.
+    expect(a?.note).not.toMatch(/Ohio law (prohibits|bars|forbids)|State law bars|prohibits any local government/i)
+    // A commercial project has no affordability row at all.
+    expect(byLabel(col({ use: 'commercial', units: 40 }), /No inclusionary requirement/)).toBeUndefined()
+  })
+
+  // ── Affordability: the CRA set-aside, conjunctive three ways ──────────────
+  it('the CRA set-aside fires at 4 units, never as required, and names both unheld limbs', () => {
+    expect(byLabel(col({ use: 'residential', units: 3 }), /CRA tax abatement/)).toBeUndefined()
+    const c = byLabel(col({ use: 'residential', units: 4 }), /CRA tax abatement/)
+    expect(c?.status).toBe('likely')
+    expect(c?.sizeDependent).toBe(true)
+    expect(c?.note).toMatch(/four \(4\) or more Housing Units within post-1994 CRAs/)
+    // Limb (a): the chapter is opt-in. Limb (c): the CRA boundary/designation.
+    expect(c?.note).toMatch(/opt-in/)
+    expect(c?.note).toMatch(/not in this parcel record/)
+    // The Market Ready terms must not be published as the citywide answer.
+    expect(c?.note).toMatch(/4565\.08 and 4565\.09/)
+    expect(c?.note).toMatch(/do not price the Market Ready figures as the citywide answer/)
+    // The anti-gaming clause.
+    expect(c?.note).toMatch(/shall not be artificially divided/)
+    // Residential-only: a commercial project at the same count fires nothing.
+    expect(byLabel(col({ use: 'commercial', units: 400 }), /CRA tax abatement/)).toBeUndefined()
+  })
+
+  // ── The process Title 34 substitutes for the minimum it abolished ─────────
+  it('the Parking Impact Study quotes both applicability limbs and stays likely', () => {
+    const p = byLabel(col({ use: 'residential', units: 40 }, zone('UCT')), /Parking Impact Study/)
+    expect(p?.status).toBe('likely')
+    expect(p?.note).toMatch(/4310\.02/)
+    expect(p?.note).toMatch(/no minimum vehicular parking requirement/)
+    // Limb (B) is a variance to the PARKING minimum, not any variance.
+    expect(p?.note).toMatch(/request for variance to the minimum parking requirements/)
+    expect(p?.note).toMatch(/not to zoning generally/)
+    // The Director's determination is why this is not 'required'.
+    expect(p?.note).toMatch(/The Director must determine when a Parking Impact Study is required/)
+    // No rate is asserted — the figures are in the Director's rules.
+    expect(p?.note).toMatch(/actual costs incurred by the City/)
+    expect(p?.note).not.toMatch(/\$\d/)
+  })
+
+  // ── Parkland dedication: rezoning AND over one acre AND Title 33 ──────────
+  it('parkland dedication needs all three limbs, and is not sizeDependent', () => {
+    const big = { lot: { sizeSqFt: 100000, lotType: null } } // ~2.3 acres
+    const small = { lot: { sizeSqFt: 40000, lotType: null } } // under an acre
+    const j = { use: 'residential' as const, units: 60 }
+    const fire = (p: Partial<ParcelInfo>, path: 'as_of_right' | 'variance') =>
+      byLabel(
+        assessHurdles('columbus', parcel({ ...zone('R3'), ...p }), project({ city: 'columbus', ...j }), { path }),
+        /Parkland dedication/,
+      )
+    const h = fire({ ...zone('R3'), ...big }, 'variance')
+    expect(h?.status).toBe('likely')
+    expect(h?.sizeDependent).toBeFalsy() // lot area, not floor area
+    expect(h?.note).toMatch(/rezoning of land in excess of one acre/)
+    expect(h?.note).toMatch(/\$400\.00 per acre/)
+    expect(h?.note).toMatch(/3304\.04\(B\)/)
+    // Each limb removed in turn kills the row.
+    expect(fire({ ...zone('R3'), ...big }, 'as_of_right')).toBeUndefined() // no rezoning
+    expect(fire({ ...zone('R3'), ...small }, 'variance')).toBeUndefined() // under an acre
+    expect(fire({ ...zone('UCT'), ...big }, 'variance')).toBeUndefined() // Title 34
+  })
+
+  // ── Area commission: advisory, but it can postpone you ────────────────────
+  it('the area commission row carries BOTH sides and fires on a rezoning or a demolition', () => {
+    const a = byLabel(
+      assessHurdles('columbus', parcel(zone('R3')), project({ city: 'columbus', use: 'residential', units: 40 }), { path: 'variance' }),
+      /Area commission review/,
+    )
+    expect(a?.status).toBe('likely')
+    expect(a?.note).toMatch(/shall be advisory only/)
+    expect(a?.note).toMatch(/may be grounds for postponement/)
+    expect(a?.addsMonths).toBeUndefined()
+    // The demolition-permit limb, on the as-of-right path.
+    const t = byLabel(
+      col({ projectType: 'new', use: 'residential', units: 40 }, { existing: { landUse: 'Single Family', numBuildings: 1 } }),
+      /Area commission review/,
+    )
+    expect(t?.status).toBe('likely')
+    // Neither limb: a by-right build on a vacant lot gets no row.
+    expect(byLabel(col({ use: 'residential', units: 40 }), /Area commission review/)).toBeUndefined()
+  })
+
+  // ── Design review: gated on held data, and the miss direction is safe ─────
+  it('the design-review districts are matched, and DD gets the envelope sentence', () => {
+    for (const code of ['DD', 'EFD']) {
+      const d = byLabel(col({ use: 'residential', units: 40 }, zone(code)), /Design review district/)
+      expect(d?.status, code).toBe('required')
+      expect(d?.note, code).toMatch(/Any activity requiring a certificate of zoning clearance/)
+      expect(d?.note, code).toMatch(/exclusively interior to a building does not require/)
+      expect(d?.addsMonths, code).toBeUndefined() // 30 days is an appeal window
+    }
+    // The DD chapter states no height and no FAR, so design review IS the envelope.
+    expect(byLabel(col({ use: 'residential', units: 40 }, zone('DD')), /Design review district/)?.note).toMatch(/what actually decides how big the building is/)
+    expect(byLabel(col({ use: 'residential', units: 40 }, zone('EFD')), /Design review district/)?.note).not.toMatch(/what actually decides how big the building is/)
+    // The subdistrict label is the third route in (University Impact District).
+    expect(
+      byLabel(col({ use: 'residential', units: 40 }, zone('C4', { subdistrict: 'University Impact District Review Board' })), /Design review district/),
+    ).toBeTruthy()
+    expect(byLabel(col({ use: 'residential', units: 40 }, zone('R3')), /Design review district/)).toBeUndefined()
+  })
+
+  // ── Demolition: an OVERLAY power, never a citywide screen ─────────────────
+  it('the demolition certificate fires only on a mapped condition, not on every teardown', () => {
+    const ex = { existing: { landUse: 'Single Family', numBuildings: 1, yearBuilt: 1910 } }
+    const j = { projectType: 'new' as const, use: 'residential' as const, units: 20 }
+    // Plain old building on an ordinary parcel: NO certificate row. Columbus has
+    // no citywide age or National-Register demolition trigger.
+    expect(byLabel(col(j, { ...zone('R3'), ...ex }), /Certificate of appropriateness before a demolition permit/)).toBeUndefined()
+    for (const p of [
+      { ...zone('DD'), ...ex },
+      { ...zone('EFD'), ...ex },
+      { ...zone('R3'), ...ex, overlays: { historicDistrict: 'German Village Historic District', floodZone: null } },
+    ]) {
+      const d = byLabel(col(j, p), /Certificate of appropriateness before a demolition permit/)
+      expect(d?.status, JSON.stringify(p.zoning?.districtCode)).toBe('required')
+      expect(d?.note).toMatch(/4113\.79\(B\)/)
+      expect(d?.note).toMatch(/definite plans for reuse of the site/)
+      expect(d?.note).toMatch(/commence within 14 calendar days/)
+      expect(d?.note).toMatch(/overlay power, not a citywide screen/)
+      expect(d?.addsMonths).toBeUndefined()
+    }
+    // No teardown, no row — a vacant DD lot demolishes nothing.
+    expect(byLabel(col(j, zone('DD')), /Certificate of appropriateness before a demolition permit/)).toBeUndefined()
+  })
+
+  // ── Pedestrian infrastructure: 50 is a RESIDENTIAL unit threshold ─────────
+  it('off-site pedestrian infrastructure exceeds 50 units, and 50 is a dwelling-unit count', () => {
+    expect(byLabel(col({ use: 'residential', units: 50 }), /Off-site pedestrian infrastructure/)).toBeUndefined()
+    const h = byLabel(col({ use: 'residential', units: 51 }), /Off-site pedestrian infrastructure/)
+    expect(h?.status).toBe('likely')
+    expect(h?.sizeDependent).toBe(true)
+    expect(h?.note).toMatch(/residential: 50 units/)
+    expect(h?.note).toMatch(/20,000 square feet/) // the ungated retail limb, stated
+    expect(h?.note).toMatch(/nearest transit stop for each cardinal direction/)
+    // A commercial project carrying a unit count off the query string must not
+    // fire the RESIDENTIAL limb — but its own 30,000 sq ft limb still can.
+    expect(byLabel(col({ use: 'commercial', units: 400, gfa: 20000 }), /Off-site pedestrian infrastructure/)).toBeUndefined()
+    expect(byLabel(col({ use: 'commercial', units: 0, gfa: 40000 }), /Off-site pedestrian infrastructure/)).toBeTruthy()
+    // Mixed use is NOT measured on gfa — we hold no split — but its dwellings count.
+    expect(byLabel(col({ use: 'mixed', units: 10, gfa: 400000 }), /Off-site pedestrian infrastructure/)).toBeUndefined()
+    expect(byLabel(col({ use: 'mixed', units: 200, gfa: 400000 }), /Off-site pedestrian infrastructure/)).toBeTruthy()
+    // Only new construction.
+    expect(byLabel(col({ projectType: 'addition', use: 'residential', units: 200 }), /Off-site pedestrian infrastructure/)).toBeUndefined()
+  })
+
+  // ── Traffic: stated, never gated on a floor-area proxy ────────────────────
+  it('the traffic study is info at every size, with both studies’ conditions named', () => {
+    for (const gfa of [2000, 50000, 500000]) {
+      const t = byLabel(col({ use: 'commercial', units: 0, gfa }), /Traffic impact or access study/)
+      expect(t?.status, String(gfa)).toBe('info')
+    }
+    const t = byLabel(col({ use: 'residential', units: 40 }), /Traffic impact or access study/)
+    expect(t?.note).toMatch(/200 or more estimated non-pass-by trip ends/)
+    expect(t?.note).toMatch(/site modification criteria AND meets one or more of the following location criteria/)
+    expect(t?.note).toMatch(/High Injury Network/)
+    expect(t?.note).toMatch(/LOS D overall and LOS E per movement/)
+  })
+
+  // ── Trees: the limb is the LOT'S ZONING, which we do not resolve ──────────
+  it('the tree row quotes the residentially-zoned-lot limb rather than gating a requirement on use', () => {
+    const t = byLabel(col({ use: 'residential', units: 40 }), /On-lot tree requirement/)
+    expect(t?.status).toBe('likely') // NOT 'required' — the gate is a proxy
+    expect(t?.sizeDependent).toBeFalsy() // one tree from the first unit; no threshold
+    expect(t?.note).toMatch(/On a residentially zoned lot/)
+    expect(t?.note).toMatch(/the trigger is that the LOT is residentially zoned/)
+    expect(t?.note).toMatch(/3304\.04\(D\)/)
+    // Rule 5: it must not read as an established absence of a preservation rule.
+    expect(t?.note).toMatch(/does not say Columbus has no tree-preservation ordinance/)
+    expect(byLabel(col({ use: 'commercial', units: 0, gfa: 40000 }), /On-lot tree requirement/)).toBeUndefined()
+  })
+
+  // ── Flood: the determination is the CITY's, not FEMA's ────────────────────
+  it('the floodplain row names Chapter 1150 and the Department of Public Utilities', () => {
+    const f = byLabel(
+      col({ use: 'residential', units: 40 }, { ...zone('R3'), overlays: { historicDistrict: null, floodZone: 'AE' } }),
+      /City floodplain determination/,
+    )
+    expect(f?.status).toBe('likely')
+    expect(f?.note).toMatch(/shall in no case grant any permit/)
+    expect(f?.note).toMatch(/Chapter 1150/)
+    expect(f?.note).toMatch(/not the FEMA zone/)
+    // Rule 8: ch. 1150 itself was not read, and the row says so.
+    expect(f?.note).toMatch(/the chapter itself was not/)
+    expect(byLabel(col({ use: 'residential', units: 40 }), /City floodplain determination/)).toBeUndefined()
+    expect(
+      byLabel(col({ use: 'residential', units: 40 }, { ...zone('R3'), overlays: { historicDistrict: null, floodZone: 'X' } }), /City floodplain determination/),
+    ).toBeUndefined()
+  })
+
+  // ── EV: applies at every size; the unheld limb is "do you build parking" ──
+  it('the EV row is not size-triggered and states the 2028 table without quoting it', () => {
+    for (const units of [1, 3, 4, 400]) {
+      const e = byLabel(col({ use: 'residential', units }), /EV-ready and EV-charging parking/)
+      expect(e?.status, String(units)).toBe('likely')
+      expect(e?.sizeDependent, String(units)).toBeFalsy()
+    }
+    const e = byLabel(col({ use: 'residential', units: 40 }), /EV-ready and EV-charging parking/)
+    expect(e?.note).toMatch(/One EV Ready outlet per dwelling unit/)
+    expect(e?.note).toMatch(/EV Capable 20%/)
+    expect(e?.note).toMatch(/if vehicular parking is provided/)
+    expect(e?.note).toMatch(/permanent supportive housing/)
+    // The 2028 table is named, and no figure from it is published.
+    expect(e?.note).toMatch(/January 1, 2028/)
+    expect(e?.note).toMatch(/3312\.58/)
+    expect(byLabel(col({ projectType: 'addition', use: 'residential', units: 40 }), /EV-ready and EV-charging parking/)).toBeUndefined()
+  })
+
+  // ── The administrative-review absence, and its four exceptions ────────────
+  it('site plan review reads as administrative and names every board that is an exception', () => {
+    const s = byLabel(col({ use: 'residential', units: 40 }), /Site plan review is administrative/)
+    expect(s?.status).toBe('info')
+    expect(s?.note).toMatch(/4113\.29\(A\)/)
+    expect(s?.note).toMatch(/size is not on that list|size alone never buys you a hearing/)
+    for (const re of [/3116\.04/, /3359/, /3323/, /3325/]) expect(s?.note, String(re)).toMatch(re)
+  })
+
+  // ── Historic: the body is named, and Columbus publishes no clock ──────────
+  it('names the Columbus review commission and falls through to the standing 3 months', () => {
+    const h = col({ use: 'residential', units: 40 }, { overlays: { historicDistrict: 'German Village Historic District', floodZone: null } }).find(
+      (x) => x.category === 'historic',
+    )
+    expect(h?.note).toMatch(/certificate of appropriateness/i)
+    expect(h?.note).toMatch(/3116\.04/)
+    expect(h?.note).toMatch(/shall issue no permit for the construction, reconstruction, alteration or demolition/)
+    // No HISTORIC_MONTHS override: Columbus's code sets no clock on the commission.
+    expect(h?.addsMonths).toBe(3)
+  })
+
+  // ── Rule 1 / the parent instruction, checked once across the whole branch ─
+  it('no Columbus hurdle publishes a duration, and no row invents an Ohio prohibition', () => {
+    const scenarios: Array<[Partial<AnalysisInput>, Partial<ParcelInfo>]> = [
+      [{ use: 'residential', units: 200, gfa: 260000 }, { ...zone('UCT'), lot: { sizeSqFt: 100000, lotType: null } }],
+      [{ use: 'commercial', units: 0, gfa: 120000 }, zone('DD')],
+      [{ projectType: 'new', use: 'residential', units: 40 }, { ...zone('R3'), existing: { landUse: 'Apartment', units: 8, yearBuilt: 1912 } }],
+      [{ use: 'mixed', units: 300, gfa: 400000 }, { ...zone('EFD'), overlays: { historicDistrict: null, floodZone: 'AE' } }],
+    ]
+    for (const [j, p] of scenarios) {
+      for (const path of ['as_of_right', 'variance'] as const) {
+        for (const h of assessHurdles('columbus', parcel(p), project({ city: 'columbus', ...j }), { path })) {
+          // The only months in a Columbus report come from the module's shared
+          // rows — the historic default, replacing housing, public funding.
+          if (!/^(Historic district design review|Replacing existing housing|Public-funding process)/.test(h.label)) {
+            expect(h.addsMonths, h.label).toBeUndefined()
+          }
+          expect(`${h.label} ${h.note}`, h.label).not.toMatch(/Ohio law (prohibits|bars|forbids)/i)
+        }
+      }
+    }
+  })
+})
+
+describe('assessHurdles — Charlotte', () => {
+  const clt = (over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('charlotte', parcel({ ...zone('N2-B'), ...p }), project({ city: 'charlotte', ...over }))
+
+  it('resolves a plausible project and maps the district to its tier', () => {
+    const hs = clt({ use: 'residential', units: 60, gfa: 70000 })
+    expect(hs.length).toBeGreaterThan(4)
+    const t = byLabel(hs, /Tier 2 district/)
+    expect(t?.status).toBe('required')
+    expect(t?.note).toMatch(/19\.2\.A\.1\.b/)
+  })
+
+  it('reads Table 19-1’s tier header rows off the district code', () => {
+    for (const code of ['ML-1', 'OFC', 'OG', 'MHP', 'N2-A']) {
+      expect(byLabel(clt({ use: 'residential', units: 30 }, zone(code)), /Tier 1 district/), code).toBeTruthy()
+    }
+    for (const code of ['N2-C', 'IMU', 'CAC-1', 'CG', 'CR', 'NC']) {
+      expect(byLabel(clt({ use: 'residential', units: 30 }, zone(code)), /Tier 2 district/), code).toBeTruthy()
+    }
+    for (const code of ['CAC-2', 'TOD-UC', 'TOD-TR', 'RAC', 'UC', 'UE']) {
+      expect(byLabel(clt({ use: 'residential', units: 30 }, zone(code)), /Tier 3 district/), code).toBeTruthy()
+    }
+  })
+
+  // Tier 3's minimum column is blank in 99 of 105 rows, and the six that are not
+  // are conditional on a 400-foot WALKING distance we cannot measure. So the row
+  // must be informational with the whole condition on its face — never a
+  // required minimum resting on an unevaluable limb.
+  it('Tier 3 states the 400-foot limb rather than gating on a proxy', () => {
+    const t3 = byLabel(clt({ use: 'residential', units: 80 }, zone('TOD-CC')), /Tier 3 district/)
+    expect(t3?.status).toBe('info')
+    expect(t3?.note).toMatch(/400' walking distance of a Neighborhood 1 Place Type/)
+    expect(t3?.note).toMatch(/99 of the 105/)
+    expect(t3?.note).toMatch(/Multi-Family Stacked/)
+  })
+
+  // The tier header names "Neighborhood 1 Zoning Districts" as a class without
+  // enumerating it. Enumerating it ourselves would be assembling a legal claim
+  // from two sources; the deliberate result is no row at all.
+  it('an unenumerated Neighborhood 1 district gets no tier row, not a guessed one', () => {
+    for (const code of ['N1-A', 'N1-C', 'N1-F', 'R-4', 'Unknown']) {
+      const hs = clt({ use: 'residential', units: 30 }, zone(code))
+      expect(byLabel(hs, /Tier [123] district/), code).toBeUndefined()
+      // The citywide rule still renders, so the user is not left with nothing.
+      expect(hs.some((h) => h.category === 'parking'), code).toBe(true)
+    }
+  })
+
+  // ZoneDes is a compound string; the tier must survive its markers.
+  it('resolves the tier through conditional/overlay markers on ZoneDes', () => {
+    for (const zd of ['CAC-2(CD)', 'UC (CD)', 'TOD-NC(EX) HDO']) {
+      expect(byLabel(clt({ use: 'residential', units: 30 }, zone(zd)), /Tier 3 district/), zd).toBeTruthy()
+    }
+  })
+
+  it('states both relief routes, and that the transit election is all-or-nothing', () => {
+    const r = byLabel(clt({ use: 'residential', units: 30 }), /Two routes out of the tier minimums/)
+    expect(r?.status).toBe('info')
+    expect(r?.note).toMatch(/one-half mile walking distance of an existing rapid transit station/)
+    expect(r?.note).toMatch(/shall be used in their entirety/)
+    expect(r?.note).toMatch(/Parking Demand Management Assessment/)
+  })
+
+  // Rule 15/17, and the interpretation this test used to encode has been
+  // OVERTURNED. It previously asserted that no Charlotte hurdle may mention a
+  // Session Law at all, because at the time the reported North Carolina
+  // preemption had no citation in this repo. It now does: the enacted vehicle is
+  // Session Law 2026-39 (House Bill 162), ratified 1 July 2026 and approved
+  // 6 July 2026, read at ncleg.gov 2026-08-08 from the Session Laws index. The
+  // bill everyone cites — House Bill 369, the "Parking Lot Reform and
+  // Modernization Act" — NEVER PASSED: ncleg's own bill page shows its last
+  // action as "Re-ref Com On Rules and Operations of the Senate on 6/10/2026".
+  // So the protection is narrowed to what it was always for: cite the enacted
+  // vehicle or say nothing, and never cite the bill that failed.
+  it('cites the enacted session law, never the bill that failed', () => {
+    const hs = clt({ use: 'residential', units: 60, gfa: 70000 }, { existing: { landUse: 'Warehouse', yearBuilt: 1968, buildingAreaSqFt: 9000 } })
+    for (const h of hs) {
+      const text = `${h.label} ${h.note}`
+      expect(text, h.label).not.toMatch(/HB ?369|House Bill 369|Parking Lot Reform and Modernization/i)
+      // Any preemption or session-law claim must name the enacted vehicle.
+      if (/preempt|Session Law/i.test(text)) expect(text, h.label).toMatch(/Session Law 2026-39 \(House Bill 162\)/)
+    }
+  })
+})
+
+describe('assessHurdles — Charlotte (non-parking hurdles)', () => {
+  const ACRE = 43560
+  const clt2 = (over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('charlotte', parcel({ ...zone('N2-B'), ...p }), project({ city: 'charlotte', ...over }))
+  const teardown = (over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    clt2({ projectType: 'new', use: 'residential', units: 40, gfa: 52000, ...over }, { existing: { landUse: 'Single Family', yearBuilt: 1948, units: 1 }, ...p })
+
+  it('resolves a plausible project, headed by the two absences', () => {
+    const hs = clt2({ use: 'residential', units: 60, gfa: 70000 })
+    expect(hs.length).toBeGreaterThan(10)
+    // ABSENCE 1 — no inclusionary mandate, framed as a rule Charlotte has not
+    // adopted, NOT as one the State forbids. Same statute as Raleigh, same care.
+    const aff = byLabel(hs, /No inclusionary requirement/)
+    expect(aff?.status).toBe('info')
+    expect(aff?.note).toMatch(/42-14\.1/)
+    expect(aff?.note).toMatch(/has not prohibited it by name/)
+    expect(aff?.note).not.toMatch(/state law bars|barred by state law|prohibits mandatory inclusionary/i)
+    // ABSENCE 2 — no design board and no site-plan hearing, established by the
+    // Article 35 slot test.
+    const rev = byLabel(hs, /Plan review is administrative/)
+    expect(rev?.status).toBe('info')
+    expect(rev?.note).toMatch(/Sec\. 37\.9/)
+    expect(rev?.note).toMatch(/Alternative Compliance Review Board/)
+    expect(rev?.note).toMatch(/no jurisdiction with respect to alternative compliance/)
+  })
+
+  it('names the two-agency handoff to Mecklenburg County', () => {
+    const h = byLabel(clt2({ use: 'residential', units: 12 }), /Building permits come from Mecklenburg County/)
+    expect(h?.status).toBe('info')
+    expect(h?.note).toMatch(/14\.2\.S\.1/)
+    expect(h?.note).toMatch(/shall not issue a Certificate of Occupancy or Certificate of Compliance/)
+  })
+
+  // The fee scales with METER SIZE, so it is neither unit- nor floor-area-keyed
+  // and must not be tagged sizeDependent. And it must not assert a stable rate:
+  // Council resets the schedule annually and the ordinance contains no amount.
+  it('the system development fee is new-construction-gated, meter-keyed, and dated', () => {
+    const f = byLabel(clt2({ projectType: 'new', use: 'residential', units: 12 }), /Water and sewer system development fees/)
+    expect(f?.status).toBe('required')
+    expect(f?.sizeDependent).toBeFalsy()
+    expect(f?.note).toMatch(/162A-213\(a\)/)
+    expect(f?.note).toMatch(/proof of collection of the system development fee prior to issuance of the building permit/)
+    expect(f?.note).toMatch(/METER SIZE/)
+    // Every dollar figure carries the date it was read and the instruction to
+    // re-read — a bare rate here would be a fabrication wearing a citation.
+    expect(f?.note).toMatch(/2026-08-08/)
+    expect(f?.note).toMatch(/Get the current schedule/)
+    // The impact-fee absence is a GAP, and must never render as an answer.
+    expect(f?.note).toMatch(/gap in what has been read/)
+    expect(f?.note).not.toMatch(/Charlotte charges no impact fees/)
+    // It is a new-connection gate; a change of use makes none.
+    expect(byLabel(clt2({ projectType: 'change_of_use', gfa: 30000 }), /Water and sewer system development fees/)).toBeFalsy()
+  })
+
+  // Sec. 32.1.B puts the CTR thresholds in the Streets Manual, not the UDO.
+  // Stating a unit or square-foot figure here would be inventing one.
+  it('the CTR states no threshold, because the ordinance states none', () => {
+    const c = byLabel(clt2({ use: 'residential', units: 300, gfa: 400000 }), /Comprehensive Transportation Review/)
+    expect(c?.status).toBe('likely')
+    expect(c?.sizeDependent).toBeFalsy()
+    expect(c?.note).toMatch(/Charlotte Streets Manual/)
+    expect(c?.note).toMatch(/Multimodal Assessments, Transportation Demand Management \(TDM\), and Traffic Impact Studies \(TIS\)/)
+    // No number may be asserted for the trigger.
+    expect(c?.note).not.toMatch(/\d[\d,]*\s*(dwelling units|square feet) or more/)
+  })
+
+  // CONJUNCTIVE, and the row most likely to be got wrong. Neither limb of Sec.
+  // 32.4.C.1.a is in the parcel record, so the new-stop duty may never harden
+  // into a gate on a proxy — both limbs must appear on the row's face.
+  it('the bus-stop row quotes both limbs and never gates on one', () => {
+    const b = byLabel(clt2({ use: 'residential', units: 300, gfa: 400000 }), /Bus stop and amenities/)
+    expect(b?.status).toBe('info')
+    expect(b?.sizeDependent).toBeFalsy()
+    expect(b?.note).toMatch(/meets all the following/)
+    expect(b?.note).toMatch(/MTC adopted Transit Service Plan/)
+    expect(b?.note).toMatch(/minimum number of daily trips/)
+    // The retention limb IS resolvable on project type, and its double negative
+    // is the part a reader loses.
+    expect(b?.note).toMatch(/unless part of a multi-dwelling development/)
+    expect(b?.note).toMatch(/CATS Director/)
+    // Status must not change with size — the trip limb is not ours to evaluate.
+    expect(byLabel(clt2({ use: 'residential', units: 2, gfa: 3000 }), /Bus stop and amenities/)?.status).toBe('info')
+  })
+
+  it('new streets fire on project type, and the 125-unit collector limb stays quoted, not gated', () => {
+    const s = byLabel(clt2({ use: 'residential', units: 4, gfa: 6000 }), /New streets, dedications/)
+    expect(s?.status).toBe('likely')
+    expect(s?.sizeDependent).toBeFalsy()
+    expect(s?.note).toMatch(/New streets are required when either of the following occur/)
+    // Quoted inside, because the collector limb ALSO requires an arterial
+    // intersection — using 125 units as the gate would be broader than Sec.
+    // 32.5.E.2.a, which is conjunctive at the top.
+    expect(s?.note).toMatch(/More than 125 dwelling units/)
+    expect(s?.note).toMatch(/directly intersects with an arterial/)
+    expect(s?.note).toMatch(/reserved for 18 months/)
+    expect(byLabel(clt2({ projectType: 'addition', gfa: 40000 }), /New streets, dedications/)).toBeFalsy()
+  })
+
+  // The status splits at four units because a project over four cannot be inside
+  // the Sec. 20.15.A.3.b exemption at all; at or below four the exemption turns
+  // on lot configuration we do not hold, so the row stays 'likely' and says why.
+  it('green area hardens above four units and stays conditional at or below', () => {
+    const small = byLabel(clt2({ use: 'residential', units: 4, gfa: 6000 }), /Green area: 15% of the site/)
+    expect(small?.status).toBe('likely')
+    expect(small?.sizeDependent).toBe(true)
+    expect(small?.note).toMatch(/three or more contiguous\/adjacent lots/)
+    expect(small?.note).toMatch(/Part of a multi-dwelling development/)
+
+    const big = byLabel(clt2({ use: 'residential', units: 5, gfa: 8000 }), /Green area: 15% of the site/)
+    expect(big?.status).toBe('required')
+    expect(big?.note).toMatch(/cannot reach this project/)
+    expect(big?.note).toMatch(/15% or more of a development site/)
+    // Non-residential cannot be inside a single-family/duplex/triplex/quadraplex
+    // exemption whatever its unit count says.
+    expect(byLabel(clt2({ use: 'commercial', units: 0, gfa: 60000 }), /Green area: 15% of the site/)?.status).toBe('required')
+    // The park dedication is an alternative means of compliance, folded in here
+    // rather than given a row of its own — it is not an exaction.
+    expect(big?.note).toMatch(/Mecklenburg County Park and Recreation/)
+    // Tree compliance plan travels with it.
+    expect(big?.note).toMatch(/tree compliance plan/)
+  })
+
+  // The asymmetry between Sec. 20.14 and Sec. 20.15 is real: the heritage-tree
+  // section has NO small-residential exemption. A single new house is inside it.
+  it('heritage trees reach a one-house project, unlike green area', () => {
+    const h = byLabel(clt2({ use: 'residential', units: 1, gfa: 2200 }), /Heritage trees/)
+    expect(h?.status).toBe('required')
+    expect(h?.sizeDependent).toBeFalsy()
+    expect(h?.note).toMatch(/DBH of 30 inches or greater/)
+    expect(h?.note).toMatch(/NO small-residential exemption/)
+    // The fee is set by Council and is not in the ordinance — assert no amount.
+    expect(h?.note).toMatch(/per the fee established by City Council/)
+    expect(h?.note).not.toMatch(/\$[\d,]/)
+  })
+
+  // A conjunctive EXEMPTION inverts to a disjunctive REQUIREMENT. Neither limb
+  // is in our data, and lot area bounds neither — so the row may never gate on
+  // lot size, and its status must not move with it.
+  it('the stormwater row states the inverted exemption and never gates on lot area', () => {
+    const at = (sqFt: number) => byLabel(clt2({ use: 'residential', units: 40 }, { lot: { sizeSqFt: sqFt, lotType: null } }), /Stormwater management permit/)
+    expect(at(2000)?.status).toBe('likely')
+    expect(at(20 * ACRE)?.status).toBe('likely')
+    expect(at(2000)?.note).toMatch(/cumulatively disturbs less than one acre and cumulatively creates less than 5,000 square feet/)
+    expect(at(2000)?.note).toMatch(/EITHER an acre is disturbed OR 5,000 sq ft/)
+    // All three density breaks, not one — they differ threefold across the city.
+    expect(at(2000)?.note).toMatch(/24% BUA/)
+    expect(at(2000)?.note).toMatch(/12% built-upon area/)
+    expect(at(2000)?.note).toMatch(/10% BUA/)
+    expect(at(2000)?.sizeDependent).toBeFalsy()
+  })
+
+  // One acre, measured in DISTURBED area. Lot area is an explicit proxy and the
+  // note has to say so, or a reader corrects in the wrong direction (rule 7).
+  it('the erosion plan keys on an acre and labels lot area as a proxy', () => {
+    const at = (sqFt: number) => byLabel(clt2({}, { lot: { sizeSqFt: sqFt, lotType: null } }), /Erosion and sedimentation control plan/)
+    expect(at(ACRE)).toBeFalsy()
+    const e = at(ACRE + 1)
+    expect(e?.status).toBe('likely')
+    expect(e?.sizeDependent).toBeFalsy()
+    expect(e?.note).toMatch(/DISTURBED, not in lot area and not in floor area/)
+    expect(e?.note).toMatch(/NCG01/)
+    // Sec. 28.4's 30 days is a decision clock on the reviewer, never a schedule.
+    expect(e?.addsMonths).toBeUndefined()
+  })
+
+  // Relief, not an obligation — and it can only help a site that already carries
+  // built-upon area, so it is teardown-gated.
+  it('the redevelopment stormwater credit fires only on a teardown, and cites the enacted law', () => {
+    expect(byLabel(clt2({ projectType: 'new', use: 'residential', units: 40 }), /credits your existing pavement/)).toBeFalsy()
+    const c = byLabel(teardown(), /credits your existing pavement/)
+    expect(c?.status).toBe('info')
+    expect(c?.note).toMatch(/Session Law 2026-39 \(House Bill 162\)/)
+    expect(c?.note).toMatch(/square-foot-for-square-foot basis/)
+    expect(c?.note).toMatch(/within 12 months of the effective date/)
+    // Charlotte's own UDO defers to the statute by name — that is why it bites.
+    expect(c?.note).toMatch(/143-214\.7/)
+    expect(c?.addsMonths).toBeUndefined()
+  })
+
+  // Rule 5, and the reason this row is deliberately NOT gated on the FEMA zone:
+  // a FEMA-clear parcel can still sit in the community floodplain, and the
+  // generic `FEMA flood zone X` row would otherwise imply FEMA is the answer.
+  it('the community-floodplain gap renders even when FEMA shows nothing', () => {
+    const clear = byLabel(clt2({ use: 'residential', units: 40 }), /COMMUNITY floodplain wider than FEMA/)
+    expect(clear?.status).toBe('info')
+    expect(clear?.note).toMatch(/community base flood elevation plus two feet of freeboard/)
+    expect(clear?.note).toMatch(/separate layer we do not fetch/)
+    expect(clear?.note).toMatch(/SWIM/)
+    // …and it still renders alongside a FEMA hit rather than being replaced.
+    const inZone = clt2({ use: 'residential', units: 40 }, { overlays: { historicDistrict: null, floodZone: 'AE' } })
+    expect(byLabel(inZone, /^FEMA flood zone AE$/)).toBeTruthy()
+    expect(byLabel(inZone, /COMMUNITY floodplain wider than FEMA/)).toBeTruthy()
+  })
+
+  // THE INDENTATION TRAP. Table 19-2 keys on SPACES PROVIDED, and the
+  // unit-count substitution at Sec. 19.3.A.2.b.i sits under item 2 — the
+  // residential component of MIXED-USE developments — only. So this row may
+  // never be unit-gated and may never be tagged sizeDependent.
+  it('EV charging keys on provided spaces, not on units', () => {
+    const small = byLabel(clt2({ use: 'residential', units: 2, gfa: 3000 }), /EV charging stations/)
+    const large = byLabel(clt2({ use: 'residential', units: 400, gfa: 500000 }), /EV charging stations/)
+    for (const h of [small, large]) {
+      expect(h?.status).toBe('likely')
+      expect(h?.sizeDependent).toBeFalsy()
+      expect(h?.note).toMatch(/Total Number of Provided Off-Street Parking Spaces/)
+    }
+    // The substitution reaches mixed-use and nothing else.
+    expect(large?.note).toMatch(/does not reach a stand-alone multi-family stacked building/)
+    const mixed = byLabel(clt2({ use: 'mixed', units: 200, gfa: 260000 }), /EV charging stations/)
+    expect(mixed?.note).toMatch(/the number of residential units shall be considered as the number of provided off-street parking spaces/)
+    // Not a residential project, not this row.
+    expect(byLabel(clt2({ use: 'commercial', units: 0, gfa: 80000 }), /EV charging stations/)).toBeFalsy()
+    expect(byLabel(clt2({ projectType: 'change_of_use', use: 'residential', units: 40 }), /EV charging stations/)).toBeFalsy()
+  })
+
+  // The demolition delay is an OVERLAY power. Asserting it citywide would be the
+  // over-broad gate this file has had to unwind before.
+  it('the 365-day demolition delay needs the mapped overlay; the pending-designation freeze does not', () => {
+    expect(byLabel(teardown(), /up to 365 days/)).toBeFalsy()
+    const inHd = byLabel(teardown({}, { overlays: { historicDistrict: 'Fourth Ward — Local historic district', floodZone: null } }), /up to 365 days/)
+    expect(inHd?.status).toBe('required')
+    expect(inHd?.note).toMatch(/may not be denied/)
+    expect(inHd?.note).toMatch(/valid for 12 months/)
+    // 365 days is a CEILING on a delay that may be waived entirely.
+    expect(inHd?.addsMonths).toBeUndefined()
+    // The pending-designation freeze is deliberately ungated by overlay — the
+    // situation it describes is the one where no overlay exists yet.
+    const pending = byLabel(teardown(), /pending historic designation freezes demolition/)
+    expect(pending?.status).toBe('info')
+    expect(pending?.note).toMatch(/up to 180 days/)
+    expect(pending?.note).toMatch(/deliberate neglect/)
+    // Neither fires without a teardown.
+    expect(byLabel(clt2({ projectType: 'new', use: 'residential', units: 40 }), /pending historic designation/)).toBeFalsy()
+  })
+
+  it('the Certificate of Appropriateness copy is Charlotte’s, not the generic fallback', () => {
+    const h = byLabel(
+      clt2({ use: 'residential', units: 20 }, { overlays: { historicDistrict: 'Dilworth — Local historic district', floodZone: null } }),
+      /Historic district design review/,
+    )
+    expect(h?.note).toMatch(/Historic District Commission/)
+    expect(h?.note).toMatch(/whether or not a building permit is required/)
+    expect(h?.note).toMatch(/Mecklenburg County Land Use and Environmental Services Agency/)
+    // Sec. 14.2.L.6.a.i's 180 days is a CEILING on the Commission, so it must
+    // not have become the published duration — the module default stands.
+    expect(h?.addsMonths).toBe(3)
+  })
+
+  it('the rezoning row is discretionary-only and publishes no duration', () => {
+    const aor = clt2({ use: 'residential', units: 80, gfa: 100000 })
+    expect(byLabel(aor, /Conditional rezoning/)).toBeFalsy()
+    const disc = assessHurdles('charlotte', parcel(zone('N2-B')), project({ city: 'charlotte', use: 'residential', units: 80, gfa: 100000 }), { path: 'variance' })
+    const rz = byLabel(disc, /Conditional rezoning/)
+    expect(rz?.status).toBe('likely')
+    expect(rz?.note).toMatch(/another community meeting shall be held/)
+    expect(rz?.note).toMatch(/shall be considered to have made a favorable recommendation/)
+    // The EX district cannot buy height — the trap a reader reaches for first.
+    expect(rz?.note).toMatch(/No modifications shall be made to maximum height regulations/)
+    expect(rz?.addsMonths).toBeUndefined()
+  })
+
+  // The whole-file property, restated for the rows added here: exactly one row
+  // is size-triggered, and it is the one whose STATUS turns on a unit count.
+  it('exactly one Charlotte row is sizeDependent, and it is the green-area row', () => {
+    const hs = assessHurdles(
+      'charlotte',
+      parcel({ ...zone('N2-B'), lot: { sizeSqFt: 5 * ACRE, lotType: null }, overlays: { historicDistrict: 'Fourth Ward — Local historic district', floodZone: 'AE' }, existing: { landUse: 'Single Family', yearBuilt: 1948, units: 1 } }),
+      project({ city: 'charlotte', use: 'mixed', units: 200, gfa: 260000 }),
+      { path: 'variance' },
+    )
+    const tagged = hs.filter((h) => h.sizeDependent)
+    expect(tagged.map((h) => h.label)).toEqual(['Green area: 15% of the site, plus a tree compliance plan'])
+  })
+
+  // Charlotte's gfaBasis is 'assumed-unconstrained' — the UDO imposes no FAR
+  // anywhere (zoning/charlotte.ts FACT 1) — so the green-area row is never
+  // softened in practice. The tag is still correct, and this pins the behaviour
+  // under the placeholder basis so a future basis change cannot pass silently.
+  it('a placeholder GFA softens the green-area row, an unconstrained one does not', () => {
+    const un = byLabel(
+      assessHurdles('charlotte', parcel(zone('N2-B')), project({ city: 'charlotte', use: 'residential', units: 60, gfa: 78000, gfaBasis: 'assumed-unconstrained' })),
+      /Green area: 15% of the site/,
+    )
+    expect(un?.status).toBe('required')
+    expect(un?.note).not.toMatch(/placeholder size/)
+
+    const soft = byLabel(
+      assessHurdles('charlotte', parcel(zone('N2-B')), project({ city: 'charlotte', use: 'residential', units: 60, gfa: 78000, gfaBasis: 'assumed-far-1.0' })),
+      /Green area: 15% of the site/,
+    )
+    expect(soft?.status).toBe('info')
+    expect(soft?.note).toMatch(/placeholder size/)
+  })
+
+  // No row here may publish a duration. Charlotte states exactly three numbers
+  // and all three are the wrong kind — a 180-day ceiling, a 30-day decision shot
+  // clock, and a 30-day deemed-favourable deadline on a board.
+  it('no Charlotte-specific row carries addsMonths', () => {
+    const shared = /^(Historic district design review|Replacing existing housing|Public-funding process|Coastal Development Permit)/
+    const scenarios: Array<{ p: Partial<ParcelInfo>; j: Partial<AnalysisInput> }> = [
+      { p: {}, j: { use: 'residential', units: 200, gfa: 260000 } },
+      { p: { lot: { sizeSqFt: 10 * ACRE, lotType: null } }, j: { use: 'commercial', units: 0, gfa: 120000, funding: 'public' } },
+      { p: { existing: { landUse: 'Apartment', units: 12, yearBuilt: 1930 } }, j: { projectType: 'new', use: 'mixed', units: 4 } },
+      { p: { overlays: { historicDistrict: 'Fourth Ward — Local historic district', floodZone: 'AE' } }, j: { projectType: 'new', use: 'residential', units: 12 } },
+    ]
+    for (const s of scenarios) {
+      for (const path of ['as_of_right', 'variance'] as const) {
+        for (const h of assessHurdles('charlotte', parcel({ ...zone('N2-B'), ...s.p }), project({ city: 'charlotte', ...s.j }), { path })) {
+          if (shared.test(h.label)) continue
+          expect(h.addsMonths, `charlotte / ${h.label}`).toBeUndefined()
+        }
+      }
+    }
+  })
+})
+
+describe('assessHurdles — Atlanta', () => {
+  const atl = (over: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('atlanta', parcel({ ...zone('MRC-2'), ...p }), project({ city: 'atlanta', ...over }))
+
+  it('resolves a plausible project and quotes the whole transit condition', () => {
+    const hs = atl({ use: 'residential', units: 60, gfa: 70000 })
+    expect(hs.length).toBeGreaterThanOrEqual(4)
+    const t = byLabel(hs, /^No parking required within 2,640 feet/)
+    expect(t?.status).toBe('info')
+    expect(t?.note).toMatch(/16-28\.014\(14\)/)
+    // Every limb of the condition, not just the distance.
+    expect(t?.note).toMatch(/Buckhead Parking Overlay/)
+    expect(t?.note).toMatch(/operational or under construction/)
+    expect(t?.note).toMatch(/exclusive right-of-way for at least 75 percent/)
+    // …and the exchange: the section imposes maxima where it removes minima.
+    expect(t?.note).toMatch(/1\.25 spaces per one-bedroom/)
+    // The three excepted areas must NOT read as re-imposing minimums.
+    expect(t?.note).toMatch(/do not put minimums back/)
+  })
+
+  // The exemption attaches to the BUILDING. Reporting only its first half would
+  // hand a developer an exemption the code withdraws the moment they demolish.
+  it('the pre-1965 exemption flips to a forfeiture warning on a teardown', () => {
+    const old = { existing: { landUse: 'Apartment', units: 6, yearBuilt: 1928 } }
+    const keep = byLabel(atl({ projectType: 'addition', use: 'residential', units: 8 }, old), /Pre-1965 building/)
+    expect(keep?.status).toBe('info')
+    expect(keep?.note).toMatch(/Residential uses: No parking is required/)
+    expect(keep?.note).toMatch(/1,200 square feet/)
+
+    const teardown = byLabel(atl({ projectType: 'new', use: 'residential', units: 40 }, old), /forfeits its parking exemption/)
+    expect(teardown?.status).toBe('info')
+    expect(teardown?.note).toMatch(/attaches to the BUILDING/)
+  })
+
+  it('does not claim the pre-1965 exemption for a newer or undated building', () => {
+    for (const ex of [{ landUse: 'Apartment', units: 6, yearBuilt: 1992 }, { landUse: 'Apartment', units: 6 }]) {
+      const hs = atl({ projectType: 'addition', use: 'residential', units: 8 }, { existing: ex })
+      expect(byLabel(hs, /Pre-1965|forfeits its parking exemption/), JSON.stringify(ex)).toBeUndefined()
+    }
+  })
+
+  it('reads the BeltLine Overlay off the parcel’s overlay label, with its three excepted uses', () => {
+    // Anchored: the citywide rule's own headline also contains "BeltLine
+    // Overlay", so an unanchored match finds PARKING_RULES rather than the
+    // parcel row and the test would pass without the branch existing at all.
+    const b = byLabel(atl({ use: 'residential', units: 60 }, zone('MRC-2', { subdistrict: 'Beltline' })), /^BeltLine Overlay: no minimum/)
+    expect(b?.status).toBe('info')
+    expect(b?.note).toMatch(/there will be no minimum parking requirement/)
+    expect(b?.note).toMatch(/Delivery-based commercial kitchens/)
+    // The label is suppressed when a historic district is also mapped, so the
+    // row's ABSENCE must be disclosed as a false negative rather than read as
+    // evidence the overlay is absent (rule 5).
+    expect(b?.note).toMatch(/absence is not evidence/)
+    expect(byLabel(atl({ use: 'residential', units: 60 }), /^BeltLine Overlay: no minimum/)).toBeUndefined()
+  })
+})
+
+// The two properties that must hold for all four, checked together so a new row
+// in any branch is caught by one test rather than four.
+describe('Milwaukee / Columbus / Charlotte / Atlanta — no invented durations', () => {
+  // Almost nothing the four cities' research states carries a duration: a
+  // parking minimum is a cost and an envelope constraint, not a review that
+  // takes months. So every addsMonths in these branches must trace to a figure
+  // enumerated HERE, and any number that doesn't is a fabrication.
+  //
+  // The one exception, and it is a published figure rather than an estimate:
+  // Atlanta overrides the shared historic-review default via HISTORIC_MONTHS.
+  // Type III applications — which is what ground-up new construction is —
+  // have hearings that "shall be held within 90 days from the date on which
+  // the director receives in due form a complete application", and the
+  // commission "shall make a decision on said applications within 21 days of
+  // the date of the final public hearing" (Atlanta Code § 16-20.008(c)(3)).
+  // 111 days. Keyed on CITY, not on label alone: three cities already override
+  // this row, so a label-only helper silently accepts whatever any of them
+  // emits — which is exactly how the 3-vs-4 mismatch got here.
+  function expectedMonths(city: string, label: string): number | undefined {
+    if (/^Historic district design review$/.test(label)) return city === 'atlanta' ? 4 : 3
+    if (/^Replacing existing housing$/.test(label)) return 6
+    if (/^Public-funding process/.test(label)) return 4
+    if (/^Coastal Development Permit$/.test(label)) return 9
+    return undefined
+  }
+
+  const cities = ['milwaukee', 'columbus', 'charlotte', 'atlanta'] as const
+  const scenarios: Array<{ p: Partial<ParcelInfo>; j: Partial<AnalysisInput> }> = [
+    { p: zone('RM6'), j: { use: 'residential', units: 40, gfa: 60000 } },
+    { p: zone('C9A(A)'), j: { use: 'mixed', units: 200, gfa: 250000, funding: 'public' } },
+    { p: zone('DD'), j: { use: 'commercial', units: 0, gfa: 120000 } },
+    { p: zone('TOD-CC'), j: { use: 'residential', units: 1, gfa: 1800 } },
+    { p: { ...zone('MRC-2', { subdistrict: 'Beltline' }), existing: { landUse: 'Apartment', units: 12, yearBuilt: 1928 } }, j: { projectType: 'new', use: 'residential', units: 40 } },
+    { p: { ...zone('N2-B'), overlays: { historicDistrict: 'A Local Historic District', floodZone: 'AE' } }, j: { projectType: 'addition', use: 'residential', units: 12 } },
+    { p: zone('RED'), j: { projectType: 'adu', use: 'residential', units: 1, gfa: 700 } },
+  ]
+
+  it('every addsMonths traces to a published duration', () => {
+    for (const city of cities) {
+      for (const s of scenarios) {
+        for (const path of ['as_of_right', 'variance'] as const) {
+          const hs = assessHurdles(city, parcel(s.p), project({ city, ...s.j }), { path })
+          for (const h of hs) {
+            expect(h.addsMonths, `${city} / ${h.label}`).toBe(expectedMonths(city, h.label))
+          }
+        }
+      }
+    }
+  })
+
+  // The tag exists to soften a claim that rests on a placeholder FLOOR AREA.
+  // Milwaukee's and Columbus's minimums key on the unit count, which is derived
+  // from floor area when no FAR resolves — so both are tagged. Charlotte's and
+  // Atlanta's key on the district, the existing building's age and an overlay,
+  // none of which is a size, so none of theirs may be.
+  it('every size-triggered row carries sizeDependent, and no other one does', () => {
+    const tagged = [
+      { city: 'milwaukee', p: zone('RM6'), re: /Off-street parking minimum/ },
+      { city: 'columbus', p: zone('R3'), re: /depends on which of Columbus/ },
+    ] as const
+    for (const t of tagged) {
+      const h = byLabel(assessHurdles(t.city, parcel(t.p), project({ city: t.city, use: 'residential', units: 40, gfa: 60000 })), t.re)
+      expect(h, `${t.city} expected a row matching ${t.re}`).toBeTruthy()
+      expect(h?.sizeDependent, `${t.city} / ${h?.label}`).toBe(true)
+    }
+
+    const untaggedRe =
+      // "BeltLine Overlay" is anchored because the citywide rule's headline
+      // contains it too — an unanchored alternative would inflate `seen` with
+      // PARKING_RULES rows and let the branch's own rows go unchecked.
+      /No off-street parking required in this district|25% parking reduction|Downtown District|Special Parking Areas|Tier [123] district|Two routes out of the tier minimums|2,640 feet of high-capacity transit|Pre-1965 building|forfeits its parking exemption|BeltLine Overlay: no minimum/
+    let seen = 0
+    for (const city of cities) {
+      for (const s of scenarios) {
+        for (const h of assessHurdles(city, parcel(s.p), project({ city, ...s.j }))) {
+          if (!untaggedRe.test(h.label)) continue
+          seen++
+          expect(h.sizeDependent, `${city} / ${h.label}`).toBeFalsy()
+        }
+      }
+    }
+    expect(seen, 'expected the untagged parking rows to actually fire').toBeGreaterThan(10)
+  })
+
+  // A placeholder GFA must not leave a hard parking requirement standing: the
+  // unit count it produces is `lot × 1.0 ÷ 1300`, and Milwaukee's minimum is a
+  // legal claim keyed on that count.
+  it('a placeholder GFA downgrades Milwaukee’s unit-keyed minimum', () => {
+    const soft = assessHurdles(
+      'milwaukee',
+      parcel(zone('RM6')),
+      project({ city: 'milwaukee', use: 'residential', units: 40, gfa: 60000, gfaBasis: 'assumed-far-1.0' }),
+    )
+    const min = byLabel(soft, /Off-street parking minimum/)
+    expect(min?.status).toBe('info')
+    expect(min?.note).toMatch(/placeholder size/)
+    // The district-keyed rows are untouched — the district was measured.
+    const dt = byLabel(
+      assessHurdles('milwaukee', parcel(zone('C9C')), project({ city: 'milwaukee', use: 'residential', units: 40, gfa: 60000, gfaBasis: 'assumed-far-1.0' })),
+      /No off-street parking required/,
+    )
+    expect(dt?.status).toBe('info')
+    expect(dt?.note).not.toMatch(/placeholder size/)
+  })
+
+  it('every one of the four emits the citywide parking rule alongside the parcel rows', () => {
+    for (const city of cities) {
+      const hs = assessHurdles(city, parcel(zone('RM6')), project({ city, use: 'residential', units: 40, gfa: 60000 }))
+      // The generic "not yet checked" fallback must be gone for all four.
+      expect(hs.some((h) => /not yet checked/.test(h.label)), city).toBe(false)
+      expect(hs.filter((h) => h.category === 'parking').length, city).toBeGreaterThan(0)
+    }
   })
 })
 

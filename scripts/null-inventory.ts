@@ -74,12 +74,112 @@ const EXTRA: Record<string, [number, number]> = {
   // measures the block rather than the city. This one runs the real path —
   // verdict AS_OF_RIGHT, farBasis 'unconstrained'.
   raleigh: [35.79544, -78.65841],
+
+  // ── The 2026-08-08 cohort ────────────────────────────────────────────────
+  // All four picked by the Raleigh method and held to the same two properties,
+  // so the reasoning is written once here rather than four times:
+  //
+  //   CHOSEN FROM A PARCEL QUERY, NOT A LANDMARK. Each city's parcel layer was
+  //   filtered for an ordinary developable single-dwelling lot in the 6,000–
+  //   9,500 sq ft band, government owners excluded, and the point taken is the
+  //   POLYGON'S OWN CENTROID.
+  //
+  //   ⚠️ AND THE CENTROID WAS TESTED FOR CONTAINMENT, which is a step Raleigh's
+  //   note does not mention because Raleigh did not need it. Charlotte did. The
+  //   first Charlotte candidate — a 6,365 sq ft lot on Kaybird Ln — has a
+  //   concave footprint whose area-weighted centroid falls OUTSIDE it, in the
+  //   neighbouring 50,192 sq ft parcel. `getParcelInfo` answered stably and
+  //   developably, with a real address and a real district, so all four calls
+  //   agreed and nothing looked wrong: the probe would have been adopted, and
+  //   the comment recording "filtered for a ~6,400 sq ft single-family lot"
+  //   would have been false about the parcel actually measured. Rule 18 — the
+  //   wrong answer was the one that looked like an answer. Candidates are now
+  //   ray-cast against their own rings and rejected if the centroid is not
+  //   inside; the adopted Charlotte point is a different parcel entirely.
+  //
+  //   STABILITY VERIFIED BEFORE ADOPTION, through getParcelInfo (the real entry
+  //   point) and not the providers: two independent runs of four isolated calls
+  //   each, 400 ms apart — EIGHT calls per city. Every call returned one
+  //   distinct parcelId, one distinct lot size and one distinct districtCode.
+  //   This is the check San Diego's old probe failed by returning two parcelIds
+  //   at four lot sizes, and it is invisible to any single call.
+  //
+  //   ALL FOUR ARE DEVELOPABLE — privately owned, no government owner, no
+  //   historic overlay, FEMA zone X — which is the second thing the replaced
+  //   San Diego and San Jose probes got wrong. A blocked parcel makes
+  //   analyze.ts zero the hurdles, so the row measures the block rather than
+  //   the city.
+
+  // 9221 N BURBANK AV — RS4, 7,559 sq ft, parcel (TAXKEY) 0050006000, one
+  // dwelling unit, privately owned. Filter: C_A_CLASS '1' (residential),
+  // NR_UNITS 1, PARCEL_TYPE 0, LOT_AREA 6,000–9,000, ZONING LIKE 'RS%'.
+  // PARCEL_TYPE is worth noting: 0 is the ordinary parcel and 1 is the
+  // condominium row type — the stacked-parcel case the provider's
+  // `selectParcel` exists for — so filtering to 0 avoids probing a stack.
+  milwaukee: [43.185337, -88.015701],
+
+  // 145 N EUREKA AVE — R4, 9,563 sq ft, parcel 010-000045, privately owned, no
+  // overlay. Filter: COUNTY 'FRANKLIN', CLASSDSCRP LIKE 'SINGLE FAMILY%',
+  // ACRES 0.14–0.22. The returned lot size is ACRES × 43,560 exactly
+  // (0.21952586 → 9,563), which is the provider's only lot-area path;
+  // STATEDAREA — the decoy holding square feet on ~78% of Franklin County
+  // parcels and acres on the rest — is unreachable by construction.
+  //
+  // ⚠️ THE FIRST CANDIDATE WAS REJECTED, AND WHY IS WORTH KEEPING. 1364 Forsythe
+  // Ave (parcel 010-000015, R4, 8,804 sq ft) is equally stable, equally
+  // developable, and equally private — and it sits inside the UNIVERSITY
+  // DISTRICT ZONING OVERLAY, where C.C. Ch. 3325 imposes a floor-area ratio
+  // that varies by subarea, by project type, and for apartment-residential lots
+  // on the average originally-platted lot size within 200 ft. The provider
+  // resolves that correctly: `farUnconstrained` is NOT set, `farBasis` is null,
+  // and the verdict is withheld as INDETERMINATE — the base district and the
+  // overlay read jointly, which is rule 13 working.
+  //
+  // But the inventory row it produced said `GAP — verdict withheld` for
+  // Columbus, and that would have been a true statement about one parcel and a
+  // false impression of the city: Columbus's Title 33 FAR is a READ, STATED
+  // ABSENCE across 40-odd districts, not an unresolved lookup. This file's own
+  // header says the inventory determines what work is worth doing, so a row
+  // reading GAP would have put "columbus — FAR research" in the backlog for
+  // work already done. Same failure shape as the Chicago 1,528 entry.
+  //
+  // The replacement is the SAME district (R4) outside the overlay, so the swap
+  // changes the overlay exposure and nothing else.
+  columbus: [39.958354, -83.06604],
+
+  // 2127 CRESCENT AV — N1-C, 9,412 sq ft, parcel 15503104, one dwelling unit,
+  // privately owned. Filter: municipality 'CHARLOTTE', descpropertyuse
+  // 'Single-Family', units 1, totalac 0.14–0.24, restricted to parcels inside a
+  // mapped N1-C polygon.
+  //
+  // The district choice is deliberate. Charlotte's zoning layer carries 218
+  // distinct ZoneDes values and a large share are CONDITIONAL variants —
+  // 'R-8(CD)' and the like — which UDO Sec. 1.4.C expressly leaves under the
+  // PRIOR (1992) ordinance. The first stable candidate found landed on
+  // R-8(CD). A probe there would have measured the legacy-conditional path on
+  // every run and never once exercised the UDO table this city was built
+  // around, which is the San Jose failure in a different costume: a row that
+  // looks like a city measurement and is really a measurement of one branch.
+  charlotte: [35.205662, -80.820579],
+
+  // 2278 OAKVIEW ROAD NE — R-4, 7,274 sq ft, parcel 15 205 01 141, privately
+  // owned. Filter: SITECITY 'ATLANTA', CLASSDSCRP 'R3' (the Georgia assessment
+  // class for residential), SHAPE.AREA 6,000–9,000 applied client-side.
+  //
+  // Two notes so the filter is not copied blind. LIVUNITS is NULL on ordinary
+  // Fulton rows, so a `LIVUNITS=1` clause returns zero features rather than
+  // "single-family lots" — checked, not assumed. And SHAPE.AREA cannot be used
+  // in a where clause on this layer at all (the server returns HTTP 400 on the
+  // qualified name, quoted or not), which is why the size band was applied to
+  // the returned attribute instead. The returned lot size, 7,274, is
+  // SHAPE.AREA verbatim — the provider converts nothing.
+  atlanta: [33.751563, -84.313204],
 }
 
 const CITIES = [
   'boston', 'nyc', 'chicago', 'sf', 'seattle', 'dc', 'austin', 'la',
   'denver', 'minneapolis', 'philadelphia', 'miami', 'sandiego', 'sanjose', 'nashville',
-  'raleigh',
+  'raleigh', 'milwaukee', 'columbus', 'charlotte', 'atlanta',
 ]
 
 interface Row {

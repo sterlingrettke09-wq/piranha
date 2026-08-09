@@ -273,6 +273,83 @@ export const RALEIGH_BBOX: Bbox = {
   east: -78.46,
 }
 
+// ── The 2026-08-08 cohort: Milwaukee, Columbus, Charlotte, Atlanta ──────────
+//
+// All four MEASURED the same way Raleigh's was, and from the layer that
+// actually answers the question rather than from a city label: each city's own
+// ZONING layer, queried 2026-08-08 with
+// `where=1=1&returnExtentOnly=true&outSR=4326`, then rounded OUTWARD to 2 dp.
+// The raw returns are recorded per city below so the rounding is checkable.
+//
+// The jurisdiction reasoning differs per city and is NOT copied between them —
+// three of the four have parcel and zoning coverage that agree, and one does
+// not. Stating one city's reason on another is the rule-9-corollary failure
+// (a claim true in one file and false in the next).
+
+// Zoning layer: planning/zoning/MapServer/12 (Zoning with downtown
+// subdistricts). Returned
+//   xmin -88.077255  ymin 42.919583  xmax -87.859611  ymax 43.194861
+// Milwaukee's parcel layer (148,937 features) and zoning layer (148,099) are
+// both City-of-Milwaukee-only, so the two datasets cover the same ground: a
+// click outside the city returns no parcel rather than a parcel with no zoning.
+// The bbox is therefore a search-scoping convenience here, not a guard against
+// a coverage mismatch.
+export const MILWAUKEE_BBOX: Bbox = {
+  south: 42.91,
+  west: -88.08,
+  north: 43.20,
+  east: -87.85,
+}
+
+// Zoning layer: Applications/Zoning/MapServer/20 (Base Zoning). Returned
+//   xmin -83.211793  ymin 39.807747  xmax -82.770595  ymax 40.157960
+// The Corporate Boundary layer (/21) returns a near-identical extent
+//   xmin -83.211641  ymin 39.807751  xmax -82.770561  ymax 40.157960
+// and the values below are the OUTWARD round of the union of the two.
+//
+// Columbus is the mismatch case: the parcel layer is the Franklin County
+// Auditor fabric and is county-wide, while zoning stops at the city line — an
+// ungated county sample returned a parcel at 60 of 60 points and zoning at 34.
+// The provider already refuses a point outside the Corporate Boundary polygon
+// with OUT_OF_BBOX, so this box is the coarse first cut and the polygon is the
+// real gate. The two must not be confused: a Dublin or Grove City address falls
+// INSIDE this rectangle and is still correctly refused by the polygon.
+export const COLUMBUS_BBOX: Bbox = {
+  south: 39.80,
+  west: -83.22,
+  north: 40.16,
+  east: -82.77,
+}
+
+// Zoning layer: PLN/Zoning/MapServer/0. Returned
+//   xmin -81.066311  ymin 34.999100  xmax -80.594966  ymax 35.402450
+// Like Raleigh, the parcel layer is county property (Mecklenburg) republished
+// by the City and so also returns Huntersville, Cornelius, Matthews and
+// Pineville; the zoning layer does not. Scoping the search to the zoning
+// layer's own footprint keeps the two datasets aligned. Unlike Columbus there
+// is no boundary-polygon gate in the provider, so a click inside this box but
+// outside the city surfaces as districtCode 'Unknown' with null limits — the
+// correct render of a gap, pinned by a provider test.
+export const CHARLOTTE_BBOX: Bbox = {
+  south: 34.99,
+  west: -81.07,
+  north: 35.41,
+  east: -80.59,
+}
+
+// Zoning layer: LandUsePlanning/LandUsePlanning/MapServer/0. Returned
+//   xmin -84.551589  ymin 33.647515  xmax -84.289481  ymax 33.887016
+// Atlanta is the inverse of Raleigh: the zoning layer is the city's own (2,979
+// polygons) and the parcel layer is likewise city-scoped (171,077 of 171,156
+// rows carry SITECITY='ATLANTA'), so the two cover the same ground and a point
+// outside both simply returns no parcel.
+export const ATLANTA_BBOX: Bbox = {
+  south: 33.64,
+  west: -84.56,
+  north: 33.89,
+  east: -84.28,
+}
+
 export function isInBbox(bbox: Bbox, lat: number, lng: number): boolean {
   return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east
 }

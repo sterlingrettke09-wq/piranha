@@ -1,6 +1,14 @@
 import type { ParcelInfo } from '../../../src/types/parcel'
 import type { AnalysisInput, Hurdle } from '../../../src/types/analysis'
 import { PARKING_RULES } from '../../../src/config/parkingRules'
+// Reused, never re-implemented. Both of these normalise a hand-maintained GIS
+// string whose edge cases were measured in the zoning modules (Milwaukee keeps
+// the downtown subdistrict parentheses; Charlotte's `ZoneDes` is a compound
+// with markers appended in four different shapes). A second copy of either
+// parser here would be a second place for the same claim to drift — the
+// boundary problem ledger rule 9 describes, in miniature.
+import { normalizeMilwaukeeZone } from './zoning/milwaukee'
+import { parseCharlotteZone } from './zoning/charlotte'
 
 // Curated private-governance sites (no public dataset exists for HOAs/covenants).
 const PRIVATE_SITES: Array<{ bbox: [number, number, number, number]; label: string; note: string }> = [
@@ -69,6 +77,16 @@ const HISTORIC_BODY: Record<string, string> = {
     'Any work in a City Historic District or on a City Landmark — new construction, additions, paving, and demolition, removal or relocation alike — needs a Historic Preservation (HP) permit before it can proceed, and the building official will not issue a building permit until it is in hand (San José Municipal Code § 13.48.210.A, D–E). The decision sits with the Director of Planning, Building and Code Enforcement, advised by the Historic Landmarks Commission, and is appealable to the City Council (§ 13.48.270); where the HP permit is reviewed concurrently with another permit, the Planning Commission or Council decides instead. Work is judged against the design criteria at § 13.48.250.',
   nashville:
     'A parcel inside one of the historic overlay districts listed at Metro Code § 17.36.110 needs a preservation permit from the Metro Historic Zoning Commission before a certificate of zoning compliance can issue — for new construction, exterior alteration, repair, relocation, and demolition in whole or in part (Metro Nashville & Davidson County Code § 17.40.420.A–B; commission powers at § 17.40.410.B–C). Unusually, the code clocks the commission rather than the applicant: it must meet within fifteen working days of a sufficient application, and failure to act within thirty days of a sufficient application is deemed an approval unless both sides agree to extend. Budget roughly a month for the hearing; design revisions to satisfy the district’s guidelines are the real variable.',
+  raleigh:
+    'A parcel inside a General (-HOD-G) or Streetside (-HOD-S) historic overlay district, or a designated Historic Landmark, needs a Certificate of Appropriateness before any exterior work: "no exterior portion of any building or other structure … shall be erected, altered, restored, moved, or demolished on the landmark or within the district until after an application for a certificate of appropriateness as to exterior features has been submitted to and approved by the Historic Development Commission" (Raleigh UDO Sec. 5.4.1.C.1), and the certificate must issue before the building permit (Sec. 5.4.1.C.3). The Historic Development Commission has delegated the decision to a Certificate of Appropriateness Committee (Sec. 10.2.15.A.4). Minor works — the enumerated table at Sec. 10.2.15.D.2, running from awnings and driveways to a rear addition of 50 sq ft or less — are signed off administratively by the Planning Director; ground-up new construction is NOT on that list and goes to the Committee as a major work at a noticed quasi-judicial evidentiary hearing, where "the burden of producing substantial, competent and material evidence or testimony is upon the applicant" (Sec. 10.2.15.D.3). The only clock the code sets is an outer limit on the Committee — applications "shall be reviewed and acted upon within 180 days from the date the application for a certificate of appropriateness is filed" (Sec. 10.2.15.D.1) — which is a ceiling, not an expected duration. Where the underlying zoning\'s setbacks or height conflict with the district\'s special character as determined through the certificate, the MORE RESTRICTIVE controls (Sec. 5.4.1.E, .F) — so the by-right envelope is not the envelope here. In an -HOD-S the review reaches only the street-facing parts of the lot enumerated at Sec. 5.4.2.B.2, but "the entirety of any new principal building construction on a vacant lot" is one of them.',
+  milwaukee:
+    'A parcel that is a historic structure, is on a historic site, or sits inside a historic district designated by the Common Council needs a certificate of appropriateness from the Milwaukee Historic Preservation Commission before any permit issues — and the trigger expressly reaches NEW CONSTRUCTION on an otherwise unremarkable lot: no person may "construct any improvement on a historic site, on a parcel that contains a historic structure or on a parcel within a historic district, including a parcel which is to be rendered vacant or partially vacant by reason of partial or complete demolition of a structure" without one, and "The commissioner of city development or neighborhood services shall not issue a permit for any such work or demolition unless a certificate of appropriateness has been issued by the commission" (Milwaukee Code s. 320-21-11-a). Any city department receiving permit plans for exterior alteration, new construction or demolition in a district must forward them to commission staff within 5 days. The clock the code sets for non-demolition work runs on the commission, not on you: staff has 10 days to rule the application complete as to form, the commission considers it at its next regular meeting at least 10 days after that, and must decide within 30 days of the close of that meeting (s. 320-21-11-b, -c-1). No public hearing is held on an alteration or new-construction certificate unless someone files a written objection with the city clerk within 20 days of the notice of receipt — an objection converts it into a noticed hearing. New construction is judged against three stated tests: architecture "sensitive to the mass and proportions of existing structures", "Appropriately-scaled architecture that is clearly differentiated from nearby historic structures, while taking cues from them", and "Not an attempt to re-create a historic structure" (s. 320-21-11-g-2). Where the same project also needs a planned development rezoning, the commission and the plan commission are directed to review concurrently and, failing that, the Common Council committee hears both (s. 320-21-11-i).',
+  columbus:
+    'Any construction, alteration, exterior repainting or demolition of a listed property, or of any structure or architectural feature in a designated district, needs a certificate of appropriateness from the relevant architectural review commission (or the Historic Resources Commission) before any permit issues — the code gates the permit itself: the director of building and zoning services "shall issue no permit for the construction, reconstruction, alteration or demolition of any structure or architectural feature now or hereafter in a listed property or district … unless the application therefore shall be certified under C.C. 3116.05 as involving no architectural feature or shall be accompanied by a certificate of appropriateness issued under C.C. 3116.09", and any permit issued before the certificate is void (Columbus C.C. §§ 3116.04, 3116.18(A)–(C)). Small work can be signed off by staff, but only from a list each commission adopts and publishes annually (§ 3116.055); everything else goes to a public hearing at the commission’s regularly scheduled meeting, and an application is heard at the next meeting only if filed at least ten days beforehand and noticed in the City Bulletin (§ 3116.06(B)). A denial can be appealed, reheard within 45 days on clear and convincing evidence of unusual and compelling circumstances or substantial economic hardship, or mediated (§§ 3116.10(C), 3116.19(A), 3116.21). Demolition carries its own standard and its own submittals — an applicant seeking to remove an entire structure must file "definite plans for reuse of the site, evidence of commitment for funding of the new project, a timeframe for project initiation and completion and an assessment of the effect such plans will have on the character and integrity of the listed property or district" (§ 3116.14).',
+  charlotte:
+    'A parcel inside one of Charlotte’s eight local historic districts needs a Certificate of Appropriateness from the Historic District Commission, and the certificate reaches further than a building permit does: "A Certificate of Appropriateness shall be issued by the Historic District Commission prior to the issuance of a building permit … A Certificate of Appropriateness is required whether or not a building permit is required" (Charlotte UDO Sec. 14.2.D.2). The decision is quasi-judicial and taken at an evidentiary hearing (Sec. 14.2.L.6.b). The only clock the ordinance publishes is an outer limit on the Commission rather than an expected duration — applications must be acted upon within 180 days of filing (Sec. 14.2.L.6.a.i) — and a certificate once issued "shall be valid for 12 months from the date of issuance" (Sec. 14.2.L.7.a), so one obtained early can expire before financing closes. Two things here are Charlotte-specific. First, the enforcement point sits with the COUNTY: the Mecklenburg County Land Use and Environmental Services Agency "shall not issue a Certificate of Occupancy or Certificate of Compliance unless there has been compliance with any Certificate of Appropriateness issued by the Historic District Commission" (Sec. 14.2.T.1), and it may revoke a building permit on its own authority or at the Planning Director’s direction (Sec. 14.2.S.1) — a missed condition surfaces at the CO counter, which is the most expensive place to find one. Second, demolition here is a timing risk and never a veto: an application authorising demolition "may not be denied", though the Commission may delay it for up to 365 days (Sec. 14.2.J.2, .J.3).',
+  atlanta:
+    'Exterior work and new construction inside a Landmark or Historic District, and on any Landmark or Historic Building or Site, need a certificate of appropriateness from the Atlanta Urban Design Commission before permits issue — the code reaches "To erect a new structure or to make an addition to any structure within an Historic District" and the parallel provision for Landmark Districts, plus any request "To vary any applicable regulation" (Atlanta Code § 16-20.007(a)(3)–(4)). There are four types. Ordinary repair and maintenance is a type I signed off by the director; ground-up new construction is a type III "major alteration", which goes to a noticed public hearing with notice published on the City website and in a newspaper at least 30 days before the meeting, the property posted at least 15 days before, and mailed notice to owners within 300 feet (§ 16-20.008(c)(2)). The code clocks the commission rather than the applicant: "Hearings of the commission on type III applications shall be held within 90 days from the date on which the director receives in due form a complete application from the applicant. The commission shall make a decision on said applications within 21 days of the date of the final public hearing" (§ 16-20.008(c)(3)), and failure to decide within those limits "shall be deemed to be approval of the application" with the bureau of buildings directed to issue the dependent permit (§ 16-20.008(c)(6)). Conservation Districts are different and much lighter: no certificate is required, only an advisory written recommendation from the commission, and if it fails to provide one within 30 days of the owner\'s initial application "the bureau of buildings shall issue the permit(s) at the request of the owner without compliance with this subsection" (§ 16-20.007(b)). Where a project is also in one of the affordable-housing overlays, the more stringent of the two regimes controls (§§ 16-36A.001, 16-37.001(3), 16-41.001(3)).',
   // NOTE — no minneapolis entry on purpose. The Minneapolis research returned a
   // citywide DEMOLITION screen (§§ 599.910, 599.920, encoded below) but no
   // section for historic-district design review, so this city falls through to
@@ -82,12 +100,45 @@ const HISTORIC_BODY: Record<string, string> = {
 }
 
 // Design-review months for the historic hurdle. 3 is the module's standing
-// estimate; two cities' research states a different figure — DC's HPRB /
-// Commission of Fine Arts path at 4 months (D.C. Official Code § 6-1107) and
+// estimate; three cities' research states a different figure — DC's HPRB /
+// Commission of Fine Arts path at 4 months (D.C. Official Code § 6-1107),
 // Nashville's Metro Historic Zoning Commission preservation permit at 1 month
-// (Metro Code § 17.40.420.A–B), both per docs/HURDLE-PROPOSALS.md. No other city
-// gets an override, because no other city's research states one.
-const HISTORIC_MONTHS: Record<string, number> = { dc: 4, nashville: 1 }
+// (Metro Code § 17.40.420.A–B), both per docs/HURDLE-PROPOSALS.md, and Atlanta's
+// Urban Design Commission at 4 months (below). No other city gets an override,
+// because no other city's research states one.
+//
+// ⚠️ Atlanta's 4 is a real claim and is written down so it can be argued down.
+// § 16-20.008(c)(3) gives the commission 90 days from a complete application to
+// hold the type III hearing and 21 days from the final hearing to decide — 111
+// days ≈ 3.7 months — and (c)(6) makes both limits DEEMED APPROVAL: failure to
+// act inside them "shall be deemed to be approval of the application". That is
+// DC's and Nashville's shape (the code fixes when the thing actually resolves),
+// not Raleigh's ceiling.
+//
+// ⚠️ Milwaukee, Columbus and Charlotte deliberately get NO override, and each
+// for the Raleigh reason rather than by oversight. Milwaukee: 10 days to rule an
+// application complete as to form, a meeting at least 10 days later, a decision
+// within 30 days of the close of that meeting (s. 320-21-11-b, -c-1), and for
+// demolition a deferral CEILING of 8 months (s. 320-21-11-f-1) — shot clocks and
+// a ceiling, no duration. Columbus is a stronger case still: its code sets no
+// clock on the commission at all, only a 10-day filing lead before a REGULARLY
+// SCHEDULED meeting (§ 3116.06(B)), a 45-day rehearing window (§ 3116.19(A)) and
+// a 90-day post-hardship negotiation period (§ 3116.20) — a submittal deadline
+// and two contingent branches. Charlotte publishes a 180-day outer limit on the
+// Commission (UDO Sec. 14.2.L.6.a.i), which is Raleigh's number in Raleigh's
+// shape. All three fall through to the standing 3.
+//
+// ⚠️ Raleigh deliberately gets NO override even though its code names a number.
+// Sec. 10.2.15.D.1 says certificate applications "shall be reviewed and acted
+// upon within 180 days from the date the application … is filed" — that is an
+// outer LIMIT on the Committee, not a duration for the review, and the same
+// section lets the Committee take the matter under advisement right up to it.
+// Writing 6 here would publish a ceiling as an expectation, which is rule 6's
+// failure in the time dimension. DC's 4 and Nashville's 1 are different: DC's
+// 120 days is the period the Mayor has to make the finding on a referral that
+// has already been made, and Nashville's 30 days is a DEEMED-APPROVAL clock,
+// so in both the code fixes when the thing actually resolves.
+const HISTORIC_MONTHS: Record<string, number> = { dc: 4, nashville: 1, atlanta: 4 }
 
 // Private projects that are large enough to plausibly seek a subsidy/abatement.
 const SUBSIDY_NOTE =
@@ -96,6 +147,150 @@ const SUBSIDY_NOTE =
 // Projects that actually tap public money/land — the process is mandatory.
 const PUBLIC_FUNDING_NOTE =
   'Public funding, tax credits, bonds, or city land bring a defined process: competitive public procurement and bidding, prevailing-wage requirements (federal Davis-Bacon or the state equivalent), minority- and women-owned business (MWBE) participation goals, and ongoing reporting and audits. Expect public-board approvals and a longer pre-construction timeline.'
+
+// ─── 2026-08-08 cohort: parcel-conditional parking, per ordinance ────────────
+//
+// ⚠️ READ THIS BEFORE ADDING TO ANY OF THE FOUR BRANCHES BELOW, because the
+// scope claim here CHANGED on 2026-08-08 and the earlier version is retracted.
+//
+// WHAT IT SAID, AND WHY IT IS NO LONGER TRUE. Milwaukee, Columbus, Charlotte and
+// Atlanta were first encoded for their PARKING ordinance and nothing else, and
+// this block said so — "treat the four as encoded for parking and unencoded for
+// everything else". The non-parking research has since landed for all four, and
+// each branch now also carries its inclusionary position, its review path, its
+// environmental, fee and demolition rows, plus a city-specific `HISTORIC_BODY`.
+// The parking-only sentence is retracted; it is recorded rather than deleted
+// because it stood in this file, in `hurdles.test.ts` and in
+// `src/config/cities.ts` at once, and a reader who remembers it needs to see the
+// correction rather than a silent rewrite (rule 17).
+//
+// WHAT IS TRUE NOW, STATED NARROWLY. Each of the four is encoded across the same
+// subjects as the other sixteen, from one dated read of that city's code. None
+// is exhaustive, and each branch names its own residue in comments on the rows
+// that carry it — Milwaukee's unread floodplain/shoreland overlays and its
+// energy-benchmarking threshold; Columbus's stormwater chapter (C.C.
+// 1145.80–1145.89, whose text the content API returned empty) and its BZA
+// procedure; Charlotte's citywide demolition question, which cannot be closed
+// because one of the 39 UDO articles failed to download; Atlanta's institutional
+// DRI rung and its Part 15 sidewalk exactions. A subject encoded is not a
+// subject exhausted, and the honest denominator for these four lives in the
+// per-row comments below, not in a claim of completeness here.
+//
+// WHY THESE ROWS ARE NOT DUPLICATES OF `PARKING_RULES`. `PARKING_RULES` is a
+// static per-city record with no access to the parcel, so it carries the
+// citywide rule and the citation. Everything PARCEL-CONDITIONAL has to live
+// here, and in all four cities the parcel is what decides the answer: which
+// Milwaukee district you are in decides whether a minimum exists at all,
+// Charlotte's tier is a property of the district, Atlanta's pre-1965 exemption
+// is a property of the existing building. Raleigh's branch carries the opposite
+// instruction — do not duplicate the parking finding — and it is right for
+// Raleigh, whose rule is citywide and unconditional. These four are not.
+
+/** Milwaukee Table 295-403-2-a, "Multi-family dwelling", "Min. ratio of parking
+ *  spaces to dwelling units" — the 1:1 column, transcribed verbatim. */
+const MKE_PARKING_1_PER_UNIT = new Set(['RM1', 'RM2', 'RM3', 'RM4', 'RO1', 'NS1', 'LB1', 'RB1'])
+/** The same row's 2:3 column. Note C9A is here: it is the one downtown district
+ *  s. 295-403-2-a excludes from the downtown exemption, and also the one whose
+ *  primary product is apartments. */
+const MKE_PARKING_2_PER_3_UNITS = new Set([
+  'RT4', 'RT5', 'RM5', 'RM6', 'RM7', 'RO2', 'NS2', 'LB2', 'LB3', 'RB2', 'CS', 'C9A', 'IM',
+])
+
+/**
+ * The three overlay phrases `providers/milwaukee.ts` writes into
+ * `zoning.article` — this is a STRING COUPLING ACROSS A MODULE BOUNDARY and it
+ * is named here rather than inlined so both ends can be pinned by a test
+ * (ledger rule 9: the errors that survive are the ones consistent on each side
+ * of a boundary and inconsistent across it).
+ *
+ * None of the three overlays is on `parcel.overlays`, and `zoning.subdistrict`
+ * carries at most ONE of them (providers/milwaukee.ts prefers the historic
+ * district, then DIZ, then SPROZ, then NC), so `article` — which lists all of
+ * them — is the only field that answers "is this parcel in a Development
+ * Incentive Zone AND a Neighborhood Conservation overlay?". Gate on `article`.
+ *
+ * A miss here is a false NEGATIVE: the row does not render. It can never assert
+ * an overlay that is not mapped.
+ *
+ * Pinned at the provider end by `providers/milwaukee.test.ts` ("a Site Plan
+ * Review overlay and an NC overlay are disclosed too"), and at this end by the
+ * Milwaukee overlay tests. If you rewrite `buildArticle`, both fail.
+ */
+const MILWAUKEE_OVERLAY_PHRASE = {
+  /** buildArticle: `Site Plan Review overlay zone (${names}): …` */
+  sitePlanReview: /Site Plan Review overlay zone/i,
+  /** buildArticle: `Development Incentive Zone (${names}): …` */
+  developmentIncentive: /Development Incentive Zone/i,
+  /** buildArticle: `Neighborhood Conservation overlay zone (${names}): …` */
+  neighborhoodConservation: /Neighborhood Conservation overlay zone/i,
+} as const
+
+/**
+ * Title 34 ("Zone In", the 2024 Zoning Code) district designations, transcribed
+ * from C.C. Title 34 § E.20.030 — Chapter E.20 is the ONLY district chapter in
+ * Title 34 (Article E contains E.10 Purpose and E.20 Mixed-Use and nothing
+ * else), so this set is the whole of that code's district vocabulary.
+ *
+ * MEASURED, not assumed, live against the provider's own zoning layer
+ * (Applications/Zoning/MapServer/20) on 2026-08-08:
+ *   CLASSIFICATION IN (this set)          → 1,619 polygons
+ *   GENERAL_ZONING_CATEGORY = 'Mixed-Use' → the same 1,619
+ *   (UGN-1 545, UCT 511, CAC 269, UCR 173, RAC 48, UGN-2 42, UCR-R 31; no row
+ *   in either set fails the other, out of 18,804 mapped polygons.)
+ * A biconditional, not a heuristic.
+ *
+ * ⚠️ EXACT-SET MEMBERSHIP ONLY — never a prefix test. `UCRPD` and `LUCRPD` are
+ * Title 33 research-park districts (46 polygons) that `/^UCR/` would sweep into
+ * Title 34 and hand a "no parking minimum" answer they do not have. They are
+ * distinct strings, so `has()` cannot collide with them; `startsWith` can.
+ * Pinned by the UCRPD/LUCRPD test in hurdles.test.ts.
+ */
+const COLUMBUS_TITLE34 = new Set(['UGN-1', 'UGN-2', 'UCT', 'UCR', 'UCR-R', 'CAC', 'RAC'])
+
+/**
+ * The three mapped Atlanta overlays that carry a MANDATORY affordable set-aside
+ * — BeltLine (Part 16 ch. 36A), Westside (ch. 37), Northwest Atlanta (ch. 41).
+ *
+ * Matched with a tolerant regex on purpose. `providers/atlanta.ts` builds
+ * `subdistrict = historicDistrict ?? overlay.LABEL ?? overlay.ZONECLASS ??
+ * ZONINGCODE`, and the overlay layer's own domain (enumerated 2026-08-08 via
+ * `.../LandUsePlanning/MapServer/1/query?returnDistinctValues=true`, 67 distinct
+ * LABEL/ZONECLASS pairs) spells the Northwest overlay TWO ways: ZONECLASS
+ * `NW Atlanta Affordable WH`, LABEL misspelled `NW Atalnta AWH`. A literal match
+ * on either string alone silently drops the other, so the pattern accepts both
+ * spellings — `at[a-z]*nta` covers "Atlanta" and "Atalnta" alike.
+ *
+ * Direction of error, stated because it decides how the rows are worded: the
+ * provider takes only the FIRST overlay feature (`firstAttrs`) and a mapped
+ * historic district DISPLACES the overlay label entirely, while the layer can
+ * return several features at one point (measured: Inman Park returns both
+ * "Beltline" and "HC20LSA1"). So a miss here is a false NEGATIVE and never a
+ * false positive — the same shape as Raleigh's -TOD row.
+ */
+const ATLANTA_AWH_OVERLAY = /beltline|westside\s*iz|nw\s*at[a-z]*nta|\bawh\b|affordable\s*w/i
+
+/**
+ * Charlotte UDO Table 19-1 tier → district map, transcribed verbatim from the
+ * table's own header cells.
+ *
+ * Tier 1's header reads "Neighborhood 1 Zoning Districts, N2-A, MHP, ML-1,
+ * ML-2, IC-1, OFC, OG Zoning Districts". Only the individually NAMED districts
+ * are listed below: "Neighborhood 1 Zoning Districts" is a class the header
+ * does not enumerate, and enumerating it from the curated height table in
+ * `zoning/charlotte.ts` would be assembling a legal claim out of two sources
+ * neither of which states it. An N1-* parcel therefore resolves to no tier and
+ * gets no tier row — a false NEGATIVE, which is the safe direction: the city's
+ * rule still renders from `PARKING_RULES`, and nothing asserts a minimum that
+ * was not read.
+ */
+const CLT_PARKING_TIER: Record<string, 1 | 2 | 3> = {
+  // Tier 1 — minimums, no maximums.
+  'N2-A': 1, MHP: 1, 'ML-1': 1, 'ML-2': 1, 'IC-1': 1, OFC: 1, OG: 1,
+  // Tier 2 — minimums AND maximums.
+  'N2-B': 2, 'N2-C': 2, IMU: 2, 'IC-2': 2, RC: 2, NC: 2, 'CAC-1': 2, CG: 2, CR: 2,
+  // Tier 3 — most uses have NO minimum; maximums apply.
+  'CAC-2': 3, 'TOD-UC': 3, 'TOD-NC': 3, 'TOD-CC': 3, 'TOD-TR': 3, RAC: 3, UC: 3, UE: 3,
+}
 
 // Assess non-zoning regulatory hurdles for a project. Boston is fully modeled;
 // other cities get the shared overlay + private-governance hurdles for now.
@@ -1687,6 +1882,1500 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         note: 'Metro goes beyond the federal NFIP baseline: floodplain designated as natural floodplain on a parcel is meant to stay preserved, and encroaching on it needs a variance from the Stormwater Management Commission under Metro Code ch. 15.64 (Metro Nashville & Davidson County Code § 17.28.040.A, .C.1). The variance can cover no more than twenty percent of the preserved floodplain area, and only on a finding that the encroachment reduces the flood danger or improves the floodplain’s environmental quality. Manipulated floodplain land cannot count toward the base district’s minimum lot size, and a lot containing natural floodplain becomes a "critical lot" with finished-floor elevations fixed on the final plat. When sizing the envelope, treat preserved floodplain as effectively unbuildable — and Metro maps its own floodplain, so confirm the local mapping rather than relying on the FEMA zone alone.',
       })
     }
+  } else if (city === 'raleigh') {
+    // Raleigh Unified Development Ordinance, read 2026-08-07 from the City's own
+    // consolidated text (udo.raleighnc.gov/udo-book/print-all-chapters — the same
+    // source PARKING_RULES['raleigh'] was read from), plus N.C. Gen. Stat.
+    // § 42-14.1 from ncleg.gov. Two rows are carried elsewhere on purpose and
+    // must NOT be duplicated here: the parking finding — Raleigh imposes no
+    // vehicle-parking minimum anywhere, for any use (Sec. 7.1.1) — is
+    // PARKING_RULES['raleigh'], and the Certificate of Appropriateness is
+    // HISTORIC_BODY['raleigh'] above.
+    //
+    // ⚠️ INSTRUMENT NOTE, and it cost real errors here (rule 11). The
+    // print-all-chapters export FLATTENS the heading levels: subsection titles
+    // come through as bare text with their A./B./C. labels stripped, so counting
+    // paragraphs off it silently invents sub-letters. Reading it that way put
+    // Approval Process at 10.2.8.C (it is D), the historic demolition delay at
+    // 10.2.15.F (it is E), -TOD Height at 5.5.1.G (it is H) and 5.4.1 Setbacks
+    // one letter high — four wrong pointers, every one of them to a real
+    // provision that says something else. Each sub-letter below was then checked
+    // against the PER-SECTION page on udo.raleighnc.gov, which prints the
+    // labels; where a section turned out to be numbered rather than lettered
+    // (8.2.1, 8.9.1–8.9.3, 8.11.2, 9.4.6) the citation is deliberately left at
+    // section level rather than given a sub-item that does not exist. If you add
+    // a row here, cite from the section page, not from the consolidated export.
+    const RAL_ACRE = 43560
+    const ralAcres = lotSqFt / RAL_ACRE
+    // A Tier 2 or Tier 3 site plan, approximated. Sec. 10.2.8.B.1.a.i puts an
+    // increase of "no greater than 4,000 square feet or 10% of the existing
+    // square footage, whichever is greater" in Tier 1, and Tier 1 is expressly
+    // barred from carrying tree conservation, amenity, open space, drainage or
+    // public-improvement conditions (Sec. 10.2.8.B.1). Anything larger is
+    // Tier 2 or Tier 3. This is a proxy, not the rule — the 10% limb needs an
+    // existing floor area we do not always hold — so it only ever gates rows
+    // that are stated as conditional anyway.
+    const ralTier23 = project.gfa > 4000
+
+    if (isResidential) {
+      // ABSENCE, and the headline for Raleigh — but a DIFFERENT absence from
+      // Nashville's, and the difference is the whole point. Tennessee bans
+      // mandatory inclusionary zoning by name (Tenn. Code Ann. § 66-35-102(b)).
+      // North Carolina does NOT: no statute names inclusionary zoning at all,
+      // and whether one is authorised here is contested. So what is recorded is
+      // what can be checked — (a) the UDO's own structure, and (b) the statute's
+      // actual words. Writing "state law bars mandatory inclusionary zoning" for
+      // Raleigh would be a mechanism argued aloud wearing a citation (rule 1);
+      // it is the one sentence this row must not contain.
+      hurdles.push({
+        category: 'affordability',
+        label: 'No inclusionary requirement — affordability is priced into bonuses only',
+        status: 'info',
+        note: 'The Raleigh UDO sets no affordable-unit requirement at any project size. Every affordability obligation in the ordinance hangs off an OPTIONAL bonus the developer elects: the Frequent Transit Development Option above twelve units (Sec. 2.7.1, note G4), the three-storey height bonus in mixed-use districts (Sec. 3.7.1, note D5), and the Transit Overlay height bonus (Sec. 5.5.1.H.3), each in the same words — "A number of units equal to at least twenty percent (20%) of the residential units established in newly allowed stories shall be affordable for households earning sixty percent (60%) of the Area Median Income or less for a period of no less than 30 years from the date of issuance of a certificate of occupancy." Build within base zoning and none of it arises. On the state-law backdrop, note what is and is not settled: N.C. Gen. Stat. § 42-14.1(a) provides that "No county or city as defined by G.S. 160A-1 may enact, maintain, or enforce any ordinance or resolution which regulates the amount of rent to be charged for privately owned, single-family or multiple unit residential or commercial rental property", and § 42-14.1(c)(4) excepts ordinances "applicable to owners or operators that receive funding or financial incentives from the county or city" — which is exactly the shape Raleigh\'s requirements take. North Carolina has no statute naming inclusionary zoning, and unlike Tennessee has not prohibited it by name, so treat this as a rule Raleigh has not adopted rather than one the State has forbidden.',
+      })
+
+      // The bonus itself, stated as a trade with a published floor. Sec. 2.7.1
+      // note G4 is conjunctive three ways and all three are named: the project
+      // must ELECT the Frequent Transit Development Option, the option requires
+      // "at least a portion of each lot within the mapped Frequent Transit Area"
+      // (note G3), and the twelve-unit cap is written for "a development site
+      // utilizing this option in a residential zoning district". None of those
+      // three is in data we hold, so this is 'likely' with all three on the face
+      // of the note — never 'required'.
+      if (units > 12) {
+        hurdles.push({
+          category: 'affordability',
+          label: 'Frequent Transit Development Option: affordability above 12 units',
+          sizeDependent: true,
+          status: 'likely',
+          note: 'IF this project uses the Frequent Transit Development Option — which is an election, and is open only to a lot with at least a portion inside the mapped Frequent Transit Area (Raleigh UDO Sec. 2.7.1, notes G3, G4) — then the unit count is capped unless affordability is provided: "A development site utilizing this option in a residential zoning district shall contain no more than twelve (12) residential units; however, a development site may contain additional residential units provided a number of units equal to at least twenty percent (20%) of the residential units over twelve (12) established within the development site shall be affordable for households earning sixty percent (60%) of the Area Median Income or less for a period of no less than 30 years from the date of issuance of a certificate of occupancy." The set-aside is 20% of the units ABOVE twelve, not 20% of the building. It carries a recorded Affordable Housing Deed Restriction in the Wake County Register of Deeds before the certificate of occupancy, an annual compliance report, and a requirement that the affordable units be built concurrently with the market-rate ones (note 7). Confirm the Frequent Transit Area mapping before pricing this either way — outside it, the option and its cap are both unavailable.',
+        })
+      }
+    }
+
+    // Facility fees. No floor-area or unit threshold at all, so no sizeDependent
+    // tag — the gate is that the project is new construction. The amounts are
+    // NOT in the ordinance and are not invented here: Sec. 8.9.1 sends the
+    // reader to the City's Fee Schedule, which Raleigh republishes each fiscal
+    // year (its FY27 Development Fee Guide is the current one).
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'fees',
+        label: 'Thoroughfare and open space facility fees',
+        status: 'required',
+        note: 'Raleigh levies two facility fees on new construction — thoroughfare/collector street and open space — and they gate the permit: "No building permit or other City permit for those improvements not requiring a building permit, shall be issued for any activity requiring the payment of a facility fee until the required facility fees have been paid in full" (Raleigh UDO Sec. 8.9.1). There is no floor-area or unit threshold and no small-project exemption. On a redevelopment the fee is charged on the NET increase only — "facility fees shall be levied based upon the net increase, if any, above that which the existing development would pay" (Sec. 8.9.3) — and replacing a building with one of the same dwelling type or non-residential use is exempt outright, but only if the structure being credited "was standing at some time in the 6 year period immediately preceding the date on which the facility fee for the new project is calculated" (Sec. 8.9.2). A change of use that raises the rate pays the difference (Sec. 8.9.3). Rates are not in the ordinance: Sec. 8.9.1 states that "Current facility fees are listed in the City of Raleigh Fee Schedule, kept on file by the City and are updated and adopted by the City Council", which Raleigh reissues each fiscal year — get the current Development Fee Guide rather than a figure from a prior year.',
+      })
+    }
+
+    // Raleigh's structural advantage, and the row a reader coming from Boston or
+    // Philadelphia most needs: the site plan is an ADMINISTRATIVE approval. There
+    // is no design-review board, no civic-design hearing, no RCO meeting.
+    hurdles.push({
+      category: 'review',
+      label: 'Site plan review is administrative — no board, no hearing',
+      status: 'info',
+      note: 'Raleigh reviews site plans over the counter, not at a public hearing: "Following site review, Development Services shall approve, approve with conditions that bring the site review plan into conformance with this UDO and other applicable technical requirements of the City or deny the site review plan" (Raleigh UDO Sec. 10.2.8.D.1). A site plan is required "for the construction, reconstruction, extension, repair, renovation or alteration of any building, structure, parking facility, change of use or use of land, not otherwise approved as a zoning permit" (Sec. 10.2.8.A), and it falls into one of three tiers that decide which standards apply — Tier 1 for an increase of 4,000 sq ft or less (or 10% of existing, whichever is greater), Tier 2 between that and 10,000 sq ft, Tier 3 for everything else, with the more restrictive tier controlling where a project meets two (Sec. 10.2.8.A, .B.1–.B.3). The tier is not cosmetic: a Tier 1 approval cannot be conditioned to require tree conservation, amenity area, open space, drainage, utility dedication, neighborhood transitions or right-of-way dedication (Sec. 10.2.8.B.1), and Tier 2 cannot be conditioned to require right-of-way dedication or improvements (Sec. 10.2.8.B.2). No building permit issues until the site review is approved (Sec. 10.2.8.D.3), and the approved plan expires three years from approval unless a building permit issues, with one two-year extension available (Sec. 10.2.8.F).',
+    })
+
+    // CONJUNCTIVE, and this is the gate most likely to be got wrong: Sec.
+    // 10.2.8.C.1.d joins its two conditions with "and", not "or". Size alone
+    // does not trigger the notice — the 100-foot proximity to a low-density
+    // residential district must also hold, and we hold no adjacency data. So
+    // the size limb gates the row and the zoning limb is stated, not asserted.
+    if (project.gfa >= 25000) {
+      hurdles.push({
+        category: 'review',
+        label: 'Post-approval mailed notice and a 30-day posted sign',
+        sizeDependent: true,
+        status: 'likely',
+        note: 'An administratively approved site plan carries a notice obligation when BOTH of two conditions hold — the code joins them with "and", so size alone is not enough. Beginning the day the zoning or site permit issues, mailed notice under Sec. 10.2.1.C.1 is required and the owner must post a sign on the property for 30 consecutive days "Where the new building is 25,000 square feet or more in size or any addition that represents an increase of more than 10% of the building area or 25,000 square feet whichever is greater; and Where the property of the approved administrative site plan is located within 100 feet of a property that is zoned R-1, R-2, R-4, R-6 or R-10" (Raleigh UDO Sec. 10.2.8.D.1.d). This project clears the size limb; whether the second limb holds turns on what is zoned within 100 feet, which is not in the parcel record — confirm it. The mailed notice goes to owners of all property within 100 feet on all sides (Sec. 10.2.1.C.1). This is notice AFTER approval, not a hearing before it; what it starts is the appeal clock, not a review.',
+      })
+    }
+
+    // Not size-gated and not discretionary-only: in Raleigh the appeal window
+    // opens on an ordinary as-of-right permit. No addsMonths — an appeal is a
+    // risk, not a certainty, and baking months into every Raleigh timeline
+    // would overstate delay (same reasoning as Boston's MGL c.40A §17 row).
+    hurdles.push({
+      category: 'review',
+      label: 'Third-party appeal window: 30 days from permit issuance',
+      status: 'info',
+      note: 'Raleigh\'s administrative approval is appealable, and the window opens at issuance rather than at a hearing: "An appeal as set forth in Sec. 10.2.11. shall be filed by persons within 30 days of permit issuance or when a permit is not issued, the decision of approval or denial; this time period is applicable to all representatives of such persons, including without limitation their tenants and option holders" (Raleigh UDO Sec. 10.2.8.D.1.f). Anyone with standing under N.C. Gen. Stat. § 160D-1402(c) may appeal to the Board of Adjustment, which must hold a quasi-judicial hearing within 90 days of a completed appeal application, and from there the route is Wake County Superior Court (Sec. 10.2.11.A, .B, .E.2, .E.5). An appeal of a decision granting a permit does not automatically stay further review, but the Board may grant a stay of a final decision on the affected permits (Sec. 10.2.11.C). Most approvals are never appealed; this is a risk to price, not a step to schedule.',
+    })
+
+    // Every subdivision plan and site plan, unconditionally — the sufficiency
+    // determination is not threshold-gated. What IS threshold-gated is which of
+    // the three studies you owe, and those thresholds live in the Street Design
+    // Manual, not the UDO, so no number is asserted for them.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'review',
+        label: 'Infrastructure sufficiency and traffic study',
+        status: 'required',
+        note: 'Raleigh tests capacity on every plan, not only large ones: "every subdivision plan and site plan shall be subject to a determination of the sufficiency of infrastructure, as defined below according to the established levels of service in this Article" (Raleigh UDO Sec. 8.2.1), and infrastructure counts as sufficient only where it has available capacity for this development plus other approved developments and PD master plans (Sec. 8.2.1). Streets are measured in AM/PM peak trips by ITE methodology against level of service E, and there are three escalating studies — a Trip Generation Report, then a Traffic Assessment where peak-hour traffic fails LOS, then a full Traffic Impact Analysis where queueing and delay are unacceptable (Sec. 8.2.2.B–.D). The thresholds that decide which one you owe are set in the adopted Street Design Manual rather than in the UDO, so no unit or floor-area figure is stated here — ask Transportation early. Where a study shows degradation below LOS E, approval is still available but only against caps (residential density not over 50 units per acre, office FAR not over 0.5, commercial FAR not over 0.25) plus a traffic mitigation plan the Transportation Director must find reasonable and adequate before site plan approval is granted (Sec. 8.2.2.E, .F). Exceptions exist for a funded City or NCDOT project, an existing or funded transit stop within a quarter mile, a conditional district with a trip budget approved in the prior 20 years, and for property zoned DX- (Sec. 8.2.2.G). The cost here is the mitigation, not the study.',
+      })
+    }
+
+    // Tree conservation — the gate is LOT AREA, which the parcel record measures
+    // directly, so this is deliberately NOT tagged sizeDependent: that tag exists
+    // to soften claims resting on a placeholder FLOOR AREA, and no floor area is
+    // involved in the trigger. Two independent limbs both key on 2 acres:
+    //   · Sec. 9.1.2 — the percentage requirement, which additionally needs a
+    //     subdivision or a Tier 2/Tier 3 site plan (Tier 1 cannot be conditioned
+    //     to require tree conservation at all, Sec. 10.2.8.B.1).
+    //   · Sec. 9.1.10 — perimeter buffers on any 2-acre-plus site with no
+    //     recorded tree conservation area, with NO tier condition.
+    // Status splits at 4 acres because Sec. 5.5.1.I carves out "any site with
+    // area less than 4 acres" in the -TOD. Above 4 acres that carve-out cannot
+    // apply, so the requirement is unconditional; between 2 and 4 it turns on an
+    // overlay that may be masked in our data, so it is stated as conditional.
+    if (project.projectType === 'new' && ralAcres >= 2) {
+      const ralTreePct = /^R-[12]\b/.test(parcel.zoning.districtCode ?? '') ? '15%' : '10%'
+      hurdles.push({
+        category: 'environmental',
+        label: 'Tree conservation area and tree protection',
+        status: ralAcres >= 4 ? 'required' : 'likely',
+        note: `Raleigh's tree ordinance keys on lot size, and this parcel is over the 2-acre line. "Prior to approval of any subdivision of any tract 2 acres or greater in size or Tier 2 or Tier 3 site plan for a parcel 2 acres or greater, tree conservation areas must be provided in accordance with the requirements of this UDO" (Raleigh UDO Sec. 9.1.2). Eligibility is measured on gross site area and the requirement on net site area: 15% in R-1 and R-2, 10% in all other districts (Sec. 9.1.3) — ${ralTreePct} for the district mapped here. The areas are not yours to place freely: primary areas (Sec. 9.1.4.A) must be saved FIRST and in full "even if doing so exceeds the minimum required percentage", and they include champion trees and their critical root zones, Neuse River Riparian Zone 2, slopes of 45% or greater adjoining floodways, and an undisturbed strip averaging 50 feet along a Thoroughfare. Secondary areas run to 65-foot and 32-foot perimeter buffers (Sec. 9.1.4.B). A separate tree conservation permit must be obtained and protective fencing installed before any tree disturbing activity, and the areas must be recorded by metes and bounds with the Wake County Register of Deeds along with a maintenance easement and an HOA declaration before a building permit issues (Sec. 9.1.5.A). Fee-in-lieu is available only for SECONDARY areas and only on stated site conditions — "No primary tree conservation area is eligible for a fee-in-lieu payment" (Sec. 9.1.5.E). Independently, and with no tier condition, Sec. 9.1.10.A applies perimeter buffers to "Any tree disturbing activity, except a minor tree removal activity, on sites 2 acres and larger in size that do not have an established or recorded tree conservation area", inside which no tree 10 inches DBH or larger may be removed except up to five between 10 and 22 inches in a rolling five-year period, by permit (Sec. 9.1.10.C). Penalties are real money: $1,000 for the first tree plus $100 per diameter inch for each other tree or stump 3 inches and larger (Sec. 9.1.7). ${
+          ralAcres >= 4
+            ? 'At this size the Transit Overlay carve-out cannot apply.'
+            : 'One carve-out to check before pricing this: Sec. 5.5.1.I provides that tree conservation area "shall not be required for any site with area less than 4 acres" inside a Transit Overlay District (-TOD), and this parcel is between 2 and 4 acres — confirm whether the -TOD is mapped here, because it decides whether the percentage requirement applies at all.'
+        }`,
+      })
+    }
+
+    // Stormwater. Applies to development, not to redevelopment or existing
+    // development, so it is gated on new construction — Sec. 9.2.2.A.3.a is
+    // explicit: "Existing development or redevelopment shall be exempt from the
+    // provisions of this Article."
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Stormwater control permit and the Neuse nitrogen cap',
+        status: 'required',
+        note: 'Raleigh drains to the Neuse, and the nutrient rule is a hard number rather than a design goal: "Any new development or expansion of existing development shall not contribute a nitrogen export load exceeding 3.6 pounds per acre per year" (Raleigh UDO Sec. 9.2.2.B.1.a). The permit gates the work — "No development, expansion of existing development or the placement of impervious area or built-upon area, may occur on a site without an issued stormwater control permit from the City" (Sec. 9.2.2.C.1) — and no such permit issues until a stormwater control plan, sealed by a North Carolina registered engineer, surveyor, soil scientist or landscape architect, has been approved (Sec. 9.2.2.C, .D.1). Projects at or under 24% built-upon area may meet the nitrogen target entirely with purchased nutrient off-set credits; above 24% built-upon area on-site treatment or a dedicated regional measure is mandatory, sized to treat the runoff from one inch of rainfall over all built-upon area (Sec. 9.2.2.B). Peak runoff for the 2-year and 10-year storms must be no greater post-development than pre-development at every point of discharge (Sec. 9.2.2.E). Budget the carry as well as the build: a surety equal to 125% of the construction cost of each stormwater device is due before permit issuance and is not returned until the first annual inspection certification is accepted (Sec. 9.2.2.D.1.e), a private drainage easement must be recorded in the Wake County Registry before the building permit (Sec. 9.2.2.D), and no certificate of occupancy issues without approved as-built plans (Sec. 9.2.2.D). Grandfathered lots recorded before May 1, 2001 in one- and two-unit use are exempt, but only up to the district impervious caps at Sec. 9.2.2.A.4.a — 20% in R-1, 25% in R-2, 38% in R-4, 51% in R-6, 65% in R-10 and all other base districts — above which the exemption falls away.',
+      })
+    }
+
+    // The 12,000 sq ft figure is measured in UNCOVERED (disturbed) area, not lot
+    // area and not floor area. Lot area is a proxy and is labelled as one — the
+    // same treatment Philadelphia's 5,000 sq ft earth-disturbance row gets. Not
+    // tagged sizeDependent for the same reason as the tree row: no floor area is
+    // in the trigger.
+    if (project.projectType === 'new' && lotSqFt > 12000) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Erosion and sedimentation control plan (30-day lead time)',
+        status: 'likely',
+        note: 'Over 12,000 sq ft of disturbance and the erosion plan becomes a scheduling item, not a formality: no person may initiate land-disturbing activity "in any other area if more than 12,000 square feet is to be uncovered unless, 30 or more days prior to the anticipated date for initiating the activity, an erosion and sedimentation control plan for such activity is filed with and approved by the City; but this shall not restrict the initiation of land-disturbing activities when the plan is approved and the permit is issued in less than 30 days from initial submission" (Raleigh UDO Sec. 9.4.6). The table at Sec. 9.4.6 confirms the break: no plan under 12,000 sq ft, plan required and approval required before land disturbance from 12,000 sq ft up. A land disturbance grading permit is separately required from the City (Sec. 9.4.6), and no permit issues at all until buffers, watercourse natural resource buffers and tree protection limits adjoining the work site are demarcated with protective fence in the field (Sec. 9.4.6). Note the unit: the threshold is measured in the area to be UNCOVERED, not in lot area or floor area — lot size is only a proxy for it here, so a large parcel with a small footprint of disturbance may sit below the line.',
+      })
+    }
+
+    // Transit infrastructure — conjunctive and un-gateable on our data. Sec.
+    // 8.11.2.A says "required when ALL of the following conditions are present",
+    // and neither condition (transit-route frontage; 500 daily trips by ITE) is
+    // something we hold or compute. Stated as 'info' with both conditions named
+    // rather than gated on a proxy that would be broader than the source.
+    if (project.projectType === 'new' && ralTier23) {
+      hurdles.push({
+        category: 'review',
+        label: 'Transit stop and shelter, or a fee in lieu',
+        status: 'info',
+        note: 'A Tier 2 or Tier 3 plan can be made to build a bus stop. The trigger is conjunctive — transit infrastructure "is required when all of the following conditions are present: The site has frontage along an existing public transit route operated either by a public transit agency, or the site has frontage along a planned transit route as illustrated in the City\'s adopted Comprehensive Plan; and The site will generate a minimum of 500 daily vehicular trips as calculated per the current edition of the Institute of Transportation Engineers\' Trip Generation Handbook" (Raleigh UDO Sec. 8.11.2), on top of the Tier 2/Tier 3 applicability at Sec. 8.11.1.B. Neither route frontage nor a trip-generation figure is in the parcel record, so this is stated rather than asserted — check both. Where it applies the deliverable is substantial: a permanent 15\' x 20\' transit easement dedicated to the City where the stop sits outside the right-of-way, a 30-foot minimum landing pad, a 15\' x 20\' concrete stop pad, sidewalk connectivity, a trash receptacle, seating, and a shelter (Sec. 8.11.3). At 2,500 daily trips with frontage on more than one street served by more than one route, two stops are required (Sec. 8.11.2). An existing stop within 1,320 feet on the same side of the street with the same facilities removes the requirement — except for Tier 2 and Tier 3 plans serving a hospital, senior housing, life care community or congregate care facility (Sec. 8.11.2). Where no suitable location exists, a fee in lieu is payable instead (Sec. 8.11.5).',
+      })
+    }
+
+    // -TOD, read off the overlay the provider actually fetches. `subdistrict`
+    // carries the Transit Overlay label only when no historic or NCOD overlay is
+    // also present (providers/raleigh.ts prefers those), so a miss here is a
+    // false NEGATIVE and never a false positive — the row simply does not render
+    // rather than rendering a guess, which is the direction rule 5 wants.
+    if (/transit overlay/i.test(parcel.zoning.subdistrict ?? '')) {
+      hurdles.push({
+        category: 'review',
+        label: 'Transit Overlay District (-TOD) standards',
+        status: 'required',
+        note: 'This parcel is in a Transit Overlay District, which rewrites parts of the base zoning. Ten use categories are prohibited outright — cemetery, outdoor sports or entertainment facility over 250 seats, vehicle sales, major and commercial vehicle repair, car wash, drive-thru facilities other than pharmacies, vehicle fuel sales, self-service storage, and warehouse and distribution (Raleigh UDO Sec. 5.5.1.B). Principal buildings other than single- and two-unit living or the Open Lot type must be at least 2 storeys (Sec. 5.5.1.H). Applied to a residential district the -TOD brings the Residential Mixed Use dimensional standards across, removes the minimum lot size for the Apartment building type, permits Townhouse and Apartment types in every residential district, and allows multi-unit living in any residential base district (Sec. 5.5.1.C, .D). Frontage defaults to Urban Limited with a Main Street or Mixed Use streetscape where the underlying district has Parkway, Parking Limited, Detached or no frontage (Sec. 5.5.1.E). In mixed-use districts height in storeys may be increased by 50% where the added storeys are principal residential use and 20% of the units in those newly allowed storeys are affordable at 60% AMI for 30 years, or by 30% for a structure with no residential use at all (Sec. 5.5.1.H.3). Tree conservation area is not required on a -TOD site under 4 acres, and secondary tree conservation areas do not apply in the -TOD at all, though primary areas still must be provided where present (Sec. 5.5.1.I). One trap on an existing building: replacement, repair or renovation of a structure made nonconforming solely by the -TOD must be like for like, and that applies to involuntary demolition as well as voluntary (Sec. 5.5.1.J).',
+      })
+    }
+
+    if (discretionary) {
+      // The rezoning path. No addsMonths: the two clocks the code publishes are
+      // DEADLINES on the two public bodies (60 days for a Planning Commission
+      // recommendation, 60 days for Council to schedule its hearing), not a
+      // duration for the process — nothing clocks the applicant's own steps, the
+      // TIA, or the neighbourhood meetings that must precede submittal. Adding
+      // two ceilings together and publishing the sum as an expectation is the
+      // failure this leaves on the table rather than commits.
+      hurdles.push({
+        category: 'review',
+        label: 'Conditional rezoning: two neighbourhood meetings, Planning Commission, City Council',
+        status: 'likely',
+        note: 'Asking for more than the base district means a rezoning, and in North Carolina that is a legislative act of the City Council, not a staff approval (Raleigh UDO Sec. 10.2.4.A). A pre-submittal neighbourhood meeting is mandatory for every rezoning application and must happen BEFORE the application is filed, no more than six months before, with a written report of who attended and what was raised included in the filing (Sec. 10.2.4.C.1). A SECOND neighbourhood meeting is required, at a 1,000-foot notice radius and with the property posted, if any one of these is true: the site is five acres or more; the change increases maximum building height to five storeys or more, or by five storeys or more; it increases residential density by an additional 10 dwelling units per acre; it moves from a Residential or Conservation Management district to a mixed use or special district; or it creates a PD district (Sec. 10.2.4.C.2). Conditional rezoning conditions can only make development MORE restrictive than the corresponding general use district (Sec. 10.2.4.D.2.a), and no variance is ever available from a condition once approved (Sec. 10.2.4.D.2.j). The Planning Commission holds a legislative hearing and has 60 days to recommend, after which Council may act without it; Council then acts to schedule its own legislative hearing within 60 days of receiving the recommendation, and at that hearing each side gets eight minutes (Sec. 10.2.4.E.2.d, .E.3, .E.4.b). Those are deadlines on the boards, not a schedule for the project — nothing clocks the applicant\'s side, and a TIA is required as part of a complete application wherever the change in intensity meets the Street Design Manual thresholds (Sec. 10.2.4.D.1.d). Plan for the downside too: after a withdrawal or denial the Planning Director cannot accept another application on the same property for 24 months absent a Council waiver (Sec. 10.2.4.G.1).',
+      })
+    }
+
+    if (teardown) {
+      // Fires only inside a mapped historic overlay — Raleigh's demolition delay
+      // is an overlay power, not a citywide screen, and asserting it citywide
+      // would be exactly the over-broad gate this file has had to unwind before.
+      if (parcel.overlays.historicDistrict) {
+        hurdles.push({
+          category: 'demolition',
+          label: 'Historic demolition: approval cannot be refused, but can be delayed up to 365 days',
+          status: 'required',
+          note: 'Inside a historic overlay or on a Historic Landmark, demolition needs its own Certificate of Appropriateness, and the code trades refusal for delay: an application authorising demolition "may not be denied except as provided below for Statewide Significance. However, the effective date of such a certificate may be delayed for a period of up to 365 days from the date of approval" (Raleigh UDO Sec. 10.2.15.E.1). During the delay the Committee is required to negotiate with the owner and others to find a means of preserving the building, and it must shorten or waive the delay where it finds extreme hardship, permanent deprivation of all beneficial use, or that the building has no special significance toward the district\'s character. The exception runs the other way: where the State Historic Preservation Officer determines the building has statewide significance under National Register criteria, the certificate CAN be denied outright, subject to the same hardship finding (Sec. 10.2.15.E.3). A certificate authorising demolition expires if work has not commenced within 12 months of its effective date (Sec. 10.2.15.B). Screen the building\'s National Register standing before pricing a teardown here — it is the difference between a schedule risk and a veto.',
+        })
+      }
+
+      hurdles.push({
+        category: 'demolition',
+        label: 'A pending historic designation freezes demolition',
+        status: 'info',
+        note: 'A designation that has only been recommended, not adopted, is already enough to stop a teardown in Raleigh: "The demolition of any entire building, site or structure within a pending -HOD-G or pending Historic Landmark is prohibited when conducted without an approved Certificate of Appropriateness" (Raleigh UDO Sec. 5.4.1.D.2). Where the Historic Development Commission has voted to recommend designation and the City Council has not yet acted, demolition "may be delayed by the Commission for a period of up to 180 days through the COA process or until the City Council takes final action on the designation, whichever occurs first" (Sec. 10.2.15.E.2). A neighbourhood that objects can start that clock without Council ever voting, so check whether a designation is pending over the area before counting on a demolition date. Separately, Article 11.8 lets the City act against demolition by neglect of a landmark or a contributing structure in an overlay — deferred maintenance is not a route around the certificate.',
+      })
+    }
+  } else if (city === 'milwaukee') {
+    // Milwaukee Code of Ordinances ch. 295 subch. 4, s. 295-403 "Motor Vehicle
+    // Parking", read 2026-08-08. Full source note — and the Cloudflare
+    // reproducibility warning that goes with it — in PARKING_RULES['milwaukee'].
+    // What this branch does NOT cover is stated once above the constants.
+    //
+    // The GIS publishes downtown codes with the subdistrict letter attached
+    // ('C9A(A)', 'C9F(B)') because the subdistrict is part of the district
+    // identity for HEIGHT. Table 295-403-2-a is written at the C9x level, so
+    // the parenthetical is stripped for THIS lookup only; the height resolver
+    // keeps it, which is why the stripping is local rather than pushed into
+    // `normalizeMilwaukeeZone`.
+    const mkeZone = normalizeMilwaukeeZone(parcel.zoning.districtCode)
+    const mkeBase = mkeZone ? mkeZone.replace(/\([A-Z]\)$/, '') : null
+    const mkeRed = mkeBase === 'RED'
+    // "Except for within the C9A district" — the exception is checked at the
+    // C9A level, so C9A(A) and C9A(B) both keep their minimum while every other
+    // C9 subdistrict loses it.
+    const mkeDowntownExempt = !!mkeBase && /^C9/.test(mkeBase) && mkeBase !== 'C9A'
+    const mkeRatio =
+      mkeBase && MKE_PARKING_1_PER_UNIT.has(mkeBase)
+        ? '1 space per dwelling unit'
+        : mkeBase && MKE_PARKING_2_PER_3_UNITS.has(mkeBase)
+          ? '2 spaces per 3 dwelling units'
+          : null
+
+    if (isResidential && (mkeRed || mkeDowntownExempt)) {
+      hurdles.push({
+        category: 'parking',
+        label: 'No off-street parking required in this district',
+        status: 'info',
+        note: `This parcel is mapped ${parcel.zoning.districtCode}, and Chapter 295 removes the requirement outright here: “Except for within the C9A district, no off-street motor vehicle parking spaces shall be required for uses located in downtown zoning districts. Furthermore, no off-street motor vehicle parking spaces shall be required for uses located in a RED redevelopment district” (Milwaukee Code s. 295-403-2-a). ${
+          mkeRed
+            ? 'A RED redevelopment district is the second of the two limbs.'
+            : 'This is a downtown district other than C9A, so the first limb applies. Note which district the exception names: C9A is “Downtown — high-density residential”, so the one downtown district that still owes parking is the one whose primary product is apartments. Do not read “downtown is exempt” off this row for a neighbouring parcel.'
+        } Parking is optional here, not prohibited — the chapter still regulates the design of any spaces you do build.`,
+      })
+    } else if (isResidential && mkeRatio) {
+      // The status splits on the PROGRAM, because Table 295-403-2-a has a
+      // separate row per dwelling type and only the multi-family row carries a
+      // ratio. Tagged sizeDependent because it turns on `units`, which is
+      // derived from floor area when no FAR resolves — a hard "required" off a
+      // placeholder unit count is exactly what softenSizeDependent exists to
+      // stop.
+      const mkeKnownSmall = units >= 1 && units <= 2
+      hurdles.push({
+        category: 'parking',
+        label: `Off-street parking minimum: ${mkeRatio}`,
+        sizeDependent: true,
+        status: units >= 3 ? 'required' : mkeKnownSmall ? 'info' : 'likely',
+        note: `${
+          units >= 3
+            ? `This parcel is mapped ${parcel.zoning.districtCode}, where Table 295-403-2-a sets the multi-family minimum at ${mkeRatio}. `
+            : mkeKnownSmall
+              ? `This parcel is mapped ${parcel.zoning.districtCode}. At ${units} unit${units === 1 ? '' : 's'} the multi-family row does not apply, and the rows that do carry no minimum. `
+              : `This parcel is mapped ${parcel.zoning.districtCode}, where the multi-family minimum is ${mkeRatio} — but the unit count for this project is not established, and the requirement turns entirely on which dwelling-type row applies. `
+        }The other rows are verbatim: single-family, two-family and attached single-family dwellings are all “no min.; max. of 4 spaces”, and an accessory dwelling unit is “none”. Match your program to a row before pricing this, and note the one that does not map cleanly to a unit count — “attached single-family dwelling” is a townhouse form that can run well past three units and still carries no minimum, so a 3+ unit project is not automatically on the multi-family row. Credits at s. 295-403-2-b can cut whatever minimum does apply: off-site spaces within 700 feet (1,200 in LB3), one credit per adjacent on-street space, 0.75 per shared-facility space, and one per space in a public lot within 700 feet. Those credits are expressly unavailable to one- and two-family residential, which costs nothing — those rows have no minimum to reduce.`,
+      })
+    }
+
+    // The 25% reduction. Emitted only where a minimum actually exists, because
+    // a reduction of nothing is noise. All THREE limbs are quoted and the
+    // section is disjunctive — "one or more" — which matters because the second
+    // limb is close to citywide coverage in Milwaukee and a reader who saw only
+    // the first (a downtown-ish boundary) would badly under-claim it.
+    if (isResidential && mkeRatio) {
+      hurdles.push({
+        category: 'parking',
+        label: '25% parking reduction — three routes, any one of which qualifies',
+        status: 'likely',
+        note: 'Whatever minimum applies can be cut by a quarter on a disjunctive test: s. 295-403-2-b-4 allows “a reduction of 25% in the number of parking spaces required if the use meets one or more of the following criteria: … The use is located in the area bounded by Capitol Drive on the north, Lincoln Avenue on the south, Lake Michigan on the east and 43rd Street/Sherman Boulevard on the west. … The use is within 1,000 feet of any regularly scheduled bus stop providing local public bus service. … The use is within 1,320 feet of a bus station served by a designated bus rapid transit route offering high-frequency service.” Read the second limb carefully before assuming this is a narrow transit-oriented carve-out: within 1,000 feet of ANY local bus stop is close to citywide coverage in Milwaukee, which makes this much broader than a typical TOD reduction. None of the three limbs is in the parcel record — we hold no bus-stop or BRT-station geometry — so this is stated rather than applied; check the nearest stop before you size the lot.',
+      })
+    }
+
+    // ─── Beyond parking (2026-08-08). Milwaukee Code of Ordinances chs. 119,
+    // 120, 200, 218, 290, 295 and 355, plus Wis. Stat. § 66.1015, read
+    // 2026-08-08 from the City Clerk / LRB consolidated PDFs and
+    // docs.legis.wisconsin.gov. Same Cloudflare warning as the parking rows: a
+    // 403 from city.milwaukee.gov is a bot check, not a missing document.
+    //
+    // Two rows are carried ELSEWHERE and must not be duplicated here: parking,
+    // above and in PARKING_RULES['milwaukee'], and the certificate of
+    // appropriateness, in HISTORIC_BODY['milwaukee'].
+    //
+    // NO `addsMonths` ON ANY ROW BELOW, deliberately. Milwaukee publishes a lot
+    // of numbers — 10 days to rule an application complete, 30 days to decide,
+    // 45 days to hearing, 15 days to review an erosion plan, a 30-day agency
+    // comment window, plans due 5 weeks before a plan commission meeting, and
+    // an 8-month demolition deferral — and not one of them is a duration for
+    // the work. They are shot clocks on the city and one deferral CEILING.
+    // Publishing a ceiling as an expectation is rule 6 in the time dimension.
+    const mkeArticle = parcel.zoning.article ?? ''
+
+    if (isResidential) {
+      // ABSENCE, and the headline for Milwaukee — the strongest form of it in
+      // this module. Tennessee bars inclusionary zoning for Nashville by name;
+      // Wisconsin does the same for Milwaukee, in a section whose TITLE names
+      // it, and the courts have already closed the rezoning-conditioned
+      // workaround. The city-side slot test agrees: the Milwaukee Code's own
+      // whole-code index has no "inclusionary" entry and no "affordable" entry.
+      hurdles.push({
+        category: 'affordability',
+        label: 'State law bars inclusionary zoning',
+        status: 'info',
+        note: 'Wisconsin prohibits the mandate outright and by name, in a section headed “Municipal rent control, inclusionary zoning, prohibited”: “No city, village, town, or county may enact, impose, or enforce an inclusionary zoning requirement” (Wis. Stat. § 66.1015(3)(b), added by 2021 Wis. Acts 238 and 239). The definition is broad — § 66.1015(3)(a)1 reaches “a zoning ordinance, as defined in s. 66.10015 (1) (e), regulation, or policy that prescribes that a certain number or percentage of new or existing residential dwelling units in a land development be made available for rent or sale to an individual or family with a family income at or below a certain percentage of the median income.” A separate limb bars rent regulation: “No city, village, town or county may regulate the amount of rent or fees charged for the use of a residential rental dwelling unit” (§ 66.1015(1)). Do not read the exception at § 66.1015(2)(b) — “Entering into an agreement with a private person who regulates rent or fees charged for a residential rental dwelling unit” — as the usual rezoning-conditioned workaround: Apartment Ass’n of South Central Wisconsin v. City of Madison, 2006 WI App 192, struck down a Madison ordinance requiring 15% inclusionary units in developments of ten or more rental units conditioned on a rezoning, holding that sub. (2)(b) “plainly applies only to agreements with private persons who, on their own, choose to regulate rent.” So no unit count in Milwaukee triggers an affordability obligation, and the trade Nashville’s SP route allows is the exact thing Wisconsin case law has already rejected. Confirmed from the city side too: the Milwaukee Code’s whole-code index carries no entry for “inclusionary” and none for “affordable”.',
+      })
+    }
+
+    // The one place affordability-adjacent strings DO attach — and the trigger
+    // is a dollar amount we do not hold, so this is 'likely' with the threshold
+    // limb quoted, never a gate on `funding === 'public'` alone pretending to
+    // be the rule. Public funding of $400k attaches none of this.
+    if (project.funding === 'public') {
+      hurdles.push({
+        category: 'labor',
+        label: 'Community-participation requirements if city assistance exceeds $1 million',
+        status: 'likely',
+        note: 'Milwaukee attaches labor and reporting conditions to city-assisted projects, and the trigger is a dollar threshold this tool does not hold — confirm the assistance amount before pricing it. “DIRECT FINANCIAL ASSISTANCE means the value of below-market land sales, any direct subsidies to developers and city expenditures for private improvements, with a combined value of $1 million or more, as determined by the commissioner of the department, targeted specifically to a project. It includes the value of tax increment financing and below-market-rate loans provided by the city” (Milwaukee Code s. 355-1-2), and “All persons or entities receiving direct financial assistance for projects approved after August 8, 2009, shall comply with this chapter” (s. 355-3). Where it applies, the city resident participation level “shall be presumed to be 40%, unless the commissioner determines there is sufficient reason to impose a lesser requirement”, measured in worker hours excluding non-Wisconsin residents, with a required city resident utilization plan and gap analysis (s. 355-7-2-a); apprenticeship and on-the-job-trainee requirements follow (s. 355-9), as does first-source employment utilization (s. 355-11). Before any funds release you need a term sheet approved by the Common Council and an executed development agreement, plus a Comptroller/DCD analysis of the project’s financial feasibility, rate of return and jobs impact filed with the Council (s. 355-5). Below $1 million none of it attaches.',
+      })
+    }
+
+    // Milwaukee's structural advantage, and the row a reader arriving from
+    // Boston or San Francisco most needs — stated as 'info' and with all four
+    // doors discretion enters through named, because the four rows below are
+    // live exceptions and two of them are detectable only from a string in
+    // `zoning.article`. "Permits are administrative" without the caveat would
+    // be true of the base case and false of any parcel carrying an overlay.
+    hurdles.push({
+      category: 'review',
+      label: 'No design-review board for a conforming project — permits are administrative',
+      status: 'info',
+      note: 'For a project that conforms to chapter 295 there is no site-plan hearing, no design commission and no community meeting in Milwaukee’s base process: “The administration of this chapter shall be vested in the commissioner of city development and commissioner of neighborhood services, with the commissioner of neighborhood services charged with the duty and authority to issue certificates of occupancy and construction permits. The commissioner of neighborhood services shall issue no certificate or permit for the use or development of any land or structure … if the intended use or the plans and specifications therefor are not in all respects in conformity with the provisions of this chapter” (Milwaukee Code s. 295-301). Discretion enters through exactly four doors, and each has its own row here: a mapped overlay (Site Plan Review, Development Incentive or Neighborhood Conservation), a historic designation, a special use classification for your use in your district, or a rezoning. Milwaukee will also let you start under uncertainty — a conditional construction permit valid up to 180 days is available while a variance, special use or map amendment is pending, provided the plans comply with everything except the provision under appeal (s. 295-304).',
+    })
+
+    if (MILWAUKEE_OVERLAY_PHRASE.sitePlanReview.test(mkeArticle)) {
+      hurdles.push({
+        category: 'review',
+        label: 'Site Plan Review overlay: City Plan Commission approves the plans',
+        status: 'required',
+        note: 'This parcel is inside a Site Plan Review overlay zone, which moves the decision from the counter to a commission: “Once the site plan review overlay zone has been established, plans for all site work within the zone shall be submitted to the city plan commission for its approval. The approved design standards shall be used by the commission in its review of development plans within the zone” (Milwaukee Code s. 295-1009-2-d). The standards are not the base district’s — they “may include, but shall not be limited to: signage; fencing and landscaping; buffers; open space; pedestrian and vehicular access; building height, bulk, placement, façade treatment, materials and transparency”, and “These standards shall supercede the standards of the underlying district; provided, however, that where the design standards do not specify new standards, those of the underlying district shall be followed” (s. 295-1009-3-a). So treat any height or bulk figure shown for this parcel as the BASE district’s and not necessarily this site’s. Before approving, the commission must find the plan consistent with the comprehensive plan, consistent with the zone’s design standards, and not detrimental to the neighborhood (s. 295-1009-3-b); a deviation request goes to the commission, or to the commission and the Common Council, under s. 295-311-9. The ordinance publishes no timetable for any of it.',
+      })
+    }
+
+    // CONJUNCTIVE, with the exemption on the face of the same sentence. The
+    // exemption is the reason this gate is not just the overlay test: s.
+    // 295-1007-2-e exempts "The development of single-family or 2-family
+    // dwellings", so a 1- or 2-unit residential project must NOT be told it
+    // needs development plan approval. It still fires on a two-unit project
+    // inside a MIXED program, which is the right direction for the ambiguous
+    // case — the exemption names dwellings, not floor area.
+    //
+    // sizeDependent because the exemption limb is a UNIT COUNT. Where `units`
+    // came from `lot × 1.0 ÷ 1300`, a placeholder count decides whether the
+    // exemption applies, so a hard 'required' here would rest on it. Softening
+    // to 'info' is the conservative direction; the note still states the rule.
+    if (
+      MILWAUKEE_OVERLAY_PHRASE.developmentIncentive.test(mkeArticle) &&
+      !(project.use === 'residential' && units > 0 && units <= 2)
+    ) {
+      hurdles.push({
+        category: 'review',
+        label: 'Development Incentive Zone: no permit until the development plan is approved',
+        sizeDependent: true,
+        status: 'required',
+        note: 'This parcel is inside a Development Incentive Zone, and the permit is held until a plan is approved: “No building or grading permit for a project within a development incentive overlay zone shall be issued by the commissioner of neighborhood services until development plan approval has been granted or specified conditions have been met. The development of single-family or 2-family dwellings shall be exempt from this requirement” (Milwaukee Code s. 295-1007-2-e) — the exemption is on the face of the same sentence, so a 1- or 2-family project is outside this row entirely. The zone’s performance standards are prepared by the commissioner and adopted by the Common Council with the map amendment (s. 295-1007-2-b), and under s. 295-1007-3-a they “shall supercede the standards of the underlying district”, so the published height and bulk for this parcel are the base district’s, not necessarily this site’s. Denial for failure to meet the performance standards is appealed to the commission under s. 295-311-7. No timetable is published.',
+      })
+    }
+
+    if (MILWAUKEE_OVERLAY_PHRASE.neighborhoodConservation.test(mkeArticle)) {
+      // 'likely', not 'required': the binding content is in an adopted plan and
+      // guidelines this tool does not hold. What can be said with certainty is
+      // that the base district's use list and dimensional standards may both be
+      // wrong here — which is worth saying, and is not the same as asserting a
+      // requirement whose content we have not read.
+      hurdles.push({
+        category: 'review',
+        label: 'Neighborhood Conservation overlay: an adopted plan and guidelines control',
+        status: 'likely',
+        note: 'This parcel is inside a Neighborhood Conservation overlay zone: “A neighborhood conservation overlay zone takes effect through adoption of a neighborhood conservation plan and a set of guidelines that will facilitate maintenance and protection of the neighborhood character and the development of vacant or underused lots. Incompatible mixes of uses will be reduced or prohibited by adding limitations to the list of permitted, limited and special uses of the base district” (Milwaukee Code s. 295-1003-1). The plan itself carries “land uses, building types and features, site development requirements, signing, circulation, off-street parking and modifications to base district standards” (s. 295-1003-2-a-3). Two consequences for a feasibility read: the use list shown for the base district may be NARROWER here, and the dimensional standards may differ. The plan is a separate document per neighbourhood and this tool does not hold it — get it before you design.',
+      })
+    }
+
+    // Un-gateable by construction, and stated for that reason. The two districts
+    // are defined by Common Council RESOLUTION (870501 and 110693), not by any
+    // layer this tool fetches, so nothing about this parcel can be asserted —
+    // but the row matters because a parcel inside one is carved OUT of the
+    // historic ordinance and into a different body's certificate, which means
+    // the historic row above is not the whole answer for those two areas.
+    hurdles.push({
+      category: 'review',
+      label: 'Architectural Review Board districts: a second certificate, outside the historic system',
+      status: 'info',
+      note: 'Milwaukee has a design-review body SEPARATE from the Historic Preservation Commission, and a parcel inside one of its districts is expressly carved out of the historic ordinance — s. 320-21-2-a provides that historic preservation “shall not apply to any district specified in s. 200-61”, except that the city may designate the district for demolition regulation alone with the board’s concurrence. The board’s reach is broad: “No person or entity shall, with respect to the exterior of any building, structure or site in the district, alter, rehabilitate, or reconstruct all or any part of, undertake any new construction with respect to, or permit any work to be performed upon a building, structure or site, nor shall the commissioner of city development issue a permit for any such work unless a certificate of appropriateness has been issued by the board” (Milwaukee Code s. 200-61-5). The districts are “the area designated by common council resolution 870501 as business improvement district #2 or the area designated by common council resolution 110693 as the East Side architectural review district”, plus “such additional areas as may be designated by the common council”, each with its own board (s. 200-61-2-e). The board may delegate administratively approvable project types to staff under a written policy (s. 200-61-5-b-2); otherwise it reviews at its next regular meeting, must give written notice of a denial within 30 days, and a denied applicant has 30 days to demand a public hearing, which is then scheduled within 45 days with mailed notice to owners within 500 feet (s. 200-61-5-b-3, -b-4, -c-1, -c-2). THIS TOOL HOLDS NO BOUNDARY FOR EITHER DISTRICT — check whether your parcel is in the Historic Third Ward (BID #2) or the East Side district before assuming the permit is administrative.',
+    })
+
+    if (teardown && parcel.overlays.historicDistrict) {
+      // No addsMonths. The 8 months is a CEILING on a deferral that may never
+      // be invoked, and the 45 + 30 days are decision deadlines on the
+      // commission. Publishing either as an expected delay is rule 6 in the
+      // time dimension — the same reason Raleigh's 180-day outer limit gets no
+      // HISTORIC_MONTHS override.
+      hurdles.push({
+        category: 'demolition',
+        label: 'Historic demolition: a public hearing, and a deferral of up to 8 months',
+        status: 'required',
+        note: 'Demolition inside a designated district, or of a designated structure, is a different and slower proceeding than alteration. “The commission shall hold a public hearing on an application for a certificate of appropriateness within 45 days after commission staff determines the application to be complete as to form … Within 30 days of the conclusion of the public hearing, the commission shall render a decision that grants, grants with conditions, denies or … defers action” (Milwaukee Code s. 320-21-11-c-2). Deferral is the real risk: “The commission may defer a decision on an application for a certificate of appropriateness for demolition for up to 8 months from the date of application for the demolition permit … During the period of deferral, the commission and the applicant shall seek a mutually-agreeable method of saving the subject structure … If the commission fails to take action by the end of the deferral period, the certificate of appropriateness shall be deemed granted” (s. 320-21-11-f-1); a deferral is appealable to the Common Council within 20 days (s. 320-21-11-f-2). Two conditions can be attached that bite on financing and schedule. Where demolition is granted to allow new construction, the commission may stipulate that no demolition permit issue “until the commission determines that the applicant has provided the commission with evidence … that all debt and equity financing necessary for the new construction project has been obtained” (s. 320-21-11-c-2). And for any building designated, in a designated district, or listed on (or in a district listed on) the National Register, the commission “shall require, as a condition of the certificate, that the applicant deliver to the commission … historic building documentation prior to demolition” — comprehensive three-dimensional digital documentation of the exterior at survey-level accuracy, “a permanent digital twin” (ss. 320-21-3-g, 320-21-11-c-3). Deterioration you caused is not a way out: s. 320-21-11-h-6 bars a hardship finding where the difficulty “is self-created or a result of demolition by neglect.” The 8 months is a ceiling on a deferral that may never be invoked and the 45- and 30-day figures are deadlines on the commission, so none of them is scheduled here as an expected delay.',
+      })
+    }
+
+    // The Milwaukee-specific one, and genuinely costly. Scope is the EXISTING
+    // building's permitted occupancy and year from the assessor record, not the
+    // project's floor area — so NOT sizeDependent (same reasoning as Raleigh's
+    // lot-area tree row: the tag exists to soften claims resting on a
+    // placeholder FLOOR AREA, and no floor area is in this trigger).
+    //
+    // `exUnits === 0` (unknown count) does NOT fire: "primary dwelling
+    // structure" is defined as 1–4 units and a missing count could be a
+    // 40-unit apartment block. That is a false negative and never a false
+    // positive — the safe direction. `providers/milwaukee.ts` carries YR_BUILT,
+    // so the year limb usually resolves.
+    const mkeDeconYear = existing.ex?.yearBuilt
+    const mkeDeconYearLimb = mkeDeconYear != null && mkeDeconYear <= 1929
+    if (
+      teardown &&
+      existing.exUnits >= 1 &&
+      existing.exUnits <= 4 &&
+      (mkeDeconYearLimb || !!parcel.overlays.historicDistrict)
+    ) {
+      hurdles.push({
+        category: 'demolition',
+        label: 'Deconstruction required, not demolition (pre-1930 1–4 unit homes)',
+        // The year limb is on the record; the historic limb alone depends on
+        // the structure ALSO being a "primary dwelling structure" designated or
+        // in a designated district, which the overlay field supports but does
+        // not settle at the structure level.
+        status: mkeDeconYearLimb ? 'required' : 'likely',
+        note: `${
+          mkeDeconYearLimb
+            ? `The record shows the existing building here dates to ${mkeDeconYear}, in 1929 or earlier, and it carries ${existing.exUnits} dwelling unit${existing.exUnits === 1 ? '' : 's'} — both limbs of the scope test. `
+            : `The record shows ${existing.exUnits} dwelling unit${existing.exUnits === 1 ? '' : 's'} here inside a designated historic district, which is the second route into this section${mkeDeconYear == null ? '; no year built is on the record, so the pre-1930 limb could not be checked' : ''}. `
+        }Milwaukee bans mechanical demolition of its older small houses. Scope, verbatim: “The deconstruction requirements of this section apply to any demolition permit application under this chapter for any of the following: A primary dwelling structure that was built in 1929 or earlier according to building permit records on file with the department or, if no such permit records exist, according to records of the commissioner of assessments or the Milwaukee county register of deeds. … A primary dwelling structure that has been designated as an historic structure by the common council under s. 320-21. … A primary dwelling structure located in an historic district designated by the common council under s. 320-21” (Milwaukee Code s. 218-10-4-a). “Primary dwelling structure” is defined narrowly, and the definition is the second limb of the test: “a residential structure containing one to 4 dwelling units based on current permitted occupancy at the time of demolition permit application. This term does not include an accessory building such as a garage or shed” (s. 218-10-2-c). Where it applies: “Every deconstruction project shall achieve a documented 85% landfill diversion rate by weight”; the demolition permit application “shall not be considered complete unless it is accompanied by a completed pre-deconstruction form … including a list of targeted salvageable materials and final destinations”; the work “shall only be performed by a certified deconstruction contractor listed on the department’s website” with at least one certified employee on site; and a department-issued yard sign must be posted on each street frontage before work starts (s. 218-10-4-b-1 to -b-4). Relief is discretionary and case-by-case — the commissioner may waive the 85% “based on economic or practical infeasibilty … after consideration and inspection” (s. 218-10-4-b-1-a). Deconstruction is labour-intensive by design; the ordinance says so. Price the teardown line at deconstruction rates, not demolition rates.`,
+      })
+    }
+
+    if (project.projectType === 'new') {
+      // DISJUNCTIVE, and both live limbs are measured in units this tool does
+      // not hold — DISTURBED area and IMPERVIOUS increase. Lot area is a proxy
+      // for them and is labelled as one on the face of the note (same treatment
+      // as Raleigh's 12,000 sq ft erosion row and Philadelphia's 5,000 sq ft
+      // earth-disturbance row). 21,780 sq ft = half an acre, the smaller of the
+      // two live thresholds. Not sizeDependent: no floor area is in the trigger.
+      if (lotSqFt >= 21780) {
+        hurdles.push({
+          category: 'environmental',
+          label: 'Stormwater management plan (1 acre disturbed, or ½ acre new impervious)',
+          status: 'likely',
+          note: 'This parcel is at or above half an acre, which puts it in range of Milwaukee’s stormwater plan requirement — but read the trigger before pricing it, because it is measured in units this tool does not hold. “A storm water management plan is required if any of the following criteria are met: The development or redevelopment causes a land disturbing activity of one acre or more. … causes the cumulative area of all land disturbing activities at a property to be one acre or more over a 3-year period. … causes an increase of 0.5 acres or more of impervious area. … The construction or reconstruction of a public road will increase impervious surface by one-half acre or more” (Milwaukee Code s. 120-7-2). Those are DISTURBED area and IMPERVIOUS increase; lot area is only a proxy for them here, so a large parcel with a small footprint may sit below the line. The plan is a precondition to starting: it is required “Before the development or redevelopment is permitted for commencement of construction” and “Before or concurrent with the submittal and approval of an erosion and sediment control plan as specified in ch. 290” (s. 120-7-1). What it costs depends on which limb you trip. At half an acre or more of new impervious area “the release rate and requirements shall be governed by Milwaukee metropolitan sewerage district chapter 13 - surface water and storm water rules” (s. 120-7-5-a) — an external ruleset this tool does not model. Below that, post-development peak flows must be “at least 10% less than the peak runoff rates under pre-development conditions during 2-year and 100-year, 24-hour storm events” (s. 120-7-5-b); redevelopment disturbing 3.5–5 acres takes a further 15% reduction and above 5 acres a 20% reduction (s. 120-7-5-c, -d). Water quality is 80% total suspended solids reduction for new development and 40% for redevelopment (s. 120-7-6-a). A waiver exists but only for projects that are themselves stormwater or green-infrastructure work (s. 120-7-4-c). One mapped exception worth checking: s. 120-7-1.5 excludes property in the Milwaukee River greenway site plan review overlay zone from this section entirely and routes it to s. 120-14 instead.',
+        })
+      }
+
+      hurdles.push({
+        category: 'environmental',
+        label: 'Erosion control plan and permit before any ground is broken',
+        status: 'likely',
+        note: 'The threshold is low enough that most ground-up work in Milwaukee is inside it, but it is measured in disturbed surface area and excavation volume rather than in anything this tool holds, so it is stated rather than asserted. Chapter 290 applies to sites “requiring a subdivision plat approval or the construction of houses or commercial, industrial or institutional buildings on lots of approved subdivision plats”, the same for certified surveys, and to any activity “involving grading, removal of protective ground cover or vegetation, excavation, land filling or other land disturbing activity affecting a surface area of 4,000 square feet or more”, or “involving excavation, filling or storage … affecting 100 cubic yards or more of dirt, sand or other excavation or fill material” (Milwaukee Code s. 290-7-1-a to -d). The permit gates the work: “No landowner or land user may commence a land disturbing construction activity subject to this chapter without receiving prior approval of a control plan for the site and a permit from the department” (s. 290-9). At one acre or more the plan becomes a full survey package — an existing-conditions map at 1"=100\', 100-year floodplains, soil types, vegetative cover, topography at 5-foot contours, a final-conditions plan, a construction schedule and spill prevention procedures (s. 290-9-1); under an acre it is “an erosion control plan statement with simple map” (s. 290-9-2). Review is clocked on the city, not on you: “Within 15 days of receipt of the application, control plan, or control plan statement and fee, the department of city development shall review the application” and either approve and issue, or state the deficiencies, with 10 days to re-review on resubmittal (s. 290-9-3).',
+      })
+
+      // Two findings in one row, and the SECOND is the one worth reading — an
+      // absence somebody actually looked for, with the scope of the look stated
+      // so the next reader knows what it does and does not cover.
+      hurdles.push({
+        category: 'environmental',
+        label: 'Landscaping and canopy trees — but no tree-preservation ordinance',
+        status: 'required',
+        note: 'First the requirement: “Any new building, parking lot or other site improvement shall comply with the requirements of this section. When a new principal building is added to a premises, and occupies at least 10 percent of the site area, the entire premises shall comply with the requirements of this section” (Milwaukee Code s. 295-405-1-b-1) — so a modest new building on an already-developed lot can pull the WHOLE site into compliance. Parking is where it bites: parking-lot landscaping “is required at any site with 5 or more off-street surface parking spaces”, and “A minimum of one canopy tree and 100 square feet of landscaped area is required for every 4 parking spaces or fraction thereof”, excluding structured, motorcycle and bicycle spaces (s. 295-405-3-c-2, -c-3). Canopy trees must be at least 2.5-inch caliper at planting with 100 sq ft of surface area and 150 cubic feet of planting soil each, ash and female gingko are prohibited, and no more than 50% may be ornamental (s. 295-405-2-a); screening of parking from residential districts runs to 10-foot landscaped strips or masonry walls (Table 295-405-3-b). Second, and this is an ANSWER rather than a gap: Milwaukee has NO tree-preservation ordinance on private property — no conservation area, no removal permit, no replacement schedule, nothing analogous to Raleigh’s Article 9.1 or Nashville’s tree density factor. Section 295-405 is titled “Landscaping and Screening” and its subsections run Introduction / Elements / requirements for motor-vehicle uses / outdoor storage / screening of utilitarian features / adaptations from the former landscaping code; there is no removal or preservation subsection in it. The Code’s own whole-code index has no private-tree entry, and every tree provision in ch. 116 (ss. 116-52, 116-53, 116-60, 116-63, 116-66) governs trees in the public highway and right-of-way. Chapter 295’s only preservation-flavoured provision runs the other way, as a credit: an existing canopy tree may count toward the minimum “provided it complies with the standards of this subsection and no soil within 5 feet of the tree is disturbed” (s. 295-405-2-a-4). Scope of that absence check, so the next reader knows what was looked at: s. 295-405 in full, ch. 116’s tree sections, and the code index — not every chapter.',
+      })
+    }
+
+    // ABSENCE, with the scope of the check stated. Wisconsin AUTHORISES impact
+    // fees by ordinance; what could not be found is a Milwaukee ordinance
+    // adopting one. That is a checked absence over the code index and ch. 119,
+    // not a search of every chapter — so it is written as "not adopted that
+    // this check could find", and the row carries the exaction that IS there.
+    hurdles.push({
+      category: 'fees',
+      label: 'No development impact fees — but a subdivision triggers an improvements agreement',
+      status: 'info',
+      note: 'Wisconsin authorises municipal impact fees by ordinance, and Milwaukee has not adopted one that this check could find: the Code’s whole-code index carries no “impact fee” entry, and the chapter that would house an exaction — ch. 119, Subdivision Regulations — sets no fee. What it sets instead is construction. “The subdivider of a subdivision plat shall enter into an agreement with the city, in recordable form, referred to on the face of the plat, to guarantee the installation at the subdivider’s own expense … of the following facilities required by the common council and the commissioner of public works” — water mains, sanitary and stormwater facilities and laterals to the lot line, street and alley surfacing, sidewalks on both sides of every street in a residentially zoned area, and street lighting with the city paying 50% of installation (s. 119-12-1-a to -d). “The charge for the work done by the subdivider shall be deemed to be special assessments, duly authorized, made and levied” (s. 119-12-2), and dedications for public streets, alleys and other ways shown on the official map must appear on the face of the plat before it can be approved (s. 119-13-1). The commissioner can waive the agreement where the public improvements already exist or are already programmed (s. 119-12-1). Crucially this attaches to a LAND DIVISION, not to a building: a division creating 4 or fewer parcels, or 8 or fewer none of which is zoned RS1–RS6, RT2–RT4, PK or TL, goes by certified survey map, and anything else needs a subdivision plat (s. 119-3-2, -3). Build on an existing lot and none of it arises. Scope of this absence check: the code index plus ch. 119, not a search of every chapter — confirm at permit.',
+    })
+
+    if (discretionary) {
+      // No addsMonths for either of the two rows below: the code publishes no
+      // clock for any stage of a map amendment, and the special use figures are
+      // an agency comment WINDOW and a notice lead time, not a schedule.
+      hurdles.push({
+        category: 'review',
+        label: 'Rezoning or planned development: Plan Commission hearing, then Common Council',
+        status: 'likely',
+        note: 'Asking for more than the base district means a zoning map amendment, and in Wisconsin that is a legislative act. The route is fixed: the department prepares the ordinance, it is referred to the City Plan Commission under s. 62.23 Wis. Stats., staff sets a public hearing and notifies affected owners at least 10 days ahead, “The commission shall hold at least one public hearing on any proposed map amendment” with notice to owners “immediately surrounding and within at least 250 feet thereof, including streets and alleys, as well as to all mailing addresses in the same area”, then the Common Council’s zoning, neighborhoods and development committee holds a class 2 public hearing on the same notice radius, then the Council acts (Milwaukee Code s. 295-307-3-a to -f). The standards are broad and discretionary — consistency with the comprehensive plan, and no adverse effect on public health, safety and general welfare (s. 295-307-4). Two state-law points cut in the applicant’s favour. The Code’s own protest-petition provision at s. 295-307-5, which would have required a three-fourths vote on a valid protest by owners of 20% of the affected or adjacent land, carries an editor’s note recording that it “is superseded by s. 66.10015(3)(a), Wis. Stats. (2023 Assembly Bill 266, effective June 23, 2023), which provides that a zoning amendment shall be approved by a simple majority of a quorum of common council members-elect” — the neighbour veto that exists in many cities does not exist here. Conversely a DOWN zoning still needs two-thirds unless the owner initiated or waived it (s. 295-307-3-f). Where flexibility rather than a different district is what you need, the planned development district (PD/DPD) is the vehicle, one-phase or two, with a general plan and detailed plans submitted to the City Plan Commission — and note the submission lead time the code itself sets: the electronic plans and narrative are due “at least 5 weeks prior to the scheduled city plan commission meeting” (s. 295-907-2-b-9). No clock is published for the process as a whole.',
+      })
+
+      hurdles.push({
+        category: 'review',
+        label: 'Special use permit: Board of Zoning Appeals hearing, plus a 30-day agency comment window',
+        status: 'likely',
+        note: 'Where chapter 295 classifies your use as a special use in your district, the decision belongs to the Board of Zoning Appeals rather than to staff — the board has “the authority to interpret this chapter, to approve, conditionally approve or deny variances and special use permits” (Milwaukee Code s. 295-311-1-a-1). The hearing is public, with mailed notice “at least 7 days prior to the hearing … to owners of property under consideration and owners of property immediately surrounding and within at least 250 feet thereof, inclusive of streets and alleys” (s. 295-311-2-b). There is a built-in floor on how fast it can move: “No special use hearing shall be held and no special use permit shall be granted unless the board or its staff has received a report of any comments, concerns or recommendations relating to the proposed special use from the department of public works, the department of city development, the department of neighborhood services and the common council member in whose district the special use would be located. The board may proceed … regardless of whether any of these parties have submitted a report, provided that 30 days have elapsed since the date on which the board’s office notified each of these parties that a completed special use permit application had been received” (s. 295-311-2-c). The findings the board must make are discretionary and neighbourhood-facing, including that “The use, value and enjoyment of other property in the neighborhood will not be substantially impaired or diminished” (s. 295-311-2-d-2). Whether YOUR use is a special use in THIS district is not something the parcel record answers — check the district’s use table before assuming the administrative path applies.',
+      })
+    }
+  } else if (city === 'columbus') {
+    // Columbus City Codes Title 33 ch. 3312 and Title 34, read 2026-08-08 via
+    // the Municode API path `zoning/columbus.ts` established. Source note in
+    // PARKING_RULES['columbus']; cohort caveat above the constants.
+    const colCode = (parcel.zoning.districtCode ?? '').trim().toUpperCase()
+    const colTitle34 = COLUMBUS_TITLE34.has(colCode)
+    const colAcres = lotSqFt / 43560
+    const colSub = parcel.zoning.subdistrict ?? ''
+    // The three mapped design-review areas, read off what the provider actually
+    // fetches (layer 14 separates these from historic designations via
+    // `designReviewFrom`). `subdistrict` carries the design-review label only
+    // when no historic district is also present, so a miss here is a false
+    // NEGATIVE and never a false positive — the direction rule 5 wants.
+    const colDesignReview =
+      colCode === 'DD' ||
+      colCode === 'EFD' ||
+      /downtown commission|east franklinton|university impact|design review/i.test(colSub)
+
+    if (colCode === 'DD') {
+      hurdles.push({
+        category: 'parking',
+        label: 'Downtown District: no off-street parking required',
+        status: 'info',
+        note: 'This parcel is in the Downtown District (DD), which has never carried a parking minimum. Chapter 3312 hands the question off — “Downtown parking shall be as prescribed in the downtown district zoning chapter” (C.C. 3312.07) — and the downtown chapter answers it: “There are no requirements for off-street parking within the downtown district. However, the design elements of Chapter 3312, Off-street parking and loading, and the provisions of Subsection 3359.05(C)(1), Design review, apply” (C.C. 3359.27). So the count is yours to choose, but the design standards and downtown design review still bind whatever you build.',
+      })
+    } else {
+      // ⚠️ THIS ROW IS 'likely' AND MUST STAY THERE — but HALF ITS REASONING IS
+      // RETRACTED (2026-08-08), and the retraction is written here because this
+      // comment is where a reader lands (rule 17).
+      //
+      // WHAT STANDS. Which of Columbus's two codes governs is the joint
+      // dependency `zoning/columbus.ts` FACT 0 records, decided by the zoning
+      // layer's GENERAL_ZONING_CATEGORY field — 'Mixed-Use' ⇔ Title 34 — and
+      // that field is not on ParcelInfo. A PREFIX match on the district string
+      // is still a trap: UCRPD and LUCRPD are Title 33 research-park districts
+      // that `/^UCR/` would sweep into Title 34 and hand a "no minimum" answer
+      // they do not have.
+      //
+      // WHAT IS RETRACTED. This row used to say the district string "cannot
+      // stand in for it" at all, and four rows below now depend on the opposite.
+      // The discriminator was run live against the provider's own layer
+      // (Applications/Zoning/MapServer/20) on 2026-08-08: an EXACT-SET
+      // membership test on the seven Title 34 designations returns 1,619
+      // polygons, and GENERAL_ZONING_CATEGORY = 'Mixed-Use' returns the same
+      // 1,619, with no row in either set failing the other across all 18,804
+      // mapped polygons. Exact-set membership is therefore a measured
+      // biconditional; the FACT-0 trap is a trap for `startsWith`, not for
+      // `has()`. See COLUMBUS_TITLE34 above.
+      //
+      // WHY THE ROW IS STILL 'likely' ANYWAY. The set is a transcription of
+      // Title 34 § E.20.030's district vocabulary as it stood on 2026-08-08, and
+      // Zone In Phase 2 can add designations without this file hearing about it;
+      // the authoritative field remains the layer's category. So the row states
+      // which side the district string puts this parcel on and still tells the
+      // reader to confirm the designation, rather than hardening into a
+      // requirement (or into an exemption) on a transcribed list.
+      hurdles.push({
+        category: 'parking',
+        label: 'Parking minimum depends on which of Columbus’s two zoning codes governs',
+        sizeDependent: true,
+        status: 'likely',
+        note: `Columbus runs two codes at once and they disagree about parking, so the answer for this parcel turns on which one applies. Under the 2024 Zoning Code (Title 34, the “Zone In” rewrite) there is no minimum: “No minimum vehicular parking is required for Mixed-Use Zoning District designations outlined in this Chapter” (C.C. Title 34 § E.20.030.E.1), and Chapter E.20 is the only district chapter Title 34 has, so no district in that code carries one. Under Title 33, C.C. 3312.49 Table 2 requires 2 spaces per unit for 1, 2 or 3 dwelling units and 1.5 per unit for 4 or more — at ${units || 'an unestablished number of'} unit${units === 1 ? '' : 's'} that is ${units >= 4 ? '1.5 per unit' : units >= 1 ? '2 per unit' : 'one of the two, depending on the count'} — with accessory dwelling units “N/A”, under an opening line that reads “The number of off-street parking spaces required for various uses shall be no less than as set forth in the parking requirements tables.” ${
+          colTitle34
+            ? `This parcel is mapped ${colCode}, one of the seven district designations Title 34 actually has, so the Title 34 answer — no minimum — is the one that applies on the mapped district.`
+            : `This parcel's district (${colCode || 'not resolved'}) is not one of the seven Title 34 designations, so the Title 33 minimums above are the ones to price.`
+        } Read that with the right amount of confidence. Which code governs is set by the zoning layer's own category field, which this tool does not carry through to here; what was measured on 2026-08-08 is that an EXACT-SET test on the seven Title 34 district names is a biconditional with that field across all 18,804 mapped polygons. A PREFIX test is not: the Title 33 research-park districts UCRPD and LUCRPD would be mistaken for the Title 34 Urban Core district UCR by any prefix match. The set is a transcription of Title 34 § E.20.030 as it stood that day and Zone In Phase 2 can extend it, so confirm the parcel's code designation before pricing spaces — most of the city, roughly 17,185 of 18,804 mapped polygons, is still Title 33. One trap on the way: C.C. 3304.03(F) lists Chapter 3312 among the Title 33 chapters that apply to the 2024 code, which reads as though the minimums carry over. They do not — Title 34 § E.20.030.E.2 imports 3312's design provisions only, and 3312 agrees from its own side: “For parcels with a 2024 Zoning Code district designation, vehicular parking is not required” (C.C. 3312.55.B).`,
+      })
+    }
+
+    // Geographic and un-gateable: we hold no Special Parking Area boundary. It
+    // is worth stating anyway because both areas close the usual escape hatch,
+    // and because both self-terminate on rezoning — a parcel can leave the area
+    // without the map moving.
+    hurdles.push({
+      category: 'parking',
+      label: 'Short North / East Franklinton Special Parking Areas halve the requirement',
+      status: 'info',
+      note: 'Two mapped areas cut the Title 33 requirement, and both are written identically: “Non-residential, off-street vehicle parking requirements in the [Short North / East Franklinton] Special Parking Area shall be One-Half (1/2) of the off-street parking as required in this chapter, except as follows: … Retail, Office, and Medical Office, 2,500 square feet or less - No off-street parking shall be required … Two-, Three-, and Multi-Unit Dwellings - 1 per unit” (C.C. 3312.051.C, 3312.053.C). Two things about them are easy to miss. First, they close the escape hatch rather than opening one: “no further reduction or variance to the number of required off-street parking spaces shall be granted by a variance by the Board of Zoning Adjustment or City Council”. Second, they self-terminate — “Any parcel located within the geographic boundaries of the [X] Parking Area that has been rezoned to a 2024 Zoning Code district designation is thereby excluded” (C.C. 3312.051.A, 3312.053.A) — so a rezoning takes the parcel out of the area entirely, into the code that requires no parking at all. Neither boundary is in the parcel record; check whether this site sits inside one.',
+    })
+
+    // ─── Beyond parking (2026-08-08). Columbus City Codes read via
+    // api.municode.com job 487713 / product 16219, Supp. No. 85, codified
+    // through Ord. No. 0923-2026; Title 34 from the supplement's attached PDF,
+    // footer "July 2025"; ORC ch. 713 from codes.ohio.gov's chapter index.
+    //
+    // NO `addsMonths` ON ANY ROW BELOW. Columbus publishes no duration for any
+    // of this: 15 days to appeal parking mitigation and 30 for the Director to
+    // convene (4310.07(B), (D)); 30 days to appeal a Downtown Commission
+    // certificate to Council (3359.05(E)); a 10-day filing lead before a
+    // REGULARLY SCHEDULED preservation-commission meeting (3116.06(B)); 45 days
+    // for a rehearing and 90 to negotiate after a hardship finding (3116.19(A),
+    // 3116.20). Every one is an appeal window, a filing deadline or a contingent
+    // branch — rule 6 in the time dimension.
+
+    // ABSENCE, and the headline finding for Columbus — but a DIFFERENT absence
+    // from Nashville's, and the difference is the sentence this row must not
+    // contain. Tennessee bans mandatory inclusionary zoning by name (Tenn. Code
+    // Ann. § 66-35-102(b)). Ohio has not been shown to. What was checked: ORC
+    // Chapter 713 (Municipal Planning — the chapter that grants and bounds a
+    // municipality's zoning power) was read as an INDEX from codes.ohio.gov, all
+    // 32 sections, 713.01 through 713.34, and there is no section on affordable
+    // housing, inclusionary zoning or set-asides in EITHER direction. That
+    // establishes the enabling chapter is silent; it does not establish that no
+    // Ohio statute anywhere speaks to it, and the rest of the Revised Code was
+    // not searched. So this row reads as Raleigh's does — a rule this city has
+    // not adopted — and says which of the two checks was actually run (rule 8).
+    if (isResidential) {
+      hurdles.push({
+        category: 'affordability',
+        label: 'No inclusionary requirement — affordability rides on a voluntary tax abatement',
+        status: 'info',
+        note: 'Columbus sets no affordable-unit requirement at any project size: there is no unit count and no floor area at which income-restricted units become compulsory, and no fee in lieu. Every affordability obligation in the code hangs off an incentive the developer elects. The first is the Community Reinvestment Area property-tax abatement, whose chapter exists "to establish policies, procedures, and conditions for the provision of certain Community Reinvestment Area (CRA) tax incentives … to foster investment in, and the development of, affordable housing" (C.C. 4565.01). The second is the Title 34 Affordable Housing Height Bonus, which is available only "to an Affordable Housing Height Bonus applicant that agrees to be bound by the affordability requirements described in the City Residential CRA Program" (Title 34 § G.30.030(A)) — worth 3 extra stories in RAC, 2 in CAC, 2 in UCT and 4 in UCR, and "A bonus story must not exceed 12 feet" (Table G.30.060.A). Both are optional and the code says so: "Participation in the Height Bonus Program is voluntary; Project Sponsors approved under Chapter 4565 (Affordable Housing and Community Reinvestment Area Incentive Policy) are not required to seek the Height Bonus" (§ G.30.030(D)). On the state-law backdrop, note precisely what is and is not settled here. Ohio Revised Code Chapter 713 (Municipal Planning) — the chapter that grants and bounds a municipality\'s zoning power — was read section by section, all 32 sections, and contains nothing on affordable housing, inclusionary zoning or set-asides in either direction. That establishes the enabling chapter is silent. It does not establish an absence: the rest of the Revised Code was not searched. Treat this as a rule Columbus has not adopted, not one the State has forbidden.',
+      })
+    }
+
+    // CONJUNCTIVE THREE WAYS, and the row most at risk of being encoded from its
+    // first clause. Only limb (b) — four or more Housing Units — is on the
+    // record. Limb (a) is the applicant's own election (the whole chapter is
+    // opt-in) and limb (c) is the CRA boundary and its Area Designation, which
+    // Columbus publishes (Schemas/Development/MapServer/5, "Community
+    // Reinvestment Areas - Residential") but `providers/columbus.ts` does not
+    // fetch. Both unheld limbs go on the face of the note. NEVER 'required'.
+    if (isResidential && units >= 4) {
+      hurdles.push({
+        category: 'affordability',
+        label: 'CRA tax abatement: affordable set-aside at 4 or more units',
+        sizeDependent: true,
+        status: 'likely',
+        note: 'A Community Reinvestment Area tax abatement carries an affordability set-aside once a project reaches four units — but all three limbs of the trigger have to hold, and only one of them is on the record here. C.C. 4565.06(A): "CRA tax incentives for Development Projects containing four (4) or more Housing Units within post-1994 CRAs designated Market Ready, Ready for Revitalization, or Ready for Opportunity require the Project Sponsor to apply for an Incentive and enter into an agreement with the City per the deadlines included in the Director\'s Rules." So: (a) the project must be seeking a CRA incentive — the chapter is entirely opt-in, and nothing compels you into it; (b) it must contain four or more Housing Units, which this one does; and (c) the parcel must lie inside a post-1994 Community Reinvestment Area carrying one of those three Area Designations. Columbus publishes the CRA boundaries and their designations, but they are not in this parcel record, so limb (c) is stated rather than checked — and limb (a) is your own decision, which is why this is not written as a requirement. Where it does apply the price is specific. A Market Ready project of four or more units "must elect one of the requirements specified below … in order to be eligible for a one hundred (100%) percent abatement of the increase in assessed value of the structure for a period of fifteen (15) years": 10% of units at or below 60% AMI PLUS a further 10% or more at or below 80% AMI; or 30% of units at or below 80% AMI; or all units sold to owner-occupants at or below 120% AMI with a Cost of Ownership no greater than 35% of gross income (C.C. 4565.07(A)(a)–(c)). Ready for Revitalization and Ready for Opportunity areas carry their own, different term sets at §§ 4565.08 and 4565.09 — do not price the Market Ready figures as the citywide answer. The obligation is not only a percentage: affordable units "shall be dispersed throughout the Development Project and shall be comparable to the design and quality of market-rate Housing Units … in terms of appearance, materials, and finish", the bedroom mix must mirror the project\'s, and they must be built "within a similar timeline as non-Affordable Housing Units" (C.C. 4565.04(A), (B), (D)). And the obvious route around it is closed: "Development Projects shall not be artificially divided to avoid the agreement requirements within this Chapter" (C.C. 4565.06(B)).',
+      })
+    }
+
+    // The process Title 34 substitutes for the minimum it abolished, and the
+    // reason "no parking minimum" is not the whole story on a Title 34 parcel.
+    // Chapter 4310's applicability is unconditional on limb (A), but whether a
+    // study is actually demanded is a second, discretionary determination and
+    // whether mitigation follows is a third — hence 'likely', not 'required'.
+    // Limb (B) is a variance to the PARKING minimum specifically, not any
+    // variance, so it is named rather than gated on `discretionary`.
+    if (colTitle34) {
+      hurdles.push({
+        category: 'review',
+        label: 'Parking Impact Study — the price of having no parking minimum',
+        status: 'likely',
+        note: `This parcel is mapped ${parcel.zoning.districtCode}, a 2024 Zoning Code (Title 34) district, and Title 34 says in terms that removing the minimum does not remove the process: development proposals in these districts "are, however, subject to the provisions of Chapter 4310 (Parking Impact Study), including potential mitigation requirements" (Title 34 § E.20.030.E.1; repeated at § A.10.060). Chapter 4310 reaches "all new Developments and to the expansion or change in use of an existing Development" where either "(A) The Development is located within a parcel with a 2024 Zoning Code district designation for which there is no minimum vehicular parking requirement; or (B) Any Development for which there is a request for variance to the minimum parking requirements" (C.C. 4310.02). Limb (A) holds for every Title 34 parcel, because every Title 34 district has no minimum; limb (B) is a variance to the parking minimum specifically, not to zoning generally. What is NOT automatic is the study itself: "The Director must determine when a Parking Impact Study is required and publish guidelines in the rules and regulations" (C.C. 4310.05(A)), weighing proximity to public parking, the size and land use of the site, the on-site parking provided and the zoning classification — and mitigation is a further finding on top of that (C.C. 4310.06(A)). It is a submittal item rather than a separate hearing: the information "shall be provided by the applicant … as part of the site plan review process provided for in CC Section 4113.29" (C.C. 4310.04). Where mitigation is ordered it can be built or bought — "new services, including, but not limited to, shared parking services, public transit passes, car sharing, and shared mobility devices; and/or payment of a fee", with any fee capped at "the actual costs incurred by the City in negating the increased demand for Public Parking Systems directly caused by that development" (C.C. 4310.06(B)–(C)). No rate is stated here because none is in the code: the figures live in the Director's rules and regulations filed with the City Clerk. A mitigation determination is appealable within 15 days and the Director must convene within 30 (C.C. 4310.07(B), (D)) — an appeal window, not a schedule.`,
+      })
+    }
+
+    // CONJUNCTIVE THREE WAYS and all three are gated, because all three are on
+    // the record: (a) an application for REZONING — not any permit; (b) land "in
+    // excess of one acre"; (c) a Title 33 parcel, because C.C. 3304.04(B) puts
+    // "3318: Parkland Dedication" on the list of chapters that "do not apply to
+    // the 2024 Zoning Code".
+    // NOT sizeDependent: the trigger is LOT AREA, which the parcel record
+    // measures directly, plus a rezoning — no floor area appears anywhere in it.
+    // The tag exists to soften claims resting on a placeholder floor area. Same
+    // reasoning as Raleigh's tree row.
+    if (discretionary && colAcres > 1 && !colTitle34) {
+      hurdles.push({
+        category: 'fees',
+        label: 'Parkland dedication or payment in lieu — rezonings over one acre',
+        status: 'likely',
+        note: `This project needs a rezoning and the parcel is about ${colAcres.toFixed(1)} acres, over the one-acre line: "Upon the submission of an application for rezoning of land in excess of one acre, the recreation and parks commission or its designee and the applicant shall determine whether a land or monetary donation shall be required" (C.C. 3318.03). The trigger is the REZONING, not the building permit — build within your existing district and this never arises. The residential formula is in the code and is not estimated here: proposed dwelling units × the U.S. Census median household size for the Columbus MSA (owner-occupied for single-family, renter-occupied for multifamily) ÷ 1,000 × 5.5 = the acreage to dedicate, the 5.5 being the city's stated goal of "5.5 acres of appropriate public parkland/open space for every 1,000 residents" (C.C. 3318.01, 3318.05). Payment in lieu is that acreage multiplied by an appraised fair market value per acre and falls due "at the time of final zoning clearance approval or plat approval" (C.C. 3318.11). Non-residential is a flat rate and it IS in the code: "For all commercial, industrial, and nonresidential institutional and ARO development, a fee shall be assessed of $400.00 per acre of land rezoned, or fraction thereof" (C.C. 3318.13). Credits run up to 50% for private outdoor recreation, with wet retention capped at 25% of the dedication (C.C. 3318.07), and two rezonings are waived outright — residential to residential with no density increase, and commercial to commercial (C.C. 3318.19(A), (B)). This chapter does not reach the 2024 Zoning Code: C.C. 3304.04(B) lists "3318: Parkland Dedication" among the Title 33 chapters that do not apply to it, which is why this row is written for Title 33 parcels only.`,
+      })
+    }
+
+    // ABSENCE, unconditional, and the row a reader coming from Boston or
+    // Philadelphia most needs. Same shape as Raleigh's and Austin's. It names
+    // the four exceptions that DO carry a board, so it cannot be read as a
+    // blanket "no review anywhere in Columbus".
+    hurdles.push({
+      category: 'review',
+      label: 'Site plan review is administrative — no board, no hearing',
+      status: 'info',
+      note: 'Columbus reviews site plans through staff and the chief building official, not at a public hearing. Plans "shall be forwarded to other departments of the city for review through a site plan review process, if deemed necessary by the chief building official … These reviews include, but are not limited to, utility and stormwater management by the Department of Public Utilities; parking, traffic, and street encroachments by the Department of Public Service; and fire code compliance by the Department of Public Safety, Division of Fire. Once the chief building official is satisfied that the site plan has been approved by the chief plans official and that the work described in the application for a permit and the plans filed therewith conform to the requirements of this Building Code and other pertinent laws and ordinances, the chief building official shall issue a permit to the applicant" (C.C. 4113.29(A)). A certificate of zoning clearance is a precondition (C.C. 4113.29(C)). Project size is not on that list, so size alone never buys you a hearing — there is no Columbus analogue to Boston’s Article 80 or San Francisco’s Discretionary Review. Four things do put a board in front of you, and only four: a listed property or designated historic district (a certificate of appropriateness from the relevant architectural review commission, C.C. 3116.04), and the three mapped design-review areas — the Downtown District (C.C. 3359), the East Franklinton District (C.C. 3323) and the University Impact District (C.C. 3325; Title 34 § A.10.050). An area commission may also comment on a rezoning, variance or demolition, but its role is advisory rather than a decision.',
+    })
+
+    // CONJUNCTIVE: (a) the application is a rezoning, special permit, variance,
+    // zoning appeal or DEMOLITION permit; AND (b) the property lies "wholly or
+    // partly within" a commission area. Columbus has ~20 statutory commission
+    // areas (C.C. 3111.02–3111.20) covering a large but not universal share of
+    // the city; the boundaries are published (Schemas/Development/MapServer/12,
+    // "Area Commissions") but the provider does not fetch that layer, so limb
+    // (b) is stated, not gated — hence 'likely'.
+    // No addsMonths: postponement is contingent, and the code sets no meeting
+    // calendar for any commission.
+    if (discretionary || teardown) {
+      hurdles.push({
+        category: 'review',
+        label: 'Area commission review — advisory, but it can postpone you',
+        status: 'likely',
+        note: 'Rezonings, special permits, variances, zoning appeals and DEMOLITION permits are referred to the area commission for the area the property lies wholly or partly within (C.C. 3109.14, 3109.17(A)). The finding here is genuinely two-sided and both halves matter. The commission cannot stop you: "Suggestions and comments of the area commission shall be advisory only and failure of the applicant to comply therewith shall not in itself constitute grounds for denial of the application." But skipping it can cost you a cycle: "Failure of the applicant to consult the appropriate area commission in a timely manner, however, may be grounds for postponement of further action by other bodies" (C.C. 3109.15(B)), and so can the commission’s own silence — "Upon good cause shown, inability of the area commission to make a recommendation may be grounds for postponement of subsequent action by other bodies" (C.C. 3109.15(A)). Columbus has roughly twenty statutory commission areas (C.C. 3111.02 through 3111.20), covering a large but not universal share of the city; whether one covers this parcel is not in the parcel record, so check the area commission map before you set a hearing date. No months are added here because none are published — the code fixes no meeting calendar and no decision clock.',
+      })
+    }
+
+    // Gated on data we actually hold, and the miss direction is safe: the
+    // provider's layer 14 separates the three design-review areas from historic
+    // designations (`designReviewFrom`), and `subdistrict` carries the
+    // design-review label only when no historic district is also present. So a
+    // parcel in BOTH renders the historic row instead of this one — a false
+    // NEGATIVE, never a false positive.
+    // No addsMonths: the 30-day appeal to City Council (C.C. 3359.05(E)) is a
+    // third-party risk to price, not a step to schedule.
+    if (colDesignReview) {
+      hurdles.push({
+        category: 'review',
+        label: 'Design review district: certificate of appropriateness before any permit',
+        status: 'required',
+        note: `This parcel is in one of Columbus’s three mapped design-review areas — the Downtown District (C.C. 3359), the East Franklinton District (C.C. 3323), or the University Impact District Review Board’s jurisdiction (C.C. 3325; Title 34 § A.10.050) — where a certificate of appropriateness comes before the permit. The scope is wide: it is required for "Any exterior construction activity requiring a building permit, including new construction, reconstruction, expansion, alteration and rehabilitation of structures", for "Site work requiring a permit, such as installation of parking lots, plazas and similar improvements", for "Any activity requiring a demolition permit", and for "Any activity requiring a certificate of zoning clearance" (C.C. 3359.07(A)–(C)). The one clean exemption is interior work: "Building activity that is exclusively interior to a building does not require a certificate of appropriateness" (C.C. 3359.07(E)). The commission is not limited to saying yes or no — it "may impose reasonable requirements and conditions regarding the location, dimensions, character, access, building materials, and other features of the proposed uses or structures" (C.C. 3359.05(C)(1)). ${
+          colCode === 'DD'
+            ? 'In the Downtown District this is effectively the envelope, not a finish check: the DD chapter states no height limit and no FAR, so the design guidelines under C.C. 3359.15 — "building setback, height and composition, pedestrian entrances and access, screening and landscaping, graphics, parking and vehicular access" — are what actually decides how big the building is. '
+            : ''
+        }Budget for the third-party risk as well as the review: the commission’s decision is appealable to City Council by "any person directly affected … within 30 days after the date of the commission’s decision" (C.C. 3359.05(E)). No months are added here because Columbus publishes none — that 30 days is an appeal window, not a review duration.`,
+      })
+    }
+
+    // ⚠️ AN OVERLAY POWER, NOT A CITYWIDE SCREEN. Unlike Minneapolis (§§ 599.910,
+    // 599.920) or Nashville (T.C.A. § 7-51-1201), Columbus has no citywide age or
+    // National-Register demolition trigger — the research looked for one across
+    // Ch. 3116, Ch. 3120 and C.C. 4113.79 and did not find it. So this must
+    // never be gated on `teardown` alone; every limb below is a mapped
+    // condition the parcel record actually carries.
+    if (
+      teardown &&
+      (!!parcel.overlays.historicDistrict ||
+        colCode === 'DD' ||
+        colCode === 'EFD' ||
+        /downtown commission|east franklinton|architectural review|historic resources/i.test(colSub))
+    ) {
+      hurdles.push({
+        category: 'demolition',
+        label: 'Certificate of appropriateness before a demolition permit',
+        status: 'required',
+        note: 'Demolition here needs its own certificate before the permit can issue: "A certificate of appropriateness is required prior to the issuance of a demolition permit for any listed property served by the historic resources commission, or any property located in an area served by an architectural review commission as set out in Title 31, C.C. A certificate of appropriateness or a certificate of approval is required prior to the issuance of a demolition permit for any property located within the Downtown District, 3359 C.C., or the East Franklinton District, 3323 C.C." (C.C. 4113.79(B)). Removing an entire structure carries its own submittal set on top of the ordinary application — "definite plans for reuse of the site, evidence of commitment for funding of the new project, a timeframe for project initiation and completion and an assessment of the effect such plans will have on the character and integrity of the listed property or district" (C.C. 3116.14) — so the replacement project has to be financed and scheduled before the teardown is approved, not after. Two scheduling facts from the same section are unusual and worth pricing: a demolition permit in a residential area requires work to "commence within 14 calendar days after the issuance of the permit" and is "valid for a period of three calendar months renewable for no more than two additional three calendar month periods"; non-residential gets three months to commence and six months’ validity (C.C. 4113.79(A)). Utility releases are a precondition to the permit either way (C.C. 4113.79(C)). Note the limit of this row: Columbus’s demolition review is an overlay power, not a citywide screen — there is no age trigger and no National Register trigger reaching an ordinary parcel outside a designated district or the two design-review districts.',
+      })
+    }
+
+    // THREE ALTERNATIVE THRESHOLDS and the code says "may". Only two are
+    // gateable and one of those is narrowed:
+    //  · residential 50 units — guarded by `isResidential`, because "residential:
+    //    50 units" is a residential measure and `units` arrives off the query
+    //    string independent of `use` (the same over-fire corrected in the
+    //    Seattle SEPA and Minneapolis Table 550-1 rows).
+    //  · other non-residential 30,000 sq ft — restricted to a WHOLLY
+    //    non-residential project, because we hold no split of `gfa` and the
+    //    section's own third limb is written for "other nonresidential
+    //    (including mixed use Developments)". Same fix as Nashville's NDOT row.
+    //  · retail/restaurant 20,000 sq ft — needs a use category we do not hold, so
+    //    it is stated on the face of the note and not gated.
+    if (project.projectType === 'new' && ((isResidential && units > 50) || (project.use === 'commercial' && project.gfa > 30000))) {
+      hurdles.push({
+        category: 'review',
+        label: 'Off-site pedestrian infrastructure above 50 units',
+        sizeDependent: true,
+        status: 'likely',
+        note: 'Above a published threshold Columbus can make the developer pay for sidewalk work beyond the site: "Additional off-site pedestrian infrastructure maybe required by the City if a Development exceeds any of the following thresholds: (1) residential: 50 units; (2) retail and/or restaurant uses: 20,000 square feet; or (3) other nonresidential (including mixed use Developments): 30,000 square feet" (C.C. 4309.08(B)). The three limbs are alternatives — clearing any one is enough — and the retail/restaurant limb turns on a use category not in this parcel record, so check it separately if your ground floor is retail or a restaurant. The word is "may", not "shall", which is why this is written as likely rather than required. The mechanism is the staff recommendation: "Favorable staff recommendations concerning approval of rezonings, zoning variances, or staff approval of special permit applications, preliminary subdivision plats, and Development plans are contingent, in part, upon assumption by the developer of financial responsibility for the necessary pedestrian infrastructure … The amount of pedestrian infrastructure required shall be roughly proportional to the Development’s contribution to the pedestrian traffic growth" (C.C. 4309.08(A)). What gets determined above the threshold is off-site sidewalk connections into the existing network, connections "to the nearest transit stop for each cardinal direction of travel in the vicinity of the site", and crosswalk adequacy (C.C. 4309.08(C)). The Director may waive on physical or environmental limitations or "gross inequity" (C.C. 4309.08(D)). Price the off-site construction, not the paperwork — that is where the money is.',
+      })
+    }
+
+    // BOTH studies are conjunctive in ways we cannot evaluate. The Traffic
+    // Impact Study keys on a trip-generation figure we do not compute; the
+    // Traffic Access Study needs BOTH a site-modification criterion AND a
+    // location criterion drawn from the Multimodal Thoroughfare Plan, the High
+    // Crash Prioritization List / High Injury Network, or proximity to a
+    // signalised intersection or roundabout — none of which we hold. So this is
+    // 'info' with the numbers and the roadway limbs both named. Do NOT gate it
+    // on a floor-area proxy: that is exactly the over-broad gate this file has
+    // had to unwind elsewhere.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'review',
+        label: 'Traffic impact or access study — trip-driven, and not resolvable from the parcel record',
+        status: 'info',
+        note: 'Columbus screens traffic on trips and on road classification, neither of which is in this parcel record — so this is flagged rather than applied. A Traffic Impact Study is required for all new Developments, expansions, and rezoning, variance, special-permit and preliminary-plat applications "if the Memorandum of Understanding demonstrates the traffic generated by the following results in 200 or more estimated non-pass-by trip ends at the peak hour of the land use" (C.C. 4309.05(A)), and may be required at 100 or more trip ends at a single adjacent intersection (C.C. 4309.05(B)). A Traffic Access Study is separately conjunctive: it "may be required if the Development meets one or more of the following site modification criteria AND meets one or more of the following location criteria" (C.C. 4309.06(B)) — the site-modification criteria are new construction, expansion, or a change of use producing a significant trip change; the location criteria are a Columbus Multimodal Thoroughfare Plan Roadway, a road on the High Crash Prioritization List or the High Injury Network, an arterial or collector off the Thoroughfare Plan, or a collector or local road near a signalised intersection or roundabout. Get a trip-generation estimate early, because the cost is the mitigation and not the study: approval recommendations "are contingent, in part, upon assumption by the developer of financial responsibility for the necessary roadway infrastructure as defined in the Traffic Impact Study or Traffic Access Study. The amount of roadway infrastructure required shall be roughly proportional to the Development’s contribution to traffic growth within the limits of the Traffic Impact or Access Study at the study’s Design Year" (C.C. 4309.07(A)). The performance standard you are being measured against is a "Satisfactory Level of Service" — LOS D overall and LOS E per movement (C.C. 4309.03).',
+      })
+    }
+
+    // CONJUNCTIVE: the lot must be RESIDENTIALLY ZONED and the parcel must be
+    // Title 33 (C.C. 3304.04(D) puts "3321: General Site Development Standards"
+    // on the list of chapters that do not apply to the 2024 Zoning Code).
+    // ⚠️ DELIBERATELY 'likely', NOT 'required', and the reason is the gate. The
+    // section reads "On a residentially zoned LOT" — a fact about the parcel's
+    // zoning district, not about the proposed use. We hold `districtCode` but no
+    // verified list of Columbus's Title 33 residential districts, and inventing
+    // one would be a legal claim assembled here rather than read. `isResidential`
+    // is the project's USE, which is a proxy: apartments in a C-4 commercial
+    // district are common in Columbus and would not be on a residentially zoned
+    // lot. So the limb is quoted on the face of the note and the status is
+    // softened, rather than gating a 'required' on a proxy.
+    // NOT sizeDependent: no threshold — one tree is required from the first
+    // dwelling unit; only the count scales.
+    if (isResidential && !colTitle34) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'On-lot tree requirement (Title 33 residentially zoned lots)',
+        status: 'likely',
+        note: 'Columbus requires trees on the lot itself, and there is no size below which it lapses: "On a residentially zoned lot, a minimum of one tree, subject to minimum size requirements in General Landscaping Standards, is required on-lot for every ten (10) dwelling units or fraction thereof. No other code-required trees may satisfy this requirement. A minimum of one tree is required on each lot containing one to ten dwelling units, a minimum of two trees are required on each lot containing 11 to 20 dwelling units, and so on" (C.C. 3321.07(B)). Read the first six words carefully: the trigger is that the LOT is residentially zoned, which is a fact about the zoning district rather than about what you intend to build — a residential project on a commercially zoned lot is outside this section, and this tool holds no verified list of Columbus’s residential districts to check it against, so confirm the district designation. Sizes are specified and are not negotiable at planting: two-inch caliper for deciduous, 1.5-inch for ornamental, four feet for conifers (C.C. 3321.13(C)), and anything that dies must be replaced (C.C. 3321.13(D)). One neighbouring standard in the same chapter is worth budgeting alongside it: where a newly-rezoned non-residential lot abuts residential zoning, screening five feet high at 75% opacity is required within twenty feet of the shared line and must be installed within nine months of occupancy (C.C. 3321.09(A)–(C)). This chapter does not reach the 2024 Zoning Code — C.C. 3304.04(D) lists "3321: General Site Development Standards" among the Title 33 chapters that do not apply to it. And note what this row does NOT say: it does not say Columbus has no tree-preservation ordinance. Chapter 3321 is a landscaping chapter, and no slot test for a preservation ordinance was run across the rest of the code, so that is an open question rather than a stated absence.',
+      })
+    }
+
+    // A SECOND gate on top of the shared FEMA row, and it names a different
+    // authority: the determination is the Department of Public Utilities' under
+    // C.C. Chapter 1150 — the CITY's floodplain mapping, not the FEMA zone. Only
+    // 4113.29(B) was read; the row asserts nothing about ch. 1150's substantive
+    // standards, because ch. 1150 was not read.
+    if (fz && !FLOOD_OK.has(fz.toUpperCase())) {
+      hurdles.push({
+        category: 'flood',
+        label: 'City floodplain determination gates the permit',
+        status: 'likely',
+        note: `This parcel is in FEMA flood zone ${fz}, and in Columbus a flood-zone parcel needs a separate written determination before any permit can issue — the building official has no discretion to proceed without it: "The chief building official shall in no case grant any permit for the construction, alteration, or use of any building, structure or premises in the flood plain, as determined by the Department of Public Utilities under Chapter 1150 without a copy of the appropriate decision issued to the applicant, stating that said building, structure or premises, as proposed to be constructed, altered, or used, would not be in violation of Chapter 1150 or any rule or regulation established by the Department of Public Utilities to enforce Chapter 1150" (C.C. 4113.29(B)). Note who decides and against what: the determination is the Department of Public Utilities’ under Chapter 1150, which is the CITY’s own floodplain mapping and standards, not the FEMA zone — so confirm the local mapping rather than reading the federal zone as the answer. What Chapter 1150 substantively requires is not stated here; only C.C. 4113.29(B) was read for this row, and the chapter itself was not.`,
+      })
+    }
+
+    // CONJUNCTIVE: (a) a certificate of zoning clearance "for newly constructed
+    // parking lots or parking structures received on or after the effective date
+    // of January 1, 2024" AND (b) parking is actually being built. We do not
+    // model whether a project builds parking, so limb (b) is on the face of the
+    // note. On a Title 34 parcel the code is explicit that (b) is the operative
+    // question — 3312.55(B).
+    // NOT sizeDependent: the requirement applies at every size for residential;
+    // only the ratio changes across the 1–3 / 4+ unit bands, and there is no
+    // threshold below which it lapses. (The table's 50-space minimum belongs to
+    // the office/workplace row, not to dwellings.)
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'environmental',
+        label: 'EV-ready and EV-charging parking',
+        status: 'likely',
+        note: 'If this project builds any parking, it has to be wired for electric vehicles. The requirement attaches to a certificate of zoning clearance for newly constructed parking lots or parking structures received on or after January 1, 2024 — so it turns on whether you build parking, not on how big the building is, and this tool does not model that. Removing the parking minimum does not remove this: "For parcels with a 2024 Zoning Code district designation, vehicular parking is not required; however, if vehicular parking is provided then the requirements provided for in Sections 3312.55 through 3312.58 must be followed" (C.C. 3312.55(B)). The current ratios are in the C.C. 3312.57 table: "1, 2, or 3 dwelling units … One EV Ready outlet per dwelling unit"; and for "4 or more dwelling units | Market-rate multi-unit residential buildings; standalone surface lots and parking structures", EV Capable 20% and EVSE Installed 2%. The table also notes that "Parcels within Special Parking Districts are included". Real exemptions exist and they map to a program rather than to a size: very low income housing where 50% or more of the units serve households at or below 50% AMI, permanent supportive housing, transitional housing, and detached private garages and carports serving one- to three-unit dwellings (C.C. 3312.55(C)). One scheduling note without a number attached: a second, stricter table takes effect January 1, 2028 (C.C. 3312.58) — no figures from it are quoted here, and it is not the rule in force today.',
+      })
+    }
+  } else if (city === 'charlotte') {
+    // Charlotte UDO Article 19, read 2026-08-08 from charlotteudo.org. Source
+    // note and the measured column mapping for Table 19-1 are in
+    // PARKING_RULES['charlotte'].
+    //
+    // ⚠️ THE "OPEN GAP" THIS HEADER USED TO RECORD IS CLOSED, and the old
+    // sentence is retracted here rather than left to be discovered (rule 17).
+    // It said a reported North Carolina statewide preemption had a session-law
+    // citation that "never reached this repo". It has: per
+    // research/charlotte.parking.md, read at ncleg.gov 2026-08-08, the enacted
+    // vehicle is Session Law 2026-39 (House Bill 162), ratified 1 July 2026 and
+    // approved 6 July 2026. Two consequences, and they point in different
+    // directions:
+    //   · The STORMWATER limb — G.S. 143-214.7(b3), rewritten by § 2.(a) — is
+    //     effective on enactment and is encoded below in the redevelopment
+    //     credit row, which is why a Charlotte hurdle now legitimately says
+    //     "Session Law".
+    //   · The PARKING limb — G.S. 160D-702(c)(2a), barring local minimum-space
+    //     requirements — is NOT yet in force (effective 2027-01-01 on the live
+    //     text), so nothing in the parking rows above is changed by it and
+    //     nothing here asserts it. `PARKING_RULES['charlotte'].detail` still
+    //     predates the finding and reads as though the tiered minimums are
+    //     permanent; that entry is deliberately untouched by this splice rather
+    //     than edited from two places at once.
+    // And the bill everyone cites, House Bill 369 ("Parking Lot Reform and
+    // Modernization Act"), NEVER PASSED — its last action is a re-referral to
+    // Senate Rules on 6/10/2026. Cite the enacted vehicle or say nothing.
+    const cltCode = parseCharlotteZone(parcel.zoning.districtCode).code
+    const cltTier = cltCode ? (CLT_PARKING_TIER[cltCode] ?? null) : null
+    // The erosion-control threshold is ONE ACRE of land disturbance (Sec. 28.2).
+    // Lot area is an explicit proxy for it — see the note on that row.
+    const CLT_ACRE = 43560
+
+    if (isResidential && cltTier === 3) {
+      hurdles.push({
+        category: 'parking',
+        label: 'Tier 3 district: no residential parking minimum unless within 400 feet of a Neighborhood 1 Place Type',
+        status: 'info',
+        note: `This parcel's district (${cltCode}) is a Tier 3 district, where the UDO says “A minimum number of off-street parking spaces are required for a limited number of uses and locations, but most uses do not have a minimum parking requirement” (Charlotte UDO Sec. 19.2.A.1.c), and “Where a cell is blank and shaded, no minimum and/or maximum parking is required” (Sec. 19.2.A.3). Measured rather than paraphrased: the Tier 3 Minimum column of Table 19-1 is blank in 99 of the 105 use rows. The six that carry a minimum are Multi-Family Attached (units not on sublots), Multi-Family Stacked, Live Performance Venue–Indoor, Micro-Production of Alcohol, Nightclub and Restaurant/Bar — so two of the six are housing types, and if your program is one of them the whole condition matters: that column's header reads “Minimum / Applies only when within 400' walking distance of a Neighborhood 1 Place Type”. Walking distance to a Place Type is not in the parcel record and is not a straight-line measurement, so this is stated rather than applied. A stacked-apartment building here owes 1 space per unit only if that 400-foot condition holds, and nothing otherwise. The maximum applies either way — 1 space per bedroom for studio and per-bedroom counting on Multi-Family Stacked, 2 per unit for residential generally.`,
+      })
+    } else if (isResidential && (cltTier === 1 || cltTier === 2)) {
+      hurdles.push({
+        category: 'parking',
+        label: `Tier ${cltTier} district: 1 off-street space per dwelling unit`,
+        status: 'required',
+        note: `This parcel's district (${cltCode}) is a Tier ${cltTier} district under Charlotte UDO Table 19-1, and residential use carries a minimum of 1 space per dwelling unit. ${
+          cltTier === 1
+            ? 'Tier 1 is minimums only — “A minimum number of off-street parking spaces are required. There are no off-street parking space maximums” (Sec. 19.2.A.1.a), which the table states independently: the Tier 1 Maximum column is empty in all 105 use rows.'
+            : 'Tier 2 sets both ends — “A minimum number of off-street parking spaces are required. There are also off-street parking space maximums” (Sec. 19.2.A.1.b) — with a residential maximum of 2 spaces per unit, and 1 per bedroom for Multi-Family Stacked.'
+        } Multi-Family Stacked is the row to check if you are building apartments: it is ${
+          cltTier === 1 ? '1.5 spaces per unit in Tier 1, dropping to 0.25 per unit for senior housing' : '1 space per unit in Tier 2'
+        }, not the generic residential figure. The relief routes below can move this — in particular, a half-mile walk to rapid transit lets you elect Tier 3 outright.`,
+      })
+    }
+
+    // Both relief routes, always stated: neither is gateable from the parcel
+    // record, and the second is the one most likely to change the answer.
+    hurdles.push({
+      category: 'parking',
+      label: 'Two routes out of the tier minimums (transit election; demand-management assessment)',
+      status: 'info',
+      note: 'Charlotte publishes two ways off the tier it maps you into, and the first is an election rather than a discretionary favour. Sec. 19.2.H: “Any property within one-half mile walking distance of an existing rapid transit station may use the Tier 3 parking standards, unless the property is located in a Neighborhood 1 Place Type. If Tier 3 parking standards are used, such standards shall be used in their entirety, including any applicable parking minimums and maximums.” Read the whole clause — it is all-or-nothing, and it brings the Tier 3 MAXIMUMS across with it, so a project that wanted a low minimum and a high space count cannot take half of it. The second route is discretionary: “Tier 3 required parking minimums may be reduced or eliminated upon Planning Director approval of a Parking Demand Management Assessment, as described in the Charlotte Streets Manual” (Sec. 19.2.A.1.c.i). Neither walking distance to a rapid transit station nor the Place Type mapping is in the parcel record, so both are stated rather than applied; both are worth checking before you size a deck.',
+    })
+
+    // ─── Beyond parking (2026-08-08). Charlotte UDO read live at
+    // charlotteudo.org (article index → article page), plus ncleg.gov for
+    // N.C. Gen. Stat. § 42-14.1, § 162A-213 and Session Law 2026-39.
+    //
+    // NO `addsMonths` ON ANY ROW BELOW. Charlotte publishes exactly three
+    // durations and all three are the wrong kind: the HDC's 180-day outer limit
+    // (Sec. 14.2.L.6.a.i) is a ceiling, the erosion-plan 30 days (Sec. 28.4) is
+    // a decision shot clock on the Stormwater Administrator, and the Planning
+    // Commission's 30 days (Sec. 37.2.K.4) is a deemed-favourable deadline on a
+    // board. Same call, same reasoning, as Raleigh's refusal to write 6 for its
+    // 180-day COA limit.
+
+    // ── Affordability ──────────────────────────────────────────────────────
+    // ABSENCE, and the headline for Charlotte — but a DIFFERENT absence from
+    // Nashville's, and the difference is the whole point. Tennessee bans
+    // mandatory inclusionary zoning by name (Tenn. Code Ann. § 66-35-102(b)).
+    // North Carolina does NOT: no NC statute names inclusionary zoning at all.
+    // So what is recorded is what can be checked — the UDO's own structure, and
+    // § 42-14.1's actual words. "State law bars mandatory inclusionary zoning"
+    // is the one sentence this row must not contain (rule 1). Identical
+    // treatment to the Raleigh row, on the same statute.
+    if (isResidential) {
+      hurdles.push({
+        category: 'affordability',
+        label: 'No inclusionary requirement — affordability buys height, nothing more',
+        status: 'info',
+        note: 'The Charlotte UDO sets no affordable-unit requirement at any project size — there is no unit count and no floor area at which income-restricted units become compulsory, and no fee in lieu. Every affordability obligation in the ordinance hangs off something the developer elects. The first is the bonus menu: “Additional building height or a reduction in required on-site open space shall be allowed through a voluntary bonus system” (Charlotte UDO Sec. 16.3.A), available “To achieve the ‘Maximum Height with Bonus’ standard or to reduce the required open space within the UE, RAC, CAC-1, CAC-2, NC, IMU, TOD-UC, TOD-CC, TOD-NC, TOD-TR, N2-C, CG, CR, IC-1, IC-2, OFC, OG, and RC Zoning Districts” (Sec. 16.3). The exchange rate is stated: Table 16-1 gives “3 points for every 1% of gross floor area of affordable housing, up to 15 points total - Where an average of 80% Area Median Income (AMI) or less, with up to 20% of the affordable units set aside for households earning above 80% up to 110% AMI / 5 points for every 1% of gross floor area of affordable housing, up to 25 points total - Where an average of 60% Area Median Income (AMI) or less”, and “one point is required for one foot of additional building height” (Sec. 16.3.B.1.b). The second is a separate development-ALLOWANCE track with published thresholds — “1. Affordability period: 30 years / 2. Minimum units of affordable housing: Five units / 3. Percentage of development (one of the following): a. 15% at 60% AMI; or b. 30% at 80% AMI; or c. 20% at 80% AMI in areas of high housing cost per the UDO Zoning Administration Manual” (Sec. 16.4.A) — which buys the next district’s standards, street waivers, Tier 1 green-area credits and tree-mitigation relief. Build within base zoning and none of it arises. On the state-law backdrop, note carefully what is and is not settled: N.C. Gen. Stat. § 42-14.1(a) provides that “No county or city as defined by G.S. 160A-1 may enact, maintain, or enforce any ordinance or resolution which regulates the amount of rent to be charged for privately owned, single-family or multiple unit residential or commercial rental property”, and § 42-14.1(c)(4) excepts ordinances “applicable to owners or operators that receive funding or financial incentives from the county or city” — which is exactly the shape Charlotte’s bonus commitments take. North Carolina has no statute naming inclusionary zoning, and unlike Tennessee has not prohibited it by name, so treat this as a rule Charlotte has not adopted rather than one the State has forbidden.',
+      })
+    }
+
+    // ── Review: the structural advantage, and the row a reader arriving from
+    // Boston or Philadelphia most needs. Established by the SLOT TEST, not by a
+    // failed search: Article 35 enumerates the ordinance's COMPLETE roster of
+    // decision bodies (35.1 City Council, 35.2 Planning Commission, 35.3 UDO
+    // Board of Adjustment, 35.4 Historic District Commission, 35.5 Alternative
+    // Compliance Review Board) and there is no design-review board and no
+    // site-plan-approving body in the list.
+    hurdles.push({
+      category: 'review',
+      label: 'Plan review is administrative — no design board, no site-plan hearing',
+      status: 'info',
+      note: 'Charlotte approves development plans over the counter, and the ordinance’s treatment of it is two sentences long — the brevity is the finding: “Development review and approval is intended to ensure that the development meets the requirements of this Ordinance. Development review and approval shall follow procedures and practices established by the City, this Ordinance, and other ordinances as applicable” (Charlotte UDO Sec. 37.9). There is no design-review board and no site-plan-approving body anywhere in the ordinance. Article 35 lists the complete roster of decision bodies — City Council (Sec. 35.1), the Planning Commission (35.2), the UDO Board of Adjustment (35.3), the Historic District Commission (35.4) and the Alternative Compliance Review Board (35.5) — and the Planning Commission’s powers are confined “To initiate, review, and make recommendations to the City Council regarding UDO amendments and zoning map amendments” (Sec. 35.2.A.1), which says nothing about plans. The only quasi-judicial evidentiary hearings in the whole ordinance belong to the Board of Adjustment on variances and appeals (Sec. 37.8), the Historic District Commission on certificates of appropriateness (Sec. 14.2.L.6.b), and the Alternative Compliance Review Board (Sec. 37.10.D). That last one is worth knowing about because it is an OPT-IN route rather than a gate: “Alternative compliance may be used for the following standards: (1) minimum building height, (2) building articulation, (3) transparency, (4) site layout, (5) building design, (6) design of parking decks, (7) landscape and screening, and (8) surface parking” (Sec. 37.10.C). It cannot be used to get a use — the Board “has no jurisdiction with respect to alternative compliance which: (1) would allow the establishment of a use that is not otherwise permitted in the zoning district” (Sec. 37.10.B.1). There is no Charlotte analogue to Boston’s Article 80, San Francisco’s Discretionary Review or Philadelphia’s Civic Design Review: project size alone never buys you a hearing here.',
+    })
+
+    // A real two-agency handoff — City land-development approval, then COUNTY
+    // building permit and CO — that no other city in this registry has in this
+    // form. It is also the reason the permit-timing answer for Charlotte is
+    // what it is.
+    hurdles.push({
+      category: 'review',
+      label: 'Building permits come from Mecklenburg County, not the City',
+      status: 'info',
+      note: 'Zoning and land-development approval is the City’s; the building permit and the certificate of occupancy are the County’s. The UDO says so in the places where it reaches for enforcement: “The Mecklenburg County Land Use and Environmental Services Agency, on its own authority or as directed by the Planning Director, shall revoke and require the return of any building permit by notifying the permit holder in writing stating the reason for the revocation” (Charlotte UDO Sec. 14.2.S.1), and “As stated in the Mecklenburg County Building Ordinance, Certificates of Compliance and Occupancy, the Mecklenburg County Land Use and Environmental Services Agency … shall not issue a Certificate of Occupancy or Certificate of Compliance unless there has been compliance with any Certificate of Appropriateness issued by the Historic District Commission” (Sec. 14.2.T.1). Plan for two agencies with two queues and two sets of comments, and for a City-side condition that is enforced at the County counter — the certificate of occupancy is where a missed City approval surfaces, which is the most expensive place to find one.',
+    })
+
+    // ── Fees. No floor-area or unit threshold at all, so no sizeDependent tag:
+    // the fee scales with METER SIZE, which is neither a unit count nor a floor
+    // area. The gate is that the project is new construction (a new connection).
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'fees',
+        label: 'Water and sewer system development fees',
+        status: 'required',
+        note: 'A new water or sewer connection carries a system development fee, and North Carolina fixes when it is collected: “For new development involving the subdivision of land, the system development fee shall be collected by a local governmental unit at the later of either of the following: (1) The time of application for a building permit. (2) When water or sewer service is committed by the local governmental unit” (N.C. Gen. Stat. § 162A-213(a)). The statute also anticipates exactly Charlotte’s split between Charlotte Water and the Mecklenburg County permit counter: where the unit charging the fee is not the unit issuing the building permit, “the local governmental unit issuing the building permit shall require proof of collection of the system development fee prior to issuance of the building permit” (§ 162A-213(c)). There is no size threshold and no small-project exemption; what the fee scales with is METER SIZE, not units or floor area. The amounts are in no ordinance and must not be treated as stable — Council resets them each fiscal year on the City’s published Rates & Fees schedule. For scale only, read live from that schedule on 2026-08-08: a 5/8" domestic meter carried a $4,407 water connection fee, a $1,453 water system development fee and a $5,066 sewer system development fee, while a 2" meter carried $11,622 water and $40,525 sewer. Get the current schedule from Charlotte Water before you underwrite rather than relying on those figures or on any prior year’s. Separately, and deliberately: no impact-fee row appears here. The phrase “impact fee” occurs nowhere in the UDO and Charlotte has no Raleigh-style facility-fee article, but the zoning ordinance is not the whole City Code — that is a gap in what has been read, not a finding that no such fee exists. Treat this row as silent on impact fees rather than as an answer in either direction.',
+      })
+    }
+
+    // ── Transportation. The threshold lives in an adopted manual, not in the
+    // ordinance, so no unit or square-foot figure is stated — same treatment as
+    // Raleigh's Sec. 8.2.2 row, whose thresholds sit in the Street Design
+    // Manual. Stating a number here would be inventing one.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'review',
+        label: 'Comprehensive Transportation Review (CTR)',
+        status: 'likely',
+        note: 'Charlotte requires a Comprehensive Transportation Review above thresholds the UDO does not contain: “The CTR, including specific thresholds and requirements, is included in the Charlotte Streets Manual (Streets Manual). A CTR is required for any development project that meets or exceeds any specified threshold. The developer shall procure the CTR at their own expense, and the CTR shall satisfy all applicable requirements” (Charlotte UDO Sec. 32.1.B). The review has three components — “Multimodal Assessments, Transportation Demand Management (TDM), and Traffic Impact Studies (TIS)” (Sec. 32.1.A). No unit count or floor area is asserted here because the ordinance states none; the trigger is in the adopted Streets Manual, so ask Charlotte Department of Transportation early rather than sizing against a guessed number. The cost is the mitigation, not the study: “Based on the results or recommendations of a CTR, the developer shall provide any required mitigation” (Sec. 32.1.C).',
+      })
+    }
+
+    // CONJUNCTIVE, and the row most likely to be got wrong. Sec. 32.4.C.1.a
+    // requires a NEW stop only where the project meets ALL of a route-frontage
+    // limb and a daily-trip limb — we hold no transit-route frontage and compute
+    // no ITE trip generation, so neither is gateable. 'info' with both limbs
+    // quoted, never a gate on a proxy. The SECOND limb of the section (retain an
+    // existing stop) IS resolvable on project type and is stated in the same row.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'review',
+        label: 'Bus stop and amenities, or retention of an existing one',
+        status: 'info',
+        note: 'Two different obligations live in Sec. 32.4 and only one of them is conditional on data we hold. A NEW stop is required only where the project “meets all the following: i. The development is located along a bus route as indicated on an MTC adopted Transit Service Plan, and / ii. The development will generate the minimum number of daily trips which meet a threshold in Table 32-1.1 below” (Charlotte UDO Sec. 32.4.C.1.a). Both limbs must hold, and neither is in the parcel record — we carry no bus-route frontage and compute no ITE trip generation — so this is stated rather than applied. Table 32-1.1’s own bands are “At least 50 but less than 250 Daily Trips”, “At least 250 but less than 500”, “At least 500 but less than 1,000” and “1,000 or more”, so the requirement scales with the trip figure once you clear the first band. The RETENTION duty is the one that reaches an ordinary project: it applies to “Construction of a new principal structure on a site with existing CATS bus stop(s) and amenities, either on the subject development site or in the rights-of-way adjacent to the subject development site, except for construction of a new single-family, duplex, triplex, and quadraplex structure, unless part of a multi-dwelling development” (Sec. 32.4.B.1). Read the exception twice — the small-building carve-out is itself carved back for multi-dwelling developments, so a quadraplex inside a larger scheme is caught. Where a stop is already there it must be retained and brought to ADA compliance, and “No relocation, modification, or removal of existing CATS bus stop(s) and amenities shall occur unless approved by the CATS Director” (Sec. 32.4.B.2.b) — that approval is a schedule item, not a formality.',
+      })
+    }
+
+    // Unconditional on new construction — what varies is WHICH streets, and that
+    // comes from the Charlotte Streets Map and Article 31, neither of which we
+    // hold. NOT sizeDependent: the gate is project type, not a size. The
+    // 125-unit collector limb is quoted inside rather than used as the gate,
+    // because it ALSO requires an arterial intersection (conjunctive at the top,
+    // disjunctive underneath).
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'review',
+        label: 'New streets, dedications and off-street public paths',
+        status: 'likely',
+        note: 'Building a new principal structure in Charlotte can oblige you to build street: “New streets are required when either of the following occur: 1. Subdivision as defined by Section 30.3.A. 2. Construction of a new principal structure” (Charlotte UDO Sec. 32.5.A). That trigger is unconditional on new construction; what varies is which streets, and the answer comes from the Charlotte Streets Map and Article 31 rather than from anything in the parcel record — so the extent is a lookup, not a guess. The expensive limb to check is the collector: a new street must be built and dedicated as a collector where “The street directly intersects with an arterial and provides access to an area with: i. An overall density of one residential lot per acre; or ii. More than 125 residential lots; or iii. More than 125 dwelling units” (Sec. 32.5.E.2.a) — conjunctive at the top, so the arterial intersection has to hold as well as one of the three. Right-of-way for mapped limited-access roads and arterials is also reservable: it “shall be reserved for 18 months beginning when land development approval is obtained” (Sec. 32.5.C.1), and if the agency has neither contracted to purchase nor begun condemnation in that window “the developer may consider the land free of any reservation” — a hold on part of your site with a published end date. Off-street public paths ride along with all of it: they are required on “Construction of a new principal structure, except for construction of a new single-family, duplex, triplex, or quadraplex structure” (Sec. 32.6.A).',
+      })
+    }
+
+    // ── Green area. sizeDependent: true because the STATUS turns on a unit
+    // count, which in this codebase is derived from gfa. Charlotte's gfaBasis is
+    // 'assumed-unconstrained' (the UDO imposes no FAR — zoning/charlotte.ts
+    // FACT 1), so softenSizeDependent will not downgrade it; the tag is still
+    // correct and is set.
+    //
+    // The exemption is the conjunctive part. Sec. 20.15.A.3.b exempts small
+    // residential UNLESS one of three things is also true, and two of the three
+    // (lot configuration, membership in a subdivision approval) are not in our
+    // data. A project over four units cannot be inside the exemption at all,
+    // which is where the status splits; at or below four it may or may not bite,
+    // so the row stays 'likely' and says why.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Green area: 15% of the site, plus a tree compliance plan',
+        sizeDependent: true,
+        status: units > 4 || !isResidential ? 'required' : 'likely',
+        note: `Charlotte budgets green area on the finished site rather than merely protecting what is there: “15% or more of a development site that is subject to the applicability of this section shall be green area to be credited as provided for in Table 20-5 Green Area Credits” (Charlotte UDO Sec. 20.15.C). Applicability is broad — the requirements apply “whenever development would result in any of the following: a. New construction of a principal structure. b. Cumulative increase in built-upon area (BUA) or building coverage equal to or greater than 5% or 1,000 square feet, whichever is less. c. Approval of a standard subdivision as defined by Section 30.3.A or approval of a minor subdivision as defined by Section 30.3.D” (Sec. 20.15.A.1). The percentage is not measured on the deed area: rights-of-way, railroad rights-of-way, utility easements and existing ponds and lakes come off the site area first (Sec. 20.15.D.4.a), and the credits are multiplier-weighted by a four-tier Place Type assignment (Table 20-4), so what actually satisfies 15% depends on where you are and what you plant. Full compliance is owed by “Development activity that cumulatively impacts 75% or more of a site” (Sec. 20.15.A.2.a), with proportional compliance below that where an existing principal building is retained. ${
+          units > 4 || !isResidential
+            ? 'The small-residential exemption cannot reach this project: Sec. 20.15.A.3.b exempts only “Construction of a new single-family detached home, duplex, triplex, or quadraplex as a principal structure on a single lot”, and this project is outside that description.'
+            : 'Whether the small-residential exemption reaches this project is not decidable from the parcel record, so treat it as conditional. Sec. 20.15.A.3.b exempts “Construction of a new single-family detached home, duplex, triplex, or quadraplex as a principal structure on a single lot, unless such construction is any of the following: i. Part of an approval of a new standard subdivision as defined by Section 30.3.A or approval of a minor subdivision as defined by Section 30.3.D, ii. Constructed on three or more contiguous/adjacent lots, or iii. Part of a multi-dwelling development.” The exception has three limbs and two of them turn on lot configuration and on whether the build sits inside a larger scheme — neither is in our data. Confirm which side of it you are on before pricing the site.'
+        } Either way the paperwork gate is separate and unconditional: “All applications for land development approval subject to the applicability of Section 20.15, Section 20.16, and Section 20.17 shall be required to submit to the Planning Department a tree compliance plan which shall include a tree survey, a tree and critical root zone protection plan, and tree planting and green area plan” (Sec. 20.18.A.2). One related option rather than a separate exaction: where a district requires on-site open space, the district articles let it “be provided as land dedicated to Mecklenburg County Park and Recreation, a fee-in-lieu provided to Mecklenburg County Park and Recreation, or a combination thereof” (e.g. Sec. 4.4.A.4) — an alternative means of complying with a zoning dimensional standard, with the amount set by the County outside the UDO.`,
+      })
+    }
+
+    // Note the asymmetry with green area, and that it is real: Sec. 20.14.A has
+    // NO exemption for small residential construction. A single new house on a
+    // single lot is inside this one.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Heritage trees: permit, replanting and a mitigation payment',
+        status: 'required',
+        note: 'A heritage tree is a specific, checkable thing — “Any tree native to North Carolina per the US Department of Agriculture Natural Resource Conservation Service Plants Database with a DBH of 30 inches or greater” (Charlotte UDO Article 2, definitions) — and removing one is permitted work with a price attached: “Heritage trees may be removed when a City-issued tree work permit is requested and approved… No removal activities shall commence until such permit is issued, any applicable mitigation payments have been received, and a planting plan has been approved… For purposes of this subsection, a development plan approved by the City constitutes a tree work permit” (Sec. 20.14.B.1). The cost has two parts: “a. Required Tree Replanting — One tree shall be planted on the property in mitigation pursuant to the Charlotte Tree Manual. Trees replanted to meet this mitigation requirement shall be in addition to other trees required by this article. b. Heritage Tree Mitigation Payment — A heritage tree mitigation payment shall be required for every heritage tree removed per the fee established by City Council” (Sec. 20.14.B.3). No dollar figure is stated here because the ordinance states none — the fee is set by Council. Note the asymmetry with the green-area requirement above, because it is real and easy to miss: Sec. 20.14.A applies “whenever development would result in any of the following: 1. New construction of a principal structure. 2. Cumulative increase in built-upon area (BUA) or building coverage equal to or greater than 5% or 1,000 square feet, whichever is less. 3. Approval of a standard subdivision as defined by Section 30.3.A or approval of a minor subdivision as defined by Section 30.3.D”, and it carries NO small-residential exemption at all. One new detached house is inside it. A project taking the Sec. 16.4.A affordable-housing development allowance gets relief in kind rather than cash — Sec. 16.4.B.5 allows “planting of twice the number of required mitigation trees … in lieu of the mitigation fee.” Survey the trees before you price the site: a mature canopy is a line item here, not a landscaping preference.',
+      })
+    }
+
+    // A CONJUNCTIVE EXEMPTION, which inverts to a DISJUNCTIVE requirement — and
+    // neither limb is in our data. Sec. 25.2.A.1.d joins "disturbs less than one
+    // acre" and "creates less than 5,000 sq ft of new BUA" with "and", so the
+    // permit is owed whenever EITHER is exceeded. We hold neither disturbance
+    // area nor built-upon area; lot area bounds neither. So this stays 'likely'
+    // and says so on its face rather than gating on lot size.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Stormwater management permit and the Catawba/Yadkin density standards',
+        status: 'likely',
+        note: 'The starting position is universal — “All development and redevelopment shall require a Stormwater Management Permit unless exempted below” (Charlotte UDO Sec. 25.2.A) — and the exemption that matters is written conjunctively: “Development and redevelopment that cumulatively disturbs less than one acre and cumulatively creates less than 5,000 square feet of new built-upon area (BUA)” (Sec. 25.2.A.1.d). Because its two limbs are joined by “and”, the permit is owed whenever EITHER an acre is disturbed OR 5,000 sq ft of new built-upon area is created — clearing one limb is not enough. Neither figure is in the parcel record: we hold lot area, which bounds neither disturbance nor built-upon area, so this row is stated rather than applied. (A second exemption at Sec. 25.2.A.1.e covers “Residential development and redevelopment on an individual lot recorded prior to July 1, 2008 and less than 20,000 square feet”.) What the permit costs you depends on which watershed district the parcel sits in, and the density break differs threefold across the city: low density is “less than or equal to 24% BUA” in the Central Catawba, “less than or equal to 12% built-upon area” in the Western Catawba, and “less than or equal to 10% BUA” in the Yadkin-Southeast Catawba (Sec. 25.3.C–F). Above the break, treatment is mandatory rather than optional. The watershed district is on the City’s Watershed Districts layer, which this tool does not fetch — look it up rather than assuming the least restrictive number, because on a compact urban parcel a 10% cap is the constraint that binds first. Two neighbours to check at the same time: Article 23 imposes water-supply-watershed BUA caps in the lake watersheds, and Six Mile Creek carries “200-foot undisturbed buffers, plus entire FEMA floodplain” on perennial streams (Sec. 25.3.F.1.b.iii).',
+      })
+    }
+
+    // LOT AREA IS AN EXPLICIT PROXY here, exactly as in Raleigh's 12,000 sq ft
+    // row: the ordinance measures DISTURBED area, and a large parcel with a
+    // small disturbance footprint sits below the line. The note says so. NOT
+    // sizeDependent — no floor area or unit count is in the trigger. And no
+    // addsMonths: Sec. 28.4's 30 days is a decision clock on the reviewer.
+    if (project.projectType === 'new' && lotSqFt > CLT_ACRE) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Erosion and sedimentation control plan (one acre)',
+        status: 'likely',
+        note: 'At an acre of disturbance the erosion plan becomes a scheduling item: “No person shall initiate any land-disturbing activity on a tract if one acre or more is to be disturbed unless a plan for that activity has been submitted and approved in accordance with Section 28.4” (Charlotte UDO Secs. 28.2, 28.3.D.5). The reviewer is clocked, not you — “The Stormwater Administrator shall review each complete plan submitted and within 30 days of receipt thereof shall notify the applicant, that it has been approved, approved with modifications, or disapproved” (Sec. 28.4) — which is why no months are added to this project’s timeline for it. There is also a notice step at the start of work: “If one acre or more is to be uncovered, the person conducting land-disturbing activity … shall contact the Stormwater Administrator at least 48 hours before commencement” (Sec. 28.3.D.6). The same acre brings a state permit with it — an NCG01 certificate of coverage under the construction general permit (Sec. 28.5.A.1.a). Note the unit, because it decides whether this reaches you: the threshold is measured in the area to be DISTURBED, not in lot area and not in floor area. This parcel is over an acre and lot size is only a proxy for disturbance here, so a large site with a small construction footprint may sit below the line — and conversely a sub-acre parcel with off-site work may sit above it.',
+      })
+    }
+
+    // Relief rather than an obligation, so 'info'. Gated on `teardown` — the
+    // statute credits BUILT-UPON AREA THAT ALREADY EXISTS, so it can only help a
+    // site that already carries some. Charlotte's own UDO defers to this statute
+    // by name (Sec. 25.3.C.1 and parallels: "Stormwater controls shall only be
+    // required on redeveloped BUA as allowed by state law (N.C.G.S § 143-214.7)"),
+    // so the amendment operates directly on Charlotte teardowns.
+    if (teardown) {
+      hurdles.push({
+        category: 'review',
+        label: 'State law now credits your existing pavement, square foot for square foot',
+        status: 'info',
+        note: 'Redeveloping a site that already carries built-upon area got materially cheaper in July 2026, and the change is statewide rather than local. N.C. Gen. Stat. § 143-214.7(b3), as rewritten by Session Law 2026-39 (House Bill 162), Section 2.(a), now provides that “(i) the existing built-upon area shall not be included in the density calculations for additional stormwater control requirements, irrespective of whether the existing built-upon area is to be demolished, relocated, replaced, or remains in place during development activity, (ii) the existing built-upon area at the site is not subject to additional stormwater control requirements under this section, regardless of whether the existing built-upon area is demolished, relocated, replaced, or remains in place during the development activity, (iii) for purposes of determining the size of the area for which stormwater control measures are required for a development or redevelopment, built-upon area that existed before the development or redevelopment shall be applied on a square-foot-for-square-foot basis to reduce the built-upon area for which stormwater control measures are required, and (iv) stormwater control requirements cannot be applied retroactively to existing built-upon area”. It reaches Charlotte directly: “This subsection applies to all local governments regardless of the source of their regulatory authority. Local governments shall include the requirements of this subsection in their stormwater ordinances.” There is a conformance clock on the City, not on you — “Each local government that implements a stormwater management program shall amend its stormwater ordinance to conform to G.S. 143-214.7(b3) … within 12 months of the effective date of this section. Any local stormwater ordinance that is inconsistent with G.S. 143-214.7(b3) … is void and unenforceable on and after that date” (Section 2.(b)) — and the section “is effective when it becomes law” (Section 2.(c)), approved 6 July 2026. Charlotte’s UDO already defers to the statute by name, providing that “Stormwater controls shall only be required on redeveloped BUA as allowed by state law (N.C.G.S § 143-214.7)” (Sec. 25.3.C.1 and its parallels). This is relief and not an obligation, and the local text may not yet have caught up — measure the existing impervious area before demolition, because it is now a credit you can lose by not documenting it, and confirm the ordinance language in force on the day you file.',
+      })
+    }
+
+    // ── Flood. Deliberately NOT gated on `fz`: the whole point is that a
+    // FEMA-clear parcel can still be regulated. providers/charlotte.ts fetches
+    // the FEMA NFHL only; the City's separate Community Floodplain layer is not
+    // read here. That is a KNOWN GAP and must render as one — the generic
+    // `FEMA flood zone ${fz}` row would otherwise imply the FEMA zone is the
+    // whole answer (rule 5).
+    hurdles.push({
+      category: 'flood',
+      label: 'Charlotte regulates a COMMUNITY floodplain wider than FEMA’s — and we only hold the FEMA layer',
+      status: 'info',
+      note: 'A clear FEMA zone is not a clear answer in Charlotte. Mecklenburg County maps its own community floodplain alongside the federal one — “All streams in Mecklenburg County with drainage areas of one square mile or greater have established community and FEMA base flood elevations and community encroachment areas and FEMA floodways” (Charlotte UDO Sec. 27.2.B.1) — and the elevation standard is written to the community figure plus freeboard: the Flood Protection Elevation is “The elevation to which all structures located within the community special flood hazard area FEMA special flood hazard area shall be elevated or floodproofed if nonresidential. This elevation is the community base flood elevation plus two feet of freeboard until such time as the Community Special Flood Hazard Area is mapped using new future conditions criteria. When new maps are issued, the elevation shall be the Community Base Flood Elevation plus one foot, except along the Catawba River, including Lake Wylie and Mountain Island Lake where it is the FEMA base flood elevation plus two feet of freeboard” (Article 27 definitions), and “New construction or substantial improvement of any residential structure shall have the lowest floor elevated to or above the FPE” (Sec. 27.4.A.1). This tool reads the FEMA National Flood Hazard Layer and nothing else. The City publishes the Community Floodplain as a separate layer we do not fetch, so a parcel this report shows as outside a FEMA zone can still sit inside the community floodplain and owe elevation to a community base flood elevation plus two feet. Treat the FEMA answer above as a floor, not as the whole question, and check the community mapping. The same caution covers the stream buffers, which are also mapped rather than legislated: “SWIM stream buffer requirements begin at the point where the stream drains 100 acres or greater subject to review by field survey on a site-by-site basis” (Sec. 26.3), with widths by drainage area on the SWIM Stream Buffer Map maintained by Charlotte-Mecklenburg Storm Water Services.',
+    })
+
+    // ── EV charging. NOT a duplicate of the tier rows or of PARKING_RULES: this
+    // is Sec. 19.3, a separate requirement.
+    //
+    // ⚠️ THE INDENTATION TRAP. Read as flat text, Sec. 19.3.A appears to let the
+    // unit count stand in for the provided-space count whenever no minimum
+    // applies — which would let a Tier 3 apartment building be gated at
+    // `units >= 26`. The article page's own <p style="padding-left:…"> levels
+    // show sub-items a and b sit at 80px UNDER ITEM 2 ONLY, and i/ii at 120px
+    // under b. Item 2 is "The residential component of mixed-use developments",
+    // and the sub-item's own words confine it. The substitution is written for
+    // MIXED-USE developments, not for a stand-alone multi-family stacked
+    // building. So the threshold is in SPACES PROVIDED — a design decision we do
+    // not hold — and this row is NOT sizeDependent and NOT unit-gated.
+    if (project.projectType === 'new' && isResidential) {
+      hurdles.push({
+        category: 'parking',
+        label: 'EV charging stations for multi-family and hotels',
+        status: 'likely',
+        note: `Charlotte requires EV infrastructure by ordinance, and it is keyed to the parking you build rather than to the building: “Electric vehicle (EV) charging stations are required per Table 19-2: Required EV Charging Stations for: 1. Multi-family stacked dwellings 2. The residential component of mixed-use developments … 3. Hotels 4. Parking lots and parking structures as a principal use” (Charlotte UDO Sec. 19.3.A). Table 19-2 keys on the “Total Number of Provided Off-Street Parking Spaces”: 0–9 spaces require none; 10–25 require 20% of spaces (rounded up) EV-capable; 26–50 require 20% EV-capable plus one EVSE-installed; more than 50 require 20% EV-capable plus 2% of spaces (rounded up) EVSE-installed. The trigger is therefore the number of spaces you PROVIDE — a design decision, not a fact about the parcel — which is why this is stated rather than applied: build fewer than ten spaces and the table asks for nothing. ${
+          project.use === 'mixed'
+            ? 'On a mixed-use project the substitution matters and it runs against you: “Where the number of off-street parking spaces provided is less than the number of residential units in the mixed-use development, the number of residential units shall be considered as the number of provided off-street parking spaces for the purposes of calculating the EV charging stations required per Table 19-2” (Sec. 19.3.A.2.b.i). Under-parking a mixed-use building does not shrink the EV obligation — the unit count takes over as the counting basis.'
+            : 'One clause NOT to borrow from a mixed-use project: Sec. 19.3.A.2.b.i lets the residential unit count stand in for the provided-space count, but it sits under item 2 — “The residential component of mixed-use developments” — and does not reach a stand-alone multi-family stacked building. On this project the count is the spaces you provide.'
+        } The interaction with the tier maximums is worth knowing before you design the deck: “EV charging stations shall only count toward a development’s parking maximum if spaces are EV-Capable. EVSE-Installed stations do not count toward parking maximums” (Sec. 19.3.D).`,
+      })
+    }
+
+    // ── Demolition. Gated on the MAPPED overlay, never citywide: Charlotte's
+    // demolition delay is an overlay power, and asserting it citywide would be
+    // exactly the over-broad gate this file has had to unwind before.
+    // providers/charlotte.ts populates overlays.historicDistrict from the City's
+    // Historic Districts layer (Accela MapServer layer 12), whose header records
+    // that all eight mapped districts are DistrictType 'Local' — i.e. Sec. 14.2
+    // overlays. No addsMonths: 365 days is a CEILING on a delay that may be
+    // waived entirely, not a scheduled duration.
+    if (teardown) {
+      if (parcel.overlays.historicDistrict) {
+        hurdles.push({
+          category: 'demolition',
+          label: 'Historic demolition: approval cannot be refused, but can be delayed up to 365 days',
+          status: 'required',
+          note: 'Inside a local historic district Charlotte trades refusal for delay, and the trade is written both ways. The delay: “If the property is determined by the Historic District Commission to have special significance and value toward maintaining the character of the district, the Historic District Commission may delay demolition or removal for no more than 365 days from the date of the approval. During this 365 day period, the Historic District Commission may negotiate with the owner and with any other parties in an effort to find a means of preserving the building” (Charlotte UDO Sec. 14.2.J.2). And the guarantee: “An application for a Certificate of Appropriateness authorizing the demolition of a building, structure, or site within the district may not be denied. The maximum period of delay authorized by this section shall be reduced by the Historic District Commission where it finds that the owner would suffer extreme hardship or be permanently deprived of all beneficial use of or return from such property by virtue of the delay” (Sec. 14.2.J.3). That is a schedule risk with a published ceiling, not a veto — and unlike Raleigh, whose Sec. 10.2.15.E.3 lets a certificate be denied outright on a Statewide Significance finding, Charlotte’s section carries no such exception. The certificate itself gates the permit whether or not a permit would otherwise be needed: “A Certificate of Appropriateness shall be issued by the Historic District Commission prior to the issuance of a building permit … A Certificate of Appropriateness is required whether or not a building permit is required” (Sec. 14.2.D.2), and once issued it “shall be valid for 12 months from the date of issuance” (Sec. 14.2.L.7.a) — so a certificate obtained early can expire before financing closes. No months are added to this project’s timeline for the delay because 365 days is a ceiling the Commission may waive entirely, not an expected duration; price it as a risk with a known worst case.',
+        })
+      }
+
+      // Ungated by overlay ON PURPOSE: the whole point is that no overlay is
+      // mapped yet, so a parcel with a clean overlay record is exactly the one
+      // this row exists for.
+      hurdles.push({
+        category: 'demolition',
+        label: 'A pending historic designation freezes demolition for up to 180 days',
+        status: 'info',
+        note: 'A designation that has only been recommended, not adopted, is already enough to stop a teardown: “If the Commission has voted to recommend designation of an area as an Historic District and final designation has not been made by City Council, the demolition or destruction of any building, site, or structure located in the proposed district may be delayed by the HDC for a period of up to 180 days or until City Council takes final action on the designation, whichever occurs first. Should City Council approve the designation prior to the expiration of the 180 day delay period, an application for a Certificate of Appropriateness for demolition shall then be filed. The maximum period of delay for a Certificate of Appropriateness for demolition shall be reduced by the HDC by the period of delay while the designation was pending” (Charlotte UDO Sec. 14.2.J.4). This one is deliberately not conditioned on a mapped overlay, because the situation it describes is precisely the one where no overlay exists yet — a neighbourhood that objects can start that clock without Council ever voting, so check whether a designation has been recommended over the area before you count on a demolition date. Waiting it out with a vacant building is not a route around any of it either: Sec. 14.2.R.2 lets the City act where a designated building or one in a district “is about to be demolished whether as the result of deliberate neglect or otherwise”.',
+      })
+    }
+
+    // ── The rezoning path. No addsMonths: the two clocks Sec. 37.2.K.4 publishes
+    // are deadlines on a BOARD (30 days for a Planning Commission
+    // recommendation; 30 days deemed favourable), and nothing clocks the
+    // applicant's community meeting, the CTR, or Council's own calendar.
+    if (discretionary) {
+      hurdles.push({
+        category: 'review',
+        label: 'Conditional rezoning: community meeting, legislative hearing, City Council',
+        status: 'likely',
+        note: 'Asking for more than the base district means a rezoning, and in North Carolina that is a legislative act of the City Council rather than a staff approval. A neighbourhood meeting comes first and it is mandatory: “A community meeting shall be required for all zoning map amendment petitions, as outlined/determined by City policy” (Charlotte UDO Sec. 37.2.F.1), and “Before a public hearing may be held on a petition, the petitioner shall file a written report with the City Clerk stating that at least one community meeting was held by the petitioner. The report shall include, among other things, a listing of those persons and organizations contacted about the meeting and the manner and date of contact, the date, time and location of the meeting, a roster of the persons in attendance at the meeting, a summary of issues discussed at the meeting, and a description of any changes to the rezoning petition made by the petitioner as a result of the meeting” (Sec. 37.2.F.2). The meeting has a shelf life — “If a public hearing has not been held within six months of a community meeting, then another community meeting shall be held” (Sec. 37.2.F.3) — so a petition that stalls pays for the meeting twice. The Planning Commission recommends and Council decides, with two clocks that run against the BOARD rather than against you: “If no written recommendation and statement of plan consistency is received from the Planning Commission within 30 days of the public hearing, the City Council may act on the amendment without the Planning Commission recommendation. If the Planning Commission does not make a recommendation within 30 days after the petition has been referred to it, then the Planning Commission shall be considered to have made a favorable recommendation, unless action was taken to defer” (Sec. 37.2.K.4). No months are added here for that reason: those are deadlines on a body, not a schedule for the project, and nothing clocks the community meeting, the transportation review or Council’s own calendar. Two structural points decide which route you take. First, a project-specific ask has to go the CONDITIONAL route: on a conventional rezoning “the City Council and Planning Commission shall not evaluate the petition based on any specific proposal for the use or development of the affected property and the petitioner shall refrain from using any graphic materials or descriptions of the proposed use or development” (Sec. 37.2.L.1) — and a conditional approval becomes a site-specific vesting plan under Sec. 37.6.B.1. Second, do not reach for the exception district to buy height: an EX district “shall only modify the following standards: i. The quantitative zoning standards… (A) No modifications shall be made to maximum height regulations, with the exception of the height transition limitations when adjacent to the Neighborhood 1 Place Type” (Sec. 37.2.C.3.b.i.(A)). Height above the base comes only from the Sec. 16.3 bonus.',
+      })
+    }
+  } else if (city === 'atlanta') {
+    // Atlanta Code of Ordinances Part 16, §§ 16-28.014 and 16-36.020, read
+    // 2026-08-08 from the City's electronic code of record. Source note and the
+    // measured currency check in PARKING_RULES['atlanta']; cohort caveat above.
+    const atlBuiltPre1965 = existing.ex?.yearBuilt != null && existing.ex.yearBuilt < 1965
+    const atlBeltLine = /beltline/i.test(parcel.zoning.subdistrict ?? '')
+
+    // Un-gateable by design: we hold no transit geometry, and the section's own
+    // measurement is a WALKING distance along a sidewalk/walkway/street, not a
+    // radius — so even a stop dataset would not settle it from coordinates. The
+    // whole condition is quoted, including the three excepted areas and the
+    // maxima the section imposes in exchange.
+    hurdles.push({
+      category: 'parking',
+      label: 'No parking required within 2,640 feet of high-capacity transit',
+      status: 'info',
+      note: 'Atlanta\'s largest parking carve-out is geographic: “The following requirements apply to all uses located on lots within 2,640 feet of a high capacity transit stop, except within the Buckhead Parking Overlay, all special public interest districts, or any historic or landmark district with parking maximums. (a) Minimum parking: No parking is required” (Atlanta Code § 16-28.014(14)). Three parts of the condition decide whether it reaches this parcel, and none is in the parcel record. The distance is a walking measurement, not a radius — “measured along a public or private sidewalk, walkway, or street from the transit station lot line, edge of stop platform, or edge of other boarding area, whichever is greatest, to the closest point of the lot” — but it is generous once it touches you: “When any portion of a lot is within the applicable distance, the entire lot shall be subject to this requirement” (sub-(h)). The transit must be “operational or under construction” (sub-(i)). And “high capacity transit” is narrowly defined at § 16-29.001: rail, a fixed overhead wire system, or bus rapid transit “using and occupying an exclusive right-of-way for at least 75 percent of the route\'s length” — an ordinary bus route does not qualify, and long-distance passenger facilities serving beyond Georgia are excluded. Where it applies it trades the minimum for a maximum: 1.25 spaces per one-bedroom unit and 2.00 per two-or-more-bedroom unit, with R-1 through R-5 exempt from the cap. One thing NOT to infer from the exceptions: the three excepted areas do not put minimums back. SPI-1 Downtown (§ 16-18A.015), SPI-16 Midtown (§ 16-18P.020 Table 7) and the Buckhead Parking Overlay (§ 16-38.003) each read “None” in the Minimum column for residential — they are excepted because they carry their own tables, not because they require parking.',
+    })
+
+    if (atlBuiltPre1965) {
+      // Two different answers off the same fact, and the difference is the
+      // project. § 16-28.014(13) exempts "buildings and portions thereof built
+      // prior to 1965" — a replacement building is not one of those, so a
+      // teardown FORFEITS the exemption. Saying only the first half would hand
+      // a developer an exemption the code withdraws the moment they demolish.
+      const atlYear = existing.ex?.yearBuilt
+      hurdles.push({
+        category: 'parking',
+        label:
+          project.projectType === 'new'
+            ? 'Demolishing this pre-1965 building forfeits its parking exemption'
+            : 'Pre-1965 building: no parking required',
+        status: 'info',
+        note: `The record shows the existing building here dates to ${atlYear}, before 1965. Atlanta exempts such buildings citywide: “A reduction of the generally applicable minimum off-street parking requirements shall be allowed in all zoning districts for buildings and portions thereof built prior to 1965, as follows: (a) Residential uses: No parking is required. (b) Non-residential uses: No parking is required, provided that this provision shall not apply to any business establishment larger than 1,200 square feet in floor area that holds any type of alcoholic beverage license” (Atlanta Code § 16-28.014(13)). ${
+          project.projectType === 'new'
+            ? 'But this project is new construction, and the exemption attaches to the BUILDING, not to the site — a replacement structure is not a building built prior to 1965, so demolishing forfeits it and the base-district minimum returns unless the transit or BeltLine rules independently apply. That is worth pricing against a renovation or an addition, which keeps it.'
+            : 'The exemption runs with the existing building, so a renovation, conversion or addition keeps it — note the one carve-out, which is a licensed alcohol establishment over 1,200 square feet, not restaurants generally.'
+        }`,
+      })
+    }
+
+    if (atlBeltLine) {
+      hurdles.push({
+        category: 'parking',
+        label: 'BeltLine Overlay: no minimum parking requirement',
+        status: 'info',
+        note: `This parcel's overlay record reads “${parcel.zoning.subdistrict}”, which puts it in the BeltLine Overlay District: “With the exception of the minimum parking requirements applicable to Commercial Food Preparation, Delivery-based commercial kitchens, and Eating and Drinking Establishments which shall be determined by the underlying zoning, there will be no minimum parking requirement within the BeltLine Overlay District” (Atlanta Code § 16-36.020(1), last amended Ord. No. 2024-06 (23-O-1003), § 1, 2-14-24). The three excepted uses fall back to the base district's ratio rather than to zero, so a ground-floor restaurant in an otherwise exempt building still carries a requirement. Note the direction this row can be wrong: the overlay label is only carried when no historic district is also mapped here, so a BeltLine parcel inside a historic district will not show this row. Its absence is not evidence the overlay is absent.`,
+      })
+    }
+
+    // ─── Non-parking hurdles. Atlanta Code of Ordinances Part 16 (zoning),
+    // Part 19 ch. 10 (impact fees), ch. 74 (environment) and ch. 158 (trees),
+    // read 2026-08-08 from Municode job 494611 (Supp. 106, "codified through
+    // Ordinance No. 2026-25(26-O-1312), enacted May 27, 2026"), reached from the
+    // chapter index. DRI rules from the Georgia SOS rules site and the
+    // DCA-published rule PDF. ────────────────────────────────────────────────
+
+    if (isResidential) {
+      // ABSENCE, and it is a DIFFERENT absence from both Nashville's and
+      // Raleigh's — which is exactly why it cannot borrow either one's sentence.
+      // Tennessee bans mandatory inclusionary zoning by name; North Carolina is
+      // silent and Raleigh simply has not adopted one; Atlanta HAS adopted one,
+      // in three mapped places and nowhere else. The sentence this row must not
+      // contain is "state law bars it" — O.C.G.A. § 44-7-19 could only be read
+      // on mirrors, so it is dropped in both directions (rules 1 and 8).
+      hurdles.push({
+        category: 'affordability',
+        label: 'No citywide inclusionary requirement — three mapped overlays impose one',
+        status: 'info',
+        note: 'Atlanta imposes no affordability requirement citywide, but unlike Raleigh it is not purely a bonus either: three mapped overlay districts carry a MANDATORY set-aside, and outside them nothing applies. The three are the BeltLine Overlay District (Atlanta Code Part 16 ch. 36A), the Westside Affordable Workforce Housing Overlay District (ch. 37), and the Northwest Atlanta Workforce Housing Overlay District (ch. 41). Each reaches “all residential rental developments of ten or more new residential rental dwelling units” in its district — ch. 41 reaching for-sale units as well — so a nine-unit building, a for-sale building outside ch. 41, or any building outside all three overlays carries no obligation. On the state-law backdrop, note what is and is not established here. Georgia has not prohibited inclusionary zoning by name the way Tennessee has (Tenn. Code Ann. § 66-35-102(b)); what the record shows is the ordinances hedging themselves — all three fix the affordability term at “the greater of 20 years from the date of the issuance of the certificate of occupancy; or such longer period … as permitted by state law at the time of the issuance of the building permit” (§§ 16-36A.004, 16-37.004, 16-41.004(a)). Treat this as a rule Atlanta has adopted in three places and not elsewhere.',
+      })
+
+      // The mandate itself. THREE limbs, and only one of them is in our data.
+      //   (1) inside one of the three overlays — our lookup returns ONE overlay
+      //       per point and a historic district displaces it, so a match is
+      //       trustworthy and a miss is not;
+      //   (2) ten or more new units — this we have;
+      //   (3) RENTAL tenure — ch. 36A and ch. 37 reach rental only, ch. 41 also
+      //       reaches for-sale, and this tool holds no tenure field at all.
+      // Limbs 1 and 3 are therefore QUOTED in the note and the status is
+      // 'likely'. It must never harden to 'required'.
+      if (units >= 10 && ATLANTA_AWH_OVERLAY.test(parcel.zoning.subdistrict ?? '')) {
+        hurdles.push({
+          category: 'affordability',
+          label: 'Overlay inclusionary requirement: 15% at 80% AMI or 10% at 60% AMI',
+          sizeDependent: true,
+          status: 'likely',
+          note: `This parcel’s overlay record reads “${parcel.zoning.subdistrict}”, which appears to put it in one of Atlanta’s three affordable-workforce-housing overlays, and at ten or more new rental units the set-aside is mandatory, not a bonus: “At least 15 percent of the total residential rental units shall be actively marketed for lease to households having an income … that does not exceed 80 percent AMI … or … At least ten percent of the total residential rental units … does not exceed 60 percent of the AMI” (Atlanta Code §§ 16-36A.004, 16-37.004; the Northwest Atlanta overlay at § 16-41.004(a) adds a third option of 5% at 30% AMI and, at § 16-41.004(b), a homeownership limb of 10% of units split evenly between 80% and 120% AMI). The term runs at least 20 years from the certificate of occupancy, the affordable units must be interspersed among market-rate units and proportionate in bedroom count, and no temporary or final certificate of occupancy issues until a Land Use Restrictive Agreement in the City’s form is recorded in the county real estate records (§§ 16-36A.004, .006). An in-lieu payment into the BeltLine Affordable Workforce Housing In-Lieu Fee Trust Fund is available instead, at rates the Department of City Planning republishes by June 1 each year effective July 1 (§ 16-36A.007) — the rates are not in the ordinance, so no figure is stated here. Compliance buys something back: a 15% floor-area-ratio increase, severable as transferable development rights (§ 16-36A.008), and priority SAP review within 21 days plus a Major Projects Meeting (§ 16-36A.010). TWO LIMBS TO CONFIRM BEFORE PRICING THIS, because neither is in the parcel record: whether the parcel is actually inside one of the three mapped overlays — our overlay lookup returns only one overlay per point and a historic district displaces it — and whether the units are RENTAL, since ch. 36A and ch. 37 reach rental only and ch. 41 is the one that also reaches for-sale.`,
+        })
+      }
+    }
+
+    // Impact fees. No unit or floor-area threshold exists, so no sizeDependent
+    // tag — the gate is that the project is new construction. The RATES are not
+    // in the ordinance and none is invented here (rule 4): each section adopts
+    // a fee schedule "incorporated herein by reference".
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'fees',
+        label: 'Development impact fees: transportation, parks and recreation, public safety',
+        status: 'required',
+        note: 'Atlanta levies three development impact fees under the Georgia Development Impact Fee Act, and they gate both ends of the job: “No building permit for any development requiring payment of a development impact fee pursuant to this chapter shall be valid unless and until the required development impact fee has been paid” (Atlanta Code § 19-1007(a)), and “No certificate of occupancy may be issued until all impact fees are paid in full” (§ 19-1007(g)). The three are transportation (§ 19-1009), parks and recreation (§ 19-1010) and public safety — fire/EMS and police (§ 19-1011); transportation and parks are charged by service area, defined by enumerated census tracts as Northside, Southside and Westside, and public safety is citywide. There is no unit or floor-area threshold and no small-project exemption. The rates are not in the ordinance — each section adopts “the … Impact Fee Schedule which is part of the impact fee study and incorporated herein by reference”, so get the current schedule from the Department of City Planning rather than a figure from a prior year. Two reductions worth asking about: the transportation fee is cut 50% for projects within 1,000 feet of a MARTA station “measured from property line to property line along a legal and practical pedestrian route”, but only if the applicant demonstrates the parking provided does not exceed any required minimum and is no more than 80 percent of any maximum (§ 19-1009(c)(2)(a)); and qualifying affordable housing or economic-development projects “may receive a 20 percent exemption … subject to available replacement funds from the City”, applied for before the fee is imposed and requiring a chief-financial-officer certification that replacement funds exist (§ 19-1016(a), (b), (e)). Applicants may instead commission an independent fee determination (§ 19-1012).',
+      })
+    }
+
+    // The structural finding, and the row a reader coming from Boston or
+    // Philadelphia most needs. No addsMonths: the 30 days in § 16-25.004(3)(a)
+    // is a decision deadline on the director, and the NPU's 21 days is a comment
+    // window inside it — neither is a scheduled duration for the project.
+    hurdles.push({
+      category: 'review',
+      label: 'Permitting is administrative — no design-review board outside overlays',
+      status: 'info',
+      note: 'Atlanta has no citywide site-plan hearing. A by-right project is a building permit plus a land-disturbance permit, both decided by staff. Where a Special Public Interest district, the BeltLine Overlay, a Neighborhood Commercial district or another mapped overlay applies, a Special Administrative Permit is required first, and that is still an administrative decision with a clock: the director of the office of zoning and development “shall within 30 days (unless a longer period is mutually agreed upon) of completion of the procedural requirements herein decide on the application”, and may approve, approve with written conditions, or deny with written reasons (Atlanta Code § 16-25.004(3)(a)). Appeals run to the Board of Zoning Adjustment (§ 16-25.004(5); § 16-30.010). Two Atlanta-specific wrinkles. First, the Neighborhood Planning Unit: on a BeltLine SAP the applicant must mail the full application to the NPU chair and file a signed affidavit of that mailing, and “Said appropriate NPU shall have a period of 21 days from the date of the said certificate of mailing to provide one set of written comments to the bureau of planning prior to any SAP approval” (§ 16-36.004(2)) — comment, not consent, but it is a hard 21 days before approval. Second, the SAP is also where relief lives: the planning director may authorize variations from the overlay’s own regulations on written findings (§ 16-36.005), but variances from the UNDERLYING district — yards, height, minimum parking, signage — still require the Board of Zoning Adjustment.',
+    })
+
+    // ── Development of Regional Impact. THE ROW MOST LIKELY TO BE GOT WRONG,
+    // twice over.
+    //
+    // (a) It reaches an ORDINARY BY-RIGHT project — the rule's own trigger is
+    //     "An applicant requests an action (e.g., rezoning, special use permit,
+    //     land disturbance permit, etc.)" — so there is deliberately no
+    //     `discretionary` guard on it.
+    //
+    // (b) THE THRESHOLD IS USE-TYPED, and the research's proposed gate
+    //     `(isResidential && units >= 400) || project.gfa >= 300000` is
+    //     deliberately NOT used as written. `project.gfa` is the WHOLE
+    //     building, and 300,000 is the COMMERCIAL rung; an unguarded floor-area
+    //     limb measures a residential project's floor area against a commercial
+    //     threshold, which is the exact over-fire this file has had to unwind in
+    //     Seattle (SMC 25.05.800.A Tables A/B), Minneapolis (Table 550-1) and
+    //     Nashville (§ 17.20.140.B.2). Housing is measured in UNITS in this
+    //     rule; there is no limb under which a residential program is screened
+    //     on square feet. So the floor-area limb is restricted to the use types
+    //     the ladder actually names, at their own rungs: commercial 300,000,
+    //     mixed use 400,000.
+    //
+    // Institutional gets NO limb: the ARC rule's categories read here are
+    // housing, commercial, office, mixed use and hotels, and no institutional
+    // rung was read — a gap must not render as an answer (rule 5). Hotels are
+    // measured in ROOMS, which we do not carry. Both disclosed in the note.
+    //
+    // NO addsMonths, deliberately. The rule says the process “shall not last
+    // more than 30 calendar days (unless process extensions are taken as
+    // provided for in section 110-12-7-.02(10)(c))” — a CEILING with an escape
+    // hatch — and the 90 days is a deadline on the APPLICANT. Neither is a
+    // scheduled duration. Same test this module applies to Raleigh's 180 days.
+    const atlDriHousingLimb = isResidential && units >= 400
+    const atlDriFloorLimb =
+      (project.use === 'commercial' && project.gfa >= 300000) || (project.use === 'mixed' && project.gfa >= 400000)
+    if (atlDriHousingLimb || atlDriFloorLimb) {
+      hurdles.push({
+        category: 'review',
+        label: 'Development of Regional Impact review — permitting is barred while it runs',
+        sizeDependent: true,
+        status: 'likely',
+        note: 'A large Atlanta project is not only a City matter: Georgia requires the host local government to refer it to the Atlanta Regional Commission, and “The local government may not take final action approving the project or any other action, including but not limited to permitting, while the DRI process is ongoing” (Ga. Comp. R. & Regs. r. 110-12-7-.01(2)(b)). The trigger reaches an ordinary by-right project — the process begins when “An applicant requests an action (e.g., rezoning, special use permit, land disturbance permit, etc.) from a local government.” THE THRESHOLD IS NOT A SINGLE NUMBER AND THE STATEWIDE TABLE DOES NOT APPLY HERE. The Atlanta region runs on DCA’s alternative rules for ARC (Ch. 110-12-7, adopted 11/20/2025, effective 12/15/2025), whose thresholds step by the place-type on ARC’s Unified Growth Policy Map: housing at 400 new lots or units in Rural and Developing Rural, 500 in Maturing Neighborhoods / Established Suburbs / Developing Suburbs and anything not otherwise named, 600 in Regional Centers and Regional Employment Corridors, and 700 in the Region Core; commercial at 300,000 / 400,000 / 500,000 / 600,000 gross square feet or 10,000 trips per day; office at 400,000 / 500,000 / 600,000 / 700,000; mixed use at 400,000 / 500,000 / 600,000 / 700,000 gross square feet with residential units counted at 1,800, 1,500, 1,000 and 1,000 square feet per unit respectively; hotels at 400 / 500 / 600 / 700 rooms. The place-type is not in the parcel record, so this row fires at the LOWEST rung and names the ladder rather than asserting which rung applies — confirm the Unified Growth Policy Map designation before pricing it either way. Note which measure applies to which program: housing is counted in units and never in square feet, so a residential project’s floor area is not measured against the commercial figure. Three limbs of the rule are not modelled at all here — the 10,000-trips-per-day commercial alternative (we compute no trip generation), the hotel rungs (counted in rooms), and any category the rules set for institutional uses, which was not read. Where it does apply the cost is the study, not the referral: the applicant must submit the GRTA-required transportation and traffic analysis to both ARC and GRTA within 90 days of the pre-review meeting or the DRI may be withdrawn, and the outcome is an advisory report — the City keeps the final decision.',
+      })
+    }
+
+    // ── Trees. Atlanta's signature cost, and the one row here carrying a
+    // published dollar figure.
+    //
+    // ⚠️ addsMonths DELIBERATELY OMITTED, and this is the most challengeable
+    // call in the branch, so the argument is written down rather than left
+    // implicit. The two postings are 10 + 7 = 17 BUSINESS days (~24 calendar
+    // days) that must elapse before the permit issues, and the second cannot
+    // begin until preliminary approval, so it is sequential to the arborist
+    // review rather than concurrent with it. That is a published FLOOR the code
+    // fixes, not a ceiling — the same shape as Nashville's 30-day
+    // deemed-approval clock, which this module does honour with a number, and
+    // `addsMonths: 1` would be defensible on that reasoning. The counter-
+    // argument is that the first 10 days run "and until the city Arborist has
+    // issued preliminary approval", i.e. concurrently with review, so only the
+    // 7-day second posting is strictly additive (~1.5 weeks, which rounds to 0).
+    // A month of schedule is a real claim and the concurrency question is not
+    // settled by the text, so the number is not published. The postings are
+    // stated in the note instead.
+    hurdles.push({
+      category: 'environmental',
+      label: 'Tree recompense, tree density, and a two-stage posting before any removal permit',
+      status: 'required',
+      note: 'Atlanta regulates every non-pine tree 6 inches DBH or larger and every pine 12 inches or larger on private property (Atlanta Code § 158-29(a)(2)), and the ordinance was rewritten in 2025 and amended again this year (Ord. No. 2025-19(24-O-1691), § 1, 6-24-25; Ord. No. 2026-03(26-O-1015), 2-11-26). Any construction, demolition or land-disturbance permit application must be accompanied by a site plan and a survey of all regulated trees (§ 158-52(a)), and a tree is only “saved” if at least 80 percent of its critical root zone is protected at natural grade with the structural root plate fully protected. Removal is priced: “The DBH of all healthy trees approved for removal by the city arborist must be replaced by planting an equivalent number of caliper-inches on or off-site”, and where they cannot be planted, “The established recompense value is $140.00, effective January 1, 2026”, adjusted annually for Atlanta-MSA CPI-U and republished by January 15 each year (§ 158-69(a), (b)(1)). Planted replacement trees are credited at 1.25 times their caliper inches (§ 158-69(b)(3)(a)). For new subdivisions, new lots of record and vacant lots there is a per-acre cap, but only if a minimum share of existing DBH inches is retained — 65% retained / $35,000 per acre in R-1, 50% / $35,000 in R-2, 40% / $25,000 in R-3 and R-3A, 35% / $15,000 in R-4, R-4A, R-G and R-LC, 10% / $25,000 in MR, MRC and I-MIX, 25% / $35,000 in O&I, C-1 through C-5 and I-1/I-2, with PD and SPI districts treated according to underlying zoning (§ 158-69(b)(4)). Recompense is not a way out of the density standard: commercial developments must reach 90 DBH inches per acre before a certificate of occupancy, and “Recompense payment may not be made in lieu of meeting tree density requirements” (§§ 158-60(a)(1), 158-72(b)); street trees are separately required at 40-foot maximum spacing. Affordable-housing projects get significant recompense reductions (§§ 158-88, 158-89). Budget the schedule as well as the money: before a permit issues to remove healthy trees from private property the site must be posted twice on six-square-foot signs every 100 feet of frontage — the first “shall remain posted for a minimum of ten business days and until the city Arborist has issued preliminary approval”, and the second, announcing the right to appeal, “shall remain in place for seven business days, during which time the city will accept appeals” (§ 158-75(c)(1)). That is 17 business days of posting before the permit, and the second cannot start until preliminary approval; no month figure is published for it here because the first posting may run concurrently with the arborist’s review. Any person who lives, owns property or runs a business in the same NPU, or owns property within 500 feet, may appeal to the tree conservation commission (§ 158-77(a)(1)).',
+    })
+
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Stormwater control permit and the 1.0-inch runoff-reduction standard',
+        status: 'required',
+        note: 'Atlanta’s post-development stormwater rule has an unusually low floor — it applies to “New development that creates 500 square feet or more of any impervious surface”, to “New development or redevelopment that involves one disturbed acre or more”, to redevelopment that “creates, adds, or demolishes and replaces 500 square feet or more of impervious surface”, and to demolition that leaves more than 500 square feet of impervious surface in place with no replacement application pending (Atlanta Code § 74-504(a)). Essentially every ground-up project is in. The standard is a retention volume, not a treatment goal: “The runoff volume generated by the first 1.0” of rainfall shall be retained on-site” using green infrastructure per the Georgia Stormwater Management Manual, with a prioritised order — vegetated infiltration first, then permeable pavement, then green roofs and rainwater harvesting, then underground infiltration (§ 74-513(a)). On top of that: 80 percent removal of average annual post-development total suspended solids for a 1.2-inch event (§ 74-513(b)); 24-hour extended detention of the one-year, 24-hour storm plus stream-buffer preservation for channel protection (§ 74-513(c)); post-development peak discharge attenuated to pre-development up to the 25-year, 24-hour storm (§ 74-513(d)); and safe conveyance of the 100-year, 24-hour storm with no increase in peak discharge (§ 74-513(e)). A pre-application consultation meeting with the Department of Watershed Management is mandatory before a permit application is submitted, and the department must schedule it within five business days of a written request — failing which the requirement is waived and the written request itself satisfies the submittal (§ 74-510(b)). Single-family development creating less than 5,000 square feet of impervious surface, and not part of a larger common plan, is on a reduced track under § 74-515; note that a single-family house on a site that crosses 5,000 square feet of impervious surface falls back under the full rule (§ 74-504(b)).',
+      })
+    }
+
+    // The threshold is measured in DISTURBED area, not lot area and not floor
+    // area. Lot size is a proxy and the note says so — same treatment as
+    // Raleigh's 12,000 sq ft erosion row and Philadelphia's 5,000 sq ft row.
+    // NOT tagged sizeDependent for the same reason: no floor area is in the
+    // trigger, so a placeholder GFA cannot corrupt it.
+    if (project.projectType === 'new' && lotSqFt >= 43560) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Land-disturbance permit and erosion control (one-acre threshold)',
+        status: 'likely',
+        note: 'Atlanta is the local issuing authority for Georgia’s Erosion and Sedimentation Act, and a land-disturbing activity permit is applied for as part of the building permit (Atlanta Code § 74-39(a)). The exemption most projects test is narrow and CONJUNCTIVE: “The construction of single-family residences, when such construction disturbs less than one acre and is not a part of a larger common plan or development or sale with a planned disturbance of equal to or greater than one acre and not otherwise exempted under this paragraph” (§ 74-38(4)) — all three limbs must hold, and even then the minimum best-management practices of § 74-43 still apply and a trout-stream buffer still applies. Note the unit: the threshold is measured in the area to be DISTURBED, not in lot area and not in floor area; lot size is only a proxy for it here, so a large parcel with a small footprint of disturbance may sit below the line and a small parcel inside a larger common plan may sit above it. The plan must be certified by a preparer who visited the site, is referred to the soil and water conservation district for review, and carries a state-mandated fee of $40.00 per disturbed acre on top of city fees (§§ 74-39(b), 74-47(b)).',
+      })
+    }
+
+    // Un-gateable: we hold no hydrography. Stated, not gated — the whole point
+    // of the row is that it can remove a large share of a lot from play.
+    hurdles.push({
+      category: 'environmental',
+      label: '75-foot stream buffer — triple the state minimum',
+      status: 'info',
+      note: 'If any stream touches the site, Atlanta takes far more land out of play than the State does: “Streams shall have a 75-foot, natural, undisturbed, vegetative buffer measured perpendicularly and horizontally on both sides of the stream from the point of wrested vegetation” (Atlanta Code § 74-303(a)), against the 25 feet that O.C.G.A. § 12-7-6 requires for waters of the state generally (carried at § 74-303(d)). Wetlands take a 25-foot buffer of their own and stack on top of a stream buffer where they overlap (§ 74-303(b)). Inside the Water Supply Watershed Buffer the numbers are 100 feet undisturbed and no impervious surface within 150 feet (§ 74-303(c)). Where the bank has been armoured and there is no wrested vegetation, the buffer is measured from the top of the structure (§ 74-303(e)). Encroachment is possible but is its own process — an application to a technical panel with public notice, technical review and a right of appeal (§§ 74-306 through 74-313). We hold no hydrography for this parcel, so this is stated rather than gated: check whether a stream or wetland is mapped on or adjoining the site before assuming the whole lot is buildable.',
+    })
+
+    // ── Demolition. Two rows, and they are different regimes, not two halves of
+    // one: inside a district it is a VETO, outside it a 45-day screen plus a
+    // sequencing condition.
+    if (teardown) {
+      if (parcel.overlays.historicDistrict) {
+        hurdles.push({
+          category: 'demolition',
+          label: 'Demolition in a Landmark or Historic District can be refused outright',
+          status: 'required',
+          note: 'Atlanta does not trade refusal for delay the way Raleigh does. Demolition of a Landmark Building or Site, of anything in a Landmark District, or of a contributing building in a Historic District requires a type IV certificate of appropriateness, and “Type IV certificates of appropriateness shall be issued by the commission only when one (1) or both of the following two (2) conditions have been established … a. The demolition is required to alleviate a threat to public health and safety; and/or b. The demolition is required to rectify a condition of unreasonable economic return” (Atlanta Code § 16-20.008(d)(1)). Nothing else will do. The public-health limb requires independent analyses showing a major and imminent threat and an analysis of every reasonable alternative; the economic limb puts the burden on the applicant to show the property is incapable of earning a reasonable economic return without demolition. The commission must hold an initial public hearing within 45 days of a completed application, on the same 30-day published notice and 15-day posting as a type III, and decides the health-and-safety branch within 21 days of that hearing (§ 16-20.008(d)(3)). Screen the building’s designation status before pricing a teardown here — inside a district this is a veto, not a schedule risk.',
+        })
+      }
+
+      // Gated only on the teardown because designation of an INDIVIDUAL
+      // building outside a district is not in the parcel record — the provider
+      // populates `historicDistrict` from the district layer only. So the limb
+      // that decides applicability is named in the note and the status is
+      // 'likely'.
+      hurdles.push({
+        category: 'demolition',
+        label: 'Historic Building or Site: 45-day review, then no demolition permit without a foundation permit',
+        status: 'likely',
+        note: 'A designated Historic Building or Site outside a district is handled the other way round — no certificate of appropriateness is required to demolish it, but a 45-day screen and a hard sequencing condition apply. The applicant must file with both the bureau of buildings and the Urban Design Commission on the same day, and must submit a site plan and elevations for the REPLACEMENT building, “provided that such building has a total square footage at least equal to the square footage of the footprint of the building or site proposed to be demolished or moved.” The commission then “shall have 45 days … to review the application and provide to the applicant written comments”, during which “the bureau of buildings shall process and review the application in accordance with its usual procedures, but shall issue no permit prior to the expiration of said 45-day period.” At the end, whether or not the comments are favourable, the applicant gets a written certificate that the application is in order — and then “a demolition permit will be issued when the applicant is issued a foundation permit for the building which is to be placed on the site”, with that certificate good for 18 months or until the City designates the site as a Landmark, whichever comes first (Atlanta Code § 16-20.007(c)(1)–(5)). The stated purpose is to ensure no historic building comes down unless the owner has the intent and financial ability to build the replacement. This row is gated only on the teardown because the designation status of an individual building is not in the parcel record — confirm it.',
+      })
+    }
+
+    // The BeltLine overlay's NON-parking limb. `atlBeltLine` is the same const
+    // the parking row above uses — one overlay test, not two.
+    if (atlBeltLine) {
+      hurdles.push({
+        category: 'review',
+        label: 'BeltLine Overlay District: special administrative permit and design review',
+        status: 'required',
+        note: 'This parcel is in the BeltLine Overlay District, which adds a permit step, a design review and a demolition condition on top of the base zoning. “All exterior demolition, new construction (including additions to existing buildings), expansions of outdoor dining or any construction which results in increased lot coverage, modification of the building footprint, or modification of building façades that alters the configuration of openings, shall be subject to said site plan and building elevation approval as part of the SAP”, and the SAP must be approved before a building permit issues (Atlanta Code § 16-36.004(2)). The application must be mailed to the Neighborhood Planning Unit chair with a signed affidavit, and the NPU has 21 days to comment before any approval. Existing lots of record zoned R-1 through R-5 or SPI and not immediately adjacent to the BeltLine Corridor are exempt from the SAP requirement (§ 16-36.004(3)). On a teardown, § 16-36.006 adds two things: “Any structure 50 years or older shall not be demolished for the purpose of creating open space”, and “All requests for demolition of buildings 50 years or older shall include concept plans for the redevelopment of the property that are sufficient to obtain an SAP for the development of the new structure” — so the replacement design has to exist before the old building comes down. And where 60 percent or more of a principal building is removed or destroyed by any means, the property must be redeveloped to the overlay’s standards including sidewalks and street trees, notwithstanding the nonconformity chapter. Note the direction this row can be wrong: the overlay label is only carried when no historic district is also mapped here, so a BeltLine parcel inside a historic district will not show this row. Its absence is not evidence the overlay is absent.',
+      })
+    }
+
+    if (discretionary) {
+      // No addsMonths: the two figures the code publishes (60 days for the
+      // bureau of planning's report, 15 days' notice) are deadlines on the
+      // bodies and on notice, not a schedule for the project. Nothing clocks
+      // Council. Same restraint as Raleigh's rezoning row.
+      hurdles.push({
+        category: 'review',
+        label: 'Rezoning or special use permit: Zoning Review Board, then City Council',
+        status: 'likely',
+        note: 'Asking for more than the base district in Atlanta is a legislative act of the City Council, not a staff decision, and a special use permit runs the identical track — § 16-25.003(1) routes special use permits through “the procedures and requirements so established in chapter 27, ‘amendments’”. The application must carry a recent plat of survey by a registered engineer or surveyor, a site plan stating current and proposed zoning, floor area ratio maximum-allowed and proposed, open space required and proposed, and parking required and proposed, plus “a written, documented analysis of the impact of the proposed zoning with respect to each of the matters enumerated in section 16-27.004” (Atlanta Code § 16-27.002(2)). Copies go to the Board of Education, the Atlanta Department of Transportation, Police, Fire and the county health department (§ 16-27.002(5)), and a copy of the application goes to the city arborist for comment, which the bureau of planning and the Zoning Review Board must consider (§ 16-27.004(8)). The bureau of planning has 60 days to transmit its report (§ 16-27.005); the Zoning Review Board holds a public hearing on at least 15 days’ published notice, 15 days’ posting of the property and 14 days’ mailed notice to owners within 300 feet, with each side guaranteed no fewer than ten minutes (§§ 16-27.006 through .009); Council then acts, with the NPU’s recommendation in the packet (§ 16-27.010). Plan for the downside: once an application has been received, “no further application for any change affecting the same property or any part thereof shall be filed within 24 months” absent a Council waiver, and after final action on substantially the same rezoning application a 12-month bar applies that “may not be waived” (§ 16-27.002(3)); a special use permit withdrawn after advertisement or denied carries its own 24-month bar (§ 16-25.003(4)). No statutory clock is published for the process as a whole — the 60-day and 15-day figures above are deadlines on the bodies and on notice, not a schedule for the project.',
+      })
+    }
   }
 
   // Demolition + loss of existing structure. New construction on a developed
@@ -1802,9 +3491,20 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     })
   }
 
-  // Parking — flagship Abundance reform target; always worth surfacing. Every
-  // city we cover has a rule in PARKING_RULES (verified per ordinance); where a
+  // Parking — flagship Abundance reform target; always worth surfacing. Where a
   // city has abolished minimums entirely we frame it as the tailwind it is.
+  //
+  // ⚠️ THE else BRANCH WENT LIVE 2026-08-08 AND HAD NEVER RUN BEFORE. The
+  // comment here used to assert "every city we cover has a rule in
+  // PARKING_RULES (verified per ordinance)", which was true until Milwaukee,
+  // Columbus, Charlotte and Atlanta shipped with their parking ordinances
+  // unread — so the claim is corrected here rather than only at the site where
+  // it stopped being true (rule 17). Its old copy — "Check the local
+  // parking-minimum requirement for your zone" — read as advice from a tool
+  // that had looked, next to fourteen cities where it genuinely had. It now
+  // says which of the two it is, because a coverage gap presented as neutral
+  // advice is the same failure class as an unencoded city reading as a less
+  // regulated one (see CITIES_WITH_SPECIFIC_HURDLES).
   const parkingRule = PARKING_RULES[city]
   if (parkingRule) {
     hurdles.push({
@@ -1819,9 +3519,9 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
   } else {
     hurdles.push({
       category: 'parking',
-      label: 'Parking requirements',
+      label: 'Parking rule not yet checked for this city',
       status: 'info',
-      note: 'Check the local parking-minimum requirement for your zone. Required spaces add significant cost and can constrain the building envelope.',
+      note: 'We have not read this city’s parking ordinance yet, so nothing here should be read as “no minimum applies”. Look up the requirement for your zone before you size the building — required spaces add significant cost and can constrain the envelope.',
     })
   }
 

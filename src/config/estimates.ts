@@ -224,9 +224,21 @@ export const costPerSqFtByUse: Record<Use, number> = {
 // ZIP group, divided by 100. Verified 2026-08-03 by extracting the table
 // directly; every pre-existing value below matched it exactly, which confirms
 // this PDF is the original source for the first ten cities.
-// WATCH: city names collide across states in this table (Miami OK 743 = 80.3,
-// Columbus GA 318-319 = 86.4, Columbus IN 472 = 89.1). Always match on the ZIP
-// group, never the name alone.
+// WATCH: city names collide across states in this table. Always match on the
+// ZIP group, never the name alone. Re-enumerated 2026-08-08 while adding
+// Columbus OH, and the trap is bigger than this note used to say — there are
+// FIVE Columbuses, spanning 79.6 to 92.3, a 16% spread:
+//   Miami OK   743        = 80.3   (vs Miami FL 330-332,340 = 85.1)
+//   Columbus MS 397       = 79.6
+//   Columbus GA 318-319   = 86.4
+//   Columbus NE 686       = 88.1
+//   Columbus IN 472       = 89.1
+//   Columbus OH 430-432   = 92.3   ← the one this file wants
+// Charlotte has near-name rather than same-name company: Charlottesville VA
+// 229 = 88.7 and Charlottetown (Canadian table) = 95.8. A `grep -i charlotte`
+// returns all three.
+// Every row below was matched by locating its ZIP group AND confirming the
+// all-caps STATE header immediately above it in the same column.
 export const cityCostIndex: Record<string, number> = {
   nyc: 1.32, // 100-102 New York = 132.2 (Brooklyn 112 = 133.1, Queens 110 = 131.8)
   sf: 1.3, // 941 = 129.8
@@ -238,9 +250,23 @@ export const cityCostIndex: Record<string, number> = {
   sandiego: 1.09, // 919-921 = 109.4
   minneapolis: 1.07, // 554-555 = 107.0
   seattle: 1.07, // 980-981 = 106.7
+  // ── 2026-08-08 cohort: milwaukee, columbus, charlotte, atlanta ────────────
+  // All four extracted in ONE pull from the PDF cited above, by the same method
+  // (the "TOTAL" column of the location-factor table, ÷100), and reconciled
+  // against known-good rows in that same pull BEFORE any of them was trusted
+  // (CLAUDE.md rule 16). The pull reproduced, exactly, eight values already
+  // committed in this file: SF 129.8, LA 111.8, San Diego 109.4, DC 95.5,
+  // Nashville 89.0, Miami 85.1, Raleigh 84.4 and Austin 82.9. An extraction
+  // that cannot reproduce the rows this table was built from is reading a
+  // different table, and that check is what makes the four new numbers below
+  // evidence rather than plausible digits.
+  milwaukee: 1.04, // 530,532 = 103.9 (WISCONSIN block) — mat. 97.9 / inst. 111.7
   dc: 0.95, // 200-205 = ~95 — low construction labor; land is the real cost
+  columbus: 0.92, // 430-432 = 92.3 (OHIO block) — NOT Columbus MS/GA/NE/IN, see WATCH
   denver: 0.91, // 802-803 = 91.5
   nashville: 0.89, // 370-372 = 89.0
+  atlanta: 0.89, // 300-303,399 = 89.2 (GEORGIA block)
+  charlotte: 0.87, // 281-282 = 87.0 (NORTH CAROLINA block) — NOT Charlottesville VA 229 = 88.7
   miami: 0.85, // 330-332,340 = 85.1 (NOT Miami OK 743 = 80.3)
   // 275-276 = 84.4. Extracted 2026-08-07 from the same PDF cited above, by the
   // same method, and reconciled against three known-good rows in the SAME pull
@@ -374,25 +400,35 @@ export const lifecycleMonths: Record<string, Record<BuildingTier, number>> = {
   // SF is the slowest-permitting major US city: discretionary review, CEQA, and
   // Planning Commission routinely push even modest projects past 3 years.
   sf: { single: 30, multi: 46, apartment: 66 },
-  // ⚠️ NO raleigh ROW, DELIBERATELY. Raleigh is live and fully wired (provider,
-  // zoning module, dispatcher, probe), and every OTHER city in the registry has
-  // a row here — so its absence is a decision, not an oversight, and this is
-  // where a reader will look for it.
+  // ⚠️ NO ROW FOR raleigh, milwaukee, columbus, charlotte OR atlanta, AND THAT
+  // IS DELIBERATE FOR ALL FIVE. Each is live and fully wired (provider, zoning
+  // module, dispatcher, cost index, probe), so a missing row here is a decision
+  // rather than an oversight, and this is where a reader will look for it.
   //
-  // There is no measurement behind a Raleigh lifecycle figure. What is available
-  // is an argument — Southern metro, no state environmental-review statute, fast
-  // Census SOC construction durations, therefore "about Nashville's 16/25/40".
-  // That is a mechanism argued aloud, and CLAUDE.md rule 1 gives it no direction
-  // at all, not a hedged one. Nashville's own row says in its comment that it is
-  // a peer-set CALIBRATION rather than a published figure; copying a calibration
-  // sideways would make Raleigh's number a derivative of a derivative wearing the
-  // same font as Boston's.
+  // ⚠️ AMENDED 2026-08-08 — this note used to read "every OTHER city in the
+  // registry has a row here". That was true of the 16-city registry and became
+  // FALSE the moment Milwaukee, Columbus, Charlotte and Atlanta were wired.
+  // Rule 17: a claim has to be corrected everywhere it appears, and a stale
+  // "every other city" is exactly the sentence a later reader would rely on to
+  // conclude the gap set is a single special case.
+  //
+  // There is no measurement behind a lifecycle figure for ANY of the five. What
+  // is available in each case is an argument — Southern metro, no state
+  // environmental-review statute, fast Census SOC construction durations,
+  // therefore "about Nashville's 16/25/40"; or, for Milwaukee and Columbus, a
+  // Midwest peer-set gesture at Minneapolis. That is a mechanism argued aloud,
+  // and CLAUDE.md rule 1 gives it no direction at all, not a hedged one.
+  // Nashville's and Minneapolis's own rows are peer-set CALIBRATIONS rather than
+  // published figures; copying a calibration sideways would make the new number
+  // a derivative of a derivative wearing the same font as Boston's. Four cities
+  // at once makes that worse, not more acceptable — a shared method would look
+  // like a methodology and would still be four invented numbers.
   //
   // Consequence, and it is the intended one: `lifecycleFallback` below carries
   // the timeline (it is the documented behaviour for exactly this case), the
   // assumptions disclosure says so in words instead of claiming a city-specific
   // estimate — see `assumptionsSummary`, which branches on membership in THIS
-  // table — and `computeRedTapeIndex` omits Raleigh rather than ranking it on an
+  // table — and `computeRedTapeIndex` omits them rather than ranking them on an
   // invented duration. Removing this gap needs a real source, not a session.
 }
 export const lifecycleFallback: Record<BuildingTier, number> = { single: 16, multi: 26, apartment: 40 }

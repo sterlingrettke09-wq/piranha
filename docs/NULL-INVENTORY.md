@@ -14,7 +14,7 @@ level up.
 **This is the artifact that says whether the tool is fit to ship — not the test
 count.** 709 tests pass whether a city resolves a FAR or assumes one.
 
-## Verified 2026-08-06
+## Verified 2026-08-09
 
 | City | District probed | Outcome | Verdict | What it means |
 |---|---|---|---|---|
@@ -33,8 +33,13 @@ count.** 709 tests pass whether a city resolves a FAR or assumes one.
 | sandiego | `RS-1-7` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 | sanjose | `R-1-8` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
 | nashville | `DTC` | **GAP — verdict withheld** | INDETERMINATE | no FAR resolvable; cost/timeline still estimated and disclosed |
+| raleigh | `R-6` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
+| milwaukee | `RS4` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
+| columbus | `R4` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
+| charlotte | `N1-C` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
+| atlanta | `R-4` | **RESOLVED** | AS_OF_RIGHT | FAR 0.5 from published data |
 
-**6 resolved from published data · 4 unconstrained (an answer) · 5 gaps · 0 probe failures.**
+**7 resolved from published data · 8 unconstrained (an answer) · 5 gaps · 0 probe failures.**
 
 ## What a "gap" costs the user, post fail-closed audit
 

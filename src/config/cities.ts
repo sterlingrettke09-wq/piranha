@@ -15,6 +15,10 @@ import {
   SAN_JOSE_BBOX,
   NASHVILLE_BBOX,
   RALEIGH_BBOX,
+  MILWAUKEE_BBOX,
+  COLUMBUS_BBOX,
+  CHARLOTTE_BBOX,
+  ATLANTA_BBOX,
   type Bbox,
 } from '../types/parcel'
 
@@ -106,6 +110,98 @@ export const CITIES: City[] = [
     // claimed about whether it would send Access-Control-Allow-Origin. The
     // provider still resolves every limit server-side; only the map fill is absent.
     zoningLayer: undefined },
+
+  // ── The 2026-08-08 cohort ────────────────────────────────────────────────
+  // Four things about every entry below, so the provenance is not re-litigated
+  // per city:
+  //   · center/landmark are MEASURED. Each is the AREA-WEIGHTED CENTROID of
+  //     that city's own downtown-district polygons, computed 2026-08-08 from
+  //     the polygons the zoning layer returns (equirectangular projection about
+  //     the data's own mean latitude). This deliberately DIFFERS from Raleigh's
+  //     bbox midpoint, and the reason is a measurement: Milwaukee's C9 downtown
+  //     districts include one arm (C9D subdistrict A) running ~5 km west down
+  //     the Menomonee Valley, and the bbox midpoint of the set lands at
+  //     -87.9362, 43.0480 — roughly 2 km off the downtown mass, in a rail
+  //     corridor. A bbox midpoint is a property of two extreme polygons; an
+  //     area-weighted centroid is a property of all of them. Both are measured;
+  //     the centroid is the better instrument, and it is applied uniformly to
+  //     all four so no city gets a bespoke method.
+  //   · zoom is NOT a measurement. It is a display choice, set from each city's
+  //     bbox span to match cities already in this file with comparable spans.
+  //     It is labelled as such rather than dressed up as derived from data.
+  //   · permitUrl was READ, not guessed (rule 8), and every guessed path is
+  //     recorded as having 404'd rather than quietly replaced.
+  //   · zoningLayer is undefined for all four, and the reason is the SAME one
+  //     Raleigh's carries — a CSP gap. netlify.toml's connect-src lists only
+  //     'self', *.mapbox.com, *.arcgis.com, gisapps.chicago.gov,
+  //     maps2.dcgis.dc.gov, sfplanninggis.org and maps.lacity.org (read
+  //     2026-08-08); none of milwaukeemaps.milwaukee.gov, maps2.columbus.gov,
+  //     gis.charlottenc.gov or gis.atlantaga.gov appears, so a browser fetch
+  //     would be blocked before it left the page. That is a CSP gap and NOT a
+  //     CORS finding: no cross-origin probe was run against any of the four, so
+  //     nothing is claimed here about Access-Control-Allow-Origin. Denver's
+  //     entry above records an actual CORS probe; do not read these as the same
+  //     claim. Every limit still resolves server-side.
+
+  { slug: 'milwaukee', stateLabel: 'Milwaukee, WI', name: 'Milwaukee', live: true, center: [-87.9204, 43.0396], zoom: 12.8, bbox: MILWAUKEE_BBOX, permitName: 'Milwaukee Dept. of Neighborhood Services', permitUrl: 'https://city.milwaukee.gov/dns', tagline: 'Cream city brick, on a working lakefront.', landmark: [-87.9204, 43.0396],
+    // center/landmark: area-weighted centroid of the 762 C9* downtown polygons
+    // on planning/zoning/MapServer/12.
+    // permitName/permitUrl: the department's own page, loaded 2026-08-08 and
+    // read from the rendered document (city.milwaukee.gov sits behind a
+    // Cloudflare challenge that returns 403 to a plain fetch, so the page was
+    // opened in a browser). It self-identifies as "Department of Neighborhood
+    // Services" and runs the Permit & Development Center. The site publishes NO
+    // <link rel="canonical">, so the URL recorded is the one the browser
+    // resolved to — https://city.milwaukee.gov/dns — not a canonical tag. Said
+    // plainly because Raleigh's line above cites a canonical tag and this one
+    // cannot; the two are different strengths of evidence.
+    zoningLayer: undefined },
+
+  { slug: 'columbus', stateLabel: 'Columbus, OH', name: 'Columbus', live: true, center: [-83.0014, 39.9644], zoom: 12.2, bbox: COLUMBUS_BBOX, permitName: 'Columbus Building & Zoning Services', permitUrl: 'https://www.columbus.gov/Business-Development/Building-Zoning-Services', tagline: 'A capital that keeps outgrowing its map.', landmark: [-83.0014, 39.9644],
+    // center/landmark: area-weighted centroid of the DD (Downtown District)
+    // polygons on Applications/Zoning/MapServer/20.
+    // permitUrl: `/Services/Building-Zoning/` was tried first and returned 404
+    // with canonical https://www.columbus.gov/Page-Not-Found — which proves the
+    // guess wrong, not the department absent (rule 8). The URL below came from
+    // the site's own navigation index and its page carries
+    // <link rel="canonical" href="https://www.columbus.gov/Business-Development/Building-Zoning-Services">
+    // with <title>Building &amp; Zoning Services</title>.
+    zoningLayer: undefined },
+
+  { slug: 'charlotte', stateLabel: 'Charlotte, NC', name: 'Charlotte', live: true, center: [-80.8443, 35.2246], zoom: 12.2, bbox: CHARLOTTE_BBOX, permitName: 'Mecklenburg County Code Enforcement', permitUrl: 'https://code.mecknc.gov/', tagline: 'A skyline the banks built, still rising.', landmark: [-80.8443, 35.2246],
+    // center/landmark: area-weighted centroid of the 10 UC (Uptown Core)
+    // polygons on PLN/Zoning/MapServer/0.
+    //
+    // ⚠️ THE PERMIT AUTHORITY IS THE COUNTY, NOT THE CITY, and that is the only
+    // entry in this file where the two differ — so it is stated rather than
+    // smoothed over. The City of Charlotte writes and administers the UDO (the
+    // ordinance ../../netlify/functions/lib/zoning/charlotte.ts is curated
+    // from), but building permits, plan review and inspections for all of
+    // Mecklenburg County — Charlotte included — are issued by Mecklenburg
+    // County Code Enforcement, a division of the county's Land Use and
+    // Environmental Services Agency. Read from the division's own site
+    // 2026-08-08, which states it verbatim: "Permitting, plan review and
+    // inspections for building, electrical, mechanical and plumbing work in
+    // Mecklenburg County", ">100,000 permits each year", inspectors covering
+    // "all construction in Mecklenburg County's 524 square miles".
+    // https://www.mecknc.gov/LUESA/CodeEnforcement redirects there and the page
+    // carries <link rel="canonical" href="https://code.mecknc.gov/">.
+    zoningLayer: undefined },
+
+  { slug: 'atlanta', stateLabel: 'Atlanta, GA', name: 'Atlanta', live: true, center: [-84.3898, 33.7583], zoom: 12.6, bbox: ATLANTA_BBOX, permitName: 'Atlanta Zoning, Development & Permitting Services', permitUrl: 'https://www.atlantaga.gov/government/departments/city-planning/zoning-development-permitting-services', tagline: 'A city in a forest, filling in.', landmark: [-84.3898, 33.7583],
+    // center/landmark: area-weighted centroid of the 7 SPI-1 (Downtown) polygons
+    // on LandUsePlanning/LandUsePlanning/MapServer/0. Note that ZONECLASS='C-5'
+    // — the old Central Business District — survives on exactly ONE polygon of
+    // 2,979 and is far too small to centre a map on; SPI-1 is the mapped
+    // downtown. Checked, not assumed.
+    // permitUrl: `/government/departments/city-planning/office-of-buildings`
+    // was tried first and returned 404. The URL below is linked from the
+    // Department of City Planning's own page and returns 200 with
+    // <title>Zoning, Development, and Permitting Services | Atlanta, GA</title>.
+    // atlantaga.gov publishes no <link rel="canonical"> anywhere, so the
+    // evidence here is a live 200 plus the page's own title — weaker than
+    // Columbus's canonical tag, and recorded as such.
+    zoningLayer: undefined },
 ]
 
 export const DEFAULT_CITY = 'boston'
@@ -145,9 +241,31 @@ export function cityName(slug: string): string {
  * `hurdles.ts` and asserts they match this list exactly, so encoding a new city
  * without updating it fails the suite rather than silently mislabelling.
  */
+// Milwaukee, Columbus, Charlotte and Atlanta were added 2026-08-08 and now carry
+// 16–20 rows each, spanning the same subjects as the other sixteen: inclusionary
+// (or the absence of one, where a State bars it), site-plan and design review,
+// impact and connection fees, stormwater, tree ordinances, demolition and
+// historic. Read the branches in `hurdles.ts` for what each one actually claims.
+//
+// KEPT AS A RECORD, because for one workflow this comment said the opposite and
+// was true when it said it. These four were added to this list while encoded for
+// PARKING ONLY — a handoff between agents had been passed through
+// `.slice(0, 4500)`, and the cut landed inside the first key, so 140,418
+// characters of hurdles research arrived as nothing (ledger 2026-08-08, rule 19).
+// The list drives Compare's "partial" marker, whose whole job is to stop an
+// unencoded city from reading as a lightly regulated one; for that interval a
+// parking-only city read as fully encoded. What caught it was the applying agent
+// reporting that its input looked truncated — not a test, which passed
+// throughout, and could not have known what was missing.
+//
+// The residual claim to be careful about: this list is binary and coverage is
+// not. It says a city has SOME encoded specifics, never that the encoding is
+// complete — no city's is. Each branch names its own gaps and unevaluable limbs
+// inline; that is where coverage actually lives.
 export const CITIES_WITH_SPECIFIC_HURDLES = [
-  'austin', 'boston', 'chicago', 'dc', 'denver', 'la', 'miami', 'minneapolis',
-  'nashville', 'nyc', 'philadelphia', 'sandiego', 'sanjose', 'seattle', 'sf',
+  'atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dc',
+  'denver', 'la', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc',
+  'philadelphia', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf',
 ] as const
 
 export function hasCitySpecificHurdles(slug: string): boolean {

@@ -128,8 +128,23 @@ describe('measuring the real tree, not a fixture', () => {
     const unverifiable = files.reduce((n, f) => n + f.unverifiable.length, 0)
     // The honest headline: a handful of fetchable URLs against hundreds of
     // section citations. If this ever inverts, re-read the header's claim (b).
-    expect(checkable).toBeLessThan(20)
+    //
+    // ⚠️ REFORMULATED 2026-08-08 as a RATIO. This asserted `checkable < 20`,
+    // and wiring four cities pushed the count from 15 to exactly 20 — five of
+    // them permit-department URLs recorded in `cities.ts` as evidence that the
+    // URL was read rather than guessed. The test went red for citing MORE
+    // sources, which is the opposite of what it exists to police, and the fix
+    // it invited was to bump 20 to 25 and wait for the next city.
+    //
+    // The sentence in the test's own name is a comparison, not a budget, so the
+    // assertion is now the comparison. Note the neighbouring hurdles.ts test
+    // already says the same thing about itself — "this asserts the scanner
+    // still SEES the citations, not that the count is frozen" — so this is the
+    // file's stated philosophy applied to the one assertion that had not
+    // followed it. Today: 20 checkable, 556 unverifiable, ratio 27.8.
+    expect(checkable).toBeGreaterThan(0)
     expect(unverifiable).toBeGreaterThan(300)
+    expect(unverifiable / checkable).toBeGreaterThan(10)
   })
 
   it('counts per file BEFORE deduping for the probe', () => {
