@@ -40,12 +40,17 @@
 //     Cross-check: all 4,394 carry general_construction_work_type_='YES', and
 //     that alternative discriminator yields the identical 8.3 / 17.0.
 //
-// ⚠️ KNOWN LIMITATION, not fixed here. This median is conditional on eventual
-// issuance: 45% of initial NB filings since 2022 have never issued, and the
+// ⚠️ KNOWN LIMITATION, not fixed here. This median is conditional on issuance:
+// 45% of initial NB filings since 2022 carry NO issue date at extract, and the
 // permitted share falls by cohort (1461/1960 in 2022 → 764/1764 in 2025), so
 // recent cohorts are right-censored and the pooled figure sits BELOW the mature
 // 2022 cohort's 10.1 months. Kaplan-Meier over all 8,039 filings gives ~15.9
 // months. Correcting that is a separate pass — see docs/VERIFICATION-LEDGER.md.
+// State the SHARE, not the FATE: 45% is the share with no issue date on the
+// extract day, NOT a share that "never issues". The feed does not distinguish a
+// not-yet from a never, and that undistinguished 45% is exactly what Kaplan-Meier
+// has to assume something about — which is why the correction is a separate pass
+// and not a rewording of this figure.
 //
 // Verify the schema by probing:
 //   curl -s "https://data.cityofnewyork.us/api/views/w9ak-ipjd.json"  (columns)
@@ -78,6 +83,7 @@ function parseIso(s) {
 }
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { noTierBreakdown } from './lib/tierFloor.mjs'
 
 async function socrata(resourceId, path, params) {
   const url = new URL(`https://${HOST}/resource/${resourceId}.${path}`)
@@ -197,7 +203,19 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, nyc: { ...(existing.nyc ?? {}), newConstruction: stats } }
+  const merged = {
+    ...existing,
+    nyc: {
+      ...(existing.nyc ?? {}),
+      newConstruction: stats,
+      // Declared, not omitted: a reader of permitStats.json must be able to tell
+      // "no breakdown was ever computed, so the aggregate IS the answer" from
+      // "a breakdown exists and this tier was withheld" (rule 5).
+      tierBreakdown: noTierBreakdown(
+        'scripts/permits/nyc.mjs computes no tier split. Its query filters on job_type = \'New Building\' and job_filing_number LIKE \'%-I1\' — nothing in it restricts building size, so the aggregate spans all three tiers instead of standing in for one.',
+      ),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log('  Wrote nyc.newConstruction:', stats)

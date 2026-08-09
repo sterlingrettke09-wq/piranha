@@ -24,9 +24,40 @@ export interface MeasuredPermit {
   vintage: string
 }
 
+/** Whether the city's pipeline COMPUTED a per-tier split, and which tiers it
+ *  computed and then withheld. Written by scripts/permits/lib/tierFloor.mjs.
+ *
+ *  This is the field that separates two states which used to render identically
+ *  in permitStats.json (rule 5 — a known absence and a missing lookup must not
+ *  look the same):
+ *
+ *    attempted: false  — no breakdown was ever computed. The aggregate spans all
+ *                        three tiers, so serving it for any tier is disclosed
+ *                        and defensible (NYC, Philadelphia).
+ *    attempted: true   — a breakdown exists. A tier missing from `byTier` was
+ *                        computed and WITHHELD for a thin sample, which means
+ *                        the aggregate is a population that barely contains that
+ *                        tier. Serving it would be a fail-open answer (Denver's
+ *                        `multi`). */
+export interface TierBreakdown {
+  attempted: boolean
+  /** Tiers under this many rows are not published. Absent when !attempted. */
+  minPublishableN?: number
+  /** Only when !attempted: what in the feed or query makes a split absent. */
+  reason?: string
+  /** Tiers computed and withheld. `n: null` means the suppressed sample size was
+   *  never recorded (the run predated this record) — an unknown, never a guess. */
+  suppressed?: Partial<Record<BuildingTier, { n: number | null; reason: string }>>
+}
+
 const PERMIT_STATS = permitStats as Record<
   string,
-  { newConstruction?: MeasuredPermit; byTier?: Partial<Record<BuildingTier, MeasuredPermit>> } | undefined
+  | {
+      newConstruction?: MeasuredPermit
+      byTier?: Partial<Record<BuildingTier, MeasuredPermit>>
+      tierBreakdown?: TierBreakdown
+    }
+  | undefined
 >
 
 /** single ≤1 unit · multi 2–4 · apartment 5+. Commercial & institutional → apartment. */
@@ -47,6 +78,19 @@ export interface TimelineResult {
    *  when the open-data pipeline produced one. A SUBSET of `months` (the permit
    *  leg only); informational, never folded into the estimate. */
   measured?: MeasuredPermit
+  /** Set when the city HAS a tier breakdown but THIS project's tier was withheld
+   *  from it. `measured` is deliberately undefined in that case: the city
+   *  aggregate is a different population and would answer a question about
+   *  duplexes with a number computed almost entirely from other building types.
+   *  The UI must render this as "not measured for this size" — never as blank,
+   *  which reads as fast. */
+  measuredTierWithheld?: {
+    tier: BuildingTier
+    /** Rows the withheld tier held, or null when the run never recorded it. */
+    n: number | null
+    /** The publication floor the tier fell under. */
+    minPublishableN: number
+  }
 }
 
 /** The measured new-construction permit timing for a city, or undefined when the
@@ -58,13 +102,54 @@ export interface TimelineResult {
  *  apartment-tier at 8.6 — a 5x spread hidden inside one 2.1-month headline.
  *  Someone testing a multifamily parcel was being shown the single-family number.
  *
- *  The aggregate remains the fallback, because a city with no tier breakdown is
- *  better served by a city-wide median than by nothing — but where a breakdown
- *  exists the aggregate is the WEAKER number, not the default. */
+ *  The aggregate remains the fallback ONLY where no breakdown was attempted,
+ *  because a city that never split its population by tier is better served by a
+ *  city-wide median than by nothing, and its aggregate genuinely spans all three
+ *  tiers. Where a breakdown EXISTS, a tier missing from it was computed and
+ *  withheld — and the aggregate is then not a weaker answer to the same
+ *  question, it is an answer to a different one.
+ *
+ *  ⚠️ THIS USED TO FAIL OPEN. `entry.newConstruction` was returned for any tier
+ *  lacking a `byTier` entry, whatever the reason. Denver's `multi` fell under the
+ *  n<30 publication floor, so a Denver duplex was answered with the 4.5-month
+ *  city aggregate — a population of 3,505 single-family houses, 628 apartment
+ *  buildings, the untiered residential rows and the whole commercial layer, of
+ *  which fewer than 30 rows are 2–4 unit buildings. The two states were
+ *  indistinguishable in the artifact, so the code could not tell them apart
+ *  either; `tierBreakdown` now records the difference and this reads it. */
 export function measuredFor(city: string, tier?: BuildingTier): MeasuredPermit | undefined {
   const entry = PERMIT_STATS[city]
-  if (tier && entry?.byTier?.[tier]) return entry.byTier[tier]
-  return entry?.newConstruction
+  if (!entry) return undefined
+  if (tier) {
+    const forTier = entry.byTier?.[tier]
+    if (forTier) return forTier
+    // Fail CLOSED for every tier absent from an attempted breakdown, not just
+    // the ones documented in `suppressed`. A city that computes a split and
+    // omits a tier has, by construction, no fit population for it — whether or
+    // not anyone remembered to write down why.
+    if (entry.tierBreakdown?.attempted) return undefined
+  }
+  return entry.newConstruction
+}
+
+/** Why `measuredFor(city, tier)` returned nothing while the city itself is
+ *  measured — i.e. the tier was computed and withheld. Undefined in every other
+ *  case (unmeasured city, no breakdown attempted, tier actually published), so a
+ *  caller can only ever render this alongside a genuinely absent figure. */
+export function measuredTierWithheldFor(
+  city: string,
+  tier: BuildingTier,
+): TimelineResult['measuredTierWithheld'] {
+  const entry = PERMIT_STATS[city]
+  if (!entry?.newConstruction) return undefined
+  if (!entry.tierBreakdown?.attempted) return undefined
+  if (entry.byTier?.[tier]) return undefined
+  const record = entry.tierBreakdown.suppressed?.[tier]
+  return {
+    tier,
+    n: record?.n ?? null,
+    minPublishableN: entry.tierBreakdown.minPublishableN ?? 30,
+  }
 }
 
 export function resolveTimeline(
@@ -81,9 +166,13 @@ export function resolveTimeline(
   // pipeline samples NB/new-construction permits), so it's only attached for
   // projectType 'new'; additions/renovations get no measured line.
   const measured = project.projectType === 'new' ? measuredFor(city, tier) : undefined
+  // Only ever set when `measured` is undefined for a tier reason — so the UI can
+  // say "not measured for this size" instead of silently dropping the card.
+  const measuredTierWithheld =
+    project.projectType === 'new' && !measured ? measuredTierWithheldFor(city, tier) : undefined
 
   if (feasibility.path === 'prohibited') {
-    return { months: 0, path: feasibility.path, tier, includesDemolition, measured }
+    return { months: 0, path: feasibility.path, tier, includesDemolition, measured, measuredTierWithheld }
   }
 
   const table = LIFECYCLE[city] ?? FALLBACK
@@ -107,5 +196,12 @@ export function resolveTimeline(
     months += Math.min(18, Math.round(((demolitionSqFt - 50000) / 100000) * 3))
   }
 
-  return { months: Math.max(1, months), path: feasibility.path, tier, includesDemolition, measured }
+  return {
+    months: Math.max(1, months),
+    path: feasibility.path,
+    tier,
+    includesDemolition,
+    measured,
+    measuredTierWithheld,
+  }
 }

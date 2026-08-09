@@ -25,6 +25,15 @@ export interface RealityCard {
   soWhat: string
 }
 
+/** Plain-English building-size bands, for copy that has to name the tier the
+ *  measurement is missing for. Matches buildingTier(): single ≤1 unit,
+ *  multi 2–4, apartment 5+ (plus commercial/institutional). */
+const TIER_LABEL: Record<'single' | 'multi' | 'apartment', string> = {
+  single: 'single-family homes',
+  multi: '2–4 unit buildings',
+  apartment: '5+ unit buildings',
+}
+
 /**
  * Build the Reality-check cards for a loaded result. Order is fixed:
  * measured permit time → relief odds → parking. Only cards with real data on
@@ -58,6 +67,26 @@ export function buildRealityCards(result: AnalysisResult): RealityCard[] {
       big: `${median} mo`,
       sub: `Median filing→permit in ${name} (p80 ${measured.p80Months}, n=${measured.n})`,
       soWhat,
+    })
+  } else if (result.timeline.measuredTierWithheld) {
+    // The city DOES publish measured permit timing — just not for a building of
+    // this size. Before this branch existed the card simply vanished, which is
+    // indistinguishable from a city we never measured, and the city-wide median
+    // was served in its place: a Denver duplex was shown 4.5 months computed
+    // from a population containing almost no duplexes. An absent measurement
+    // must read as absent, and it must say which measurement is absent.
+    const w = result.timeline.measuredTierWithheld
+    const sample =
+      w.n == null
+        ? `under the n=${w.minPublishableN} floor we publish (the exact count was not recorded)`
+        : `only n=${w.n}, under the n=${w.minPublishableN} floor we publish`
+    cards.push({
+      id: 'measured',
+      kicker: 'Measured permit time',
+      big: 'Not measured',
+      unit: `for ${TIER_LABEL[w.tier]}`,
+      sub: `${name} publishes permit timing by building size, but its ${TIER_LABEL[w.tier]} sample is ${sample}.`,
+      soWhat: `The city-wide median is a different population — it would answer a question about ${TIER_LABEL[w.tier]} with other buildings' numbers, so it is not shown.`,
     })
   }
 

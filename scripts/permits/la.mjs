@@ -45,6 +45,7 @@ const OUT_PATH = new URL('../../netlify/functions/lib/data/permitStats.json', im
 const DATASET_NAME = "data.lacity.org Building & Safety Permit Information (permit_type = 'Bldg-New')"
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { noTierBreakdown } from './lib/tierFloor.mjs'
 
 async function socrata(path, params) {
   const url = new URL(`https://${HOST}/resource/${RESOURCE_ID}.${path}`)
@@ -169,7 +170,19 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, la: { ...(existing.la ?? {}), newConstruction: stats } }
+  const merged = {
+    ...existing,
+    la: {
+      ...(existing.la ?? {}),
+      newConstruction: stats,
+      // Declared, not omitted: a reader of permitStats.json must be able to tell
+      // "no breakdown was ever computed, so the aggregate IS the answer" from
+      // "a breakdown exists and this tier was withheld" (rule 5).
+      tierBreakdown: noTierBreakdown(
+        'scripts/permits/la.mjs computes no tier split. Its query filters on permit_type = \'Bldg-New\' only, with no size restriction. (LA is WITHDRAWN and this script writes nothing today — see src/config/cities.ts.)',
+      ),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log('  Wrote la.newConstruction:', stats)

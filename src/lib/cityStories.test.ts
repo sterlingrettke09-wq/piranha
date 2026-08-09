@@ -42,16 +42,19 @@ describe('storyFor', () => {
   // set, so it moves whenever the set grows — a test asserting it belongs to one
   // named city is pinning a fact about our COVERAGE, not about San Francisco.
   // ⚠️ SF's measurement was WITHDRAWN 2026-08-06: only 37.7% of its
-  // new-construction filings ever issue (matured 2022 cohort: single 32.4%,
-  // multi 23.4%, apartment 44.4%), so the unconditional median does not exist.
-  // Its story now falls back to the lifecycle estimate.
-  it('SF renders no measured median — most of its filings never issue', () => {
+  // new-construction filings carry an issue date at extract (matured 2022 cohort:
+  // single 32.4%, multi 23.4%, apartment 44.4%), so the unconditional median does
+  // not exist — the 50th percentile is past the last observation. Its story now
+  // falls back to the lifecycle estimate. State the SHARE, not the FATE: the feed
+  // does not distinguish a not-yet from a never, so "ever issue" is retracted
+  // phrasing (2026-08-08). The median is undefined either way.
+  it('SF renders no measured median — most of its filings carry no issue date', () => {
     const sf = byCity('sf')
     const story = storyFor(sf, ranked)
     expect(sf.measuredMedianMonths).toBeNull()
     expect(story).not.toContain('the slowest we measure')
   })
-  it('LA no longer renders a measured median — 45% of its cohort never issued', () => {
+  it('LA no longer renders a measured median — 45% of its cohort has no issue date', () => {
     const la = byCity('la')
     const story = storyFor(la, ranked)
     expect(la.measuredMedianMonths).toBeNull()

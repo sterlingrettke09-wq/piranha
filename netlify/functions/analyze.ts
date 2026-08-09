@@ -208,7 +208,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
       : null
   const estimate = estimateCost(project, feasibility, { demolitionSqFt, feeArea: parcel.overlays.feeArea })
   const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding, demolitionSqFt)
-  const timeline = { months: timelineInfo.months, path: timelineInfo.path, tier: timelineInfo.tier, measured: timelineInfo.measured }
+  const timeline = {
+    months: timelineInfo.months,
+    path: timelineInfo.path,
+    tier: timelineInfo.tier,
+    measured: timelineInfo.measured,
+    // Carried so the result page can say "not measured for this size" rather
+    // than dropping the measured card without explanation.
+    measuredTierWithheld: timelineInfo.measuredTierWithheld,
+  }
 
   // Discretionary/entitlement delay, computed ONCE here to avoid double-counting.
   // The discretionary review processes are NESTED, not additive: environmental

@@ -156,6 +156,17 @@ export interface AnalysisResult {
      *  when available for new construction. A SUBSET of `months` (permit leg
      *  only), shown alongside the full-lifecycle estimate — never replaces it. */
     measured?: { medianMonths: number; p80Months: number; n: number; vintage: string }
+    /** Present when the city publishes measured permit timing BY BUILDING SIZE
+     *  and this project's size band was withheld from it (sample under the
+     *  publication floor). `measured` is undefined in that case ON PURPOSE — the
+     *  city-wide aggregate is a different population, not a weaker answer to the
+     *  same question. Render it as "not measured for this size"; a blank reads as
+     *  fast. `n` is null when the suppressed sample size was never recorded. */
+    measuredTierWithheld?: {
+      tier: 'single' | 'multi' | 'apartment'
+      n: number | null
+      minPublishableN: number
+    }
   }
   narrative: string
   assumptions: Record<string, string>

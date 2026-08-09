@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveTimeline, buildingTier, measuredFor } from './timeline'
+import { resolveTimeline, buildingTier, measuredFor, measuredTierWithheldFor } from './timeline'
 import type { Feasibility } from './feasibility'
 import type { AnalysisInput } from '../../src/types/analysis'
 import { CITIES_WITH_MEASURED_PERMITS, hasMeasuredPermitTiming } from '../../../src/config/cities'
@@ -100,11 +100,14 @@ describe('measured permit timing', () => {
     expectMeasuredShape(t.measured)
   })
 
-  // ⚠️ SF WITHDRAWN 2026-08-06 — only 37.7% of its new-construction filings ever
-  // issue, so an unconditional median time-to-issuance does not exist. A floor
-  // label cannot rescue an undefined statistic. Asserted so it cannot be
-  // reinstated by a stale script.
-  it('SF resolves to no measurement — most of its filings never issue', () => {
+  // ⚠️ SF WITHDRAWN 2026-08-06 — only 37.7% of its new-construction filings carry
+  // an issue date at extract, so an unconditional median time-to-issuance does not
+  // exist: the 50th percentile is past the last observation. A floor label cannot
+  // rescue an undefined statistic. Asserted so it cannot be reinstated by a stale
+  // script. State the SHARE, not the FATE — the feed does not distinguish a
+  // not-yet from a never, so "ever issue" is retracted phrasing (2026-08-08), and
+  // the median is undefined under either reading.
+  it('SF resolves to no measurement — most of its filings carry no issue date', () => {
     const t = resolveTimeline('sf', project({ city: 'sf' }), feas('by-right'), false)
     expect(t.measured).toBeUndefined()
   })
@@ -117,9 +120,10 @@ describe('measured permit timing', () => {
   // ⚠️ WITHDRAWN 2026-08-05. Chicago and LA were measured and published, then an
   // adversarial audit disqualified both. Chicago: 46% of the sample was a 2022-23
   // cohort stamped applied==issued (51.6% zero-day), roughly halving the median.
-  // LA: 45.4% of the cohort never issued, so the p80 of 13.0 months is undefined,
-  // not merely imprecise. These assert the ABSENCE so the old figures cannot be
-  // silently reinstated from the stale scripts.
+  // LA: 45.4% of the cohort carries no issue date at extract, so only 54.6% is
+  // observed and the p80 of 13.0 months is undefined, not merely imprecise. These
+  // assert the ABSENCE so the old figures cannot be silently reinstated from the
+  // stale scripts.
   it('Chicago is withdrawn — a backfill artifact halved its median', () => {
     const t = resolveTimeline('chicago', project({ city: 'chicago' }), feas('by-right'), false)
     expect(t.measured).toBeUndefined()
@@ -130,7 +134,7 @@ describe('measured permit timing', () => {
     expectMeasuredShape(t.measured)
   })
 
-  it('Los Angeles is withdrawn — 45% of its cohort never issued', () => {
+  it('Los Angeles is withdrawn — 45% of its cohort has no issue date', () => {
     const t = resolveTimeline('la', project({ city: 'la' }), feas('by-right'), false)
     expect(t.measured).toBeUndefined()
   })
@@ -216,9 +220,52 @@ describe('measuredFor prefers the tier-specific figure over the city aggregate',
   })
 
   // A city with no breakdown must still resolve — the aggregate is the fallback,
-  // not the default.
-  it('falls back to the aggregate where no tier breakdown exists', () => {
+  // not the default. Philadelphia's script computes no tier split at all, so its
+  // aggregate spans all three tiers and answering with it is disclosed.
+  it('falls back to the aggregate where no tier breakdown was ATTEMPTED', () => {
     expect(measuredFor('philadelphia', 'apartment')).toEqual(measuredFor('philadelphia'))
+  })
+
+  // ⚠️ THE FAIL-OPEN THIS FILE EXISTS TO PREVENT. Denver's `multi` tier was
+  // computed and withheld for a thin sample, and the old fallback answered a
+  // duplex query with the 4.5-month city aggregate — 3,505 single-family rows,
+  // 628 apartment rows, the untiered residential rows and the whole commercial
+  // layer, fewer than 30 of which are 2–4 unit buildings.
+  it('a SUPPRESSED tier resolves to nothing — never to the city aggregate', () => {
+    expect(measuredFor('denver', 'multi')).toBeUndefined()
+    // The city itself is still measured, and its published tiers still resolve.
+    expect(measuredFor('denver')).toBeDefined()
+    expect(measuredFor('denver', 'single')).toBeDefined()
+    expect(measuredFor('denver', 'apartment')).toBeDefined()
+  })
+
+  it('a Denver duplex gets no measured figure but a stated reason', () => {
+    const t = resolveTimeline(
+      'denver',
+      project({ city: 'denver', use: 'residential', units: 2 }),
+      feas('by-right'),
+      false,
+    )
+    expect(t.tier).toBe('multi')
+    expect(t.measured).toBeUndefined()
+    expect(t.measuredTierWithheld).toEqual({ tier: 'multi', n: null, minPublishableN: 30 })
+  })
+
+  it('a published tier carries no withheld record — the two are mutually exclusive', () => {
+    const t = resolveTimeline(
+      'denver',
+      project({ city: 'denver', use: 'residential', units: 1 }),
+      feas('by-right'),
+      false,
+    )
+    expect(t.measured).toBeDefined()
+    expect(t.measuredTierWithheld).toBeUndefined()
+  })
+
+  it('an unmeasured city gets no withheld record either — that would imply a measurement', () => {
+    const t = resolveTimeline('atlantis', project({ city: 'atlantis' }), feas('by-right'), false)
+    expect(t.measured).toBeUndefined()
+    expect(t.measuredTierWithheld).toBeUndefined()
   })
 
   it('an unknown city resolves to nothing under any tier', () => {
@@ -229,5 +276,108 @@ describe('measuredFor prefers the tier-specific figure over the city aggregate',
   // tier under n=30 rather than publishing a thin median.
   it.each(['single', 'multi', 'apartment'] as const)('the %s tier carries n >= 30', (tier) => {
     expect(measuredFor('austin', tier)!.n).toBeGreaterThanOrEqual(30)
+  })
+})
+
+// ── Rule 14: make the defect CLASS impossible, not just this instance ────────
+// Denver's `multi` tier was suppressed for a thin sample and the suppression left
+// no trace in permitStats.json, so nothing — not the type checker, not the suite,
+// not a reader of the artifact — could tell it apart from a city that never
+// computed a breakdown at all. Both rendered as "no byTier entry", and the
+// aggregate was served for both.
+//
+// So every city × tier pair must now land in exactly one of three declared
+// states. A future city that suppresses a tier silently fails HERE, in the suite,
+// before it can serve an aggregate to a tier its population barely contains.
+describe('every city × tier is measured, aggregate-covered, or explicitly suppressed', () => {
+  const TIERS = ['single', 'multi', 'apartment'] as const
+
+  type Entry = {
+    newConstruction?: { n: number }
+    byTier?: Partial<Record<(typeof TIERS)[number], { n: number }>>
+    tierBreakdown?: {
+      attempted: boolean
+      minPublishableN?: number
+      reason?: string
+      suppressed?: Partial<Record<(typeof TIERS)[number], { n: number | null; reason: string }>>
+    }
+  }
+
+  const load = async () =>
+    (await import('./data/permitStats.json')).default as unknown as Record<string, Entry>
+
+  it('every city declares whether a tier breakdown was attempted', async () => {
+    const stats = await load()
+    for (const [city, entry] of Object.entries(stats)) {
+      expect(entry.tierBreakdown, `${city} must declare tierBreakdown`).toBeDefined()
+      expect(typeof entry.tierBreakdown!.attempted, `${city}.tierBreakdown.attempted`).toBe('boolean')
+    }
+  })
+
+  it('every tier of every city is measured, covered by an unattempted breakdown, or marked suppressed', async () => {
+    const stats = await load()
+    for (const [city, entry] of Object.entries(stats)) {
+      const tb = entry.tierBreakdown!
+      for (const tier of TIERS) {
+        const state =
+          entry.byTier?.[tier] ? 'measured'
+          : !tb.attempted ? 'aggregate-covers-all-tiers'
+          : tb.suppressed?.[tier] ? 'suppressed'
+          : 'UNDECLARED'
+        expect(
+          state,
+          `${city}.${tier} is undeclared: the breakdown was attempted, the tier is absent from ` +
+            `byTier, and nothing in tierBreakdown.suppressed says why. Emit the suppression ` +
+            `record (scripts/permits/lib/tierFloor.mjs) instead of dropping the tier silently.`,
+        ).not.toBe('UNDECLARED')
+      }
+    }
+  })
+
+  it('a suppressed tier records a floor and a reason, and its n is a number or an explicit null', async () => {
+    const stats = await load()
+    for (const [city, entry] of Object.entries(stats)) {
+      const tb = entry.tierBreakdown!
+      for (const [tier, record] of Object.entries(tb.suppressed ?? {})) {
+        expect(tb.minPublishableN, `${city}.${tier} suppressed without a floor`).toBeTypeOf('number')
+        expect(record.reason.length, `${city}.${tier} suppressed without a reason`).toBeGreaterThan(0)
+        // null means "never recorded" — an unknown, deliberately not filled in.
+        if (record.n !== null) {
+          expect(record.n, `${city}.${tier}`).toBeLessThan(tb.minPublishableN!)
+        }
+      }
+    }
+  })
+
+  // The behavioural half: the declaration must actually govern what is served.
+  it('measuredFor() serves the aggregate ONLY where no breakdown was attempted', async () => {
+    const stats = await load()
+    for (const [city, entry] of Object.entries(stats)) {
+      for (const tier of TIERS) {
+        const got = measuredFor(city, tier)
+        if (entry.byTier?.[tier]) {
+          expect(got, `${city}.${tier}`).toEqual(entry.byTier[tier])
+        } else if (entry.tierBreakdown!.attempted) {
+          expect(got, `${city}.${tier} must fail closed`).toBeUndefined()
+        } else {
+          expect(got, `${city}.${tier}`).toEqual(entry.newConstruction)
+        }
+      }
+    }
+  })
+
+  // A withheld tier must be EXPLAINABLE to the user, not merely absent — the
+  // result page renders "not measured for this size" off this record.
+  it('every withheld tier produces a renderable reason', async () => {
+    const stats = await load()
+    for (const [city, entry] of Object.entries(stats)) {
+      if (!entry.tierBreakdown!.attempted) continue
+      for (const tier of TIERS) {
+        if (entry.byTier?.[tier]) continue
+        const withheld = measuredTierWithheldFor(city, tier)
+        expect(withheld, `${city}.${tier}`).toBeDefined()
+        expect(withheld!.minPublishableN).toBeGreaterThan(0)
+      }
+    }
   })
 })

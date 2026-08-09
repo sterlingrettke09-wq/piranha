@@ -26,8 +26,9 @@
 // An application -> issuance latency therefore has no numerator. This is a GAP,
 // not an answer (evidence rule 5): we have not measured that Boston is fast, we
 // have established that Boston does not publish the input. The halt is
-// STRUCTURAL and deliberate — see refuseUnlessComputable() — not an incidental
-// side effect of some other failure.
+// STRUCTURAL and deliberate — see applicationDateField(), which throws a
+// ComputabilityHalt when no application-date column is present — not an
+// incidental side effect of some other failure.
 //
 // Why that distinction is the whole point of this file: the previous version
 // halted here too, but only by accident of ordering. Its actual FILTER was
@@ -126,6 +127,7 @@ const DATASET_NAME =
   `(${PERMIT_TYPE_FIELD} = '${NEW_CONSTRUCTION_PERMIT_TYPES.join("' | '")}')`
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { noTierBreakdown } from './lib/tierFloor.mjs'
 
 async function ckan(action, params) {
   const url = new URL(`${BASE}/${action}`)
@@ -310,7 +312,19 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, boston: { ...(existing.boston ?? {}), newConstruction: stats } }
+  const merged = {
+    ...existing,
+    boston: {
+      ...(existing.boston ?? {}),
+      newConstruction: stats,
+      // Declared, not omitted: a reader of permitStats.json must be able to tell
+      // "no breakdown was ever computed, so the aggregate IS the answer" from
+      // "a breakdown exists and this tier was withheld" (rule 5).
+      tierBreakdown: noTierBreakdown(
+        'scripts/permits/boston.mjs computes no tier split; the feed carries no application date, so the script writes nothing at all today. If it ever does, revisit this declaration.',
+      ),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log(`  Wrote boston.newConstruction:`, stats)

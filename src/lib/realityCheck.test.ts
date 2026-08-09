@@ -8,6 +8,7 @@ function makeResult(over: {
   city?: string
   months?: number
   measured?: AnalysisResult['timeline']['measured']
+  measuredTierWithheld?: AnalysisResult['timeline']['measuredTierWithheld']
   reliefOdds?: AnalysisResult['reliefOdds']
 } = {}): AnalysisResult {
   return {
@@ -40,6 +41,7 @@ function makeResult(over: {
       months: over.months ?? 24,
       path: 'as_of_right',
       ...(over.measured ? { measured: over.measured } : {}),
+      ...(over.measuredTierWithheld ? { measuredTierWithheld: over.measuredTierWithheld } : {}),
     },
     narrative: '',
     assumptions: {},
@@ -98,6 +100,52 @@ describe('buildRealityCards', () => {
 
   it('none: a city with no parking rule and no measured/relief → empty', () => {
     expect(buildRealityCards(makeResult({ city: 'nowhere' }))).toEqual([])
+  })
+
+  // ── A withheld tier must READ as absent, not render as nothing ─────────────
+  // Denver publishes measured permit timing by building size but suppressed its
+  // 2–4 unit tier (sample under the n=30 floor). Before this, the engine served
+  // the city-wide 4.5-month aggregate to a duplex; the safe fix (serve nothing)
+  // would have made the card silently disappear, which reads exactly like a city
+  // we never measured. The card stays, and says which measurement is missing.
+  it('a withheld tier renders a "not measured" card, not a blank', () => {
+    const cards = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        measuredTierWithheld: { tier: 'multi', n: null, minPublishableN: 30 },
+      }),
+    )
+    expect(cards.map((c) => c.id)).toEqual(['measured'])
+    expect(cards[0].big).toBe('Not measured')
+    expect(cards[0].unit).toContain('2–4 unit')
+    expect(cards[0].sub).toContain('n=30')
+    expect(cards[0].sub).toContain('not recorded')
+    expect(cards[0].soWhat).toContain('different population')
+  })
+
+  it('a withheld tier with a recorded n names it', () => {
+    const cards = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        measuredTierWithheld: { tier: 'apartment', n: 12, minPublishableN: 30 },
+      }),
+    )
+    expect(cards[0].sub).toContain('only n=12')
+    expect(cards[0].unit).toContain('5+ unit')
+  })
+
+  // Mutually exclusive by construction in resolveTimeline; asserted here so a
+  // future edit can't produce a card that both states a figure and denies one.
+  it('a real measurement wins over a withheld record if both ever appear', () => {
+    const cards = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        measured: MEASURED,
+        measuredTierWithheld: { tier: 'multi', n: null, minPublishableN: 30 },
+      }),
+    )
+    expect(cards).toHaveLength(1)
+    expect(cards[0].big).toBe('8 mo')
   })
 
   // so-what thresholds: quick (<25%), major (>50%), neutral in between.

@@ -25,6 +25,10 @@
         "n": 1491,
         "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.austintexas.gov Issued Construction Permits (permittype = BP, work_class IN (New, Shell), building permit_class only)"
       }
+    },
+    "tierBreakdown": {
+      "attempted": true,
+      "minPublishableN": 30
     }
   },
   "denver": {
@@ -46,6 +50,16 @@
         "p80Months": 10.8,
         "n": 628,
         "vintage": "applied 2022-01-01 onward; computed 2026-08-06; opendata-geospatial.denvergov.org Construction Permits (residential CLASS = 'NEW BUILDING'; commercial CLASS IN ('NEW BUILDING','PHASED CONSTRUCTION'))"
+      }
+    },
+    "tierBreakdown": {
+      "attempted": true,
+      "minPublishableN": 30,
+      "suppressed": {
+        "multi": {
+          "n": null,
+          "reason": "n is below minPublishableN — that much is certain, it is the definition of the floor scripts/permits/denver.mjs applies. THE EXACT n IS UNKNOWN, and that unknown is the finding: the 2026-08-06 run dropped the tier with a console warning and wrote nothing to this file, so the sample size it saw was never recorded anywhere. It is NOT estimated here. Re-running scripts/permits/denver.mjs is what recovers it; the script now emits this record with the real n. Hand-populated 2026-08-09 from the surviving evidence. Why the aggregate must not stand in: of newConstruction n=6,922, single accounts for 3,505 and apartment for 628, leaving 2,789 rows that are in neither published tier — the untiered residential rows (Denver's residential layer carries no UNITS value on many rows, including garages, carports, sheds and ADUs) plus the whole commercial layer. Fewer than 30 of the 6,922 are 2-4 unit buildings. Serving 4.5 months to a duplex query was answering from a population that almost entirely excludes duplexes."
+        }
       }
     }
   },
@@ -75,6 +89,10 @@
         "n": 189,
         "vintage": "filed 2022-01-01 onward; computed 2026-08-06; datahub-miamigis.opendata.arcgis.com \"Building Permits Since 2014\" ArcGIS FeatureServer (ScopeofWork = 'NEW CONSTRUCTION', master building permit PermitNumber LIKE '%001B001', WorkItems building allowlist); PlanCreatedDate -> IssuedDate"
       }
+    },
+    "tierBreakdown": {
+      "attempted": true,
+      "minPublishableN": 30
     }
   },
   "nashville": {
@@ -103,6 +121,10 @@
         "n": 570,
         "vintage": "applied 2023-08-01 onward; computed 2026-08-06; NashvilleOpenData Building Permits Issued (ArcGIS Building_Permits_Issued_2 layer 0; Per_Ty IN (CARN, CACN, CACH) = Building Residential/Commercial - New + Commercial Shell, gated to building Per_SubTy only). Feed is a ROLLING ~3-YEAR window of ISSUED permits (2023-08-01..2026-08-04), so the 2022-01-01 start used for other cities is not attainable without left-truncation bias and 2023-08-01 is the earliest filing cohort the window covers completely. Because only issued permits appear, the issuance rate is not computable and this median is a FLOOR. Nashville also issues per-unit child permits under a master permit (24.9% of rows cite one), which re-weights the median toward large repetitive developments."
       }
+    },
+    "tierBreakdown": {
+      "attempted": true,
+      "minPublishableN": 30
     }
   },
   "nyc": {
@@ -111,6 +133,10 @@
       "p80Months": 17,
       "n": 4403,
       "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.cityofnewyork.us DOB NOW: Build – Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
+    },
+    "tierBreakdown": {
+      "attempted": false,
+      "reason": "scripts/permits/nyc.mjs computes no tier split. Its query filters on job_type = 'New Building' and job_filing_number LIKE '%-I1' — nothing in it restricts building size, so the aggregate spans all three tiers instead of standing in for one."
     }
   },
   "philadelphia": {
@@ -119,6 +145,10 @@
       "p80Months": 6.3,
       "n": 3766,
       "vintage": "applied 2022-01-01 onward; computed 2026-08-05; phl.carto.com permits (permitdescription = Residential/Commercial Building Permit, typeofwork = New Construction*) joined on permit number to ArcGIS AGO_Lyr_Permit_App_Status_Eclipse APPLICATIONDATE"
+    },
+    "tierBreakdown": {
+      "attempted": false,
+      "reason": "scripts/permits/philadelphia.mjs computes no tier split. Its query filters on permitdescription (Residential/Commercial Building Permit) and typeofwork (New Construction*) — no size restriction — so the aggregate spans all three tiers."
     }
   },
   "seattle": {
@@ -147,6 +177,42 @@
         "n": 424,
         "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
       }
+    },
+    "tierBreakdown": {
+      "attempted": true,
+      "minPublishableN": 30
+    }
+  },
+  "raleigh": {
+    "newConstruction": {
+      "medianMonths": 1.8,
+      "p80Months": 3.2,
+      "n": 7475,
+      "vintage": "applied 2022-01-01 onward; computed 2026-08-09; City of Raleigh ArcGIS Building_Permits layer 0 (workclass IN (New Building, New Residential Dwelling, Townhouse, Shell Building), gated to building proposeduse only). The feed carries NON-ISSUED applications, so this is close to an unconditional median rather than a floor: 90.7% of filings in the window have issued, and the matured 2022 and 2023 cohorts are at 97.3% and 97.4%. THE ROW IS NOT THE PROJECT — Raleigh issues per-unit child permits for townhomes (51% of the sample; 96.9% of those rows duplicate another row's description) and per-building child permits within larger developments (15.8% of apartment-tier rows cite a main case), which re-weights the median toward large repetitive developments. Townhouse rows are in the aggregate but carry no tier: the feed records neither the development's unit count nor a development id, so 'multi' vs 'apartment' is a GAP."
+    },
+    "byTier": {
+      "single": {
+        "medianMonths": 1.4,
+        "p80Months": 2.7,
+        "n": 3005,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-09; City of Raleigh ArcGIS Building_Permits layer 0 (workclass IN (New Building, New Residential Dwelling, Townhouse, Shell Building), gated to building proposeduse only). The feed carries NON-ISSUED applications, so this is close to an unconditional median rather than a floor: 90.7% of filings in the window have issued, and the matured 2022 and 2023 cohorts are at 97.3% and 97.4%. THE ROW IS NOT THE PROJECT — Raleigh issues per-unit child permits for townhomes (51% of the sample; 96.9% of those rows duplicate another row's description) and per-building child permits within larger developments (15.8% of apartment-tier rows cite a main case), which re-weights the median toward large repetitive developments. Townhouse rows are in the aggregate but carry no tier: the feed records neither the development's unit count nor a development id, so 'multi' vs 'apartment' is a GAP."
+      },
+      "multi": {
+        "medianMonths": 3.5,
+        "p80Months": 7.1,
+        "n": 166,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-09; City of Raleigh ArcGIS Building_Permits layer 0 (workclass IN (New Building, New Residential Dwelling, Townhouse, Shell Building), gated to building proposeduse only). The feed carries NON-ISSUED applications, so this is close to an unconditional median rather than a floor: 90.7% of filings in the window have issued, and the matured 2022 and 2023 cohorts are at 97.3% and 97.4%. THE ROW IS NOT THE PROJECT — Raleigh issues per-unit child permits for townhomes (51% of the sample; 96.9% of those rows duplicate another row's description) and per-building child permits within larger developments (15.8% of apartment-tier rows cite a main case), which re-weights the median toward large repetitive developments. Townhouse rows are in the aggregate but carry no tier: the feed records neither the development's unit count nor a development id, so 'multi' vs 'apartment' is a GAP."
+      },
+      "apartment": {
+        "medianMonths": 4.5,
+        "p80Months": 8.3,
+        "n": 501,
+        "vintage": "applied 2022-01-01 onward; computed 2026-08-09; City of Raleigh ArcGIS Building_Permits layer 0 (workclass IN (New Building, New Residential Dwelling, Townhouse, Shell Building), gated to building proposeduse only). The feed carries NON-ISSUED applications, so this is close to an unconditional median rather than a floor: 90.7% of filings in the window have issued, and the matured 2022 and 2023 cohorts are at 97.3% and 97.4%. THE ROW IS NOT THE PROJECT — Raleigh issues per-unit child permits for townhomes (51% of the sample; 96.9% of those rows duplicate another row's description) and per-building child permits within larger developments (15.8% of apartment-tier rows cite a main case), which re-weights the median toward large repetitive developments. Townhouse rows are in the aggregate but carry no tier: the feed records neither the development's unit count nor a development id, so 'multi' vs 'apartment' is a GAP."
+      }
+    },
+    "tierBreakdown": {
+      "attempted": true,
+      "minPublishableN": 30
     }
   }
 }

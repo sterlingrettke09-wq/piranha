@@ -98,6 +98,7 @@ const DATASET_NAME =
   'AGO_Lyr_Permit_App_Status_Eclipse APPLICATIONDATE'
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { noTierBreakdown } from './lib/tierFloor.mjs'
 
 const quoteList = (values) => values.map((v) => `'${v}'`).join(',')
 
@@ -303,7 +304,16 @@ async function main() {
   }
   const merged = {
     ...existing,
-    philadelphia: { ...(existing.philadelphia ?? {}), newConstruction: stats },
+    philadelphia: {
+      ...(existing.philadelphia ?? {}),
+      newConstruction: stats,
+      // Declared, not omitted: a reader of permitStats.json must be able to tell
+      // "no breakdown was ever computed, so the aggregate IS the answer" from
+      // "a breakdown exists and this tier was withheld" (rule 5).
+      tierBreakdown: noTierBreakdown(
+        'scripts/permits/philadelphia.mjs computes no tier split. Its query filters on permitdescription (Residential/Commercial Building Permit) and typeofwork (New Construction*) — no size restriction — so the aggregate spans all three tiers.',
+      ),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 

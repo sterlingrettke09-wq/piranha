@@ -277,13 +277,22 @@ export function hasCitySpecificHurdles(slug: string): boolean {
  * pulled from the city's own open-data portal, rather than only a lifecycle
  * estimate.
  *
- * The other four — Boston, DC, Minneapolis, San Jose — publish NO application
- * date at all, so filing→issuance is not a metric we failed to compute but one
- * their data cannot support. Each was checked by asking whether the schema has a
- * SLOT for an application date, not whether one row was blank, and each tempting
+ * Boston, DC, Minneapolis, San Jose and Columbus publish NO application date at
+ * all, so filing→issuance is not a metric we failed to compute but one their
+ * data cannot support. Each was checked by asking whether the schema has a SLOT
+ * for an application date, not whether one row was blank, and each tempting
  * substitute was tested and rejected (DC's CREATED_DATE is an identical ETL stamp
  * on every row; Minneapolis's completeDate lands after issueDate in 409 of 409
- * sampled records; San Jose's FINALDATE is final inspection).
+ * sampled records; San Jose's FINALDATE is final inspection; Columbus's
+ * Building_Permits layer carries exactly two date fields, ISSUED_DT and
+ * LAST_STATUS_DT, and the second is a status stamp, not an intake one).
+ *
+ * Charlotte is a harder no still: it publishes no building-permit dataset at
+ * all. Its full 300-dataset catalogue was enumerated through the portal's own
+ * OGC search API, so this is an established absence rather than a failed guess.
+ *
+ * Atlanta and Milwaukee are the two cases where a pipeline EXISTS and refuses —
+ * see scripts/permits/milwaukee.mjs and the notes below.
  *
  * This exists for the same reason `CITIES_WITH_SPECIFIC_HURDLES` does. Compare
  * renders cities side by side, and a city with no measured line reads as faster
@@ -303,17 +312,60 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 //   · chicago — 46% of the sample is a 2022-23 cohort where 51.6%/31.2% of records
 //     are stamped applied==issued, a backfill artifact that roughly HALVED the
 //     median. Clean 2024-25 cohorts give 1.71 mo, not 1.0.
-//   · la — 45.4% of the cohort never issued. The p80 of 13.0 is unsalvageable:
-//     only 64.1% of the matured 2022 cohort ever issued, so no 80th percentile
-//     exists. A caveat cannot repair a statistic that is undefined.
+//   · la — 45.4% of the cohort carries NO issue date at extract. The p80 of 13.0
+//     is unsalvageable: only 64.1% of the matured 2022 cohort carries one, so the
+//     80th percentile lies beyond the observed range and no p80 exists. A caveat
+//     cannot repair a statistic that is undefined.
 //   · sf — WITHDRAWN 2026-08-06. Only 37.7% of new-construction filings since
-//     2022 ever issue (matured 2022 cohort: single 32.4%, multi 23.4%, apartment
-//     44.4%). When most filings never issue, the unconditional median
-//     time-to-issuance DOES NOT EXIST — and a "floor" label cannot rescue an
-//     undefined statistic, it just makes an absent number look cautious. LA was
+//     2022 carry an issue date at extract (matured 2022 cohort: single 32.4%,
+//     multi 23.4%, apartment 44.4%). When most of the cohort has no issue date,
+//     the unconditional median time-to-issuance DOES NOT EXIST — the 50th
+//     percentile is past the last observation — and a "floor" label cannot rescue
+//     an undefined statistic, it just makes an absent number look cautious. LA was
 //     withdrawn at 64.1%; SF is far below it.
+//     ⚠️ State the SHARE, not the FATE (2026-08-08). Neither feed distinguishes a
+//     not-yet from a never, so "37.7% ever issue" and "45.4% never issued" are
+//     both unsupported and are retracted phrasings. SF's non-issued rows do carry
+//     21 `withdrawn` and 1 `cancelled`, but 173 sit at `filed`; Raleigh's
+//     `statuscurrent` vocabulary has no Withdrawn/Denied/Cancelled value at all.
+//     The undefinedness above does not depend on fate, so both withdrawals stand.
+//
+// ⚠️ milwaukee is WITHHELD 2026-08-08, and it is the first city withheld for a
+// reason that is not about the data's quality. Milwaukee publishes both dates
+// with a 0.00% null rate on each, and its RESIDENTIAL `Use of Building` column
+// is a genuine controlled vocabulary (9 values, no singletons, 0.1% blank), so
+// one- and two-family dwellings measure cleanly: single 2.3 mo (n=262), multi
+// 5.3 mo (n=83), applied 2022-01-01 onward. But the city files ALL 5+-unit
+// multifamily as a Commercial New Construction Permit, and the commercial half
+// of that same column is FREE TEXT — 123 distinct strings over 354 windowed
+// rows, 25.7% of them appearing exactly once, 15.0% blank. The apartment tier
+// therefore cannot be enumerated at all.
+//
+// Publishing the residential pair alone was ALSO refused, for a wiring reason
+// that is now FIXED (2026-08-09) — recorded here because the old sentence is
+// still quoted elsewhere: measuredFor() used to fall back to `newConstruction`
+// for any tier lacking an entry, so an apartment query in Milwaukee would have
+// been answered from a population containing no apartments. It no longer does.
+// permitStats.json carries a `tierBreakdown` per city, measuredFor() returns
+// undefined for a tier absent from an attempted breakdown, and realityCheck.ts
+// renders "Not measured for 5+ unit buildings" instead of a wrong figure.
+// Milwaukee stays absent for the un-enumerable commercial stratum above, and
+// because publishing its residential pair needs a live re-run plus a product
+// decision — not because the wiring would mis-serve it.
+// scripts/permits/milwaukee.mjs computes every figure, prints them, and halts
+// structurally.
+//
+// ⚠️ atlanta publishes an application date (`Opend` / `OrigOpened`) and NO issue
+// date. `StatusDate` is the timestamp of the CURRENT status, so it equals the
+// issue date only for the 13,514 of 36,114 rows (37.4%) still sitting at
+// Status_1 = 'Issued' — every permit that issued and then moved on to 'Closed',
+// 'CO Issued' or 'No CO Required' carries a later milestone instead. Restricting
+// to the 37.4% selects permits that issued and then stalled, which is a
+// survivorship-biased third, not a sample. That is structural, not a gap we can
+// close, so no atlanta pipeline exists.
 export const CITIES_WITH_MEASURED_PERMITS = [
-  'austin', 'denver', 'miami', 'nashville', 'nyc', 'philadelphia', 'seattle',
+  'austin', 'denver', 'miami', 'nashville', 'nyc', 'philadelphia', 'raleigh',
+  'seattle',
 ] as const
 
 export function hasMeasuredPermitTiming(slug: string): boolean {

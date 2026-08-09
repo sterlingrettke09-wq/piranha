@@ -54,6 +54,7 @@ const OUT_PATH = new URL('../../netlify/functions/lib/data/permitStats.json', im
 const DATASET_NAME = "opendata.minneapolismn.gov CCS Permits (workType = 'New')"
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { noTierBreakdown } from './lib/tierFloor.mjs'
 
 async function arcgis(params) {
   const url = new URL(`${LAYER_URL}/query`)
@@ -204,7 +205,19 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, minneapolis: { ...(existing.minneapolis ?? {}), newConstruction: stats } }
+  const merged = {
+    ...existing,
+    minneapolis: {
+      ...(existing.minneapolis ?? {}),
+      newConstruction: stats,
+      // Declared, not omitted: a reader of permitStats.json must be able to tell
+      // "no breakdown was ever computed, so the aggregate IS the answer" from
+      // "a breakdown exists and this tier was withheld" (rule 5).
+      tierBreakdown: noTierBreakdown(
+        'scripts/permits/minneapolis.mjs computes no tier split; the feed carries no application date, so the script writes nothing at all today. If it ever does, revisit this declaration.',
+      ),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log('  Wrote minneapolis.newConstruction:', stats)

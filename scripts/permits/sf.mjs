@@ -186,6 +186,7 @@ const DATASET_NAME =
   'proposed_use allowlist = buildings only)'
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { splitTiersAtFloor } from './lib/tierFloor.mjs'
 
 async function socrata(path, params) {
   const url = new URL(`https://${HOST}/resource/${RESOURCE_ID}.${path}`)
@@ -369,20 +370,17 @@ async function main() {
   //    that inversion: the obvious candidate (expedited 100%-affordable and
   //    mayoral-directive projects dominating the apartment tier) was tested and
   //    does NOT explain it — flagged 10.5 (n=30) vs unflagged 10.8 (n=18).
-  const tiers = {}
-  for (const [tier, arr] of Object.entries(byTier)) {
-    if (arr.length < 30) {
-      console.warn(`  tier ${tier}: n=${arr.length} < 30 — omitted rather than published thin`)
-      continue
-    }
-    arr.sort((x, y) => x - y)
-    tiers[tier] = {
-      medianMonths: daysToMonths(quantile(arr, 0.5)),
-      p80Months: daysToMonths(quantile(arr, 0.8)),
-      n: arr.length,
-      vintage,
-    }
-  }
+  // The n<30 publication floor and the RECORD of every tier it withholds come out
+  // of one call, so a tier can no longer be dropped silently — see
+  // scripts/permits/lib/tierFloor.mjs. `tierBreakdown` is written beside `byTier`
+  // and is what tells measuredFor() to fail closed rather than serve the
+  // aggregate for a withheld tier.
+  const { tiers, tierBreakdown } = splitTiersAtFloor(byTier, (rows) => ({
+    medianMonths: daysToMonths(quantile(rows, 0.5)),
+    p80Months: daysToMonths(quantile(rows, 0.8)),
+    n: rows.length,
+    vintage,
+  }))
   console.log(
     '  by tier:',
     Object.fromEntries(
@@ -401,7 +399,7 @@ async function main() {
   }
   const merged = {
     ...existing,
-    sf: { ...(existing.sf ?? {}), newConstruction: stats, byTier: tiers },
+    sf: { ...(existing.sf ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
