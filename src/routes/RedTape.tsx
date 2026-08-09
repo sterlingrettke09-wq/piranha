@@ -37,7 +37,7 @@ function fmtPct(rate: number): string {
  *  the data actually carries, so a city with no measured permit time simply
  *  shows fewer chips (never a fabricated one). */
 function StatChips({ city }: { city: RankedCity }) {
-  const chips: { label: string; value: string }[] = []
+  const chips: { label: string; value: string; title?: string }[] = []
   if (city.measuredMedianMonths != null) {
     chips.push({
       label: 'Measured permit',
@@ -55,7 +55,11 @@ function StatChips({ city }: { city: RankedCity }) {
   if (city.feePerSqFt > 0) {
     chips.push({ label: 'Fee / sf', value: `$${city.feePerSqFt.toFixed(2)}` })
   }
-  chips.push({ label: 'Parking mandate', value: city.parkingLabel })
+  chips.push({
+    label: 'Parking mandate',
+    value: city.parkingLabel,
+    title: city.parkingHeadline ?? undefined,
+  })
 
   return (
     <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
@@ -64,7 +68,9 @@ function StatChips({ city }: { city: RankedCity }) {
           <dt className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-piranha-bone/40">
             {c.label}
           </dt>
-          <dd className="mt-0.5 font-medium tabular-nums text-piranha-bone/90">{c.value}</dd>
+          <dd title={c.title} className="mt-0.5 font-medium tabular-nums text-piranha-bone/90">
+            {c.value}
+          </dd>
         </div>
       ))}
     </dl>
@@ -191,8 +197,20 @@ export default function RedTape() {
                         <td className="px-5 py-3 text-right tabular-nums text-piranha-bone/75">
                           {fmtFee(r.feePerSqFt)}
                         </td>
+                        {/* The parking cell states the city's OWN mechanism, so
+                            it is a phrase rather than a two-word category — see
+                            ParkingRule.cellLabel for why it can never go back to
+                            being derived from the status. The honest label does
+                            not fit a narrow column on one line, and the wrong
+                            fixes are both available and both bad: truncating
+                            drops the qualifying clause ("None required" without
+                            "minimums remain elsewhere"), and shortening to fit
+                            re-invents the category. So the cell WRAPS inside a
+                            bounded column, and carries the full verified
+                            headline in `title` for the hover/focus reader. */}
                         <td
-                          className={`px-5 py-3 ${
+                          title={r.parkingHeadline ?? undefined}
+                          className={`min-w-[11rem] max-w-[15rem] px-5 py-3 leading-snug ${
                             r.parkingStatus === 'abolished'
                               ? 'font-medium text-piranha-gold'
                               : 'text-piranha-bone/75'

@@ -38,13 +38,31 @@ const RELIEF_STATS = reliefStatsJson as Record<
   { variance?: { grantRate: number; n: number } } | undefined
 >
 
-// Compact, table-cell version of a parking headline ("Abolished (2025)" /
-// "Near transit only"). Informational only — NOT folded into the composite
-// score (see computeRedTapeIndex / the /redtape methodology prose).
+/**
+ * The parking column of the Red Tape Index table, in the city's own words.
+ * Informational only — NOT folded into the composite score (see
+ * computeRedTapeIndex / the /redtape methodology prose).
+ *
+ * ⚠️ THIS FUNCTION DELIBERATELY DOES NOT LOOK AT `rule.status`. It used to, and
+ * it published a false claim for roughly half the table: 'abolished' rendered
+ * `Abolished (${asOf})` and every other city rendered the literal string
+ * 'Near transit only'. Transit is not the mechanism in Nashville (Urban Zoning
+ * Overlay), Philadelphia (CMX-4/CMX-5), New York (Manhattan core), Boston
+ * (income-restricted housing) or DC (downtown first) — five of the ranked
+ * cities, plus four more waiting behind `citiesWithoutProcessConstants`.
+ *
+ * The fix is not a longer status enum: that re-creates the defect one level out,
+ * because the next city with a mechanism nobody enumerated falls into whatever
+ * branch is last. A status is a CATEGORY someone assigned; the label has to come
+ * from the RECORD someone verified. So the only thing left here is the
+ * no-rule case, which is a genuine absence and renders as one.
+ *
+ * `cellLabel` is a required field of `ParkingRule`, so a city added without one
+ * fails to compile — there is no default for it to fall through to.
+ */
 export function parkingCell(rule: ParkingRule | undefined): string {
   if (!rule) return '—'
-  if (rule.status === 'abolished') return `Abolished (${rule.asOf})`
-  return 'Near transit only'
+  return rule.cellLabel
 }
 
 // The fixed reference project the whole index is computed against.
@@ -98,10 +116,15 @@ export interface RankedCity {
   score: number
   /** 1-based rank, ascending by score (1 = least red tape). */
   rank: number
-  /** Parking-minimum status for this city — informational, NOT scored. */
+  /** Parking-minimum status for this city — informational, NOT scored. Drives
+   *  emphasis in the table, never the wording of the cell (see parkingCell). */
   parkingStatus: ParkingRule['status'] | null
-  /** Compact table-cell label for the parking column ("Abolished (2025)"). */
+  /** The city's own short parking label — `ParkingRule.cellLabel` verbatim. */
   parkingLabel: string
+  /** The full verified headline the label was shortened from, carried so the
+   *  narrow table cell can expose it on hover/focus rather than truncating a
+   *  qualifying clause away. Null when the city has no parking rule. */
+  parkingHeadline: string | null
   /** Measured median months filing→permit for new construction, when the
    *  open-data pipeline produced a trustworthy figure (else null). */
   measuredMedianMonths: number | null
@@ -205,6 +228,7 @@ export function computeRedTapeIndex(constants: Partial<RedTapeConstants> = {}): 
       rank: i + 1,
       parkingStatus: rule?.status ?? null,
       parkingLabel: parkingCell(rule),
+      parkingHeadline: rule?.headline ?? null,
       measuredMedianMonths: measured?.medianMonths ?? null,
       measuredPermitN: measured?.n ?? null,
       reliefGrantRate: relief?.grantRate ?? null,

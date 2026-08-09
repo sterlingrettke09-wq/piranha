@@ -2207,8 +2207,10 @@ absence so the stale scripts cannot reinstate them):
   Commission approval independently reported five months earlier. Clean 2024-25
   cohorts give **1.71 mo**, not 1.0.
 - **LA 6.0 / 13.0.** The date field is fine — the ESTIMATOR is not. 45.4% of the
-  cohort never issued. Only 64.1% of the matured 2022 cohort ever issued, so an
-  80th percentile **does not exist**. A caveat cannot repair an undefined statistic.
+  cohort carries no issue date at extract. Only 64.1% of the matured 2022 cohort
+  carries one, so an 80th percentile **does not exist**. A caveat cannot repair an
+  undefined statistic. *(Phrasing corrected 2026-08-08 — state the share, not the
+  fate; the shares and the withdrawal are unchanged.)*
 
 ### The dominant failure was not the date field
 
@@ -2292,7 +2294,10 @@ Censoring ruling already made: Kaplan-Meier where the cohort supports it,
 median-of-issued explicitly labelled a FLOOR where it does not, withdrawn where
 neither means anything — never a bare median. **Publish the issuance rate
 regardless**: it is the one number censoring cannot bias, and "60% of filings here
-ever issue" is arguably more useful than any median. KM's assumption that
+ever issue" is arguably more useful than any median. *(⚠️ Phrasing retracted
+2026-08-08 — that specimen copy string is exactly what must NOT ship. Write "60%
+of filings here have an issue date"; state the share, not the fate. The
+recommendation to publish the rate stands.)* KM's assumption that
 censoring is independent of time-to-event is a stated limitation, not an
 assumption to wave through: long-pending applications are plausibly unlike ones
 that resolve.
@@ -2456,6 +2461,19 @@ the aggregate only where no breakdown exists — the aggregate is the weaker
 number, not the default. Tiers under n=30 are omitted rather than published thin.
 The corrected `n` is 11,534, matching the audit's independent prediction exactly.
 
+> ⚠️ **Superseded 2026-08-09 — read the two sentences above together and they
+> describe a fail-open.** "Omitted rather than published thin" and "falls back to
+> the aggregate" compose into: *a tier suppressed for a thin sample is served the
+> city aggregate.* Denver's `multi` was suppressed, so a duplex query got
+> Denver's 4.5-month aggregate — a population of 3,505 single-family rows, 628
+> apartment rows, the untiered residential rows and the commercial layer, fewer
+> than 30 of which are 2–4 unit buildings. The suppression left no trace in
+> `permitStats.json`, so nothing could distinguish it from NYC/Philadelphia,
+> where no breakdown was ever computed and the aggregate genuinely covers every
+> tier. `tierBreakdown` now records which of the two it is, `measuredFor` fails
+> closed on the first, and a test requires every city × tier to be measured,
+> aggregate-covered, or explicitly marked suppressed.
+
 **Not fixed here, and still open for Austin:** the sample is right-censored
 (issued permits only; complete cohorts move the p80 from 6.3 to 7.1–8.2), and
 `masterpermitnum` shows one parking garage filing as twelve "Module C/E/F/G…"
@@ -2554,11 +2572,17 @@ Austin's apartment median by application year runs 11.1 (2022) → 9.7 → 6.2 �
 
 ### SF WITHDRAWN — the statistic does not exist
 
-**37.7% of SF new-construction filings ever issue.** Matured 2022 cohort: single
-32.4%, multi 23.4%, apartment 44.4%. When most filings never issue, the
-unconditional median time-to-issuance **does not exist**, and a floor label does
-not rescue it — it makes an absent number look cautious. LA was withdrawn at
-64.1%; SF is far below that.
+> ⚠️ **Phrasing superseded 2026-08-08** — see "Two measured issuance rates, and
+> exactly how far the comparison carries". "Ever issue" is unsupported: what is
+> measured is the share carrying an issue date at extract. **State the share, not
+> the fate.** The withdrawal itself stands — a median past the last observation is
+> undefined under either reading. Figures below are unchanged and correct.
+
+**37.7% of SF new-construction filings carry an issue date at extract.** Matured
+2022 cohort: single 32.4%, multi 23.4%, apartment 44.4%. When most of the cohort
+has no issue date, the unconditional median time-to-issuance **does not exist**,
+and a floor label does not rescue it — it makes an absent number look cautious.
+LA was withdrawn at 64.1%; SF is far below that.
 
 ### Where KM IS computable
 
@@ -3213,3 +3237,253 @@ the `netlify.toml` CSP `connect-src`, which is recorded as a **CSP gap and
 explicitly not a CORS finding**, since no cross-origin probe was run. Denver's
 adjacent entry records an actual CORS probe; the two reasons must not be copied
 onto each other.
+
+## 2026-08-08 — A truncated handoff is silent AND total, and it happened twice
+
+Four research agents read four cities' codes and returned parking, hurdles and
+permit-feed findings. The orchestrating script passed them on as
+`JSON.stringify(r).slice(0, 4500)`.
+
+Each city's blob runs 46,000–54,000 characters. The 4,500-char slice landed
+partway through `parking`, the first key. **The `hurdles` field — 140,418
+characters across the four cities, every category the phase existed to produce —
+arrived as nothing at all.** Not degraded, not partial: absent, with no marker
+distinguishing "this city has no inclusionary requirement" from "the research
+never got here."
+
+### The two properties that make this worse than ordinary data loss
+
+**It is silent at the boundary that matters.** The sender's log says four
+research agents completed successfully, and they had. The receiver sees a
+well-formed object with a `parking` key. Neither side can see the deletion; only
+the receiver noticing that a field it was promised is missing catches it, and
+that depends on the receiver having been told what to expect.
+
+**It is total rather than proportional.** A slice on a serialised object does not
+lose the tail of each field evenly — it loses every field after the cut
+completely. The intuition "I'll cap it, I'll lose some detail" is wrong about
+what actually happens: you lose whole categories, chosen by key order.
+
+### It happened twice in one session
+
+The first was `HURDLE-PROPOSALS.md`, sliced `[:48]/[:90]/[:70]` — 109 rows, 55
+losing a digit, ~90% of the research discarded. That one was caught by the user
+asking the scope question ("check every row's source length against the slice, not
+just the ones the agents noticed"). This one was caught by the receiving agent
+reporting that its input arrived truncated — which it only did because it had been
+told what the input should contain.
+
+Two instances, same mechanism, same session. Not an incident.
+
+### What the receiving agent did right, and why it mattered
+
+It applied the parking research, added the four cities to
+`CITIES_WITH_SPECIFIC_HURDLES` because a drift guard would otherwise fail against
+branches that exist — and then **recorded the shortfall above the constant in
+`cities.ts` rather than letting it pass**. That constant is what `Compare.tsx`
+reads to decide whether to mark a hurdle count as a floor. Adding a city to it is
+the claim that the city's specific mandates are encoded. For the length of one
+workflow that claim was overstated, and the only thing standing between that and a
+user reading "4 approvals" as complete was an agent writing down that its input
+looked wrong.
+
+It also refused to encode Charlotte's North Carolina statewide parking preemption
+from the fragment "Session La…" — no session law number, no effective date, no
+operative text. Rule 1, correctly applied to a fact that was probably true: a
+mechanism argued aloud earns no direction until something measures it, and
+"probably true and important" is exactly when the temptation to hedge is strongest.
+
+### The rule
+
+**Never slice a handoff between agents. Write it to a file and pass the path.**
+A cap is a silent, total, key-order-dependent deletion, and the sender cannot see
+it. Where a receiver must be given content inline, tell it what fields to expect
+so that a missing one is reportable rather than invisible — that is the only thing
+that caught this.
+
+---
+
+## 2026-08-08 — Two measured issuance rates, and exactly how far the comparison carries
+
+Raleigh's ArcGIS feed carries NON-ISSUED rows, so its issuance rate is measured
+rather than characterised: **7,878 of 8,685 applications filed 2022-01-01 onward
+have an issue date — 90.7%**, by filing cohort 97.3% (2022) / 97.4% / 95.1% /
+91.6% / 58.6% (2026), the last being immaturity rather than collapse. That makes
+Raleigh the **second city after NYC** where the rate is a measurement, and the
+first opportunity this project has had to compare the rate between two cities
+rather than assert it about one.
+
+Against SF's 37.7%, that is a real finding about those two cities. What follows
+is how far it carries, because two numbers in the same units are exactly the
+shape rule 18 warns about, and the interesting work was establishing what the
+denominators actually contain rather than dividing.
+
+### Both instruments reconcile against the known-good first (rule 16)
+
+Re-queried independently before anything was compared. Raleigh's layer returns
+8,685 in-window rows under the `workclass` filter alone and 7,878 with a non-null
+`issueddate` — **90.71%, reproducing the committed figure exactly.**
+
+SF reproduces too, and its small drift is itself informative. The live Socrata
+pull today gives 145 issued of 392 filings = 37.0%, against 37.7% recorded
+2026-08-06. The **numerator is unchanged at 145**, and 145/384 = 37.76% — so the
+denominator grew by roughly eight new filings in two days, none of them issued
+yet. That is the arithmetic of a live feed, not a contradiction, and the recorded
+figure stands.
+
+### Where the two rates ARE the same measurement
+
+Same window (filed/applied 2022-01-01 onward). Same operational definition: a
+non-null issue date at extract, over a denominator of applications. And — the
+part that had to be checked rather than assumed — **both denominators are built
+on filters populated at FILING time.**
+
+Raleigh's rate is deliberately computed before the `proposeduse` building gate,
+because that field is assigned *during review*: blank on 26.8% of not-yet-issued
+rows and populated on 100.0% of issued ones. Computing after the gate would drop
+mostly-unissued rows from the denominator and report ~93.5% instead of 90.7% —
+the instrument measuring itself.
+
+SF's figure was computed on its post-filter population, so the same defect had to
+be ruled out there, and it is absent: `proposed_use` is null on **5 of 247**
+non-issued SF rows (2.0%) against 6 of 145 issued. SF's use field is a filing-time
+field. Both rates are therefore clean of the selection-on-the-outcome that
+disqualified Austin, Denver, Miami and Philadelphia entirely.
+
+### The composition objection, and why it fails
+
+The obvious deflation is that Raleigh's row is not the project. It isn't: **4,077
+of the 8,685 window rows are townhouse per-unit child permits**, and they issue at
+94.1%, against 92.2% for `New Residential Dwelling`, 70.8% for the
+non-residential `New Building` class and 66.7% for `Shell Building`. A denominator
+that is 47% near-certain-to-issue children of already-approved developments, set
+against SF's one-row-per-permit sample, is a mix artifact waiting to be found.
+
+So stratify, and the gap survives:
+
+| class, filed 2022→ | Raleigh | SF |
+|---|---|---|
+| detached single-family | **3,006 / 3,195 = 94.1%** | **54 / 130 = 41.5%** |
+| five-or-more-family / apartments | 262 / 335 = 78.2% | 37 / 102 = 36.3% |
+
+Like for like, on the class where a permit means one building in both cities, the
+gap is 2.3×. It narrows toward the apartment end in both cities and never closes.
+**That is the finding, and stratification is what turned it from two headline
+numbers into one.**
+
+### What the comparison will NOT carry: the complement
+
+The rates are computed identically. Their complements are not the same object,
+and this is the qualification that matters.
+
+SF's 247 non-issued rows carry a status the city has recorded: 173 `filed`, 36
+`approved`, **21 `withdrawn`**, 16 `reinstated`, 1 `cancelled`. Raleigh's 807
+non-issued rows: 336 `In Review`, 203 `Ready for Issuance`, 187
+`Submitted - Online`, 38 `Review Expired`, 20 `Submitted`, 19 `On Hold`, and four
+singletons. **Not one Withdrawn, Denied or Cancelled — and no such value exists
+anywhere in the layer's `statuscurrent` vocabulary**, 17 distinct values over
+183,456 rows. `voiddate` is populated on 5,621 rows dataset-wide and on exactly
+**one** row inside the window.
+
+A Raleigh application that dies therefore either never becomes a row or is
+indistinguishable from one still in review. SF's 63% contains applications the
+city has marked dead; Raleigh's 9.3% contains none, by construction of the feed.
+
+The operational consequence is a wording rule, and this repo has already written
+the wrong version in three places: **"90.7% ever issue" and "37.7% ever issue" are
+both unsupported.** What is measured is the share carrying an issue date at
+extract. Neither feed says a pending application will never issue — SF's 173 rows
+sitting at `filed`, some of them four years on, are not marked dead either. Rule 5
+running the other way: a *not-yet* and a *never* must not render the same, and
+here neither city's data distinguishes them. State the share; do not state the
+fate.
+
+### Cohort maturity runs in OPPOSITE directions, and that widens the gap
+
+Raleigh falls with recency — 97.3 / 97.4 / 95.1 / 91.6 / 58.6 — the ordinary
+immaturity shape, where the newest cohort has not had time to issue.
+
+SF **rises** with recency: 66/197 = 33.5% (2022), 29/75 = 38.7%, 13/26 = 50.0%,
+32/58 = 55.2%, then 5/36 = 13.9% for the part-year 2026. **SF's oldest cohort is
+its worst**, which is not what censoring produces; it is what a backlog of old
+filings that never issued produces.
+
+So the two pooled figures are wrong in opposite directions, and correcting both
+for maturity moves them further apart, not closer: the matured 2022-cohort
+comparison is **97.3% against 33.5%**. The headline pair understates the gap.
+
+### Why this matters beyond the two cities
+
+Every other city's permit median here is conditional on issuance — a statistic
+about survivors — and the issuance rate is the only thing that converts a
+conditional median into a bound on the unconditional one. Two measured rates that
+differ this much, and that keep differing after stratification, say the correction
+is **not a constant and cannot be borrowed between cities**. That is the same
+refusal that stopped Nashville's lifecycle row being copied sideways to Raleigh:
+a peer-set argument is a mechanism, and a mechanism earns no direction (rule 1).
+Two measured rates are the beginning of knowing the size of the correction, and
+they are also proof that a third city's rate cannot be inferred from them.
+
+### My own probe failed once, in the house style
+
+`proposeduse = 'RESIDENTIAL TOWNHOUSE'` returned **0 rows**, and the available
+reading was "that class isn't in the window." It is 3,964 rows. The stored values
+carry a leading tab or space; `scripts/permits/raleigh.mjs` has a `norm()` helper
+for exactly this and my ad-hoc query did not use it. Rule 11 for one round —
+measuring the query rather than the data — and what closed it in seconds was rule
+16, because 0 contradicted a committed known-good count of 3,803.
+
+---
+
+## 2026-08-08 — A dead writer leaves a tree that typechecks
+
+The agent integrating four cities' hurdle research died — `Connection closed
+mid-response` — after writing **3,514 lines** and **before running the suite**.
+
+What it left behind: `tsc -b` clean, every branch syntactically complete and
+well-formed, **two failing tests**, and a comment in `src/config/cities.ts` that
+its own work had just made false.
+
+### The sharp point
+
+Nothing about a crash announces itself in the artifact. A finished tree and an
+abandoned one are the same tree until something executes it — the type checker
+passes on both, and **the diff of an interrupted edit is a well-formed diff.**
+Reading the change cannot distinguish the two states; only running the suite can.
+
+This is rule 9 relocated from the code to the process. Every check that has found
+a real defect here compared the system to something outside it, and a writer
+inspecting its own output is inside it. Here one agent held both roles, so the
+only evidence that the work was complete was the work itself.
+
+### The retraction that reached one file and not the other
+
+The agent correctly wrote the corrected claims into `hurdles.ts`. It never reached
+`cities.ts`, where the note above `CITIES_WITH_SPECIFIC_HURDLES` still said the
+four cities were encoded for **parking only** — true when it was written, during
+the truncated-handoff interval recorded above, and false the moment the hurdle
+branches landed. `Compare.tsx` reads that constant to decide whether a hurdle
+count renders as a floor.
+
+Rule 17, third instance: a claim lives in more than one place, and the summary at
+the top of a file is where a reader lands. Note the direction reversed between the
+two failures and both were wrong — first the *list* over-claimed against
+parking-only branches, then the *comment* under-claimed against complete ones.
+**A note that describes coverage has to be re-read every time coverage moves**,
+and it is not the kind of thing a test can hold, because it is prose about scope.
+
+What caught it was somebody re-reading the file. Not `tsc`, which was clean; not
+the diff, which was well-formed; not the suite, which fails on the tests and says
+nothing about a comment.
+
+### The rule
+
+**The agent that writes a change must not be the agent that verifies it, and
+verification means running the suite, not reading the diff.** The corollary is
+what makes it non-negotiable for long single-agent edits: a writer that dies
+silently is the *expected* failure at 3,514 lines, not the exception — so the
+danger is not the crash, it is that nothing in the pipeline distinguishes a crash
+from completion when the checker is the same process that did the writing.
+
+Recorded green after the fixes: 68 test files / 1,862 tests, up from 60 / 1,401 at
+Raleigh.

@@ -175,15 +175,106 @@ describe('computeRedTapeIndex', () => {
   })
 })
 
+/**
+ * Words of a phrase, normalised so two strings can be compared for content
+ * rather than punctuation: lowercase, everything that is not a letter, digit or
+ * ½ becomes a separator. Applied identically to both sides, so "CMX-4/CMX-5"
+ * and "1–2 family" decompose the same way wherever they appear.
+ */
+function contentWords(s: string): string[] {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9½]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+}
+
 describe('parkingCell', () => {
-  it('renders abolished cities with their as-of date', () => {
-    expect(parkingCell(PARKING_RULES.denver)).toBe('Abolished (Aug 2025)')
-    expect(parkingCell(PARKING_RULES.sf)).toBe('Abolished (2018)')
+  /**
+   * ⚠️ THE REGRESSION TEST. This is the check that was missing when the cell was
+   * computed from `rule.status` — 'abolished' → `Abolished (${asOf})`, everything
+   * else → the literal string 'Near transit only'. That published a transit
+   * mechanism for Nashville (Urban Zoning Overlay), Philadelphia (CMX-4/CMX-5),
+   * New York (Manhattan core), Boston (income-restricted housing) and DC
+   * (downtown), none of which key on transit proximity.
+   *
+   * The rule it enforces is deliberately mechanical rather than a list of
+   * mechanisms: every word the cell prints must also appear in the headline
+   * verified for THAT city. A cell may shorten its own headline; it may not add
+   * a single word to it. Any invented category — 'Near transit only', or the
+   * next enum value someone reaches for — fails immediately for every city whose
+   * headline does not contain those words, which is the point. Enumerating
+   * mechanisms would only move the defect to the city nobody enumerated.
+   *
+   * Note this runs over the RENDERED cell (through `parkingCell`) for the cities
+   * the index actually ranks — the published surface, not the data behind it
+   * (CLAUDE.md rule 11: exercise the real entry point). `parkingRules.test.ts`
+   * covers the full table, including cities not yet ranked.
+   */
+  it('never prints a word absent from the ranked city’s own headline', () => {
+    const ranked = computeRedTapeIndex()
+    expect(ranked.length).toBeGreaterThan(0)
+    // Collect EVERY offender before asserting, rather than failing on the first.
+    // Under the old status-driven cell this is the difference between "Denver
+    // says Aug" and a list naming the five cities whose mechanism was wrong —
+    // and the second is what tells you the defect is systemic, not a typo.
+    const offenders: string[] = []
+    for (const r of ranked) {
+      const rule = PARKING_RULES[r.slug]
+      expect(rule, `expected a parking rule for ${r.slug}`).toBeTruthy()
+      const cell = parkingCell(rule)
+      expect(cell.length, `${r.slug} cell is empty`).toBeGreaterThan(0)
+      expect(r.parkingLabel).toBe(cell)
+      expect(r.parkingHeadline).toBe(rule.headline)
+      const fromHeadline = new Set(contentWords(rule.headline))
+      const invented = contentWords(cell).filter((w) => !fromHeadline.has(w))
+      if (invented.length > 0) {
+        offenders.push(
+          `${r.slug}: cell "${cell}" asserts ${JSON.stringify(invented)}, absent from headline "${rule.headline}"`,
+        )
+      }
+    }
+    expect(offenders, offenders.join('\n')).toEqual([])
   })
-  it('renders partial cities as "Near transit only"', () => {
-    expect(parkingCell(PARKING_RULES.chicago)).toBe('Near transit only')
-    expect(parkingCell(PARKING_RULES.nyc)).toBe('Near transit only')
+
+  // Proof the test above has teeth: the exact string that shipped is rejected
+  // for the cities it was wrong about, and accepted for the ones it fitted —
+  // so this is a check on the CLAIM, not a blanket ban on a phrase.
+  it('rejects the string that shipped, for the cities it was false about', () => {
+    const claim = contentWords('Near transit only')
+    const words = (slug: string) => new Set(contentWords(PARKING_RULES[slug].headline))
+    for (const slug of ['nashville', 'philadelphia', 'nyc', 'boston']) {
+      expect(claim.every((w) => words(slug).has(w)), `${slug}`).toBe(false)
+    }
+    // Chicago's headline does carry "near transit" — the claim was true there,
+    // which is exactly why a status-driven cell was so easy to miss.
+    expect(words('chicago').has('transit')).toBe(true)
   })
+
+  it('renders each city’s own label, not a category', () => {
+    expect(parkingCell(PARKING_RULES.denver)).toBe('Abolished citywide (2025)')
+    expect(parkingCell(PARKING_RULES.nashville)).toBe(
+      'None required in the Urban Zoning Overlay or downtown',
+    )
+    expect(parkingCell(PARKING_RULES.philadelphia)).toBe(
+      'Eliminated for housing in CMX-4/CMX-5; minimums remain elsewhere',
+    )
+  })
+
+  // The qualifying clause is the part it is tempting to drop for width, and
+  // dropping it is the same error one notch smaller: "None required" alone
+  // reads as citywide. Where the headline carries the clause, so must the cell.
+  it('keeps the “minimums remain elsewhere” clause wherever the headline has it', () => {
+    for (const [slug, rule] of Object.entries(PARKING_RULES)) {
+      if (/minimums remain elsewhere/i.test(rule.headline)) {
+        expect(rule.cellLabel, `${slug} dropped its qualifying clause`).toMatch(
+          /minimums remain elsewhere/i,
+        )
+      }
+    }
+  })
+
   it('renders an em-dash when no rule exists', () => {
     expect(parkingCell(undefined)).toBe('—')
   })

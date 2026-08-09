@@ -243,7 +243,7 @@ without it:
 | `src/types/parcel.ts` | `RALEIGH_BBOX` — **measured** from the zoning layer's extent | none directly; step 8's probe fails if it's wrong |
 | `netlify/functions/lib/parcel.ts` | dispatcher row `raleigh: { bbox, label, provider }` | `getParcelInfo` returns a hard error for an unknown city — no silent Boston fallback |
 | `src/config/cities.ts` | the `CITIES` entry: slug, labels, `live`, measured `center`/`landmark`, `zoom`, `bbox`, `permitName`/`permitUrl`, `tagline`, `zoningLayer` | `parkingRules.test.ts` fails on any city slug without a rule |
-| `src/config/parkingRules.ts` | the parking rule, read from the code | same test, both directions (no orphan slugs either) |
+| `src/config/parkingRules.ts` | the parking rule, read from the code — including `cellLabel`, the Red Tape Index's parking column **in this city's own words** | same test, both directions (no orphan slugs either); `cellLabel` is a required field, so a city without one does not compile, and a test rejects any word in it that is not in that city's `headline` |
 | `src/config/estimates.ts` | `cityCostIndex` row | see step 7 |
 | `scripts/null-inventory.ts` | the slug in `CITIES`, and the probe point in `EXTRA` | see step 6 |
 
@@ -262,6 +262,17 @@ Two details that are easy to get wrong:
   `Access-Control-Allow-Origin`. Denver's entry, by contrast, records an actual
   CORS probe run twice. Do not copy one city's reason onto another — disclosure
   copy is code, and a claim true in one file can be false in the next.
+- **`cellLabel` is a shortening of that city's own `headline`, never a category.**
+  The Red Tape Index's parking column used to be computed from `status`:
+  `abolished` printed its as-of date and *everything else* printed the literal
+  string "Near transit only". That was false for most of the cities it rendered —
+  Nashville's trigger is the Urban Zoning Overlay, Philadelphia's the
+  CMX-4/CMX-5 districts, New York's Manhattan, Boston's the project being
+  income-restricted. Shorten by dropping a citation ("(AB 2097)"); **never by
+  dropping a qualifying clause** — "None required" without "minimums remain
+  elsewhere" is the same error one notch smaller. Do not reach for a longer
+  status enum when a city does not fit: that re-creates the defect one level
+  out, for the next city nobody enumerated.
 
 ---
 
@@ -422,6 +433,36 @@ What to check in the output, beyond "it returned something":
 **Guard:** `npm test` (Raleigh's wire stage: 60 files, 1401 tests, up from
 60/1393), `npm run lint`, `npx tsc -b`.
 
+### Who runs the guard: not the agent that wrote the change
+
+**The agent that writes a change must not be the agent that verifies it, and
+verification means RUNNING THE SUITE, not reading the diff.** Hand the finished
+tree to a checker that did not produce it, and require it to report the command
+output rather than an opinion about the code.
+
+The reason is not tidiness. On 2026-08-08 the agent integrating four cities'
+hurdle research died — `Connection closed mid-response` — after writing 3,514
+lines and before running anything. It left `tsc -b` clean, every branch complete
+and well-formed, **two failing tests**, and a comment in `src/config/cities.ts`
+that its own work had just made false: the note above
+`CITIES_WITH_SPECIFIC_HURDLES` still said those cities were encoded for parking
+only, and `Compare.tsx` reads that constant to decide whether a hurdle count
+renders as a floor.
+
+**A dead writer leaves a tree that typechecks.** A finished tree and an abandoned
+one are the same tree until something executes it, and *the diff of an interrupted
+edit is a well-formed diff* — so no amount of reading the change distinguishes
+them. The corollary for a long single-agent edit: a writer that dies silently is
+the **expected** failure at that length, not the exception. The crash is not the
+danger; the danger is that nothing in the pipeline can tell a crash from
+completion while the checker and the writer are the same process.
+
+And note what the suite does not cover. It fails on the two tests; it says nothing
+about the stale comment. Prose that describes coverage — the notes above the
+`CITIES_WITH_*` lists especially — has to be re-read by a human every time
+coverage moves, in both directions: that list has now over-claimed once and its
+comment under-claimed once, and both were wrong (ledger rule 17).
+
 ---
 
 ## 9. Run the null inventory
@@ -493,10 +534,20 @@ inspection.
 
 Then check the **cohort**, not just the filter: `chicago`, `la`, `sandiego` and
 `sf` were all published and then withdrawn. SF's withdrawal is the sharpest —
-only 37.7% of new-construction filings since 2022 ever issue, and when most
-filings never issue the unconditional median **does not exist**; a "floor" label
-cannot rescue an undefined statistic, it only makes an absent number look
-cautious.
+only 37.7% of new-construction filings since 2022 carry an issue date at extract,
+and when most of the cohort has no issue date the unconditional median **does not
+exist** (the 50th percentile is past the last observation); a "floor" label cannot
+rescue an undefined statistic, it only makes an absent number look cautious.
+
+**State the share, not the fate.** Report the share of the cohort *carrying an
+issue date at extract*, never the share that "ever issues" — a feed that lists
+pending applications almost never distinguishes a *not-yet* from a *never*.
+Raleigh's `statuscurrent` has no Withdrawn/Denied/Cancelled value anywhere in its
+17-value vocabulary, so a dead application is indistinguishable from one still in
+review; SF at least marks 21 `withdrawn` and 1 `cancelled`, but leaves 173 rows at
+`filed`. This is rule 5 in the other direction, and the withdrawal decisions above
+do not depend on fate — a median past the last observation is undefined either
+way.
 
 **Guard:** `netlify/functions/lib/timeline.test.ts` asserts
 `CITIES_WITH_MEASURED_PERMITS` equals exactly the set of cities carrying a

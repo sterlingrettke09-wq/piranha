@@ -245,6 +245,30 @@ as new construction — 54% of what it selects — and has never emitted a wrong
 number only because a missing date field halted it first. It was one schema change
 from shipping. Code that did not run is not code that works.
 
+**19. Never slice a handoff. Write it to a file and pass the path.** Passing four
+agents' research on as `JSON.stringify(r).slice(0, 4500)` did not lose the tail of
+each field evenly — the cut landed inside the FIRST key, so **140,418 characters
+of hurdles research across four cities arrived as nothing at all.** A cap on a
+serialised object is a *total* deletion of every field after the cut, chosen by key
+order, and the intuition "I'll cap it, I'll lose some detail" is wrong about what
+happens.
+
+It is also **silent on both sides**: the sender's log shows four agents completing
+successfully, and the receiver sees a well-formed object. Nothing in the pipeline
+can see the deletion. This is rule 11's shape at the seam between agents — the
+handoff, not the work, is what got measured.
+
+Second instance in one session (the first sliced `HURDLE-PROPOSALS.md` at
+`[:48]/[:90]/[:70]`, discarding ~90% of 109 researched rows), so it is a pattern.
+What caught this one was the *receiving* agent reporting that its input arrived
+truncated — which it could only do because it had been told what fields to expect.
+**Where content must go inline, name the fields the receiver should find, so a
+missing one is reportable instead of invisible.** And note what it nearly cost:
+the four cities were added to `CITIES_WITH_SPECIFIC_HURDLES` — the constant
+`Compare.tsx` reads to decide whether a hurdle count renders as a floor — while
+only their parking rows existed. A truncated handoff had become a user-facing
+completeness claim.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
