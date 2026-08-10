@@ -4338,3 +4338,107 @@ hit this, and the fix at that point is per-figure attribution, not a suppression
 Recorded now because the alternative is discovering it later and reading it as the
 guard being wrong. It is right about the contradiction and unreliable about whose
 contradiction it is.
+
+## 2026-08-10 — Every live figure now appears in the record, with its sample size
+
+The drift guard shipped with an honest hole: it can only check figures the ledger
+actually quotes, and six of the eleven live published figures appeared nowhere in
+it with a sample size. Boston's relief rate and five of six permit medians were
+running on the site with no entry a reader could check them against.
+
+That is not a guard defect. It is the ledger being incomplete on exactly the
+numbers it exists to track — and it is worth noticing that the omission was
+invisible until something tried to read the record mechanically. A human auditing
+the site against this file would have found nothing to audit.
+
+Quoting each once, properly, closes it: every published number is now under the
+guard, and the ledger's coverage matches the artifact's.
+
+### Boston — zoning relief
+
+**92.7% granted, n=3,820 decided cases**, 2022–2026 (3,542 granted / 278 denied).
+`data.boston.gov` Zoning Board of Appeal Tracker, framed on the DECISION date —
+`final_decision_date >= 2022-01-01` — so a pending case has no decision date and
+is excluded by construction rather than by censoring. This is the structure every
+later relief city was measured against, and the one SF had to be restated onto.
+Withdrawn and deferred are excluded; `AppProv`/`Approved` count as granted.
+
+### The five uncited permit medians
+
+All are filing→issuance for ground-up new construction, all conditional on
+issuance, all floors unless stated otherwise. Tiered in the table form the Austin
+entry established, because that is the form the drift guard reads — prose tier
+lists are compared against the aggregate and fail.
+
+**Denver.** The `multi` tier is suppressed below the n=30 publication floor, and
+`measuredFor` returns undefined for it rather than the aggregate — the fail-closed
+case that prompted `tierBreakdown`.
+
+| tier | median | p80 | n |
+|---|---|---|---|
+| single | 5.4 mo | 12.2 | 3,505 |
+| apartment | 5.3 mo | 10.8 | 628 |
+| *aggregate* | *4.5 mo* | *11.1* | *6,922* |
+
+**Miami.** The widest apartment-to-single spread in the set, and the only city
+whose aggregate sits between two tiers rather than near the largest.
+
+| tier | median | p80 | n |
+|---|---|---|---|
+| single | 11.3 mo | 17.9 | 511 |
+| multi | 11.0 mo | 18.7 | 291 |
+| apartment | 20.2 mo | 28.4 | 189 |
+| *aggregate* | *12.6 mo* | *21.4* | *991* |
+
+**Nashville.** Window starts 2023-08-01, not 2022 — the only city on a short
+window, because the feed's earlier records carry different application-date
+semantics. The 2.7× single-to-apartment spread is why the aggregate alone would
+mislead a multifamily user.
+
+| tier | median | p80 | n |
+|---|---|---|---|
+| single | 1.1 mo | 2.4 | 5,431 |
+| multi | 2.2 mo | 4.5 | 452 |
+| apartment | 3.0 mo | 7.0 | 570 |
+| *aggregate* | *1.2 mo* | *2.8* | *7,796* |
+
+**Philadelphia.** No tier breakdown: the feed supports no size split, so
+`tierBreakdown.attempted` is false and the aggregate is the answer for every tier
+rather than a fallback hiding a suppression. Tabulated anyway, with one row —
+written as prose it was invisible to the guard, which reads permit figures only
+from tables.
+
+| tier | median | p80 | n |
+|---|---|---|---|
+| *aggregate* | *3.0 mo* | *6.3* | *3,766* |
+
+**Raleigh.** The one figure in the set that is **not a floor** — its feed carries
+non-issued rows, so the 90.7% issuance rate is measured rather than assumed. 3,803
+townhouse per-unit child permits sit in the aggregate and in no tier, a known and
+disclosed gap.
+
+| tier | median | p80 | n |
+|---|---|---|---|
+| single | 1.4 mo | 2.7 | 3,005 |
+| multi | 3.5 mo | 7.1 | 166 |
+| apartment | 4.5 mo | 8.3 | 501 |
+| *aggregate* | *1.8 mo* | *3.2* | *7,475* |
+
+### What this does not fix
+
+Citing a figure is not verifying it. These six are now checkable against the
+artifact and will fail the suite if either drifts — but the guard compares the
+ledger to `permitStats.json`, and both being wrong together is exactly the class
+of error internal verification cannot catch (rule 9).
+
+### And the citation form itself is now load-bearing
+
+Writing these as prose (`Tiers: single 5.4 / 12.2 / n=3,505`) failed: the guard
+read each tier figure as a claim about the city's aggregate and reported eleven
+contradictions. The table form the Austin entry happened to use is the form the
+parser understands, so it became the convention by accident rather than by design.
+That is worth stating plainly — **a record whose correctness depends on its
+formatting has a trap in it**, and the next person to add a city will write prose
+and hit the same wall. The honest options are to document the form (done here) or
+to teach the parser prose tiers; the cheap one was taken, and the cost is a
+constraint nobody would guess.

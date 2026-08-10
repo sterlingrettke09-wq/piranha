@@ -69,6 +69,29 @@ describe('what the guard currently reads', () => {
         'charlotte/relief 92.4% n=157',
         'charlotte/relief 92.3% n=155',
         'charlotte/relief 92.3% n=155',
+        // 2026-08-10: the six live figures the ledger had never quoted with a
+        // sample size, added so every published number is under this guard.
+        // Boston's relief rate reads from prose; the permit medians must be
+        // TABLES — a prose tier list is compared against the aggregate and a
+        // prose aggregate is not seen at all. Philadelphia is a one-row table
+        // for that reason, not because a table adds anything to one figure.
+        'boston/relief 92.7% n=3820',
+        'denver/permits/single 5.4/12.2 n=3505',
+        'denver/permits/apartment 5.3/10.8 n=628',
+        'denver/permits/aggregate 4.5/11.1 n=6922',
+        'miami/permits/single 11.3/17.9 n=511',
+        'miami/permits/multi 11/18.7 n=291',
+        'miami/permits/apartment 20.2/28.4 n=189',
+        'miami/permits/aggregate 12.6/21.4 n=991',
+        'nashville/permits/single 1.1/2.4 n=5431',
+        'nashville/permits/multi 2.2/4.5 n=452',
+        'nashville/permits/apartment 3/7 n=570',
+        'nashville/permits/aggregate 1.2/2.8 n=7796',
+        'philadelphia/permits/aggregate 3/6.3 n=3766',
+        'raleigh/permits/single 1.4/2.7 n=3005',
+        'raleigh/permits/multi 3.5/7.1 n=166',
+        'raleigh/permits/apartment 4.5/8.3 n=501',
+        'raleigh/permits/aggregate 1.8/3.2 n=7475',
       ].sort(),
     )
   })
