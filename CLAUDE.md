@@ -269,6 +269,40 @@ the four cities were added to `CITIES_WITH_SPECIFIC_HURDLES` — the constant
 only their parking rows existed. A truncated handoff had become a user-facing
 completeness claim.
 
+**20. A check that can pass by finding nothing is not a check.** Three times now
+the same defect has shipped in three different instruments: `check-citations`
+returned PASS over zero checkable URLs; the FAR extractor reported "no FAR
+stated" for districts it had failed to read; and the deliberate-absence guard, as
+first written, would have gone green the moment the notes stopped naming anyone —
+including because someone deleted them.
+
+The shape is always the same. The check asserts something about a set, the set is
+empty, the assertion is vacuously true, and **green means "nothing to report"
+where the reader hears "nothing wrong."** It is rule 5 inside the instrument: an
+empty result and a clean result must not render the same.
+
+The fix is equally mechanical and has now been written three times, so write it
+by default: **assert the input set is non-empty, and pin its size or membership.**
+`check-citations` cannot print PASS while any file is unchecked; the ledger guard
+pins its exact 27-citation inventory; the absence guard fails if neither note
+names a city, with a message saying to delete the block deliberately rather than
+leave a guard that can only pass. A pinned inventory also catches the other
+direction — a regex that silently stops matching goes RED instead of green, which
+is the failure that makes a checking tool worthless (rule 11).
+
+**21. A retraction must DESCRIBE the retracted claim, not restate it.** Twice in
+one day a correction tripped the very guard that motivated it, because the
+correction quoted the false sentence verbatim: once in a ledger entry about stale
+ledger figures, once in a `cities.ts` note about stale notes.
+
+A verbatim quote is indistinguishable from a live claim — to any scanner, and to
+most readers, who see the sentence before they see the frame around it. That is
+rule 17 one level in: it is not enough for the correction to be adjacent, it must
+not reproduce the thing it corrects. Write *"this note asserted that none of the
+three had been investigated"*, not the sentence itself. Where the exact wording
+genuinely matters, mark it with the supersede convention so a scanner can see the
+frame, and expect the guard to hold you to it.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

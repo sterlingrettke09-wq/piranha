@@ -4683,3 +4683,68 @@ recovering it required re-running the extraction. Today's read-only re-run
 emitted it: **18**, below the 30-row publication floor, so the suppression
 decision was correct and the artifact is right as it stands. Nothing was edited.
 This is a gap closing, not a figure drifting.
+
+## 2026-08-10 — Two defects that had each been fixed three times without being named
+
+Building the deliberate-absence guard surfaced two patterns that were already
+solved, repeatedly, in isolated places. Neither was written down, so each fix was
+rediscovered rather than applied. Both are now standing rules.
+
+### The empty-set pass, third instance
+
+The guard as first written asserted that no city named as absent appears on the
+list it sits above. Correct — and it would have gone green the moment the notes
+stopped naming anyone, including because somebody deleted them. A guard whose
+subject can vanish reports the vanishing as success.
+
+That is the third instance of one shape:
+
+| instrument | how it passed on nothing |
+|---|---|
+| `check-citations` | printed PASS over zero checkable URLs |
+| the FAR extractor | reported "no FAR stated" for districts it had failed to read |
+| the absence guard | would go green if the notes named no city at all |
+
+Each was fixed the same way and none of the fixes knew about the others:
+`check-citations` cannot print PASS while any file is unchecked; the extractor
+learned to distinguish a stated absence from a failed read (which became rule 5);
+the absence guard now fails if neither note names a city, with a message telling
+the reader to delete the block deliberately rather than leave something that can
+only pass.
+
+**Green means "nothing to report" and the reader hears "nothing wrong."** It is
+rule 5 inside the instrument — an empty result and a clean result must not render
+the same. Now rule 20, with the fix stated so the fourth instance is prevented
+rather than rediscovered: assert the input set is non-empty and pin its size or
+membership. Pinning also catches the opposite failure, a regex that silently
+stops matching, which is the one that makes a checking tool worthless.
+
+### A retraction that quotes itself, second instance in a day
+
+Writing the ledger entry about stale ledger figures tripped the ledger figure
+guard, because the entry quoted the superseded tuple verbatim. Hours later,
+correcting the `cities.ts` note about stale notes tripped the absence guard, for
+the same reason: the correction restated the retracted sentence in live prose.
+
+Both times the correction was true, adjacent to the claim, and clearly framed.
+Both times it read to the scanner — and would read to most humans, who see the
+sentence before the frame — as a live assertion of the thing being retracted.
+
+So rule 17 was not sufficient as written. Propagating a retraction to every site
+does not help if the retraction reproduces the claim at each site. **Describe the
+retracted claim; do not restate it.** Now rule 21.
+
+Worth noting what caught both: the guards, on their own authors, within minutes.
+Neither was found by review.
+
+### The over-broad first version, and why it mattered
+
+The absence guard's first version matched city slugs across the whole note and
+reported five hits where one was real — the four false positives were cities named
+in the *withdrawal* paragraphs, which are absent and investigated. Scoped to the
+`⚠️` block making the claim, it reports exactly `dallas`.
+
+Recorded because the failure mode is not "slightly noisy": a guard that flags true
+negatives is read as broken and then ignored, which is strictly worse than not
+having it. The same reasoning set the ship-or-abandon criterion for the ledger
+guard — zero exemptions on the current file, or narrow it.

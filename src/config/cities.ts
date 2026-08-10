@@ -516,14 +516,29 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 // to the 37.4% selects permits that issued and then stalled, which is a
 // survivorship-biased third, not a sample. That is structural, not a gap we can
 // close, so no atlanta pipeline exists.
-// ⚠️ dallas, lasvegas and phoenix are absent, and for a WEAKER reason than every
-// other city named above — those were investigated and refused on a finding;
-// these three were not investigated at all. No permit feed was opened for any of
-// them at the provider stage, so no slot test for an application date has been
-// run and there is no finding in either direction. Stated plainly rather than
-// left to sit alongside the measured refusals above, because "absent from this
-// list" would otherwise read as "checked and rejected" (rule 5: a known absence
-// and a missing lookup must not render the same).
+// ⚠️ dallas, lasvegas and phoenix are absent, and all three now have FINDINGS —
+// this note said the opposite until 2026-08-10, when it still asserted that none
+// of the three had been looked at and that no feed had been opened for any of
+// them. (The retracted sentence is described rather than quoted: quoting it
+// verbatim trips the guard below, which is the correct behaviour — a retracted
+// claim restated in live prose is indistinguishable from a current one.) That
+// was true when written and false by the time anyone read it; it is corrected
+// rather than deleted because a reader who remembers it needs to see the
+// correction (rule 17), and because `src/config/cities.test.ts` now fails if a
+// city called uninvestigated here has a script proving otherwise — which is how
+// this staleness was caught.
+//
+// dallas — a pipeline EXISTS and refuses (scripts/permits/dallas.mjs). The only
+// feed carrying both dates is a frozen snapshot of the retired Posse system
+// ("no updates planned", max date 2024-11-12, re-probed each run), and 73.44% of
+// gated 2022+ filings carry an issue date — enough to identify a median, not the
+// p80, with the apartment tier at 47.76%, below even the median's bar. The feed
+// can never mature, so this is a measured refusal, not a gap.
+// lasvegas — verified no: the open-data permits feed has no SLOT for an
+// application date (ISSDTTM is its only date field), and the one internal layer
+// carrying both measured unusable (~11.6x row duplication, misaligned columns).
+// phoenix — verified no: no per-permit dataset exists at all, established by
+// enumerating the full 160-package CKAN catalogue rather than by a failed guess.
 // ⚠️ nyc was WITHDRAWN 2026-08-09, after shipping 8.3 mo / p80 17.0 / n=4,403
 // from 2026-08-06. The disqualifier was already written down IN THE PIPELINE
 // THAT PRODUCED IT: scripts/permits/nyc.mjs recorded that 45% of initial New
