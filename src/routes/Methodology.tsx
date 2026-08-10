@@ -3,8 +3,15 @@ import type { ReactNode } from 'react'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
-import { getCity } from '../config/cities'
+import { CITIES, getCity } from '../config/cities'
 import type { Use } from '../types/analysis'
+import {
+  COVERAGE_DIMENSIONS,
+  DIMENSION_LABELS,
+  ABSENCE_CODE_LEGEND,
+  coverageCell,
+  type AbsenceCode,
+} from '../config/coverage'
 import {
   costPerSqFtByUse,
   cityCostIndex,
@@ -27,6 +34,114 @@ function Section({ n, title, children }: { n: string; title: string; children: R
         <div className="mt-5 space-y-4 leading-relaxed text-piranha-charcoal/75">{children}</div>
       </section>
     </Reveal>
+  )
+}
+
+// Short cell labels for the four absence codes. Styling keeps a withdrawn
+// figure VISIBLE as withdrawn — we published it, measured a disqualifier, and
+// took it down; rendering that as a blank would present the withdrawal as
+// reduced coverage instead of what it is.
+const CODE_CELL: Record<AbsenceCode, { text: string; className: string }> = {
+  'not-published': { text: 'Not published', className: 'text-piranha-charcoal/45' },
+  withdrawn: { text: 'Withdrawn', className: 'font-semibold text-piranha-burgundy' },
+  'not-built': { text: 'Not built', className: 'text-piranha-charcoal/35' },
+  conservative: { text: 'Held back', className: 'font-medium text-piranha-charcoal/70' },
+}
+
+function CoverageMatrix() {
+  const cities = [...CITIES].sort((a, b) => a.name.localeCompare(b.name))
+  return (
+    <div className="space-y-4">
+      <div className="overflow-x-auto rounded-2xl border border-piranha-charcoal/10 bg-white/60">
+        <table className="w-full min-w-[900px] text-sm">
+          <thead>
+            <tr className="border-b border-piranha-charcoal/10 text-left text-xs uppercase tracking-[0.12em] text-piranha-charcoal/45">
+              <th className="px-5 py-3 font-semibold">City</th>
+              {COVERAGE_DIMENSIONS.map((dim) => (
+                <th key={dim} className="px-3 py-3 text-center font-semibold" title={DIMENSION_LABELS[dim].means}>
+                  {DIMENSION_LABELS[dim].label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {cities.map((c) => (
+              <tr key={c.slug} className="border-b border-piranha-charcoal/5 last:border-0">
+                <td className="px-5 py-2.5 font-medium text-piranha-charcoal">{c.name}</td>
+                {COVERAGE_DIMENSIONS.map((dim) => {
+                  const cell = coverageCell(c.slug, dim)
+                  if (cell.covered) {
+                    const held = cell.suppressedTiers.length > 0
+                    return (
+                      <td key={dim} className="px-3 py-2.5 text-center">
+                        <span
+                          className="text-piranha-gold"
+                          title={
+                            held
+                              ? `${DIMENSION_LABELS[dim].means} — the ${cell.suppressedTiers.join(', ')} tier was measured and is withheld below the publishable sample floor`
+                              : DIMENSION_LABELS[dim].means
+                          }
+                        >
+                          ●{held ? <span className="text-piranha-charcoal/60">*</span> : null}
+                        </span>
+                      </td>
+                    )
+                  }
+                  const s = CODE_CELL[cell.code]
+                  return (
+                    <td key={dim} className="px-3 py-2.5 text-center">
+                      <span className={`text-xs ${s.className}`} title={cell.reason}>
+                        {s.text}
+                      </span>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul className="space-y-1.5 text-sm text-piranha-charcoal/70">
+        {(Object.keys(ABSENCE_CODE_LEGEND) as AbsenceCode[]).map((code) => (
+          <li key={code}>
+            <span className={`text-xs ${CODE_CELL[code].className}`}>{ABSENCE_CODE_LEGEND[code].label}</span>
+            {' — '}
+            {ABSENCE_CODE_LEGEND[code].means}
+          </li>
+        ))}
+        <li>
+          <span className="text-piranha-gold">●</span>
+          {' — covered. '}
+          <span className="text-piranha-gold">●</span>
+          <span className="text-piranha-charcoal/60">*</span>
+          {' — covered, with a measured tier withheld below the publishable sample floor (Denver’s 2–4 unit tier).'}
+        </li>
+      </ul>
+      <details className="rounded-2xl border border-piranha-charcoal/10 bg-white/60 px-5 py-4 text-sm text-piranha-charcoal/75">
+        <summary className="cursor-pointer font-semibold text-piranha-charcoal">
+          Every empty cell, with its reason
+        </summary>
+        <ul className="mt-4 space-y-3">
+          {cities.flatMap((c) =>
+            COVERAGE_DIMENSIONS.map((dim) => {
+              const cell = coverageCell(c.slug, dim)
+              if (cell.covered) return null
+              return (
+                <li key={`${c.slug}-${dim}`} className="leading-relaxed">
+                  <span className="font-medium text-piranha-charcoal">{c.name}</span>
+                  {' · '}
+                  {DIMENSION_LABELS[dim].label}
+                  {' · '}
+                  <span className={`text-xs ${CODE_CELL[cell.code].className}`}>{CODE_CELL[cell.code].text}</span>
+                  {' — '}
+                  {cell.reason}
+                </li>
+              )
+            }),
+          )}
+        </ul>
+      </details>
+    </div>
   )
 }
 
@@ -263,7 +378,23 @@ export default function Methodology() {
             </p>
           </Section>
 
-          <Section n="07" title="What this is not">
+          <Section n="07" title="What we cover, city by city">
+            <p>
+              Coverage is uneven, and the unevenness is information. Each filled cell in this
+              matrix is derived from the same tables and data files the analysis engine computes
+              from, so the matrix cannot claim more than the product delivers. Each empty cell
+              carries one of four reasons, because &ldquo;we don&rsquo;t show this here&rdquo; is
+              one of four different facts — and only some of them are about us.
+            </p>
+            <CoverageMatrix />
+            <p className="text-sm text-piranha-charcoal/60">
+              A withdrawn figure is one we published, then measured a disqualifier against and
+              took down. Each withdrawal&rsquo;s reason states what was measured; the six permit
+              withdrawals were six different defects, not one.
+            </p>
+          </Section>
+
+          <Section n="08" title="What this is not">
             <p>
               The Piranha Project produces estimates, not legal, engineering, or financial advice.
               Public data has gaps, rules change, and some cities don&rsquo;t publish FAR or height
