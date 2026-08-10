@@ -9,10 +9,10 @@
   },
   "sf": {
     "variance": {
-      "grantRate": 0.976,
-      "n": 289,
+      "grantRate": 0.973,
+      "n": 406,
       "window": "2022–2026",
-      "vintage": "opened 2022-01-01 onward; computed 2026-06-10; data.sfgov.org Planning Department Records - Non-Projects (record_type VAR); granted (Closed - Approved/Approved) ÷ decided, excludes withdrawn/cancelled/in-progress; 282 granted, 7 denied"
+      "vintage": "closed 2022-01-01 onward; computed 2026-08-10; data.sfgov.org Planning Department Records - Non-Projects (record_type VAR); framed on close_date (\"Date the record was closed\" — a record-closure stamp, not a decision date; SF publishes none), so pending cases are excluded by construction rather than censored; granted (Closed - Approved/Approved) ÷ decided, excludes withdrawn/cancelled/informational; 395 granted, 11 denied"
     }
   }
 }

@@ -20,7 +20,7 @@ and lives in the repo. `netlify/functions/lib/relief.ts` imports it
 when `feasibility.path === 'variance'`** (i.e. the verdict is NEEDS_RELIEF); and
 `VerdictBanner` renders one muted sub-line:
 
-> San Francisco's board granted 98% of variance requests (2022–2026, n=289).
+> San Francisco's board granted 97% of variance requests (2022–2026, n=406).
 
 The grant rate is a **historical base rate for the city's board — context, not a
 prediction for any specific project**. It is never folded into the verdict or
@@ -53,10 +53,10 @@ anonymously.
 {
   "sf": {
     "variance": {
-      "grantRate": 0.976,   // granted ÷ decided, three decimals
-      "n": 289,             // decided records in the sample (granted + denied)
+      "grantRate": 0.973,   // granted ÷ decided, three decimals
+      "n": 406,             // decided records in the sample (granted + denied)
       "window": "2022–2026",
-      "vintage": "opened 2022-01-01 onward; computed 2026-06-10; data.sfgov.org … ; 282 granted, 7 denied"
+      "vintage": "closed 2022-01-01 onward; computed 2026-08-10; data.sfgov.org … ; 395 granted, 11 denied"
     }
   }
   // ...other cities merge in alongside
@@ -65,8 +65,25 @@ anonymously.
 
 ## Sanity gates (every script)
 
-- **Probe the schema first.** If the expected outcome/date field is missing,
-  **fail loudly** rather than fabricate a grant rate (the Boston permit lesson).
+- **Probe the schema first — the COLUMN LIST, not one row.** If the expected
+  outcome/date field is missing, **fail loudly** rather than fabricate a grant
+  rate (the Boston permit lesson). Read `/api/views/<4x4>.json` (Socrata) or
+  `datastore_search`'s `fields` (CKAN): a single sample row omits its null
+  fields, and `sf.mjs` asserted for a whole cycle that SF "publishes no decision
+  date" on exactly that evidence while `close_date` sat in the schema unread.
+  **A field you did not find is not a field that does not exist** (rule 8).
+- **Frame the cohort on RESOLUTION, never on filing.** This is the one that bit
+  us. A window on the *application* date admits cases that have not been decided
+  yet, and scoring `granted ÷ decided` over them silently drops the undecided
+  ones from the denominator — a filing cohort counted by its survivors. SF was
+  published at **97.6% when its own cohort only supported [76.5%, 98.2%]**, i.e.
+  at the very top of its bound, because 83 of 383 records (21.7%) were still
+  pending and invisible. Frame on the decision/closure stamp instead
+  (`final_decision_date` in Boston, `close_date` in SF) and pending cases are
+  excluded **by construction** rather than by censoring. Then **gate on it**:
+  assert that every record in the window carries a terminal status, with a
+  fail-closed vocabulary so an unrecognised value halts the run. The threshold is
+  zero — it is the claim itself, not a tolerance.
 - The outcome field must be **unambiguous**: map only the statuses that are a
   board ruling on the merits to granted/denied, and **exclude** withdrawn,
   deferred, cancelled, informational, and still-in-progress records from the
@@ -75,12 +92,47 @@ anonymously.
   the result as untrustworthy and **do not write** it — print why and leave the
   city absent. No fabrication, ever.
 
-## Run status (live runs, computed 2026-06-10)
+## Run status
 
 | City | Script | Status | Grant rate | n (decided) | Window | Dataset |
 |------|--------|--------|-----------:|------------:|--------|---------|
-| **Boston** | `boston.mjs` | **✅ landed** | **92.7%** | **3820** | 2022–2026 | CKAN `0f0fa8c2-…` — Zoning Board of Appeal Tracker; `decision` ∈ {AppProv, Approved} granted, {DeniedPrej, Denied} denied; `final_decision_date` ≥ 2022. 3542 granted, 278 denied. |
-| **SF** | `sf.mjs` | **✅ landed** | **97.6%** | **289** | 2022–2026 | Socrata `y673-d69b` — Planning Department Records · Non-Projects; `record_type = 'VAR'`; `record_status` ∈ {Closed - Approved, Approved} granted, {Closed - Disapproved} denied; `open_date` ≥ 2022. 282 granted, 7 denied. |
+| **Boston** | `boston.mjs` | **✅ landed** (2026-06-10) | **92.7%** | **3820** | 2022–2026 | CKAN `0f0fa8c2-…` — Zoning Board of Appeal Tracker; `decision` ∈ {AppProv, Approved} granted, {DeniedPrej, Denied} denied; **framed on `final_decision_date` ≥ 2022**. 3542 granted, 278 denied. |
+| **SF** | `sf.mjs` | **✅ landed — RESTATED 2026-08-09** | **97.3%** | **406** | 2022–2026 | Socrata `y673-d69b` — Planning Department Records · Non-Projects; `record_type = 'VAR'`; `record_status` ∈ {Closed - Approved, Approved} granted, {Closed - Disapproved} denied; **framed on `close_date` ≥ 2022** (was `open_date` — see below). 395 granted, 11 denied. |
+
+### ⚠️ SF was restated 2026-08-09 — the previous 97.6% / n=289 was censored
+
+The figure published between 2026-06-10 and 2026-08-09 was **97.6% (n=289)**, and
+it was unsound: `sf.mjs` framed the cohort on `open_date` (filing) and then
+scored only the members that had reached a decision. Measured live on
+2026-08-09, VAR records filed since 2022 split **300 decided / 83 still
+undecided (21.7% of 383)**, and those 83 were absent from the published
+denominator. The cohort could only support a **bound of [76.5%, 98.2%]** — and
+97.6% sat at its ceiling.
+
+Restated on **closure-date framing**, the same feed gives **97.3% (n=406, 395
+granted / 11 denied)**. The rendered line moves from 98% to 97%.
+
+Two things worth keeping straight about `close_date`:
+
+- **It is not a decision date, and the vintage string does not call it one.** The
+  publisher defines it as *"Date the record was closed."* SF has no field
+  equivalent to Boston's `final_decision_date`. It is used for cohort
+  **membership** only, never as a duration endpoint.
+- **What justifies it is measured, not nominal.** `close_date` is populated on
+  100% of terminal records (7,534/7,536 all-time; the 2 exceptions opened 2015
+  and 2017) and on **0%** of every in-progress status — 'Under Review' 0/33,
+  'On Hold' 0/18, 'Pending Review' 0/18, 'Submitted' 0/15, 'Open' 0/3, 'Action
+  Pending' 0/2. So "closed in window" *is* "resolved", and all 628 in-window
+  rows carry a terminal status. `refuseUnlessCohortIsResolved()` re-measures that
+  every run.
+
+Checks run before adopting the frame (all 2026-08-09): per-year rate stable
+(2022 95.7% · 2023 99.1% · 2024 98.1% · 2025 95.6% · 2026 96.9%); window-start
+sensitivity mild (since-2021 95.49% → since-2024 97.07%); and — the one that
+matters — **closure lag does not differ by outcome**, approved p50 269d vs
+disapproved p50 274d, so the frame does not select on the result. The restated
+97.29% also falls inside the old frame's [76.5%, 98.2%] bound: two independent
+framings agree.
 
 Both grant rates are high — that's the real shape of zoning relief in these
 cities: variances are routinely granted (the hard cases are filtered out earlier
