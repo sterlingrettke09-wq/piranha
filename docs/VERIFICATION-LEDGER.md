@@ -4237,3 +4237,104 @@ the same retraction reached `cities.ts` — nothing failed, and the false commen
 survived until a human re-read it.
 
 A comment documents a decision. A structure makes the contradiction unshippable.
+
+## 2026-08-10 — The record gets an anchor
+
+Three times in one day a ledger entry went stale within hours of being written.
+The last: a survey entry quoting Charlotte's relief rate and sample size, both
+superseded by the build's figures the same afternoon (see the annotated entry
+above; the figures are deliberately not restated here — quoting a superseded
+tuple in live prose is precisely what this guard exists to stop). Each was caught because a human happened
+to be re-reading nearby. That is not a mechanism.
+
+The supersede-pointer convention is sound and was never the problem. The problem
+is that it only fires on a re-read, and nobody re-reads 4,000 lines. Compare
+`coverage.ts`, where a stale reason is a test failure because it is checked
+against an artifact — ledger prose had no such anchor.
+
+`src/config/ledgerFigures.test.ts` gives it one: for every city currently in
+`reliefStats.json` or `permitStats.json`, any figure quoted **as current** must
+match the artifact.
+
+### The engineering was the discrimination, not the comparison
+
+A ledger is SUPPOSED to contain stale figures — dated history is its function.
+"NYC published 8.3 / p80 17.0 / n=4,403 and we withdrew it" is correct and must
+never fail. So the guard cannot ask "does any number disagree"; it must separate a
+figure asserted as current from one recorded as past. Four decisions do that, and
+the second does most of the work:
+
+1. **Scope by artifact membership, per dimension.** A city absent from the
+   artifact is history by construction. NYC is the case that forces *per
+   dimension*: it is live in relief and withdrawn in permits.
+2. **Only a published-figure TUPLE counts as a citation** — a rate or median
+   bound to its sample size, within 60 characters, no sentence break between.
+   The ledger is full of loose numbers about live cities (proposals, comparisons,
+   not-yet-applied KM figures); requiring the `n` excluded every one of them
+   **without a single exemption**. That is what made the guard viable.
+3. **Attribution is section-scoped** — the last city named at or before the
+   figure since the nearest heading.
+4. **History is marked by the ledger's OWN conventions**, not a new one: an
+   adjacent `⚠️ SUPERSEDED/WITHDRAWN` blockquote, being that blockquote,
+   strikethrough, or an in-block restatement — and the restatement escape
+   additionally requires the block to carry a citation that MATCHES the artifact,
+   so it cannot be used as a blanket pass.
+
+### It passes clean, which is the part that decided it
+
+Zero exemptions, zero suppressions, no edit to the ledger required. The
+instruction was explicit that a pile of hand-written exemptions would be evidence
+the discrimination did not work and grounds to abandon it — a guard that cries
+wolf gets deleted, and a deleted guard protects nothing.
+
+Eleven citations found: eight current (all matching), three correctly classified
+as history. Verified not to fire on NYC's and Seattle's withdrawn permit figures,
+LA's, Chicago's, San Diego's, or SF's pre-restatement 97.6%.
+
+The hardest case is worth recording because it is the incident that prompted this:
+L4177 quotes the survey's superseded rate and sample size with no marker at all. It does not
+fire, because section-scoped attribution finds no city in its heading — and that
+is substantively right, since the sentence quotes *a brief*, not the artifact.
+
+### Known coverage gap, stated rather than papered over
+
+Boston relief and five of six permit cities have **no published-figure citation
+anywhere in the ledger** — every stored `n` was grepped; the prose never states
+them with a sample size. They are unguarded until someone quotes them properly.
+That is a gap in what the ledger says, not a defect in the guard.
+
+### The guard guards itself
+
+Rule 11 applies to instruments, so the test pins the exact citation inventory and
+the three history classifications with the signal that produced each. A regex that
+silently stops matching, or a history rule that widens to "everything", goes RED
+rather than green — the failure mode that makes a checking tool worthless.
+
+Corollary worth carrying: **the plausible result sails through, and a brief
+supplies the plausibility.** An agent handed a number has no incentive to measure
+it — matching reads as success, contradicting reads as error, and the asymmetry
+runs toward transcription. This is rule 18 one layer over, and the same asymmetry
+is why a stale ledger figure survives: it agrees with what the reader already
+believes.
+
+### It fired on this entry, within minutes, and one hit was a real weakness
+
+Writing the paragraphs above tripped the guard twice — the first thing it caught
+was prose *about* stale figures. That is the intended discipline: a superseded
+tuple quoted in live prose is indistinguishable, to any reader or any scanner,
+from a current claim. The fix was to name the figures' existence without restating
+them, which is what the surrounding text now does.
+
+The second hit is a genuine limitation and is recorded rather than smoothed over.
+The same quoted tuple was attributed to **San Francisco**, because SF was the last
+city named earlier in that section — the figure belongs to Charlotte. **Attribution
+is positional, so a paragraph discussing several cities can bind a figure to the
+wrong one.** It fails in the safe direction (a spurious mismatch, never a silent
+pass) and it did not require an exemption here, but it means the guard is not
+trustworthy as an *attribution* mechanism — only as a contradiction detector. A
+future entry that legitimately compares two live cities' figures side by side will
+hit this, and the fix at that point is per-figure attribution, not a suppression.
+
+Recorded now because the alternative is discovering it later and reading it as the
+guard being wrong. It is right about the contradiction and unreliable about whose
+contradiction it is.
