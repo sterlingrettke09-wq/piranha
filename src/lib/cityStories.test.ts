@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { storyFor } from './cityStories'
+import { storyFor, parkingClause } from './cityStories'
 import { computeRedTapeIndex, type RankedCity } from './redTapeIndex'
+import { PARKING_RULES } from '../config/parkingRules'
 import { cityName } from '../config/cities'
 
 const ranked = computeRedTapeIndex()
@@ -74,14 +75,17 @@ describe('storyFor', () => {
     expect(story).toContain('about 44 months')
   })
 
-  // ── Branch 3: ABOLISHED parking (tailwind angle) ─────────────────────────
+  // ── Branch 3: PARKING leads (tailwind angle) ─────────────────────────────
   it('uses the parking tailwind for abolished cities without measured data (Minneapolis)', () => {
     const mpls = byCity('minneapolis')
     expect(mpls.measuredMedianMonths).toBeNull()
     expect(mpls.reliefGrantRate).toBeNull()
     expect(mpls.parkingStatus).toBe('abolished')
     const story = storyFor(mpls, ranked)
-    expect(story).toContain('abolished parking minimums')
+    // The city's OWN headline, verbatim — not a sentence synthesised from the
+    // status. Was `toContain('abolished parking minimums')`, which passed
+    // against a phrase the code manufactured rather than one anyone verified.
+    expect(story).toContain(PARKING_RULES.minneapolis.headline)
     // Lifecycle (38) and lifecycle+relief (41) both interpolated.
     expect(story).toContain('about 38 months')
     expect(story).toContain('about 41 months')
@@ -140,5 +144,133 @@ describe('storyFor', () => {
       expect(story).not.toContain('undefined')
       expect(story).not.toContain('null')
     }
+  })
+})
+
+/**
+ * Words of a phrase, normalised so two strings compare on content rather than
+ * punctuation. Same helper, same normalisation as the `parkingCell` regression
+ * test in redTapeIndex.test.ts — the two checks guard the same defect on two
+ * surfaces (the table cell and the prose), so they must decompose "CMX-4/CMX-5"
+ * and "1–2 family" identically or one will pass what the other rejects.
+ */
+function contentWords(s: string): string[] {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9½]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+}
+
+/**
+ * ⚠️ THE REGRESSION TESTS for the second site of the status-drives-prose defect.
+ *
+ * `storyFor` branch 3 used to print a fixed sentence — "<City> abolished parking
+ * minimums citywide, so nothing forces a garage under your units" — for any city
+ * whose `parkingStatus` was `abolished`. That is the same collapse removed from
+ * `parkingCell()` in redTapeIndex.ts, where `abolished` printed a year and every
+ * other city printed the literal string "Near transit only".
+ *
+ * The rule enforced here is deliberately mechanical rather than a list of
+ * approved sentences: every word the parking claim prints must appear in THAT
+ * city's verified headline. A story may shorten its own headline; it may not add
+ * a word to it. Any invented category fails immediately for every city whose
+ * headline lacks those words, which is the point — enumerating mechanisms only
+ * moves the defect to the city nobody enumerated.
+ */
+describe('parkingClause', () => {
+  it('never prints a word absent from the city’s own headline — every rule in the table', () => {
+    // Runs over PARKING_RULES, not just the ranked set, so a city that has a
+    // verified parking record but no lifecycle constants yet is covered BEFORE
+    // it enters the index. Raleigh is exactly that case today, and it is the
+    // first `abolished` city whose headline is not "abolished citywide (year)".
+    const template = byCity('minneapolis')
+    const offenders: string[] = []
+    for (const [slug, rule] of Object.entries(PARKING_RULES)) {
+      const city: RankedCity = {
+        ...template,
+        slug,
+        parkingStatus: rule.status,
+        parkingLabel: rule.cellLabel,
+        parkingHeadline: rule.headline,
+      }
+      const clause = parkingClause(city)
+      expect(clause, `${slug} produced no parking clause`).not.toBeNull()
+      const allowed = new Set([
+        ...contentWords(rule.headline),
+        ...contentWords(cityName(slug)),
+        ...contentWords('Parking in'),
+      ])
+      const invented = contentWords(clause!).filter((w) => !allowed.has(w))
+      if (invented.length > 0) {
+        offenders.push(
+          `${slug}: clause "${clause}" asserts ${JSON.stringify(invented)}, absent from headline "${rule.headline}"`,
+        )
+      }
+    }
+    expect(offenders, offenders.join('\n')).toEqual([])
+  })
+
+  it('covers Raleigh, which is not ranked yet', () => {
+    // Guards the coverage claim above rather than the behaviour: if Raleigh ever
+    // leaves PARKING_RULES, or gains lifecycle constants and starts being ranked,
+    // this says so instead of the loop silently shrinking.
+    expect(PARKING_RULES.raleigh).toBeTruthy()
+    expect(PARKING_RULES.raleigh.status).toBe('abolished')
+    expect(ranked.some((r) => r.slug === 'raleigh')).toBe(false)
+  })
+
+  it('every story that leads with parking carries its city’s headline verbatim', () => {
+    for (const c of ranked) {
+      const story = storyFor(c, ranked)
+      const leadsWithParking =
+        c.measuredMedianMonths == null &&
+        c.reliefGrantRate == null &&
+        c.parkingStatus === 'abolished'
+      if (!leadsWithParking) continue
+      expect(c.parkingHeadline, `${c.slug} has no headline`).not.toBeNull()
+      expect(story, `${c.slug}`).toContain(c.parkingHeadline!)
+      expect(story, `${c.slug}`).toContain(parkingClause(c)!)
+    }
+  })
+
+  /**
+   * PROOF THE TEST ABOVE HAS TEETH. No city in the table trips the old
+   * implementation today — all six `abolished` headlines happen to contain the
+   * words "abolished", "parking", "minimums" and "citywide" — which is precisely
+   * why this went unnoticed and why the check has to run against a record that
+   * does not exist yet rather than only against the ones that do.
+   *
+   * A city abolishing minimums for one district is an entirely ordinary record
+   * (Philadelphia's CMX-4/CMX-5 is that shape already, at `partial`). Tag one
+   * `abolished` and the shipped sentence claimed "citywide" from the category.
+   */
+  it('does not print a scope word the record withholds (a rule not yet in the table)', () => {
+    const scoped: RankedCity = {
+      ...byCity('minneapolis'),
+      slug: 'minneapolis',
+      parkingStatus: 'abolished',
+      parkingLabel: 'Abolished for housing downtown; minimums remain elsewhere',
+      parkingHeadline: 'Abolished for housing downtown; minimums remain elsewhere',
+      measuredMedianMonths: null,
+      measuredPermitN: null,
+      reliefGrantRate: null,
+      reliefN: null,
+    }
+    const story = storyFor(scoped, [scoped])
+    // The record's own words survive, including the qualifying clause — the part
+    // it is most tempting to drop, and dropping it is the same error one notch
+    // smaller ("Abolished for housing downtown" alone reads as the whole city).
+    expect(story).toContain('Abolished for housing downtown; minimums remain elsewhere')
+    // And the words the CATEGORY used to supply are gone. Under the shipped
+    // implementation this line failed: 'citywide' came from `parkingStatus`.
+    expect(story.toLowerCase()).not.toContain('citywide')
+    expect(story).not.toContain('abolished parking minimums citywide')
+  })
+
+  it('a city with no parking rule gets no parking clause, and never a synthesised one', () => {
+    const bare: RankedCity = { ...byCity('dc'), parkingStatus: null, parkingHeadline: null }
+    expect(parkingClause(bare)).toBeNull()
   })
 })

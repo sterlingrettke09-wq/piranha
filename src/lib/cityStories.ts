@@ -55,6 +55,43 @@ function packPosition(rank: number, total: number): string {
 }
 
 /**
+ * The one part of a story that makes a claim about a city's parking rules — and
+ * it is that city's OWN verified headline, verbatim.
+ *
+ * ⚠️ THIS DELIBERATELY DOES NOT LOOK AT `parkingStatus`. The branch below used to
+ * print the fixed sentence "<City> abolished parking minimums citywide, so
+ * nothing forces a garage under your units" for every city whose status was
+ * `abolished`, which is the same status-drives-prose collapse just removed from
+ * `parkingCell()` in redTapeIndex.ts — there, `abolished` printed a year and
+ * EVERYTHING ELSE printed the literal string "Near transit only", false for five
+ * of the fifteen ranked cities. This is that defect's second site.
+ *
+ * It has not published a false sentence yet, and that is the hazard rather than
+ * the defence: only Minneapolis and San Jose currently reach the branch, and
+ * both happen to carry citywide-abolition headlines. The words "citywide" and
+ * "nothing forces a garage" came from the CATEGORY, so they were guaranteed for
+ * any future city tagged `abolished` — including one whose record scopes the
+ * reform. Raleigh is the first `abolished` city whose headline is not of the
+ * form "abolished citywide (year)": its record is "Abolished citywide — the UDO
+ * sets parking maximums, not minimums", and its file states outright that no
+ * reform year is asserted because none could be established.
+ *
+ * A status is a CATEGORY someone assigned; the words have to come from the
+ * RECORD someone verified. The status may still choose WHICH angle a story leads
+ * with — that is an editorial routing decision, not a claim shown to a reader —
+ * but it may not supply a single word of the claim itself.
+ *
+ * Every word this returns, other than the city's own name, must appear in that
+ * city's `headline`. `cityStories.test.ts` checks exactly that, mechanically,
+ * over every rule in the table — ranked or not, so Raleigh is covered before it
+ * enters the index.
+ */
+export function parkingClause(city: RankedCity): string | null {
+  if (city.parkingHeadline == null) return null
+  return `Parking in ${cityName(city.slug)}: ${city.parkingHeadline}.`
+}
+
+/**
  * Build the editorial story for one ranked city. `all` is the full ranking,
  * needed for the "fastest/slowest we measure" superlatives. Every number in the
  * returned string is read off `city` (or computed from `all`) — never invented.
@@ -106,11 +143,20 @@ export function storyFor(city: RankedCity, all: RankedCity[]): string {
     )
   }
 
-  // Branch 3 — ABOLISHED parking: the tailwind angle. One fewer mandate between
-  // the idea and the building.
-  if (city.parkingStatus === 'abolished') {
+  // Branch 3 — PARKING leads: the tailwind angle. One fewer mandate between the
+  // idea and the building.
+  //
+  // `parkingStatus` selects the angle; `parkingClause` supplies every word of
+  // the claim, from the city's own verified headline. See parkingClause() for
+  // why that split is the whole point. The consequence clause that follows is
+  // written CONDITIONALLY ("where the minimum is gone") rather than absolutely,
+  // so it stays true for any headline the record might carry — including one
+  // that scopes the reform to a district. Under-claiming is the safe direction;
+  // the headline immediately before it states the real scope.
+  const parking = parkingClause(city)
+  if (city.parkingStatus === 'abolished' && parking != null) {
     return (
-      `${name} abolished parking minimums citywide, so nothing forces a garage under your units — ` +
+      `${parking} Where the minimum is gone, nothing forces a garage under your units — ` +
       `a real cost off the table. The process is the rest of the story: ` +
       `a by-right apartment build runs ${monthsPhrase(city.lifecycleMonths)}, ` +
       `${monthsPhrase(city.lifecycleMonths + city.reliefAddMonths)} once you need a variance.`
