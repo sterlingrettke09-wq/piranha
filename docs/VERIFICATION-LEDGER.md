@@ -3936,3 +3936,65 @@ Outcome selection has a 100% hit rate on wrong-or-unidentified published
 numbers. No unexempted `IS NOT NULL` carrier is left in `scripts/permits/`, and
 the guard exists so there
 never is one.
+
+## 2026-08-10 — Relief odds double from two cities to four, and the caveat moves into the rendered line
+
+`reliefStats.json` gains NYC (98.1% granted, n=210) and DC (97.4%, n=617). Both
+are level changes, so this entry records the external validation that preceded
+shipping, per the standing rule.
+
+### NYC — the gate was nearly decided by a regex
+
+BSA Applications Status (Socrata `yvxd-uipr`), framed on the ACTION date, which
+is Boston's structure and the only auditable one here: the feed has no pending
+value at all — an unresolved case is an absent row — so a filing denominator
+cannot be counted. The tell, verified live: 31 of 36 cases filed in 2025 already
+show Granted, implausible for a board with a 12–24-month cycle.
+
+The published rate is the whole BZ track, labelled "variance and special-permit
+applications". The narrower claim was refused for a reason worth keeping: strict
+§ 72-21 variances are n=93 against the MIN_N=100 publication gate, and widening
+the citation regex to include compound cites reaches exactly 102 — a pass by
+two, decided by string matching. A publication gate cleared by a regex choice is
+rule 15 wearing a different hat, so the honest options were the labelled whole
+track or nothing. The window end is not a constant either: it is measured each
+run as min(date) over rows still carrying the transient `Decision` status, so a
+partially-coded session can never be scored.
+
+Reconciliation: the survey's independent probe counted 209/4 unwindowed; the
+published cohort is 206/4 with 3 granted rows on the excluded tail sessions.
+The two agree exactly once the window rule is applied.
+
+### DC — rows are not cases, and the caveat had nowhere to render
+
+DCGIS BZA layer, `CASE_TYPE='BZA'` (ZC is 79k of the 105k rows and must be
+excluded). The layer's 2,003 rows since 2022 collapse to 1,121 distinct cases —
+publishing the row rate would double-count multi-row cases — and the published
+figure is computed over 688 MATURED cases (filed ≥ 2 years before the run).
+`DATEFILED` is the layer's only date, so the frame is a filing cohort — the
+shape that had SF's rate retracted — but here it is disclosed, mitigated and
+gated rather than hidden: residual unresolved is 1.5% against a 5% ceiling
+(SF's hidden censoring was 21.7%), and the adversarial floor (96 · granted-if-
+every-pending-denies = 95.9%) is written into the vintage on every run. The
+script halts if any case carries conflicting ACTION_TAKEN values (measured: 0).
+
+### The finding that applies to both: a label is load-bearing
+
+The RealityCheck card hardcoded "variance requests" — true for Boston and SF,
+false for BOTH new cities, whose rates mix variances with special permits and
+special exceptions. Disclosure copy is code (rule 9 corollary), and a caveat in
+a JSON string nobody renders is the exact defect that had five permit figures
+withdrawn. The artifact now carries a `label` the card renders verbatim, and a
+test fails the suite if NYC's or DC's entry ever drops it. The composition
+caveat is in the user-facing sentence, not in a comment.
+
+### Gates, verified with teeth
+
+Both scripts refuse on recomputed conditions, exit 1, artifact byte-identical:
+DC run with MATURITY_YEARS=0 refuses at 8.9% residual; NYC with `Dismissed`
+removed from the status vocabulary fail-closed halts on the unrecognised value.
+Both re-runs are idempotent.
+
+Not done here, recorded: Milwaukee, Columbus, Charlotte and Atlanta have never
+been relief-SURVEYED — their matrix cells read `not-built`, which is a statement
+that nobody has looked, not that the data is absent. The survey is queued.
