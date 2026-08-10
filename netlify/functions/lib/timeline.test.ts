@@ -323,7 +323,13 @@ describe('measuredFor prefers the tier-specific figure over the city aggregate',
     )
     expect(t.tier).toBe('multi')
     expect(t.measured).toBeUndefined()
-    expect(t.measuredTierWithheld).toEqual({ tier: 'multi', n: null, minPublishableN: 30 })
+    // n was `null` from 2026-08-09 to 2026-08-10: the 2026-08-06 run logged the
+    // suppressed count to a console and wrote nothing, so it was unrecoverable
+    // FROM THAT RUN. A re-probe recovered it as 18 — still under the floor, so
+    // the suppression was correct all along. The count changing does not change
+    // the withholding, which is the property this test exists to pin.
+    expect(t.measuredTierWithheld).toEqual({ tier: 'multi', n: 18, minPublishableN: 30 })
+    expect(t.measuredTierWithheld!.n!).toBeLessThan(t.measuredTierWithheld!.minPublishableN)
   })
 
   it('a published tier carries no withheld record — the two are mutually exclusive', () => {

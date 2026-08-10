@@ -3998,6 +3998,298 @@ describe('Milwaukee / Columbus / Charlotte / Atlanta — no invented durations',
   })
 })
 
+// ---------------------------------------------------------------------------
+// Dallas
+// ---------------------------------------------------------------------------
+describe('assessHurdles — Dallas', () => {
+  const dz = (districtCode: string, over: Partial<ParcelInfo['zoning']> = {}): Partial<ParcelInfo> => ({
+    zoning: {
+      districtCode,
+      subdistrict: null,
+      article: null,
+      maxHeightFt: 90,
+      maxFAR: 2,
+      allowedUses: ['residential'],
+      ...over,
+    },
+  })
+  const dal = (j: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('dallas', parcel({ ...dz('MF-3(A)'), lot: { sizeSqFt: 43560, lotType: null }, ...p }), project({ city: 'dallas', ...j }))
+
+  it('states the inclusionary ABSENCE without claiming Texas bans inclusionary zoning', () => {
+    const h = byLabel(dal({ use: 'residential', units: 40 }), /No inclusionary requirement/)
+    expect(h?.status).toBe('info')
+    // The statute's actual scope, quoted.
+    expect(h?.note).toMatch(/maximum sales price for a privately produced housing unit/)
+    expect(h?.note).toMatch(/§ 214\.905/)
+    // Rule 1: the retracted-shaped claim must never appear. Texas § 214.905 is
+    // a for-sale price cap; it is not an inclusionary-zoning prohibition, and
+    // this is the assertion that stops a future edit from "simplifying" it into
+    // Milwaukee's sentence.
+    expect(h?.note).not.toMatch(/bars inclusionary|prohibits inclusionary|may not enact.*inclusionary/i)
+    expect(h?.note).toMatch(/has not adopted a mandate, not as a city the State has forbidden/)
+  })
+
+  it('does not emit the affordability row for a commercial project', () => {
+    expect(byLabel(dal({ use: 'commercial', units: 0 }), /No inclusionary requirement/)).toBeUndefined()
+  })
+
+  describe('§ 51A-4.803 development impact review', () => {
+    it('renders in a listed district and states ALL THREE triggers, not just the trip one', () => {
+      const h = byLabel(dal({ use: 'residential', units: 40 }), /Development impact review/)
+      expect(h?.status).toBe('info')
+      // The conjunction is the whole point of the row.
+      expect(h?.note).toMatch(/6,000 trips per day and 500 trips per day per acre/)
+      expect(h?.note).toMatch(/a use for which DIR is required/)
+      expect(h?.note).toMatch(/a use for which RAR is required/)
+      expect(h?.note).toMatch(/330 feet/)
+    })
+
+    it('does NOT render in a central area district — § 51A-4.803(a)(2)(B) excepts them', () => {
+      for (const code of ['CA-1(A)', 'CA-2(A)']) {
+        expect(byLabel(dal({ use: 'residential', units: 40 }, dz(code)), /Development impact review/), code).toBeUndefined()
+      }
+    })
+
+    it('does NOT render in a single-family or duplex district', () => {
+      for (const code of ['R-7.5(A)', 'D(A)', 'TH-2(A)', 'A(A)']) {
+        expect(byLabel(dal({ use: 'residential', units: 4 }, dz(code)), /Development impact review/), code).toBeUndefined()
+      }
+    })
+
+    it('renders across the nonresidential families the code lists', () => {
+      for (const code of ['LO-2', 'CR', 'CS', 'IR', 'MU-2', 'MC-3', 'UC-1', 'MF-1(SAH)']) {
+        expect(byLabel(dal({ use: 'commercial', units: 0, gfa: 90000 }, dz(code)), /Development impact review/), code).toBeTruthy()
+      }
+    })
+
+    it('escalates to likely only when BOTH trip limbs are met', () => {
+      // 6.59 trips/DU. 911 units = 6,003 trips; on one acre that is 6,003/acre.
+      const both = byLabel(dal({ use: 'residential', units: 911 }), /Development impact review/)
+      expect(both?.status).toBe('likely')
+      expect(both?.note).toMatch(/both limbs of \(A\) are met/)
+
+      // Same unit count spread over 40 acres: 150 trips/acre — limb one only.
+      const tripsOnly = byLabel(
+        dal({ use: 'residential', units: 911 }, { ...dz('MF-3(A)'), lot: { sizeSqFt: 40 * 43560, lotType: null } }),
+        /Development impact review/,
+      )
+      expect(tripsOnly?.status).toBe('info')
+      expect(tripsOnly?.note).toMatch(/does not meet both limbs of \(A\)/)
+
+      // Dense but small: 100 units on 0.25 acre is 2,636 trips/acre but only
+      // 659 trips/day — limb two only.
+      const perAcreOnly = byLabel(
+        dal({ use: 'residential', units: 100 }, { ...dz('MF-3(A)'), lot: { sizeSqFt: 10890, lotType: null } }),
+        /Development impact review/,
+      )
+      expect(perAcreOnly?.status).toBe('info')
+    })
+
+    it('refuses to compute trips for a commercial or mixed programme', () => {
+      for (const use of ['commercial', 'mixed'] as const) {
+        const h = byLabel(dal({ use, units: 900, gfa: 400000 }), /Development impact review/)
+        expect(h?.status, use).toBe('info')
+        expect(h?.note, use).toMatch(/Trip generation is NOT computed for this project/)
+      }
+    })
+
+    it('carries sizeDependent — the trigger is an intensity threshold', () => {
+      expect(byLabel(dal({ use: 'residential', units: 911 }), /Development impact review/)?.sizeDependent).toBe(true)
+    })
+  })
+
+  describe('rows gated on the phrases providers/dallas.ts writes into zoning.article', () => {
+    // Rule 9's boundary problem: these strings are the contract. If
+    // buildArticle is rewritten, these fail here and in providers/dallas.test.ts.
+    const withArticle = (article: string) => dz('MF-3(A)', { article })
+
+    it('fires the SUP row on the provider’s own sentence', () => {
+      const h = byLabel(
+        dal({ use: 'residential', units: 40 }, withArticle('Multifamily district 3 · A specific use permit is recorded on this site for "Bar, lounge, or tavern" (§ 51A-4.219).')),
+        /specific use permit is recorded here/,
+      )
+      expect(h?.status).toBe('required')
+      expect(h?.note).toMatch(/Each SUP must be granted by the city council by separate ordinance/)
+      // The minor-amendment ceiling is the operative number for a redevelopment.
+      expect(h?.note).toMatch(/five percent or 1,000 square feet, whichever is less/)
+      expect(h?.note).toMatch(/has no effect on the uses permitted as of right/)
+    })
+
+    it('fires the PD row, and says the limits EXIST rather than that none do', () => {
+      const h = byLabel(
+        dal({ use: 'residential', units: 40 }, withArticle('Planned development district · Planned Development district: § 51A-4.702(a)(4) requires the ordinance that established this PD to set its own building height, floor area, lot coverage, density and yards.')),
+        /Planned development district: your standards/,
+      )
+      expect(h?.status).toBe('required')
+      expect(h?.note).toMatch(/codified in Chapter 51P/)
+      expect(h?.note).toMatch(/before a certificate of occupancy may be granted/)
+      // Rule 5: the DIR gap on a PD parcel must read as a gap, not as an answer.
+      expect(h?.note).toMatch(/its absence above is a gap, not an answer/)
+    })
+
+    it('fires the CD row', () => {
+      const h = byLabel(
+        dal({ use: 'residential', units: 40 }, withArticle('Conservation District: § 51A-4.505 puts the standards in the ordinance establishing this particular CD.')),
+        /Conservation district: a work review form/,
+      )
+      expect(h?.status).toBe('required')
+      expect(h?.note).toMatch(/who shall deny the building permit/)
+      expect(h?.note).toMatch(/the text of the CD ordinance controls/)
+    })
+
+    it('fires none of the three on a plain parcel', () => {
+      const hs = dal({ use: 'residential', units: 40 })
+      for (const re of [/specific use permit is recorded here/, /Planned development district: your standards/, /Conservation district: a work review form/]) {
+        expect(byLabel(hs, re), String(re)).toBeUndefined()
+      }
+    })
+  })
+
+  it('puts the 20% protest supermajority on the rezoning row, and only when discretionary', () => {
+    const h = byLabel(
+      assessHurdles('dallas', parcel(dz('MF-3(A)')), project({ city: 'dallas', use: 'residential', units: 40 }), { path: 'variance' }),
+      /Rezoning:/,
+    )
+    expect(h?.status).toBe('likely')
+    expect(h?.note).toMatch(/three-fourths of all members of the city council/)
+    expect(h?.note).toMatch(/two years from the date of the final decision/)
+    expect(byLabel(dal({ use: 'residential', units: 40 }), /Rezoning:/)).toBeUndefined()
+  })
+
+  describe('park land dedication', () => {
+    it('fires on a new multifamily project and gives the bedroom-mix RANGE, not one number', () => {
+      const h = byLabel(dal({ use: 'residential', units: 254, projectType: 'new' }), /Park land dedication/)
+      expect(h?.status).toBe('required')
+      expect(h?.sizeDependent).toBe(true)
+      expect(h?.note).toMatch(/One acre per 255 single bedroom dwelling units/)
+      expect(h?.note).toMatch(/One acre per 127 two bedroom or greater/)
+      expect(h?.note).toMatch(/1\.00 and 2\.00 acres/)
+      // Rule 3/4: the rate is in the fee schedule and must not be invented.
+      expect(h?.note).toMatch(/The RATE is not in the ordinance and is not stated here/)
+      expect(h?.note).toMatch(/final certificate of occupancy/)
+    })
+
+    it('does not fire for a one- or two-unit project, or for a non-new project', () => {
+      expect(byLabel(dal({ use: 'residential', units: 2, projectType: 'new' }), /Park land dedication/)).toBeUndefined()
+      expect(byLabel(dal({ use: 'residential', units: 200, projectType: 'addition' }), /Park land dedication/)).toBeUndefined()
+    })
+  })
+
+  describe('urban forest conservation', () => {
+    it('exempts a small single-family lot only when ALL THREE limbs hold', () => {
+      const small = { lot: { sizeSqFt: 8000, lotType: null } }
+      // under 2 acres + SF use + residential district → exempt
+      expect(byLabel(dal({ use: 'residential', units: 1 }, { ...dz('R-7.5(A)'), ...small }), /Tree removal permit/)).toBeUndefined()
+      // same lot, same use, NONresidential district → not exempt
+      expect(byLabel(dal({ use: 'residential', units: 1 }, { ...dz('CR'), ...small }), /Tree removal permit/)).toBeTruthy()
+      // same lot, residential district, 4 units → not single-family or duplex
+      expect(byLabel(dal({ use: 'residential', units: 4 }, { ...dz('R-7.5(A)'), ...small }), /Tree removal permit/)).toBeTruthy()
+      // residential district, SF use, over 2 acres → not exempt
+      expect(
+        byLabel(dal({ use: 'residential', units: 1 }, { ...dz('R-7.5(A)'), lot: { sizeSqFt: 3 * 43560, lotType: null } }), /Tree removal permit/),
+      ).toBeTruthy()
+    })
+
+    it('drops to likely inside a PD, because the second exemption is a building-official call', () => {
+      const h = byLabel(
+        dal({ use: 'residential', units: 40 }, dz('PD-269 (Tract A)', { article: 'Planned Development district: § 51A-4.702(a)(4) requires the ordinance that established this PD to set its own building height.' })),
+        /Tree removal permit/,
+      )
+      expect(h?.status).toBe('likely')
+      expect(h?.note).toMatch(/turns on a building-official determination this tool cannot make/)
+    })
+
+    it('quotes the mitigation ratios rather than summarising them', () => {
+      const h = byLabel(dal({ use: 'residential', units: 40 }), /Tree removal permit/)
+      expect(h?.note).toMatch(/3:1 for historic trees, 1\.5:1 for significant, 1:1 for Class 1/)
+    })
+  })
+
+  it('states the floodplain permit as the CITY’s track and does not claim an FP designation', () => {
+    const h = byLabel(
+      dal({ use: 'residential', units: 40 }, { overlays: { historicDistrict: null, floodZone: 'AE' } }),
+      /Floodplain: a fill or floodplain alteration permit/,
+    )
+    expect(h?.status).toBe('likely')
+    // Rule 5: an unfetched layer must not render as an answer either way.
+    expect(h?.note).toMatch(/this tool does not fetch that layer/)
+    expect(h?.note).toMatch(/even if the land has not been formally designated as an FP area/)
+    expect(byLabel(dal({ use: 'residential', units: 40 }), /Floodplain: a fill or floodplain/)).toBeUndefined()
+  })
+
+  it('states the 45-day state clock WITH its remedy, so nobody schedules on it', () => {
+    const h = byLabel(dal({ use: 'residential', units: 40 }), /45-day clock/)
+    expect(h?.status).toBe('info')
+    expect(h?.note).toMatch(/shall refund to the applicant any permit fees/)
+    expect(h?.note).toMatch(/A fee refund is the entire consequence/)
+  })
+
+  it('fires the historic demolition row only on a teardown inside a mapped overlay, and calls it a veto', () => {
+    const inOverlay = { overlays: { historicDistrict: 'Swiss Avenue Historic District', floodZone: null }, existing: { landUse: 'Apartment', units: 8 } }
+    const h = byLabel(dal({ use: 'residential', units: 40, projectType: 'new' }, { ...dz('MF-3(A)'), ...inOverlay }), /Historic demolition/)
+    expect(h?.status).toBe('required')
+    expect(h?.note).toMatch(/clear and convincing evidence/)
+    expect(h?.note).toMatch(/must first approve the predesignation certificate of appropriateness/)
+    // No teardown (vacant lot) → no row.
+    expect(
+      byLabel(dal({ use: 'residential', units: 40, projectType: 'new' }, { ...dz('MF-3(A)'), overlays: { historicDistrict: 'Swiss Avenue Historic District', floodZone: null } }), /Historic demolition/),
+    ).toBeUndefined()
+    // Teardown outside an overlay → no row.
+    expect(byLabel(dal({ use: 'residential', units: 40, projectType: 'new' }, { ...dz('MF-3(A)'), existing: { landUse: 'Apartment', units: 8 } }), /Historic demolition/)).toBeUndefined()
+  })
+
+  it('routes the historic design review through HISTORIC_BODY and keeps the standing 3 months', () => {
+    const h = byLabel(
+      dal({ use: 'residential', units: 40 }, { overlays: { historicDistrict: 'Swiss Avenue Historic District', floodZone: null } }),
+      /^Historic district design review$/,
+    )
+    expect(h?.addsMonths).toBe(3)
+    // The site-not-structure trigger is the load-bearing part for a vacant lot.
+    expect(h?.note).toMatch(/alter, place, construct, maintain, or expand any structure on the site/)
+    expect(h?.note).toMatch(/Within 65 days after a complete application is filed for a contributing structure/)
+  })
+
+  it('emits no invented duration anywhere in the branch', () => {
+    const scenarios: Array<{ p: Partial<ParcelInfo>; j: Partial<AnalysisInput> }> = [
+      { p: dz('MF-3(A)'), j: { use: 'residential', units: 911, projectType: 'new' } },
+      { p: dz('CR'), j: { use: 'commercial', units: 0, gfa: 250000 } },
+      { p: dz('PD-269 (Tract A)', { article: 'Planned Development district: § 51A-4.702(a)(4) requires the ordinance.' }), j: { use: 'mixed', units: 200 } },
+      { p: { ...dz('MF-3(A)'), overlays: { historicDistrict: 'A Historic Overlay', floodZone: 'AE' }, existing: { landUse: 'Apartment', units: 6 } }, j: { use: 'residential', units: 40, projectType: 'new' } },
+      { p: dz('CA-1(A)'), j: { use: 'commercial', units: 0, gfa: 500000 } },
+    ]
+    for (const s of scenarios) {
+      for (const path of ['as_of_right', 'variance'] as const) {
+        for (const h of assessHurdles('dallas', parcel(s.p), project({ city: 'dallas', ...s.j }), { path })) {
+          const expected =
+            /^Historic district design review$/.test(h.label) ? 3
+            : /^Replacing existing housing$/.test(h.label) ? 6
+            : /^Public-funding process/.test(h.label) ? 4
+            : undefined
+          expect(h.addsMonths, `dallas / ${h.label}`).toBe(expected)
+        }
+      }
+    }
+  })
+
+  // Only the park land row is downgraded, and that is the whole point: it is
+  // the one row here whose status is 'required' AND whose trigger is a unit
+  // count derived from floor area. The DIR row is 'info'/'likely' by
+  // construction, so softenSizeDependent correctly leaves it alone.
+  it('a placeholder GFA softens the unit-keyed park land row and nothing else', () => {
+    const soft = assessHurdles(
+      'dallas',
+      parcel({ ...dz('MF-3(A)'), lot: { sizeSqFt: 43560, lotType: null } }),
+      project({ city: 'dallas', use: 'residential', units: 254, projectType: 'new', gfaBasis: 'assumed-far-1.0' }),
+    )
+    const park = byLabel(soft, /Park land dedication/)
+    expect(park?.status).toBe('info')
+    expect(park?.note).toMatch(/placeholder size/)
+    // District-keyed rows are untouched — the district was measured.
+    expect(byLabel(soft, /Tree removal permit/)?.note).not.toMatch(/placeholder size/)
+  })
+})
+
 // Rule 14: the coverage claim shown to users must be impossible to falsify by
 // forgetting to update it. `CITIES_WITH_SPECIFIC_HURDLES` drives Compare's
 // "partial" marker and the standing disclaimer; if someone encodes a new city's

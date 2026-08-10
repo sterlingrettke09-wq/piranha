@@ -398,18 +398,52 @@ export const lifecycleMonths: Record<string, Record<BuildingTier, number>> = {
   // Philadelphia: fast by-right permitting (zoning 4-6 wks, building ~20 days) with
   // no Article 80-style large-project review, but Northeast construction durations
   // are the nation's slowest, which claws the advantage back on bigger projects.
-  // Sources: Philadelphia L&I permit timelines; Census SOC 2024 Northeast
-  // (single-family 13.5 mo authorization->completion, multifamily 23.4 mo).
+  // Sources: Philadelphia L&I permit timelines; U.S. Census Survey of Construction,
+  // NORTHEAST region, 2024 annual — single-family 13.5 mo and multifamily 23.4 mo
+  // AUTHORIZATION->COMPLETION. Both are sums of the two published length-of-time
+  // tables, which is what "authorization to completion" means; SOC publishes no
+  // single end-to-end column. Index: census.gov/construction/nrc/data/time.html.
+  //   avg_authtostart_cust.xlsx + avg_starttocomp_cust.xlsx, sheet "Northeast",
+  //   row 2024, col "Buildings with 1 unit / Total 1":        2.0 + 11.5 = 13.5
+  //   same sheet/row, col "Buildings with 2 units or more / Total 2": 4.3 + 19.1 = 23.4
+  // Both cells re-read against the live workbooks 2026-08-10 and reconcile exactly.
+  // The neighbouring "Northeast is the nation's slowest" claim checks out on the
+  // same row: 1-unit start->completion 2024 is Northeast 11.5 vs West 8.8, Midwest
+  // 8.2, South 6.7, U.S. 7.7.
+  // ⚠️ 23.4 ALSO appears as Northeast / 2020 / "5 to 9 units" start->completion, and
+  // a 2026-08-10 scoping pass read it as that and reported the citation broken. It
+  // is a coincidence: 13.5 and 23.4 are the SAME region, SAME year, SAME two-table
+  // sum, and a single coincidence does not reproduce a matched pair. Do not "fix"
+  // this figure to 2020 5-9 units.
+  // NOTE: pinned to 2024. SOC 2025 annual is now published and differs (Northeast
+  // 1-unit 13.0, 2+ units 21.9) — this citation is a dated reading, not "latest".
   // NOTE: the multi (2-4) figure is interpolated between Chicago/DC 26 and the
   // single-family floor — no Philadelphia-specific 2-4 unit duration is published.
   philadelphia: { single: 16, multi: 25, apartment: 40 },
   dc: { single: 16, multi: 26, apartment: 40 },
-  // Miami: fastest-in-nation Southern construction (Census SOC 2024 South
-  // single-family 8.1 mo start->completion) offset by genuinely slow City of
-  // Miami permitting (reported waits up to 18 months for affordable housing;
-  // the mayor took office on a permitting-reform platform) plus High-Velocity
-  // Hurricane Zone engineering (175+ mph design, Miami-Dade NOA product
-  // approvals, PE-stamped drawings). Nets out to the Boston/Seattle/LA tier.
+  // Miami: fastest-in-nation Southern construction (U.S. Census Survey of
+  // Construction, SOUTH region, 2024 annual — single-family 8.1 mo
+  // AUTHORIZATION->completion: avg_authtostart_cust.xlsx 1.4 +
+  // avg_starttocomp_cust.xlsx 6.7, sheet "South", row 2024, col "Buildings with
+  // 1 unit / Total 1"; index census.gov/construction/nrc/data/time.html), offset
+  // by genuinely slow City of Miami permitting (reported waits up to 18 months for
+  // affordable housing; the mayor took office on a permitting-reform platform) plus
+  // High-Velocity Hurricane Zone engineering (175+ mph design, Miami-Dade NOA
+  // product approvals, PE-stamped drawings). Nets out to the Boston/Seattle/LA tier.
+  //
+  // ⚠️ CORRECTED 2026-08-10 — this comment read "8.1 mo start->completion" and named
+  // the WRONG LEG. 8.1 is authorization->completion; the published start->completion
+  // cell for South / 2024 / 1-unit Total is 6.7. The number was right and its label
+  // was wrong, which is the harder version to catch: a reader checking 8.1 against
+  // the start-to-completion table finds no such cell and has no way to tell whether
+  // the figure or the label drifted. Same basis as the Philadelphia row above, so the
+  // two are now stated identically. (A 2026-08-10 scoping pass proposed substituting
+  // 7.6 — that is South 1-unit start->completion for 2022 AND 2023, not 2024, so
+  // taking it would have swapped a mislabelled-but-correct figure for a wrong one.)
+  // "Fastest in nation" holds on both legs: South 2024 1-unit is 6.7 start->comp and
+  // 8.1 auth->comp, below Midwest 8.2/9.1, West 8.8/10.2, Northeast 11.5/13.5 and
+  // U.S. 7.7/9.1. Pinned to 2024; SOC 2025 annual is published and gives South 6.6 /
+  // 8.1 — the auth->completion figure is unchanged, the start->completion leg is not.
   miami: { single: 18, multi: 28, apartment: 46 },
   // San Diego: DSD has publicly declared its permitting backlog eliminated
   // (>50% of permits same-day; Affordable Housing Permit Now averaging 9 days),

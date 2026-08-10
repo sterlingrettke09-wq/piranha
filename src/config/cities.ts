@@ -353,30 +353,51 @@ export function cityName(slug: string): string {
 // not. It says a city has SOME encoded specifics, never that the encoding is
 // complete — no city's is. Each branch names its own gaps and unevaluable limbs
 // inline; that is where coverage actually lives.
-// ⚠️ dallas, lasvegas and phoenix went live 2026-08-09 and are DELIBERATELY
-// ABSENT from this list. Each is otherwise fully wired — provider, zoning
-// module, dispatcher, jurisdiction gate, parking rule, cost index, probe — so
-// their absence here is a decision, and this is where a reader will look for it.
-// No city-specific hurdle was encoded for any of the three because none was
-// researched; they get the generic floor (historic review, flood, permit fees,
-// demolition), which is why their probes return 3 hurdles rather than more.
+// ⚠️ lasvegas and phoenix went live 2026-08-09 and are DELIBERATELY ABSENT from
+// this list. Each is otherwise fully wired — provider, zoning module,
+// dispatcher, jurisdiction gate, parking rule, cost index, probe — so their
+// absence here is a decision, and this is where a reader will look for it. No
+// city-specific hurdle was encoded for either because none was researched; they
+// get the generic floor (historic review, flood, permit fees, demolition), which
+// is why their probes return 3 hurdles rather than more.
 //
-// Real candidates exist for each and are NOT verified, recorded so the next
-// session starts from a list rather than from scratch: Dallas — the residential
-// proximity slope (§ 51A-4.412), development impact review at ≥6,000 trips/day
-// (§ 51A-4.803), SUP conditions (§ 51A-4.219, 1,338 mapped footprints), historic
-// overlay certificates (§ 51A-4.501, 158 footprints) and the 18% of the city
-// under Chapter 51P planned developments. Las Vegas — LVMC 19.10.150's HD-O
-// historic overlay, which CANNOT be gated because no layer publishes it (all 19
-// service folders enumerated 2026-08-09; Clark County's lookalike was tested and
-// rejected as the County's overlay over County land), and the Regional Flood
-// Control District's HCDDM referenced by § 19.08.040(E). Phoenix — not surveyed.
-// Each needs its own read before it becomes a gate: an unverified hurdle that
-// over-fires is the DC disturbed-area defect, and one that under-fires is
-// invisible.
+// DALLAS WAS THE THIRD CITY IN THIS NOTE UNTIL 2026-08-10 and is now on the list
+// above. Chapter 51A was read from the city's electronic code of record and nine
+// rows encoded in `hurdles.ts` — the inclusionary ABSENCE (and it is a third
+// shape of one: Texas caps a maximum SALES PRICE at Tex. Loc. Gov't Code
+// § 214.905(a) and expressly preserves density bonuses, so it is neither
+// Wisconsin's ban nor North Carolina's silence), development impact review,
+// SUP conditions, planned development, conservation district, rezoning, park
+// land dedication, urban forest conservation, floodplain, platting, the state
+// 45-day permit clock and historic demolition, plus a `HISTORIC_BODY` entry.
+// The candidate line this note used to carry was wrong in a way worth keeping:
+// it recorded § 51A-4.803 as "development impact review at ≥6,000 trips/day",
+// and the code says 6,000 trips per day AND 500 trips per day per acre, inside a
+// closed list of districts — encoding the first clause alone would have fired
+// the row on any 911-unit project anywhere in Dallas. What Dallas researched and
+// deliberately did NOT encode is recorded on the rows themselves and in the
+// ledger entry, not here: Chapter 51P's per-PD ordinances (the publisher does
+// not carry Chapter 51P at all), the Demolition Delay Overlay (§ 51A-4.504 — the
+// layer is unfetched and carries 4 polygons citywide, so a teardown-gated row
+// would over-fire), the six unfetched overlays at §§ 51A-4.502/.506/.507/.508/
+// .510/.511, stormwater, the escarpment zone, landscaping, impact fees and every
+// fee AMOUNT (all route to the § 51A-1.105 fee schedule, which is not in the
+// code text). One live defect the read turned up — `providers/dallas.ts`'s
+// residential proximity slope sentence omits seven origination districts and the
+// 1:1 limb of § 51A-4.412(c) — is a separate fix and is NOT closed by this list.
+//
+// Real candidates exist for the remaining two and are NOT verified, recorded so
+// the next session starts from a list rather than from scratch: Las Vegas —
+// LVMC 19.10.150's HD-O historic overlay, which CANNOT be gated because no layer
+// publishes it (all 19 service folders enumerated 2026-08-09; Clark County's
+// lookalike was tested and rejected as the County's overlay over County land),
+// and the Regional Flood Control District's HCDDM referenced by § 19.08.040(E).
+// Phoenix — not surveyed. Each needs its own read before it becomes a gate: an
+// unverified hurdle that over-fires is the DC disturbed-area defect, and one
+// that under-fires is invisible.
 export const CITIES_WITH_SPECIFIC_HURDLES = [
-  'atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dc',
-  'denver', 'la', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc',
+  'atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas',
+  'dc', 'denver', 'la', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc',
   'philadelphia', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf',
 ] as const
 

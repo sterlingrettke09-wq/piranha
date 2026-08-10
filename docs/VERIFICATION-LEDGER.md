@@ -4442,3 +4442,244 @@ formatting has a trap in it**, and the next person to add a city will write pros
 and hit the same wall. The honest options are to document the form (done here) or
 to teach the parser prose tiers; the cheap one was taken, and the cost is a
 constraint nobody would guess.
+
+## 2026-08-10 — A measured lifecycle for the remaining 8 is not buildable, and that closes the decision
+
+The open question was build-vs-gap: eight cities carry no `lifecycleMonths` row,
+and three candidate legs were proposed to compose one. The answer is **NOT
+BUILDABLE**, and it is settled by measurement rather than by preference — the
+survey went looking for the source at the level the claim is published at, and
+it is not there.
+
+### The decisive result is a reconciliation, not an argument
+
+The legs can be argued about forever. What ended it was composing them against
+cities that already carry **both** a hand-calibrated `lifecycleMonths` row and a
+measured filing→issuance leg, and checking whether the composition lands where
+the shipped constant already sits.
+
+It overshoots. Denver composes to 15.9 months against a published 15, Miami to
+20.4 against 18 — for two of the four cities that can be checked, the three
+measurable legs consume the entire published lifecycle **with no room left for a
+design phase at all**. For the other two the residual runs the other way, and it
+is large: the unmeasurable front and back ends are roughly a quarter to a third
+of the published single-family number. Legs A (design / pre-application) and E
+(completion → move-in) have no candidate source anywhere in the survey, and the
+reconciliation says that is where a third of the answer lives.
+
+So the composition does not reconcile with the 15 rows already shipped. Putting
+leg-composed numbers for 8 cities into the same column as 15 hand-calibrated ones
+would put two mutually inconsistent methods in one field, and
+`computeRedTapeIndex` ranks across that field.
+
+There is a second disqualifier of the same kind: `permitStats.json` publishes
+**medians**, Census SOC publishes **means**. A median added to two means is
+neither statistic, the skew bias differs by leg, and neither source publishes the
+other's form. Rule 3 in its purest shape — a composite whose citation sits on one
+component.
+
+### Leg B — filing→issuance — closes at 1 of 8, permanently
+
+Raleigh is the only city with a measured, published filing→issuance leg. The
+other seven are closed by facts about the jurisdiction or the feed, not by
+insufficient probing: Charlotte publishes no building-permit dataset at all
+(established by enumerating the portal's own 300-dataset catalogue, a verified
+absence rather than a guessed 404), Phoenix publishes no per-permit dataset,
+Columbus and Las Vegas have **no intake-date slot**, Atlanta has an application
+date and no issue date. Two more — Milwaukee and Dallas — are *held*, not absent:
+the repo holds computed figures and refuses to publish them, Milwaukee because
+5+-unit multifamily files as commercial against a free-text use field that
+`refuseUnlessEnumerable()` rejects, Dallas because its only both-dates feed is a
+terminal snapshot of a retired system that can identify a median but never a p80
+and **cannot mature**. Neither refusal is closable by re-probing. This leg is
+finished at one.
+
+### The "encoded review clocks" leg is not a leg
+
+Across the five in-scope cities that have a hurdles branch, **85 researched rows
+carry zero `addsMonths`**. The other three cities have no branch at all. That is
+not an oversight — each branch carries an argued, written refusal, five of them,
+and they all say the same thing: every duration these cities publish is a *shot
+clock on the city*, an *appeal or filing window*, or a *deferral ceiling*. None
+is a duration of work. Publishing a ceiling as an expectation is rule 6 in the
+time dimension.
+
+The structural point is stronger than the count. `timeline.ts` computes the
+baseline and `analyze.ts` adds discretionary hurdle months **separately, so they
+are not double-counted**. Hurdle months are by construction the thing added *to*
+a lifecycle; they cannot also be a component of one. The only `addsMonths` any of
+these cities can reach are shared conditional adders — historic design review,
+replacing existing housing, public funding — every one of which fires on top of a
+baseline that this exercise was trying to produce.
+
+### Census SOC is real, federal, and region-only — which is exactly the problem
+
+The Length-of-Time series exist and were read in full, not guessed: average
+authorization→start and average start→completion, from the Survey of Construction.
+They are published for the United States and the four Census Regions. **That is
+the entire geography** — there is no state, division, metro or city panel, and
+the slot test passes positively rather than by failure to find one: SOC samples
+roughly 900 permit-issuing offices at about 1 in 50 and states that estimates are
+produced at the national level and by region. A city figure does not exist and
+cannot be derived, because the sample does not contain enough of any one city to
+make one.
+
+Four of the eight in-scope cities sit in the South and would receive an
+**identical** construction leg. A leg that cannot distinguish Raleigh from Dallas
+carries zero city-discriminating information — which is the entire content of a
+*city-specific* lifecycle, and the thing the index ranks on. Applying a
+South-region duration to Atlanta is rule 4 with a federal citation on it: six
+months from now it is indistinguishable from a measured Atlanta figure.
+
+Three further defects, any one of which would be disqualifying on its own:
+
+- **The tiers do not map.** SOC has no 5+ column — only 2–4, 5–9, 10–19, 20+.
+  Producing an apartment figure means combining three columns with weights Census
+  does not publish (an invented conversion, rule 4); using "Total 2 or more"
+  instead silently imports 2–4-unit buildings into the apartment tier.
+- **The single-family column requires choosing a program the user has not
+  chosen.** SOC splits 1-unit by purpose of construction and the columns differ
+  by about three months. That is rule 6.
+- **The multifamily cells are unusable exactly where they are needed.** The
+  Midwest 2–4-unit start-to-completion cell — the `multi` tier for Milwaukee and
+  Columbus — carries a relative standard error of 57. The Midwest 5–9-unit
+  authorization-to-start cell carries 212, and the same panel contains a
+  published *negative* duration. The noise is not hypothetical.
+
+SOC is admissible only as an explicitly-labelled regional context line. It is not
+a component of a city-specific published number.
+
+### Even the one good leg measures a different unit of analysis
+
+Raleigh has a real city-specific leg and still does not get there. Its own
+extraction artifact records **"THE ROW IS NOT THE PROJECT"**: 51% of the sample
+is per-unit townhome child permits, and a further slice of the apartment tier is
+per-building children of a larger development. The measured leg is a
+**permit-level median**; a lifecycle is a **project-level duration**. Composing
+it with two regional averages would give Raleigh a number that is one part
+city-measured-at-the-wrong-grain and two parts 16-state average.
+
+### The consequence, stated plainly
+
+The eight cities keep an honest gap, and the gap note stands unchanged. Its
+sentence — *"Removing this gap needs a real source, not a session"* — was an
+assertion when it was written and is now a measurement. **This is a settled
+answer, not an open decision**, and it is recorded here so it is not reopened as
+though nobody had looked. Rule 5 applies to the backlog as much as to the
+renderer: a closed question and an unexamined one must not look the same.
+
+## 2026-08-10 — The 2026-08-06 batch reproduces, which bounds the NYC problem to one resource
+
+NYC's permit figure did not reproduce and was withdrawn. The open worry was
+contagion: fifteen committed figures across four cities share its extraction
+date, and "same run date, same doubt" is a plausible hypothesis that no amount of
+re-reading the scripts could settle.
+
+**All 15 reproduce.** So do the two nearest-neighbour extracts on either side.
+Every difference observed is a feed that **grew** — a few days of accretion, with
+medians and p80s landing on the same value or one rounding step away. **No feed
+shrank, no resource was re-keyed, and no filter changed semantics.** The
+hypothesis is disconfirmed for this date by direct measurement rather than argued
+away.
+
+That relocates the NYC problem: **it is resource-scoped, not date-scoped.** Its
+shrink re-probes today at exactly the figure recorded when it was withdrawn —
+stable and real — and no other city's feed shows the shape. Sharing a run date
+with it is not a risk factor.
+
+### The method is why the answer is trustworthy
+
+Rule 11. Hand-rewriting each city's query would have measured the reader's
+understanding of the script, not the pipeline the figure came out of. Instead
+every script was **copied byte-identically into a mirrored scratchpad tree**, with
+SHA-256 compared against the repo original before running. Each script resolves
+its output path relative to its own module URL, so running from the mirror sends
+the write outside the repo while the query, the paging, the gates and the
+arithmetic all execute unmodified. The real entry point ran; only the destination
+moved.
+
+The two Nashville variants are the exception and are labelled as such — each a
+one-line diff from the verified copy, existing only to separate "the guard fired"
+from "the number moved."
+
+### Nashville failed CLOSED, which is the guard working
+
+Run unmodified, Nashville refuses to publish. Its feed is a rolling ~3-year
+window whose left edge has slid five days past the committed start date, and the
+script detects that and stops rather than quietly publishing a differently-framed
+figure. Run in both frames — the committed one and the one a legitimate re-run
+would use today — the published pair is the same. The figure is invariant to the
+shift, and the only structural change anywhere in the cohort announced itself
+instead of hiding.
+
+### One comment made the whole question decidable in a single request
+
+Distinguishing "the feed grew" from "the feed shrank" needs a row count from
+*before*. Nashville's script records one in a comment, at extraction time. One
+`returnCountOnly` request against that number settled the grew-vs-shrank call for
+the city whose guard had just fired — the layer is at steady state, a rounding
+error off its recorded size, against NYC's several-fold move.
+
+**No other script records a feed row count at extraction time.** A single comment
+is what made this answerable in one pass; without it the call would have rested
+on inference from the figures themselves, which is the thing under suspicion. A
+committed row-count-at-extraction beside every figure would have answered this
+entire question **without re-running anything**. It is a one-line practice with
+an outsized payoff, and it is worth adopting everywhere.
+
+### A rule 10 case that sharpens rule 10
+
+Philadelphia's first two passes both died on the ArcGIS paging step with an
+`Invalid query parameters` 400; the third succeeded and produced a clean
+reproduction. Recorded on the first result, that would have gone down as a
+Philadelphia endpoint regression. Note the shape carefully, because it is not
+"re-probe until it agrees": here the *majority* of passes failed. The rule is
+that a single failure is not evidence, and that **a success proves the query is
+valid** — the asymmetry is in what each outcome can establish, not in a vote.
+
+## 2026-08-10 — Two instrument failures, caught by their own authors, in one session
+
+Worth recording together because they are the same failure wearing different
+clothes, and neither was catchable downstream — both produced well-formed output
+of exactly the expected shape.
+
+The first: counting `addsMonths` per city returned a clean **zero rows, zero
+`addsMonths`, for every city** — including cities that plainly have both. The
+cause is that zsh does not word-split unquoted parameter expansions, so the
+range variables were empty and `awk` read whole files with no range. A shell
+measured nothing and reported a tidy zero. The real counts came from Node.
+
+The second: a comparison run after a `cd` resolved *both* sides — "committed" and
+"today" — to the same scratchpad file, so Nashville appeared to match itself
+perfectly. Re-run with absolute paths on both sides, the real comparison
+followed.
+
+### The rule: rule 18, pointed inward
+
+**A measurement that agrees with what you already believe gets less scrutiny than
+one that surprises you.** Rule 18 says a plausible answer draws less scrutiny than
+a gap; this is the same asymmetry applied to your own instrument. The zero
+flattered the conclusion its author was already reaching — that this leg does not
+exist — and a confirming measurement is exactly the one nobody re-runs. The
+perfect self-match flattered the reproduction it was meant to test.
+
+**The tell in both cases was a result that was too clean.** An exact zero across
+five cities that differ in every other respect, and a perfect match across four
+days of feed accretion in a feed known to grow. Cleanliness is not an alarm the
+way a suspicious number is — which is why it has to be checked without waiting to
+feel suspicious.
+
+Both were caught and reported by their authors. That is the part to keep: rule 9
+says external comparison finds the defects, and the closest thing to an external
+check on your own instrument is asking what result the instrument would produce
+if it were doing nothing at all. In both cases, the answer was *the result it
+produced.*
+
+### A closed gap, recorded so it is not read as drift
+
+Denver's suppressed `multi` tier count was committed as unknown, because the
+original run logged it to the console and wrote nothing to the artifact —
+recovering it required re-running the extraction. Today's read-only re-run
+emitted it: **18**, below the 30-row publication floor, so the suppression
+decision was correct and the artifact is right as it stands. Nothing was edited.
+This is a gap closing, not a figure drifting.

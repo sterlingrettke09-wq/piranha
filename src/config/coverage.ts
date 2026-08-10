@@ -326,11 +326,9 @@ export const ABSENCE_REASONS: Partial<
     relief: RELIEF_SURVEYED_SCRAPE_DECLINED,
   },
   dallas: {
-    hurdles: {
-      code: 'not-built',
-      reason:
-        'No city-specific hurdle was researched or encoded; the generic floor applies. Candidates (§ 51A-4.412 proximity slope, SUP conditions, historic overlays, Ch. 51P planned developments) are recorded in cities.ts, unverified.',
-    },
+    // hurdles: DERIVED-PRESENT since 2026-08-10. Chapter 51A was read and the
+    // branch encoded, so the cell fills from CITIES_WITH_SPECIFIC_HURDLES and
+    // carrying a reason here would be both — which the drift guard rejects.
     lifecycle: LIFECYCLE_NOT_BUILT,
     permits: {
       code: 'conservative',

@@ -9,6 +9,7 @@ import { PARKING_RULES } from '../../../src/config/parkingRules'
 // boundary problem ledger rule 9 describes, in miniature.
 import { normalizeMilwaukeeZone } from './zoning/milwaukee'
 import { parseCharlotteZone } from './zoning/charlotte'
+import { dallasZoneKey } from './zoning/dallas'
 
 // Curated private-governance sites (no public dataset exists for HOAs/covenants).
 const PRIVATE_SITES: Array<{ bbox: [number, number, number, number]; label: string; note: string }> = [
@@ -87,6 +88,8 @@ const HISTORIC_BODY: Record<string, string> = {
     'A parcel inside one of Charlotte’s eight local historic districts needs a Certificate of Appropriateness from the Historic District Commission, and the certificate reaches further than a building permit does: "A Certificate of Appropriateness shall be issued by the Historic District Commission prior to the issuance of a building permit … A Certificate of Appropriateness is required whether or not a building permit is required" (Charlotte UDO Sec. 14.2.D.2). The decision is quasi-judicial and taken at an evidentiary hearing (Sec. 14.2.L.6.b). The only clock the ordinance publishes is an outer limit on the Commission rather than an expected duration — applications must be acted upon within 180 days of filing (Sec. 14.2.L.6.a.i) — and a certificate once issued "shall be valid for 12 months from the date of issuance" (Sec. 14.2.L.7.a), so one obtained early can expire before financing closes. Two things here are Charlotte-specific. First, the enforcement point sits with the COUNTY: the Mecklenburg County Land Use and Environmental Services Agency "shall not issue a Certificate of Occupancy or Certificate of Compliance unless there has been compliance with any Certificate of Appropriateness issued by the Historic District Commission" (Sec. 14.2.T.1), and it may revoke a building permit on its own authority or at the Planning Director’s direction (Sec. 14.2.S.1) — a missed condition surfaces at the CO counter, which is the most expensive place to find one. Second, demolition here is a timing risk and never a veto: an application authorising demolition "may not be denied", though the Commission may delay it for up to 365 days (Sec. 14.2.J.2, .J.3).',
   atlanta:
     'Exterior work and new construction inside a Landmark or Historic District, and on any Landmark or Historic Building or Site, need a certificate of appropriateness from the Atlanta Urban Design Commission before permits issue — the code reaches "To erect a new structure or to make an addition to any structure within an Historic District" and the parallel provision for Landmark Districts, plus any request "To vary any applicable regulation" (Atlanta Code § 16-20.007(a)(3)–(4)). There are four types. Ordinary repair and maintenance is a type I signed off by the director; ground-up new construction is a type III "major alteration", which goes to a noticed public hearing with notice published on the City website and in a newspaper at least 30 days before the meeting, the property posted at least 15 days before, and mailed notice to owners within 300 feet (§ 16-20.008(c)(2)). The code clocks the commission rather than the applicant: "Hearings of the commission on type III applications shall be held within 90 days from the date on which the director receives in due form a complete application from the applicant. The commission shall make a decision on said applications within 21 days of the date of the final public hearing" (§ 16-20.008(c)(3)), and failure to decide within those limits "shall be deemed to be approval of the application" with the bureau of buildings directed to issue the dependent permit (§ 16-20.008(c)(6)). Conservation Districts are different and much lighter: no certificate is required, only an advisory written recommendation from the commission, and if it fails to provide one within 30 days of the owner\'s initial application "the bureau of buildings shall issue the permit(s) at the request of the owner without compliance with this subsection" (§ 16-20.007(b)). Where a project is also in one of the affordable-housing overlays, the more stringent of the two regimes controls (§§ 16-36A.001, 16-37.001(3), 16-41.001(3)).',
+  dallas:
+    'A parcel inside a historic overlay district needs a certificate of appropriateness before any work — and the trigger expressly reaches a vacant lot, because it is written to the SITE and not only to a building: "A person shall not alter a site within a historic overlay district, or alter, place, construct, maintain, or expand any structure on the site without first obtaining a certificate of appropriateness in accordance with this subsection and the regulations and preservation criteria contained and in the historic overlay district ordinance" (Dallas Development Code § 51A-4.501(g)(1)). Two procedures exist and ground-up construction is not on the light one: routine maintenance work is decided by the director within 20 days, and § 51A-4.501(g)(5)(B) enumerates what that means — chimneys on an accessory building or the rear half of a main building, awnings on a rear facade, like-for-like roof replacement, wood or chain-link fence, gutters, skylights and solar panels, storm windows, screens, repainting in an appropriate colour, restoration of original elements, minor repair in the original material, sidewalk repair, cleaning short of sandblasting. Everything else goes to the landmark commission at a public hearing. The commission is clocked, and the clock is a deemed approval: "Within 40 days after a complete application is filed for a noncontributing structure, the landmark commission shall hold a public hearing and shall approve, deny with prejudice, or deny without prejudice the application", "Within 65 days after a complete application is filed for a contributing structure" for the same, and if the commission has not taken final action inside 40 or 65 days "the director shall issue the certificate of appropriateness to the applicant" and the building official shall issue the dependent building permit (§ 51A-4.501(g)(6)(B), (D)). Note that the contributing/noncontributing call is the director\'s, made on receipt, and it decides which clock you are on. The applicant carries the burden of proof, and the standard for a contributing structure is four-part: consistency with the district\'s preservation criteria, and no adverse effect on the structure\'s architectural features, on the district, or on the future preservation, maintenance and use of either (§ 51A-4.501(g)(6)(C)(i)). A denial is appealable to the city plan commission within 30 days on a substantial-evidence standard, and that appeal is the final administrative remedy (§ 51A-4.501(g)(6)(E)); a final denial bars reapplication for the same subject matter for one year unless it was without prejudice or the commission finds changed circumstances (§ 51A-4.501(g)(6)(F)). One trap that bites before designation is final: once notice of the hearing to INITIATE a historic designation has gone out, "No permits to alter or demolish the property may be issued after provision of this notice until action is taken at that initial hearing" (§ 51A-4.501(c)(2)(C)) — a neighbourhood can freeze a permit without the city council ever voting.',
   // NOTE — no minneapolis entry on purpose. The Minneapolis research returned a
   // citywide DEMOLITION screen (§§ 599.910, 599.920, encoded below) but no
   // section for historic-district design review, so this city falls through to
@@ -138,6 +141,25 @@ const HISTORIC_BODY: Record<string, string> = {
 // 120 days is the period the Mayor has to make the finding on a referral that
 // has already been made, and Nashville's 30 days is a DEEMED-APPROVAL clock,
 // so in both the code fixes when the thing actually resolves.
+//
+// ⚠️ Dallas deliberately gets NO override, and unlike Milwaukee/Columbus/
+// Charlotte this one is arguable rather than obvious — it is written down so it
+// can be argued. § 51A-4.501(g)(6)(D) is a DEEMED-APPROVAL clock, not a
+// ceiling: 40 days for a noncontributing structure and 65 for a contributing
+// one, after which "the director shall issue the certificate of appropriateness
+// to the applicant" and the building permit follows. That is the shape that
+// earned Nashville its 1 and DC its 4 — the code fixing when the thing actually
+// resolves — and 65 days is ~2.1 months, so a reader could reasonably argue for
+// 2 here.
+//
+// It stays at the standing 3 for one reason: both Dallas clocks run from a
+// COMPLETE application, and § 51A-4.501(g)(3) gives the director 10 days after
+// submission merely to state what further documentation is required, with no
+// limit on how many rounds that takes and no clock on the applicant's response.
+// Nashville's 30 days runs from a "sufficient application" with the commission
+// required to meet within 15 working days; DC's 120 runs from a referral
+// already made. Neither has an open-ended completeness gate in front of it.
+// Publishing 2 would be publishing the fast half of a two-part process.
 const HISTORIC_MONTHS: Record<string, number> = { dc: 4, nashville: 1, atlanta: 4 }
 
 // Private projects that are large enough to plausibly seek a subsidy/abatement.
@@ -291,6 +313,97 @@ const CLT_PARKING_TIER: Record<string, 1 | 2 | 3> = {
   // Tier 3 — most uses have NO minimum; maximums apply.
   'CAC-2': 3, 'TOD-UC': 3, 'TOD-NC': 3, 'TOD-CC': 3, 'TOD-TR': 3, RAC: 3, UC: 3, UE: 3,
 }
+
+/**
+ * The three phrases `providers/dallas.ts` writes into `zoning.article`.
+ * STRING COUPLING ACROSS A MODULE BOUNDARY, named here for the same reason
+ * `MILWAUKEE_OVERLAY_PHRASE` is: none of the three facts has a structured field
+ * on `ParcelInfo`, and a second copy of the regex is a second place for the
+ * claim to drift (ledger rule 9).
+ *
+ * `zoning.subdistrict` cannot substitute. It carries the PD *tract* label
+ * (`PD-269 (Tract A)`) when the PD Subdistricts layer answers, and falls back to
+ * the base layer's `COMMON_NAME` when it does not — so a non-PD parcel with a
+ * common name ("State Thomas") populates it too. `article` is the only field on
+ * which "is this parcel plan-governed?" has one answer.
+ *
+ * A miss here is a false NEGATIVE — the row does not render. None of the three
+ * can assert a designation that is not mapped.
+ *
+ * Pinned at the provider end by providers/dallas.test.ts and at this end by the
+ * Dallas tests in hurdles.test.ts. If you rewrite `buildArticle`, both fail.
+ */
+const DALLAS_ARTICLE_PHRASE = {
+  /** buildArticle: `Planned Development district: § 51A-4.702(a)(4) requires …` */
+  plannedDevelopment: /Planned Development district: § 51A-4\.702/,
+  /** buildArticle: `Conservation District: § 51A-4.505 puts the standards …` */
+  conservationDistrict: /Conservation District: § 51A-4\.505/,
+  /** buildArticle: `A specific use permit is recorded on this site for "…"` */
+  specificUsePermit: /A specific use permit is recorded on this site for/,
+} as const
+
+/**
+ * The districts § 51A-4.803(a)(2) lists — the FIRST limb of development impact
+ * review, and the one that is a closed list rather than a computation.
+ *
+ * Built from the code's own taxonomy, not from a summary:
+ *   (A) "all multifamily districts"  — § 51A-4.101(1)(N)–(S).
+ *   (B) "all nonresidential zoning districts except central area districts" —
+ *       Division 51A-4.120 is titled *Nonresidential District Regulations* and
+ *       contains exactly seven sections: § 51A-4.121 office, .122 retail, .123
+ *       commercial service and industrial, .124 central area, .125 mixed use,
+ *       .126 multiple commercial, .127 urban corridor. That structure is what
+ *       makes MU-*, MC-* and UC-* nonresidential here — it is the code's
+ *       classification, not an inference — and it is why CA-1(A) and CA-2(A)
+ *       are absent below.
+ *   (C) "SC, GR, LC, HC, O-2, and industrial subdistricts in the Oak Lawn
+ *       Special Purpose District (Planned Development District No. 193)" — NOT
+ *       encoded. PD-193's subdistricts are in Chapter 51P, which the publisher
+ *       does not carry. A PD parcel therefore never fires this row; that is a
+ *       disclosed false negative, stated in the PD row.
+ *
+ * Deliberately absent and each for a reason, not by oversight: CH (clustered
+ * housing) and MH(A) are residential and not multifamily; P(A) is a special
+ * purpose district under § 51A-4.101(8) and sits outside Division 51A-4.120;
+ * WMU/WR/RTN are form districts under Article XIII, likewise outside it.
+ */
+const DALLAS_DIR_DISTRICTS = new Set([
+  // (A) multifamily
+  'MF-1(A)', 'MF-1(SAH)', 'MF-2(A)', 'MF-2(SAH)', 'MF-3(A)', 'MF-4(A)',
+  // (B) office
+  'NO(A)', 'LO-1', 'LO-2', 'LO-3', 'MO-1', 'MO-2', 'GO(A)',
+  // (B) retail
+  'NS(A)', 'CR', 'RR',
+  // (B) commercial service and industrial
+  'CS', 'LI', 'IR', 'IM',
+  // (B) mixed use
+  'MU-1', 'MU-1(SAH)', 'MU-2', 'MU-2(SAH)', 'MU-3', 'MU-3(SAH)',
+  // (B) multiple commercial
+  'MC-1', 'MC-2', 'MC-3', 'MC-4',
+  // (B) urban corridor
+  'UC-1', 'UC-2', 'UC-3',
+])
+
+/**
+ * Residential districts, per § 51A-4.101(1). Used only by the tree row, whose
+ * exemption is written "lots smaller than two acres in size that contain
+ * single-family or duplex uses **in residential districts**" — three limbs, and
+ * this is the third.
+ */
+const DALLAS_RESIDENTIAL_DISTRICTS = new Set([
+  'A(A)', 'R-1ac(A)', 'R-1/2ac(A)', 'R-16(A)', 'R-13(A)', 'R-10(A)', 'R-7.5(A)',
+  'R-5(A)', 'D(A)', 'TH-1(A)', 'TH-2(A)', 'TH-3(A)', 'CH',
+  'MF-1(A)', 'MF-1(SAH)', 'MF-2(A)', 'MF-2(SAH)', 'MF-3(A)', 'MF-4(A)', 'MH(A)',
+])
+
+/**
+ * Table 1 to § 51A-4.803(a)(1)(A), row "RESIDENTIAL USES — Other", verbatim:
+ * "6.59/dwelling unit". Carried as the code's own figure and applied to nothing
+ * else — the office and retail rows of Table 1 are floor-area tiers keyed to a
+ * use vocabulary (`project.use` is 'residential' | 'commercial' | 'mixed') that
+ * this engine cannot map onto without inventing the mapping (rule 4).
+ */
+const DALLAS_TRIPS_PER_DU = 6.59
 
 // Assess non-zoning regulatory hurdles for a project. Boston is fully modeled;
 // other cities get the shared overlay + private-governance hurdles for now.
@@ -3374,6 +3487,247 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         label: 'Rezoning or special use permit: Zoning Review Board, then City Council',
         status: 'likely',
         note: 'Asking for more than the base district in Atlanta is a legislative act of the City Council, not a staff decision, and a special use permit runs the identical track — § 16-25.003(1) routes special use permits through “the procedures and requirements so established in chapter 27, ‘amendments’”. The application must carry a recent plat of survey by a registered engineer or surveyor, a site plan stating current and proposed zoning, floor area ratio maximum-allowed and proposed, open space required and proposed, and parking required and proposed, plus “a written, documented analysis of the impact of the proposed zoning with respect to each of the matters enumerated in section 16-27.004” (Atlanta Code § 16-27.002(2)). Copies go to the Board of Education, the Atlanta Department of Transportation, Police, Fire and the county health department (§ 16-27.002(5)), and a copy of the application goes to the city arborist for comment, which the bureau of planning and the Zoning Review Board must consider (§ 16-27.004(8)). The bureau of planning has 60 days to transmit its report (§ 16-27.005); the Zoning Review Board holds a public hearing on at least 15 days’ published notice, 15 days’ posting of the property and 14 days’ mailed notice to owners within 300 feet, with each side guaranteed no fewer than ten minutes (§§ 16-27.006 through .009); Council then acts, with the NPU’s recommendation in the packet (§ 16-27.010). Plan for the downside: once an application has been received, “no further application for any change affecting the same property or any part thereof shall be filed within 24 months” absent a Council waiver, and after final action on substantially the same rezoning application a 12-month bar applies that “may not be waived” (§ 16-27.002(3)); a special use permit withdrawn after advertisement or denied carries its own 24-month bar (§ 16-25.003(4)). No statutory clock is published for the process as a whole — the 60-day and 15-day figures above are deadlines on the bodies and on notice, not a schedule for the project.',
+      })
+    }
+  } else if (city === 'dallas') {
+    // City of Dallas Code of Ordinances, VOLUME III, CHAPTER 51A "Dallas
+    // Development Code", read 2026-08-10 from the city's electronic code of
+    // record (codelibrary.amlegal.com), walked from the publisher's own table
+    // of contents. Volume III carries the 1/26 supplement, current through
+    // Ordinance 33288 passed 12-10-2025 — NOT the "4/2026 (S-32)" the global
+    // version selector shows, which is Volumes I and II.
+    //
+    // Two findings are carried elsewhere on purpose and must NOT be duplicated
+    // here: the parking finding (§ 51A-4.301(a)(2)) is PARKING_RULES['dallas'],
+    // and the certificate of appropriateness is HISTORIC_BODY['dallas'] above.
+    //
+    // ⚠️ WHY NO URL IS WRITTEN IN THESE COMMENTS. Same reason as
+    // zoning/dallas.ts: codelibrary.amlegal.com answers non-browser clients
+    // with HTTP 403 (a Cloudflare interstitial), so scripts/check-citations.ts
+    // would score every live section here as DEAD. Section-style citations
+    // below are countable but not fetchable, and this block reports UNCHECKED —
+    // the honest state, not a pass. The publisher's Article IV node is carried
+    // in `sources.zoningCode` by providers/dallas.ts, where a reader can click
+    // it.
+    const dalKey = dallasZoneKey(parcel.zoning.districtCode) ?? ''
+    const dalArticle = parcel.zoning.article ?? ''
+    const DAL_ACRE = 43560
+    const dalAcres = lotSqFt / DAL_ACRE
+
+    if (isResidential) {
+      // ABSENCE, and the headline for Dallas — and it is a THIRD shape of
+      // absence, distinct from both Milwaukee's and Raleigh's, which is the
+      // whole reason it is written this long.
+      //
+      // Milwaukee: Wisconsin bans inclusionary zoning by name (Wis. Stat.
+      // § 66.1015(3)(b)), so no unit count triggers anything.
+      // Raleigh: North Carolina names it nowhere, so it is "a rule Raleigh has
+      // not adopted", full stop.
+      // Dallas: Texas HAS a statute, it is NOT an inclusionary-zoning ban, and
+      // the difference is load-bearing. § 214.905(a) reaches a MAXIMUM SALES
+      // PRICE. It says nothing about a rental set-aside, and subsection (b)(1)
+      // expressly preserves the voluntary side. Writing "Texas bars
+      // inclusionary zoning" here would be a mechanism argued aloud wearing a
+      // real citation (rule 1) — it is the one sentence this row must not
+      // contain, and it is the sentence a summariser would reach for.
+      hurdles.push({
+        category: 'affordability',
+        label: 'No inclusionary requirement — affordability is a bonus you elect',
+        status: 'info',
+        note: 'Dallas sets no affordable-unit requirement at any project size. Every affordability obligation in Chapter 51A hangs off a bonus the developer elects. The SAH density bonus applies only in the affordable multifamily and mixed-use districts and only if you ask for extra density: "This division only becomes applicable to a lot in an SAH district when an application is made for a building permit that would increase the dwelling unit density permitted in that district above the number permitted by right" (Dallas Development Code § 51A-4.903(a)); build to the by-right density and none of it arises. The Mixed-Income Housing development bonus is the same trade in a wider set of districts — Type One developments in "MF-1(A), MF-2(A), and MF-3(A) Multifamily Districts" and "MU-1, MU-2, and MU-3 Mixed Use Districts", with Types Two and Three reaching planned development districts that reference the division (§ 51A-4.1102(a)) — and its bonuses last only as long as the covenant: "Any development bonus provided in this division is only applicable to structures built during the rental affordability period or according to the terms of the mixed-income restrictive covenant" (§ 51A-4.1104(a)). Two places a mandate CAN attach, and neither is citywide: the city council may write an SAH requirement into a planned development district that allows fifteen or more multifamily units (§ 51A-4.903(b)), and a PD ordinance can reference the mixed-income division (§ 51A-4.1102(a)(2)–(3)) — so on a PD parcel, read the PD ordinance before concluding there is no obligation. On the state-law backdrop, note precisely what Texas does and does not say. Tex. Loc. Gov\'t Code § 214.905(a): "A municipality may not adopt a requirement in any form, including through an ordinance or regulation or as a condition for granting a building permit, that establishes a maximum sales price for a privately produced housing unit or residential building lot." That is a price cap on FOR-SALE housing; it names neither inclusionary zoning nor rental affordability, and § 214.905(b)(1) expressly preserves a municipality\'s authority to "create or implement an incentive, contract commitment, density bonus, or other voluntary program designed to increase the supply of moderate or lower-cost housing units" — which is exactly the shape both Dallas programs take. Rent regulation is separately conditioned rather than banned: § 214.902 lets a city establish rent control only where "the governing body finds that a housing emergency exists due to a disaster as defined by Section 418.004, Government Code" and "the governor approves the ordinance". Treat Dallas as a city that has not adopted a mandate, not as a city the State has forbidden to.',
+      })
+    }
+
+    // ── § 51A-4.803 DEVELOPMENT IMPACT REVIEW ────────────────────────────────
+    // The whole condition, not its first clause. The candidate note in
+    // cities.ts recorded this as "development impact review at ≥6,000
+    // trips/day"; the code joins that to a SECOND intensity limb with "and",
+    // and puts both behind a closed list of districts:
+    //
+    //   "a site plan must be submitted … before the issuance of a permit for
+    //    work on a lot in a district or subdistrict listed in Subsection (a)(2)
+    //    and: (A) the estimated trip generation for all uses on the lot
+    //    collectively is equal to or greater than 6,000 trips per day AND 500
+    //    trips per day per acre; (B) the lot contains a use for which DIR is
+    //    required in the use regulations; or (C) the lot has a residential
+    //    adjacency … and contains a use for which RAR is required".
+    //
+    // So the district limb is conjunctive with a three-way disjunction, and
+    // only (A) is computable here: (B) and (C) key on per-use DIR/RAR flags
+    // spread across Division 51A-4.200, which this build has not enumerated,
+    // and (C) additionally needs a 330-foot/adjacency measurement we have not
+    // made. The row therefore renders in every listed district and STATES all
+    // three, and the arithmetic for (A) is shown rather than asserted.
+    //
+    // The 6.59 rate applies to dwelling units only. A commercial or mixed
+    // programme is NOT computed — Table 1's retail and office rows are
+    // floor-area tiers keyed to a use vocabulary this engine does not carry,
+    // and picking one would be an invented conversion (rule 4).
+    if (DALLAS_DIR_DISTRICTS.has(dalKey) && project.projectType !== 'adu') {
+      const dalUnitTrips = units * DALLAS_TRIPS_PER_DU
+      const dalTripsPerAcre = dalAcres > 0 ? dalUnitTrips / dalAcres : 0
+      // BOTH limbs, because the code writes "and". Computed only where the
+      // programme is residential and the unit count is the whole of it.
+      const dalTripLimbsMet =
+        project.use === 'residential' && units > 0 && dalUnitTrips >= 6000 && dalTripsPerAcre >= 500
+      hurdles.push({
+        category: 'review',
+        label: 'Development impact review: a site plan the director must approve',
+        sizeDependent: true,
+        status: dalTripLimbsMet ? 'likely' : 'info',
+        note: `This parcel is in a district § 51A-4.803(a)(2) lists, so development impact review is live here — but the district alone never triggers it. Read the trigger whole: "a site plan must be submitted in accordance with the requirements of this section before the issuance of a permit for work on a lot in a district or subdistrict listed in Subsection (a)(2) and: (A) the estimated trip generation for all uses on the lot collectively is equal to or greater than 6,000 trips per day and 500 trips per day per acre (See Table 1 to calculate estimated trip generation); (B) the lot contains a use for which DIR is required in the use regulations (See Division 51A-4.200); or (C) the lot has a residential adjacency as defined in Subsection (d)(3) and contains a use for which RAR is required in the use regulations" (Dallas Development Code § 51A-4.803(a)(1)). Limb (A) is TWO thresholds joined by "and" — 6,000 trips per day AND 500 trips per day per acre — and clearing only one of them is not a trigger. ${
+          project.use === 'residential' && units > 0
+            ? `At Table 1's residential rate of "6.59/dwelling unit", ${units} units generate about ${Math.round(dalUnitTrips).toLocaleString()} trips per day${dalAcres > 0 ? ` and about ${Math.round(dalTripsPerAcre).toLocaleString()} per acre on this lot` : ''} — ${dalTripLimbsMet ? 'both limbs of (A) are met' : 'which does not meet both limbs of (A)'}. For scale: 6,000 trips at that rate is about 911 dwelling units, and the per-acre limb needs roughly 76 units to the acre, so limb (A) is a downtown-scale trigger and most residential projects clear neither. That is the code being narrow, not a gap in this tool.`
+            : 'Trip generation is NOT computed for this project: Table 1 prices office and retail floor area in tiers ("Other: 10,000 gsf or less 167.59 per 1,000 gsf", "over 10,000 to 50,000 gsf 91.65 per 1,000 gsf", and so on) against a use vocabulary this tool does not carry, and choosing a row for you would be inventing the mapping. Run Table 1 against your actual programme.'
+        } Limbs (B) and (C) are not evaluated at all and may well apply: (B) turns on whether your specific use carries a DIR flag in Division 51A-4.200, and (C) on whether it carries an RAR flag together with a residential adjacency, which the code defines as a lot "adjacent to or directly across: (i) a street 64 feet or less in width; or (ii) an alley from an R, R(A), D, D(A), TH, TH(A), or CH district" or with a building "within 330 feet of a lot in an R, R(A), D, D(A), TH, TH(A), or CH district" (§ 51A-4.803(d)(3)). Neither the per-use flags nor the distance measurement is in the parcel record — check both. Two exemptions are worth knowing: no site plan is required where the permit is only for restoration after fire, flood or accident, or for "construction work that does not change the use or increase the existing building height, floor area ratio, or nonpermeable coverage of the lot" (§ 51A-4.803(a)(3)), nor where a site plan already rides on the zoning ordinance or a board-of-adjustment variance and the record shows infrastructure was paid for and residential impact considered (§ 51A-4.803(a)(4)). Where it does apply the process is administrative and clocked on the city, not on you: code compliance returns comments within 15 days, "The director shall make a decision regarding the application and submission within 30 calendar days of the filing date", and "If the director fails to make a decision … within 30 calendar days of the filing date, the application and submission are considered to be approved" (§ 51A-4.803(e)(1)–(3)); the clock does not start until every required item is in. The cost is not the review, it is the exactions attached to it: where the site plan is required by trip generation the director shall DENY it if the owner refuses to build traffic control improvements, turn, stacking and bus-turnout lanes, or to dedicate the right-of-way for them, in each case where the traffic engineer finds them "necessitated by and wholly attributable to the proposed new development" (§ 51A-4.803(f)(2)(A)(ii)), backed by a private development contract with performance and payment bonds (§ 51A-4.803(f)(2)(B)). You may pay the estimated construction cost instead, and the code is explicit about what that payment is not: "Such payments, being voluntarily tendered to the city as an optional alternative to the performance of construction work, shall not be 'impact fees' as defined by state law" — refundable with interest if unspent within five years (§ 51A-4.803(f)(2)(C)). Appeal of a denial or of conditions runs to the city plan commission within 10 days, and the commission has 30 calendar days before the application is deemed approved (§ 51A-4.803(i)).`,
+      })
+    }
+
+    // A specific use permit already recorded on the tract. 1,338 mapped
+    // footprints (SUP layer, measured 2026-08-09). Gated on the phrase
+    // providers/dallas.ts writes into `zoning.article`, because ParcelInfo has
+    // no field for it — a miss is a false negative.
+    if (DALLAS_ARTICLE_PHRASE.specificUsePermit.test(dalArticle)) {
+      hurdles.push({
+        category: 'review',
+        label: 'A specific use permit is recorded here — changing the use is a council action',
+        status: 'required',
+        note: 'A specific use permit runs with this tract, and an SUP is not a staff approval: "Each SUP must be granted by the city council by separate ordinance" (Dallas Development Code § 51A-4.219(a)(2)), and the route to one is the full rezoning procedure — "An applicant for an SUP shall comply with the zoning amendment procedure for a change in zoning district classification" (§ 51A-4.219(b)(1)), which means a city plan commission public hearing, mailed notice to owners within 200 to 500 feet depending on the size of the request, and a council hearing (§ 51A-4.701(b), (c)). Council grants one only on a finding that the use will "complement or be compatible with the surrounding uses and community facilities", "contribute to, enhance, or promote the welfare of the area of request and adjacent properties", not be detrimental to public health, safety or general welfare, and "conform in all other respects to all zoning regulations and standards" (§ 51A-4.219(a)(3)), and it "may impose reasonable conditions" (§ 51A-4.219(a)(5)). Two things about an existing SUP bear directly on a redevelopment. First, it does not enlarge what you may build: "The granting of an SUP has no effect on the uses permitted as of right and does not waive the regulations of the underlying zoning district" (§ 51A-4.219(a)(4)) — the district\'s height, FAR and yards are unchanged. Second, the recorded site plan is a ceiling with narrow tolerances. The city plan commission may authorise a minor amendment only where the change does not "increase the number of dwelling units shown on the original site plan by more than 10 percent", "increase the floor area shown on the original site plan by more than five percent or 1,000 square feet, whichever is less", "increase the height shown on the original site plan", or reduce boundary setbacks (§ 51A-4.219(b)(4)); anything beyond those numbers "must be processed as a zoning amendment", and sequential minor amendments cannot be stacked, because "original site plan" is fixed as the earliest approved plan still in effect. An SUP may carry a time limit and terminates automatically when it expires (§ 51A-4.219(b)(6)), and council may require the owner to cost-share infrastructure, capped at "50 percent of the cost of improvements located more than 250 feet from the lot" (§ 51A-4.219(b)(7)). Read the SUP ordinance itself — its conditions are what bind, and they are not in this tool.',
+      })
+    }
+
+    // Planned development. The PD Subdistricts layer carries 1,274 polygons
+    // (providers/dallas.ts header, measured 2026-08-09). The candidate note in
+    // cities.ts said "18% of the city"; that share was NOT re-measured here and
+    // is deliberately not repeated — the polygon count is what was measured.
+    // This row does NOT claim a limit; it says where the limits are and that
+    // this tool has not read them — an incompleteness, not an absence (rule 5).
+    if (DALLAS_ARTICLE_PHRASE.plannedDevelopment.test(dalArticle)) {
+      hurdles.push({
+        category: 'review',
+        label: 'Planned development district: your standards are in a separate ordinance',
+        status: 'required',
+        note: 'This parcel is in a planned development district, and its dimensional standards are not in Chapter 51A. The PD ordinance sets them and must set them: "The ordinance establishing a PD must specify regulations governing building height, floor area, lot area, lot coverage, density, yards, off-street parking and loading, environmental performance standards, signs, landscaping, and streets and alleys" (Dallas Development Code § 51A-4.702(a)(4)), and "The regulations of each PD ordinance shall be codified in Chapter 51P" (§ 51A-4.702(a)(5)). Where the PD ordinance is silent, what fills the gap depends on the PD\'s vintage: for PDs created on or after March 1, 1987 the Chapter 51A rules control and the § 51A-4.702(a)(4) guideline table applies (multifamily reads to MF-3(A), retail to CR, office to MO-1, commercial to CS, industrial to IR); for PDs created before that date, Chapter 51 — the FORMER development code — controls instead, with its own guideline table (§ 51A-4.702(a)(6)(A)–(B)). The compliance gate is the certificate of occupancy, not the permit: "The conditions in the PD ordinance and the development plan, landscape plan, or conceptual plan are conditions that must be complied with before a certificate of occupancy may be granted" (§ 51A-4.702(a)(5)) — a missed condition surfaces at the most expensive moment. If your project departs from the approved development plan, the minor-amendment route is narrow and is measured against the ORIGINAL plan, not the latest one: it may not "increase a height shown on the original development plan by more than 10 percent or 12 feet, whichever is less, provided there is no increase in the number of habitable stories or parking levels above grade", reduce boundary setbacks, or cut parking so as to create a hazard (§ 51A-4.702(h)(1)); anything else "must be processed as a zoning amendment". Even a qualifying minor amendment escapes public notice only if the site has no residential adjacency, does not change uses, and does not reduce buffer or open space (§ 51A-4.702(h)(2)(A)–(B)) — and "residential adjacency" here is its own definition, within 200 feet of an R, R(A), D, D(A), TH, TH(A), CH, MF-1, MF-1(A), MF-2 or MF-2(A) lot, or of a PD area restricted to those uses at 40 feet or less, unless separated by a street 65 feet or wider (§ 51A-4.702(h)(4)). Two consequences for the rest of this list. Development impact review is not evaluated for you: § 51A-4.803(a)(2)(C) reaches only the "SC, GR, LC, HC, O-2, and industrial subdistricts in the Oak Lawn Special Purpose District (Planned Development District No. 193)", and this tool has not read PD subdistrict schedules — its absence above is a gap, not an answer. And the tree rules may not be the citywide ones: Article X does not apply to "lots in an overlay district or a planned development district with tree preservation regulations that vary appreciably from those in this article, as determined by the building official" (§ 51A-10.131(a)(2)).',
+      })
+    }
+
+    if (DALLAS_ARTICLE_PHRASE.conservationDistrict.test(dalArticle)) {
+      hurdles.push({
+        category: 'review',
+        label: 'Conservation district: a work review form gates the building permit',
+        status: 'required',
+        note: 'This parcel is in a conservation district. A CD is not a historic overlay — it conserves an area\'s character through neighbourhood-specific standards rather than preservation criteria — but it gates the permit just as firmly. "A review form application must be submitted for any work covered by the standards in a CD ordinance" (Dallas Development Code § 51A-4.505(i)(1)), and for work needing a building permit the building official refers it to the director, who has 30 days after a complete application to decide; if the work complies the permit issues, and if it does not, "the director shall state in writing the specific CD ordinance requirements that must be met before a building permit may be issued and send it back to the building official, who shall deny the building permit" (§ 51A-4.505(i)(2)(A)–(C)). Work not requiring a building permit is decided in 10 days (§ 51A-4.505(i)(3)). Appeal runs to the board of adjustment within 15 days, and the sole question there is whether the director erred, on the same standards (§ 51A-4.505(j)). The standards themselves are in the CD ordinance and not in Chapter 51A — "If there is a conflict between the text of this section and the text of a CD ordinance, the text of the CD ordinance controls" (§ 51A-4.505(k)) — so the figures this tool shows for the base district are incomplete here, not absent. One knock-on that catches people: for any Chapter 51A rule keyed to adjacency, a CD is treated as the district its use limits resemble — "a TH-3(A) zoning district if it is restricted to single family and/or duplex uses", "an MF-2(A) zoning district if it is restricted to residential uses not exceeding 36 feet in height and allows multifamily uses", "an MF-3(A)" district if taller multifamily is allowed, "or a nonresidential zoning district if it allows a nonresidential use" (§ 51A-4.505(c)(3)) — which is how a neighbouring CD can put a residential proximity slope over your site.',
+      })
+    }
+
+    if (discretionary) {
+      // The rezoning path. NO addsMonths: the only two clocks § 51A-4.701
+      // publishes are a six-month OUTER LIMIT on how long a recommendation may
+      // sit before council schedules it and a two-year BAR after denial. A
+      // ceiling and a penalty; neither is a duration for the work (rule 6 in
+      // the time dimension).
+      hurdles.push({
+        category: 'review',
+        label: 'Rezoning: plan commission hearing, council vote, and a 20% protest can force a supermajority',
+        status: 'likely',
+        note: 'Asking for more than the base district means a zoning amendment, and in Dallas that is a legislative act of the city council. The city plan commission must report and recommend on every request and must hold a public hearing first, noticed in the official newspaper at least 10 days out (Dallas Development Code § 51A-4.701(b)(1), (3), (4)). Mailed notice scales with the size of the request — 200 feet for 0–1 acre, 300 feet over 1 to 5 acres, 400 feet over 5 to 25 acres, and 500 feet over 25 acres — measured including streets and alleys, sent at least 10 days before the commission hearing and 15 days before the council hearing, and "written in English and Spanish if the area of request is located wholly or partly within a census tract in which 50 percent or more of the inhabitants are persons of Spanish origin or descent" (§ 51A-4.701(b)(5), (c)(1), (c)(2)). Once notices are mailed the application is frozen: "The applicant may not alter, change, amend, enlarge, or withdraw a portion of an application after notices have been mailed for the public hearing." The vote is the risk to price. A simple majority of members present carries it — except that "the favorable vote of three-fourths of all members of the city council is required if: (A) the request … has been recommended for denial by the commission; or (B) a written protest against a change in a zoning district boundary or classification has been signed by the owners of 20 percent or more of either the land in the area of request or land within 200 feet, including streets and alleys, measured from the boundary of the area of request and the protest has been filed with the director" (§ 51A-4.701(c)(3)). Twenty percent of the land within 200 feet is a low bar on a tight urban block, and it is the single most common reason a Dallas case fails. A commission denial does not end it — the applicant may file within 10 days to have council review the findings (§ 51A-4.701(b)(7)) — but a final denial is expensive: "no subsequent applications may be considered for that property for two years from the date of the final decision", waived only on a denial WITHOUT prejudice or a commission finding of changed circumstances (§ 51A-4.701(d)). And a recommendation cannot sit indefinitely: a request forwarded to council "may not be held for longer than six months from the date of the commission\'s action without being scheduled for a city council hearing", after which the commission decides whether to extend or declare the application null and void (§ 51A-4.701(b)(8)) — an outer limit on the city, not a schedule for your project.',
+      })
+    }
+
+    // Park land dedication. New in Ord. 33280 and inside Volume III's currency
+    // window. Gated on a UNIT COUNT, so `sizeDependent` — and the unit count is
+    // exactly what a placeholder GFA produces, which is what the tag is for.
+    if (isResidential && units >= 3 && project.projectType === 'new') {
+      hurdles.push({
+        category: 'fees',
+        label: 'Park land dedication or a fee in lieu, due before the certificate of occupancy',
+        sizeDependent: true,
+        status: 'required',
+        note: `Dallas takes park land, or money instead of it, from multifamily development. The formula is per unit and per bedroom count: "For a multi-family development: One acre per 255 single bedroom dwelling units. Less than 255 dwelling units on a pro rata basis. One acre per 127 two bedroom or greater dwelling units. Less than 127 dwelling units on a pro rata basis" (Dallas Development Code § 51A-8A.1004(e)(2)), with a separate dwelling-unit factor of "0.005 acres per dwelling unit" for multifamily and a density factor of 40 in the central business district area, four in a suburban area and one in an urban area (§ 51A-8A.1012). At ${units} units the dedication lands between roughly ${(units / 255).toFixed(2)} and ${(units / 127).toFixed(2)} acres depending on the bedroom mix — which is not in the parcel record, so both ends are given rather than one number chosen for you. The director decides which form it takes: "The director shall determine whether the owner of property is required to dedicate land, pay a fee-in-lieu of dedication, or both", and on-site dedication has a floor of 0.5 acre and is aimed at land "within a 10-minute walk (approximately 0.5 miles) of 1,000 residents or more" (§ 51A-8A.1004(a)–(b)). The payment point is late and it is a gate: "For multifamily and hotel and motel uses payment of the fee-in-lieu is required at the time of the issuance of a final certificate of occupancy" (§ 51A-8A.1005(b)), and "Issuance of a final certificate of occupancy for a multifamily or hotel or motel use development requires confirmation of deposit into the park land dedication fund of the fee-in-lieu … or on-site dedication shown on a final plat" (§ 51A-8A.1009(c)). ⚠️ The RATE is not in the ordinance and is not stated here: § 51A-8A.1005(a) sends you to "the amount determined by this article and Section 51A-1.105", the city's fee schedule, which Dallas revises — get the current schedule rather than a figure from a prior year. Two exclusions and one useful right. Income-restricted units are carved out: "This section does not apply to reserved dwelling units. If a development plan includes a combination of reserved dwelling units and market rate dwelling units, the amount of parkland dedication is based only on the pro rata share of the market rate dwelling units" (§ 51A-8A.1009(a)(3)); and the article does not apply at all to government-owned land or to "developments in planned development districts, existing on July 1, 2019, with open space or park land requirements" (§ 51A-8A.1002). You can fix the number before you commit: on written request the director must determine the dedication owed within 30 days, and "The director's determination regarding the amount of dedication is binding for the lesser of two years, or the day the owner … files a development plan that relies on the director's determination" (§ 51A-8A.1009(b)(3)). Single-family and duplex development is on a different track — one acre per 100 dwelling units under § 51A-8A.1004(e)(1), paid at building permit rather than at CO (§ 51A-8A.1005(b)), with its own section at § 51A-8A.1008, which this tool has not read.`,
+      })
+    }
+
+    // Urban forest conservation. The gate is the code's own exemption read
+    // whole — THREE limbs, all of which must hold for the exemption: under two
+    // acres, single-family or duplex use, AND in a residential district. Not
+    // tagged sizeDependent: no floor area is in the trigger (same reasoning as
+    // Raleigh's tree row).
+    {
+      const dalSmallResLot =
+        lotSqFt > 0 &&
+        dalAcres < 2 &&
+        units > 0 &&
+        units <= 2 &&
+        DALLAS_RESIDENTIAL_DISTRICTS.has(dalKey)
+      if (!dalSmallResLot && project.projectType !== 'change_of_use') {
+        hurdles.push({
+          category: 'environmental',
+          label: 'Tree removal permit and mitigation planting',
+          status: DALLAS_ARTICLE_PHRASE.plannedDevelopment.test(dalArticle) ? 'likely' : 'required',
+          note: `Dallas's urban forest rules start from coverage, not from a threshold: "This division applies to all property in the city except for: (1) except as provided in this section, lots smaller than two acres in size that contain single-family or duplex uses in residential districts; and (2) lots in an overlay district or a planned development district with tree preservation regulations that vary appreciably from those in this article, as determined by the building official" (Dallas Development Code § 51A-10.131(a)). All three limbs of the first exemption must hold together, and they do not hold here. ${
+            DALLAS_ARTICLE_PHRASE.plannedDevelopment.test(dalArticle)
+              ? 'This is a planned development district, so the second exemption is live and turns on a building-official determination this tool cannot make — confirm whether the PD ordinance carries its own tree rules before pricing the citywide ones.'
+              : ''
+          } A responsible party must post an approved tree removal application or a building permit at the entrances before removing or seriously injuring a protected tree, and the application must be posted alongside a demolition or grading permit (§ 51A-10.132(a)). It is not a formality: the application carries a tree survey or an approved forest stand delineation showing "the location, diameter, and name (both common and scientific) of all trees" (§ 51A-10.132(b)(4)), it is not approved until the building official signs it (§ 51A-10.132(c)), and "The building official shall deny a tree removal application if the removal or serious injury is not in the public interest", weighing the feasibility of relocating the improvement, the cost of preserving the tree, and the impact on the urban and natural environment (§ 51A-10.132(e)). Mitigation is priced in diameter inches and it is where the money is: "the minimum total caliper of replacement trees must equal or exceed the total classified diameter inches of the protected trees removed or seriously injured", at 3:1 for historic trees, 1.5:1 for significant, 1:1 for Class 1, 0.7:1 for Class 2 and 0.4:1 for Class 3 (§ 51A-10.134(c)(1)). Replacement trees must be at least two inches caliper, planted on the same lot, and planted within 30 days of removal — extendable to six months on an affidavit, and transferable onto the building permit for completion "prior to a final certificate of occupancy" if a permit application follows inside that window (§ 51A-10.134(c)(3)–(5)); on a site of two acres or more no single species may be more than 35 percent of the replacements. Only where the building official finds on-site planting impracticable do the alternatives open — legacy-tree credit at 12 inches a tree, habitat preservation areas of at least 1,200 contiguous square feet counting 12 diameter inches each, and the sustainable development incentives, which themselves require a forest stand delineation, a conceptual landscape plan and a soil resource assessment before a building permit issues on a site of two acres or more with commercial or multifamily use (§ 51A-10.135(a)–(d)). Budget the survey and the arborist early: the delineation feeds the site plan, not the other way round. This tool has not read Division 51A-10.120, the landscaping requirements that sit alongside these — that is a known gap, not an absence.`,
+        })
+      }
+    }
+
+    // Floodplain. NOTE THE INSTRUMENT: the trigger below is the FEMA zone this
+    // tool holds, and Dallas's FP is a SEPARATE city designation on a layer
+    // providers/dallas.ts does not fetch. The two do not coincide, and
+    // § 51A-5.103(a) reaches undesignated land as well — so this is 'likely'
+    // with the real trigger quoted, never a claim that an FP designation exists.
+    if (parcel.overlays.floodZone && !FLOOD_OK.has(parcel.overlays.floodZone.toUpperCase())) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Floodplain: a fill or floodplain alteration permit from Water Utilities',
+        status: 'likely',
+        note: 'A FEMA flood zone is mapped here, which makes the city\'s own floodplain track worth checking — and note the two are not the same thing. Dallas regulates "FP areas", a zoning designation on the city\'s own map, and this tool does not fetch that layer, so its presence or absence here is unknown. The obligation is not limited to designated land in any case: "A person shall comply with the requirements of this article for FP areas before developing land within the design flood line of a creek or stream having a contributing drainage area of 100 acres or more, even if the land has not been formally designated as an FP area" (Dallas Development Code § 51A-5.103(a)). Where it applies the permit is a hard gate and it is not issued by development services: "A person shall not deposit or store fill, place a structure, excavate, or engage in any other development activities in an FP area without first obtaining: (A) a fill permit or a floodplain alteration permit from the director of water utilities; and (B) all other permits required by county, state, and federal agencies" (§ 51A-5.105(a)(1)). Hydrologic or hydraulic modelling may be required for something as ordinary as a patio above existing grade, a fence that blocks flood flow, a retaining wall projecting into the channel, or an addition to an existing structure (§ 51A-5.105(b)(2)), and a preapplication conference with Water Utilities is mandatory wherever modelling is needed (§ 51A-5.105(d)). Removing an FP designation is a different and much longer road: the application is circulated to development services, the chief planning officer and park and recreation, whose concerns "must be addressed by the property owner prior to issuance of the fill permit" and who also decide "whether the applicant\'s property should be considered for public acquisition due to its ecological, scenic, historic, or recreational value", and Water Utilities must hold a neighbourhood meeting with written notice to every owner within 500 feet (§ 51A-5.105(e)(2)–(3)). If the site is in the Trinity River corridor there is a further certificate: "A person commits an offense if he makes any floodplain alteration within the Trinity River Corridor without first obtaining a corridor development certificate (CDC) from the director of water utilities" (§ 51A-5.107(b)), judged against the CDC Manual, with variances decided by the city council (§ 51A-5.107(d)–(e)). Article V also carries escarpment regulations at Division 51A-5.200, which this tool has not read and does not evaluate.',
+      })
+    }
+
+    // Platting. 'info' and unconditional on new construction, because the limb
+    // that decides it — whether a legal building site already exists — is a
+    // recorded-plat fact the parcel record does not carry. Never gated on a
+    // proxy for it.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'review',
+        label: 'You may need to plat before you can permit',
+        status: 'info',
+        note: 'In Dallas the right to a building permit runs through a legal building site, and platting is what creates one: "Platting is required to create a building site pursuant to Section 51A-4.601(a)(1) of this chapter" (Dallas Development Code § 51A-8.401(a)). Whether this parcel already IS one is a recorded-plat question the parcel record does not answer, so this is stated rather than asserted — check it first, because it decides your critical path. Platting is also required to divide a lot, to combine two or more lots into one, to develop "in a manner inconsistent with an existing plat", to bring vacated or abandoned property into a legal site, and to establish a shared access development (§ 51A-8.401(b)–(h)). Dallas has used state law to soften the ownership case but not the development case: relying on Tex. Loc. Gov\'t Code § 212.0045, "the city of Dallas shall not require platting to divide property for transfer of ownership through a metes and bounds description unless and until a building permit is requested for the property to be developed as a separate building site" — and a metes-and-bounds conveyance without a plat "will not be recognized as a separate building site, nor will the lines of ownership be recognized for purposes of determining development rights" (§ 51A-8.401(b)). Buying an unplatted piece does not buy development rights. In a planned development district the plat and the development plan move together: "A preliminary plat must be submitted at the same time as the development plan for a planned development district", coordinated for one commission review, unless a building site already exists (§ 51A-8.401(g)). Exactions and park land dedication are apportioned through the plat under § 51A-8.405, and engineering plans have their own approval track at § 51A-8.404 — neither of which this tool has read.',
+      })
+    }
+
+    // State-law clock on the permit itself. Applies to every city in Texas, so
+    // it is 'info' — but it is the one enforceable deadline in this whole list,
+    // and its remedy is a fee refund rather than a deemed approval, which is
+    // worth knowing before anyone budgets on it.
+    //
+    // NO addsMonths, and the 45 days is exactly why. A lifecycle scoping pass
+    // over 85 researched hurdle rows in five cities found ZERO `addsMonths`,
+    // because every duration those codes publish is a shot clock, an appeal
+    // window or a deferral ceiling — never a duration for the work. Texas
+    // § 214.904(b) is the same shape and the weakest instance of it: it is a
+    // deadline on the MUNICIPALITY whose only consequence is that the city may
+    // not keep the fee. The permit still has to issue on its merits, so 45 days
+    // is neither a floor (a compliant city can decide sooner) nor a ceiling
+    // (a non-compliant one just refunds), and writing 1.5 months here would
+    // publish a penalty as a schedule — rule 6 in the time dimension.
+    hurdles.push({
+      category: 'review',
+      label: 'State law puts a 45-day clock on the building permit — with a fee refund, not a deemed approval',
+      status: 'info',
+      note: 'Texas clocks the municipality rather than the applicant, and Dallas is bound by it: "Not later than the 45th day after the date an application for a permit is submitted, the municipality must: (1) grant or deny the permit; (2) provide written notice to the applicant stating the reasons why the municipality has been unable to grant or deny the permit application; or (3) reach a written agreement with the applicant providing for a deadline for granting or denying the permit" (Tex. Loc. Gov\'t Code § 214.904(b)). Option (2) is the one that is used, and it restarts a shorter clock: where that notice is given, "the municipality must grant or deny the permit not later than the 30th day after the date the notice is received" (§ 214.904(c)). Read the remedy before you plan around it — missing the deadline does NOT approve your permit. The municipality "may not collect any permit fees associated with the application" and "shall refund to the applicant any permit fees associated with the application that have been collected" (§ 214.904(d)). A fee refund is the entire consequence; the permit still has to issue on its merits, so this is a cost cap, not a schedule you can rely on.',
+    })
+
+    if (teardown && parcel.overlays.historicDistrict) {
+      hurdles.push({
+        category: 'demolition',
+        label: 'Historic demolition: a certificate that can be refused outright',
+        status: 'required',
+        note: 'Demolition inside a Dallas historic overlay is a veto point, not a delay — and that makes it different from most cities this tool covers, where the ordinance trades refusal for a waiting period. "The landmark commission shall deny the application unless it makes the following findings" (Dallas Development Code § 51A-4.501(h)(4)), and there are only four doors: that the replacement structure "is more appropriate and compatible with the historic overlay district than the structure to be demolished or removed" AND that "the owner has the financial ability and intent to build the new structure"; that no economically viable use exists; that the structure "constitutes a documented major and imminent threat to public health and safety"; or that it is noncontributing because it is newer than the district\'s period of significance (§ 51A-4.501(h)(2)(B), (h)(4)(A)–(D)). The burden is yours and it is the high one: "The property owner has the burden of proof to establish by clear and convincing evidence the necessary facts to warrant favorable action" (§ 51A-4.501(h)(3)(B)). If you are going the replacement route, the sequence is the trap — the commission "must first approve the predesignation certificate of appropriateness or certificate of appropriateness for the proposed new structure and the guarantee agreement to construct the new structure before it may consider the application to demolish", and that guarantee agreement carries a covenant to build by a date certain plus a performance and payment bond, letter of credit, escrow or cash deposit (§ 51A-4.501(h)(2)(C)(v), (h)(4)(A)). Your new building must be designed, approved and bonded before the old one can come down. The no-economically-viable-use route is a documentary siege: two years of profit and loss statements, two years of listings, prices asked and offers received, five years of mortgage history, an independent appraisal, a restoration feasibility study by a licensed architect, engineer or financial analyst including a ten-year pro forma, and an ad hoc three-person independent economic review panel whose recommendation must land before the application is even complete (§ 51A-4.501(h)(2)(D), (h)(3)(A)). One clock runs your way: "Within 65 days after submission of a complete application, the landmark commission shall hold a public hearing and shall approve or deny the application. If the landmark commission does not make a final decision within that time, the building official shall issue a permit to allow the requested demolition or removal" (§ 51A-4.501(h)(3)(B)) — but "complete" is doing the work in that sentence, and on the economic route completeness waits on the panel. Any interested person may appeal an approval to the city plan commission within 30 days, and the permit does not issue until that window closes (§ 51A-4.501(h)(5)). A final denial bars reapplication on the same subject matter for one year unless it was without prejudice or the commission finds changed circumstances (§ 51A-4.501(h)(6)), and a granted certificate expires if work has not commenced within 180 days (§ 51A-4.501(h)(7)). Screen the building\'s contributing status before you price a teardown here — it is the difference between a schedule item and a dead deal.',
       })
     }
   }
