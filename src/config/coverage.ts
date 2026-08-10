@@ -123,7 +123,9 @@ export function suppressedPermitTiers(slug: string): string[] {
 //               record covering all eight cities identically).
 //   permits   — the CITIES_WITH_MEASURED_PERMITS notes in cities.ts, which
 //               carry each withdrawal's measured disqualifier.
-//   relief    — scripts/relief/README.md's 2026-08 survey record.
+//   relief    — scripts/relief/README.md's 2026-08 survey record, plus its
+//               "Surveyed 2026-08-10" addendum covering Charlotte, Columbus,
+//               Milwaukee and Atlanta.
 //
 // The withdrawn reasons are deliberately NOT one flattened sentence: six
 // cities were withdrawn for six different measured disqualifiers, and the
@@ -150,10 +152,16 @@ const RELIEF_SURVEY_NO_OUTCOME_FIELD: AbsenceReason = {
     'A dataset exists but no usable outcome does: the status domain carries no granted/denied value, or the field sits on the wrong board (2026-08 survey).',
 }
 
-const RELIEF_NEVER_SURVEYED_AUG8: AbsenceReason = {
+// Milwaukee and Atlanta were surveyed 2026-08-10 and came back FEASIBLE, not
+// absent — the boards' outcomes exist and were sampled. What stopped them is
+// OUR dependency decision, so the cell is 'not-built' ("nobody built this"),
+// never 'not-published', which would blame the jurisdiction for our own call.
+// Shared, because unlike the six permit withdrawals the disqualifier here is
+// literally the same one: the declined Accela scraping dependency.
+const RELIEF_SURVEYED_SCRAPE_DECLINED: AbsenceReason = {
   code: 'not-built',
   reason:
-    'Never surveyed for relief outcomes — this city went live 2026-08-08, after the relief survey ran. A gap, not an answer.',
+    'Surveyed 2026-08-10 and found feasible, not absent: the board’s decisions carry real outcomes, but only inside an Accela Citizen Access portal that would have to be scraped. That dependency was declined — a markup change there returns wrong rows silently instead of erroring — so this is known data nobody has built, not data the city withholds.',
 }
 
 const RELIEF_NEVER_SURVEYED_AUG9: AbsenceReason = {
@@ -282,7 +290,7 @@ export const ABSENCE_REASONS: Partial<
       reason:
         'Milwaukee’s residential pair measures cleanly, but the city files all 5+-unit multifamily as commercial permits whose use column is free text, so the apartment stratum cannot be enumerated; the sound residential pair stays unpublished pending a live re-run and a product decision.',
     },
-    relief: RELIEF_NEVER_SURVEYED_AUG8,
+    relief: RELIEF_SURVEYED_SCRAPE_DECLINED,
   },
   columbus: {
     lifecycle: LIFECYCLE_NOT_BUILT,
@@ -291,7 +299,11 @@ export const ABSENCE_REASONS: Partial<
       reason:
         'Columbus’s permits layer carries exactly two date fields — ISSUED_DT and a status stamp — and no intake date.',
     },
-    relief: RELIEF_NEVER_SURVEYED_AUG8,
+    relief: {
+      code: 'not-published',
+      reason:
+        'Columbus publishes its Board of Zoning Adjustment variances as a map layer whose only status values are “passed” and “proposed” — 3,084 rows, with two sibling layers agreeing independently. Denied cases are absent rows rather than denied rows (8–32% of each year’s sequential case numbers never appear), so a computed grant rate would read 100% by construction.',
+    },
   },
   charlotte: {
     lifecycle: LIFECYCLE_NOT_BUILT,
@@ -300,7 +312,9 @@ export const ABSENCE_REASONS: Partial<
       reason:
         'Charlotte publishes no building-permit dataset at all — established by enumerating the portal’s full 300-dataset catalogue, not by a failed guess.',
     },
-    relief: RELIEF_NEVER_SURVEYED_AUG8,
+    // relief: DERIVED-PRESENT since 2026-08-10 (reliefStats.json carries
+    // charlotte.variance, 92.3% / n=155). Its stale 'not-built' reason was
+    // deleted here in the same change; the drift guard is what forced it.
   },
   atlanta: {
     lifecycle: LIFECYCLE_NOT_BUILT,
@@ -309,7 +323,7 @@ export const ABSENCE_REASONS: Partial<
       reason:
         'Atlanta publishes an application date and no issue date: StatusDate equals issuance only for the 37.4% of permits still sitting at “Issued” — a survivorship-biased third, which is structural, not closable.',
     },
-    relief: RELIEF_NEVER_SURVEYED_AUG8,
+    relief: RELIEF_SURVEYED_SCRAPE_DECLINED,
   },
   dallas: {
     hurdles: {

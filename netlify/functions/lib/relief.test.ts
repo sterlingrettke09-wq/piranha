@@ -38,20 +38,39 @@ describe('reliefOddsFor', () => {
     }
   })
 
-  it('cities whose track is broader than variances MUST carry a denominator label', () => {
+  it('cities whose denominator is not plain "variance requests" MUST carry a label', () => {
     // The realityCheck card renders `label ?? 'variance requests'`. For NYC
-    // (BZ calendar: variances + §73 special permits) and DC (whole-board:
-    // variances + special exceptions) the fallback would be a FALSE published
+    // (BZ calendar: variances + §73 special permits), DC (whole-board:
+    // variances + special exceptions) and Charlotte (Board of Adjustment
+    // variances ONLY — see below) the fallback would be a FALSE published
     // claim, so a missing label on these entries is an impossible state, not a
     // style choice. If a quarterly refresh ever drops the label, this fails
     // before the false line ships.
-    for (const city of ['nyc', 'dc'] as const) {
+    for (const city of ['nyc', 'dc', 'charlotte'] as const) {
       const odds = reliefOddsFor(city)
       expect(odds, `${city} should be present`).toBeDefined()
       expect(odds?.label, `${city} must label its denominator`).toBeTruthy()
       // And the label must not itself claim variances-only.
       expect(odds?.label).not.toBe('variance requests')
     }
+  })
+
+  it("charlotte's label carries the track EXCLUSION, not just a wider track", () => {
+    // NYC and DC label a denominator that is BROADER than variances. Charlotte
+    // is the opposite failure mode: its feed also carries the staff
+    // administrative-adjustment track, which runs 99.2% and which the pipeline
+    // deliberately excludes (UDO 37.4.A.4.b — an objection by anyone with
+    // standing means "the administrative adjustment shall be denied and the
+    // applicant may file for a variance", so the staff track is the
+    // consent-filtered residue, not a lenient board). Pooling it in would
+    // publish ~96.4% instead of 92.3%.
+    //
+    // So the rendered line must say WHICH BODY decided the cases counted.
+    // A bare "variance requests" here would be a pooled-rate-with-an-unpooled-
+    // label claim — true of neither track — which is exactly the defect that
+    // got five permit figures withdrawn.
+    const odds = reliefOddsFor('charlotte')
+    expect(odds?.label).toBe('Board of Adjustment variances')
   })
 
   it('reads the JSON-shape contract from an injected fixture', () => {

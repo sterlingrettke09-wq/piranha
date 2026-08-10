@@ -35,6 +35,7 @@ node scripts/relief/boston.mjs
 node scripts/relief/sf.mjs
 node scripts/relief/nyc.mjs
 node scripts/relief/dc.mjs
+node scripts/relief/charlotte.mjs
 ```
 
 Each script is **idempotent**: it reads the existing `reliefStats.json`, merges
@@ -81,6 +82,15 @@ exceptions) — the script MUST ship a `label` naming the real denominator, and
 the `vintage` JSON string is a caveat nobody renders — that is the defect that
 got five permit figures withdrawn.
 
+**The label also has to carry an EXCLUSION, not only a widening.** Charlotte's
+feed contains two tracks for the same underlying dimensional relief, split by
+magnitude: the UDO Board of Adjustment (92.3%) and the staff administrative
+adjustment (99.2%, measured every run). The pipeline publishes the Board alone,
+so its label reads **"Board of Adjustment variances"** — a bare "variance
+requests" there would be a claim true of neither track, i.e. the
+pooled-rate-under-an-unpooled-label error, in the rendered line rather than in a
+comment. `relief.test.ts` pins that exact string.
+
 ## Sanity gates (every script)
 
 - **Probe the schema first — the COLUMN LIST, not one row.** If the expected
@@ -111,6 +121,19 @@ got five permit figures withdrawn.
   writes the adversarial floor into the vintage every run. That is a mitigated
   version of the defect, disclosed — not the defect's absence. Do not copy the
   DC frame to a city that has any resolution stamp.
+
+  **Charlotte adds the other half of this: audit the frame against something the
+  frame cannot see.** A resolution-date frame is only as complete as the date
+  field, and Charlotte's is not complete — the *2025-02-25* Board session decided
+  three cases that sit in the feed marked `Granted` with a **blank**
+  `Decision_Date`, so a date-framed cohort drops them silently and no internal
+  check can notice. `charlotte.mjs` therefore scores the dated cohort but audits
+  it against the union of that cohort and every case whose **case-number year**
+  is in-window (157 ∪ 159 = 164), which is independent of the date field. Both
+  leakage classes — decided-but-undated, and no-disposition — are re-measured
+  every run and each refuses (exit 1, no write) above 4%. That defect was found
+  by reading the Board's own minutes, i.e. from outside the system (rule 9); the
+  gate is what keeps it found.
 - The outcome field must be **unambiguous**: map only the statuses that are a
   board ruling on the merits to granted/denied, and **exclude** withdrawn,
   deferred, cancelled, informational, and still-in-progress records from the
@@ -126,6 +149,7 @@ got five permit figures withdrawn.
 | **Boston** | `boston.mjs` | **✅ landed** (2026-06-10) | **92.7%** | **3820** | 2022–2026 | CKAN `0f0fa8c2-…` — Zoning Board of Appeal Tracker; `decision` ∈ {AppProv, Approved} granted, {DeniedPrej, Denied} denied; **framed on `final_decision_date` ≥ 2022**. 3542 granted, 278 denied. |
 | **SF** | `sf.mjs` | **✅ landed — RESTATED 2026-08-09** | **97.3%** | **406** | 2022–2026 | Socrata `y673-d69b` — Planning Department Records · Non-Projects; `record_type = 'VAR'`; `record_status` ∈ {Closed - Approved, Approved} granted, {Closed - Disapproved} denied; **framed on `close_date` ≥ 2022** (was `open_date` — see below). 395 granted, 11 denied. |
 | **NYC** | `nyc.mjs` | **✅ landed** (2026-08-10) | **98.1%** | **210** | 2022–2026 | Socrata `yvxd-uipr` — BSA Applications Status; `application = 'BZ'` **whole track, labelled "variance and special-permit applications"** (strict §72-21 is n=93 < 100; widening by regex to n=102 would let a string-match decide the gate — refused); **framed on the action date `date`** — the feed has NO pending value (pending cases are absent rows, so a filing denominator cannot be audited; the tell: 31 of 36 cases filed in 2025 already show Granted). Window end measured each run: min(`date`) of the transient `Decision` (acted-on, outcome not yet coded) rows, so partially-coded sessions are never scored. Excludes Withdrawn (49) and Dismissed (10, procedural). 206 granted, 4 denied. |
+| **Charlotte** | `charlotte.mjs` | **✅ landed — GATED** (2026-08-10) | **92.3%** | **155** | 2022–2026 | City of Charlotte `ZoningVarianceAppeal/FeatureServer/0` — Zoning Variances and Appeals; `Request_Type = 'Variance'` **exact match**, **deduped rows→cases** (164 rows / 157 cases; 0 outcome conflicts — script halts if any appear); **labelled "Board of Adjustment variances"** because the same feed's staff administrative-adjustment track runs **234/236 = 99.2%** and is deliberately excluded (UDO 37.4.A.4.b: an objection by anyone with standing means "the administrative adjustment shall be denied and the applicant may file for a variance" — the staff track is the *consent-filtered residue*, and pooling would publish 96.4%). **Framed on `Decision_Date`, which is the CLERK-FILING date, not the decision date** (UDO 37.8.A.15; runs 9–98 days after the hearing) — sound for cohort membership, never a duration endpoint. Two `Granted (3)` / `Granted-Appeal Pending` cases excluded as not single-valued (including them: 92.4%). **Measured refusal gate**: audited against 164 case-year-2022+ cases, 4 decided-but-undated (the un-entered **2025-02-25** session) + 3 unresolved (1.8%, ceiling 4%), adversarial bound **[90.7%, 92.6%]** written into the vintage every run. 143 granted, 12 denied. |
 | **DC** | `dc.mjs` | **✅ landed — CAVEATED** (2026-08-10) | **97.4%** | **617** | 2022–2024 (filings) | DCGIS `Planning_Landuse_and_Zoning_WebMercator/MapServer/34` — Zoning Cases; `CASE_TYPE='BZA'`; **deduped rows→cases** (2,003 rows / 1,121 cases since 2022; matured window 1,200 rows / 688 cases; 0 outcome conflicts — script halts if any appear); **WHOLE-BOARD rate, labelled "zoning relief requests (variances and special exceptions combined)"** — every field that could split them (RELIEFSOUGHT, CASE_TYPE_RELIEF, BZAPURSUANTTO, BZARELIEFOF) is 0/2,003 populated 2022+, and the label renders on the user-facing card; **matured filing cohort** (`DATEFILED` is the layer's only date — filings ≥ 2y before run), residual unresolved 10/688 = 1.5%, gated ≤ 5%, adversarial floor 95.9% stated in the vintage. `Grant in Part` prefix → granted (Boston's AppProv treatment). 601 granted, 16 denied. |
 
 ### ⚠️ SF was restated 2026-08-09 — the previous 97.6% / n=289 was censored
@@ -194,15 +218,132 @@ why, so nobody re-spends the research:
   dataset. **San Diego / San Jose / Nashville** — datasets exist, outcome field
   doesn't (no granted/denied value in the status domain, or the field sits on
   the wrong board).
-- **Milwaukee / Columbus / Charlotte / Atlanta** — never surveyed (added
-  2026-08-09, after the survey ran). A gap, not an answer — do not record these
-  as negatives.
 - **LA** — Zoning Administrator / Area Planning Commission determinations; check
   `data.lacity.org` and the Planning case-tracking (PCTS) exports.
 - **Denver** — Board of Adjustment for Zoning Appeals; check
   `denvergov.org`/`opendata-geospatialdenver.hub.arcgis.com`.
 - **Minneapolis** — Board of Adjustment / land-use applications on
   `opendata.minneapolismn.gov`.
+
+### Surveyed 2026-08-10 — Charlotte, Columbus, Milwaukee, Atlanta
+
+These four were added after the 2026-08 survey ran and were carried as "never
+surveyed" until now. All four were probed against live endpoints on 2026-08-10.
+**Charlotte has since been BUILT and landed** (see the run-status table above);
+for the other three no script landed and their blocks in `reliefStats.json` do
+not exist.
+
+- **Charlotte** — **BUILT 2026-08-10 → `charlotte.mjs`, 92.3% / n=155.** The
+  survey's own recommendation was 92.4% / n=157; the shipped figure is the
+  **strict** variant, which excludes the two dispositions that are not
+  single-valued (`Granted (3)` — the field can express a split, as
+  `GRANTED (1) DENIED (2)` shows, and truncates at 30 chars; and
+  `Granted-Appeal Pending` — granted, but a §160D-1402 superior-court petition
+  is outstanding). Both alternatives are re-measured and the 92.4% figure is
+  stated in the vintage, so the choice is visible rather than buried. All other
+  survey findings held on re-derivation from the live service: 3,142 rows
+  reconciled three ways, 164 in-window rows → 157 cases, 0 outcome conflicts,
+  the staff track re-measured at **234/236 = 99.2%** (survey: 194/2 = 99.0%,
+  a row-level count) against the Board's 92.3%, pooling would publish **96.4%**.
+  Two survey numbers moved on re-derivation and the shipped ones are the
+  measured ones: the adversarial bound is **[90.7%, 92.6%]** (the survey's
+  [90.85%, 92.55%] was computed on the 157-case variant), and the residual gate
+  is **4%, not DC's 5%** — Charlotte's leakage is *directional* (every undated
+  case measured is a grant), so the same share buys less tolerance, and 4% fires
+  on the second occurrence of the Feb-2025 defect rather than the first.
+
+- **Columbus** — **VERIFIED NO.** `BZA_STATUS` on
+  `maps2.columbus.gov/arcgis/…/BuildingZoning/MapServer/1` has exactly two values
+  across 3,084 live rows (2004–2026): `PASSED` 2,982 / `PROPOSED` 102. Both
+  sibling layers agree independently (Council `CV_STATUS` 2,008/100, Graphics
+  Code `GC_STATUS` 765/35) — 5,992 rows, three layers, two states, and no value
+  that could express a refusal. Enumerated rather than searched: all 65 portal
+  datasets from the DCAT catalogue, plus the whole 18-layer `BuildingZoning` and
+  34-layer `Development` MapServers read from the service index. **The
+  corroboration is what makes this an answer rather than a failed search:**
+  `CASE_NO` is sequential (`BZAyy-NNN`) and 8–32% of every year's numbers never
+  appear in the layer (BZA24 holds 152 of 178 issued; BZA22 152 of 180), so
+  **denials are absent rows, not denied rows**, and a computed rate would be
+  **100% by construction** — a plausible number, never a null. Independently
+  disqualifying: `CREATED_DATE` is a GIS record-creation stamp, not a case or
+  decision date (384 rows in 2009, 539 in 2020, against ~130–180 real cases a
+  year), so there is no time axis either. Outcomes live per case behind
+  `WEB_LINK` → Accela — Chicago's posture. Coverage-matrix reason string:
+  *"Columbus publishes its Board of Zoning Adjustment variances as a map layer
+  whose only status values are 'passed' and 'proposed' — denied cases are absent
+  from the data entirely, so no grant rate can be computed."* (The endpoint needs
+  a browser `User-Agent`; a bare client gets HTTP 403 — that is not absence.)
+
+- **Milwaukee** — **FEASIBLE but DECLINED on the dependency (see below); cell
+  stays `not-built`.** Not a negative. `data.milwaukee.gov` (all 196 CKAN
+  packages) and `milwaukeemaps.milwaukee.gov` (22 folders, 105 services, every
+  layer and table) have no BOZA dataset — but the city's own BOZA page designates
+  `aca-prod.accela.com/MILWAUKEE` (module `Development`) as where the records
+  live. **The outcome is one layer below the search results:** the result-list
+  `Status` column reads Complete/In Process/Void for everything, and a shallower
+  pass stopping there would have filed a wrong VERIFIED NO. The **"BOZA Hearing"**
+  workflow task carries `Marked as Granted|Denied|Dismissed on MM/DD/YYYY`, so a
+  Boston-shaped decision-date frame exists and unheard cases drop out by
+  construction. Volume ≈ 2,023 `Zoning Code Appeal` records 2022–2025 (`BZZA-`
+  numbers are dense and sequential, so the highest number is the count — verified
+  against the two record types where ACA prints an exact total), n ≈ 1,800
+  decided. A 2023 spread sample (n=50) gives ~91%, Boston's family — **an
+  indicator that the field discriminates, not a publishable rate.**
+  `Zoning Appeal Type` separates variances from special uses, so whole-track vs
+  variance-only is a real choice that must be made explicitly and named in
+  `label`, including the rule for the ~10–16% of records carrying both.
+
+- **Atlanta** — **FEASIBLE but DECLINED on the dependency (see below); cell stays
+  `not-built`.** `opendata.atlantaga.gov` and `data.atlantaga.gov` do not resolve
+  (DNS failure, not a 404), and `gis.atlantaga.gov/dpcd` — 6 folders, 21 services,
+  every layer and table — has no BZA layer. `ZoningRezoningCases` and
+  `ZoningSpecialUsePermits` do carry a status but are the Zoning Review Board /
+  Council legislative track: **the wrong body**, and no substitute, since
+  `analyze.ts` attaches `reliefOdds` only on the variance path. Outcomes are in
+  `aca-prod.accela.com/ATLANTA_GA` (module `Planning`), where record types split
+  the relief kinds (`Planning/BZA/Variance/NA`, plus a Special-Exception-Variance
+  combo), so a variance-only denominator genuinely exists — 612 variance records
+  2022–2025, n ≈ 350–450 decided.
+  **⚠️ The trap: do NOT score the search-result `Status` column.** It reads
+  `Approved` / `Denied` / `App with Conditions` and looks exactly like an outcome.
+  It is **stale** — of 41 fully probed 2024 variances, 8 whose list Status reads
+  "In Progress" have a hearing task marked `Approved`, and the 2022 cohort still
+  shows 18% "In Progress" four years on — and it is a **filing frame**, with
+  `In Progress` at 251 of 612 rows (41%) across 2022–25. Censored and
+  filing-framed at once, i.e. SF's retracted structure at nearly double the
+  hidden share, in a field that yields a plausible number and never a null. Score
+  the **"Public Hearing"** task instead (it carries its own decision date), read
+  **jointly with the `Close` task** (rule 13): 6 of 81 probed records reach a
+  disposition without a hearing, all of them withdrawn or denied-without-
+  prejudice, and with the hearing task alone "withdrawn before hearing" and
+  "still unresolved" are the same empty cell. Two calls must be settled before
+  any figure ships — whether `Denied Without Prejudice` is a merits denial (it is
+  the second most common non-approval, so it moves the rate, and it needs the
+  BZA's rules of procedure, not the status string), and whether the combo record
+  type is in the denominator (which changes `label`). Also: **do not infer counts
+  from case numbers here** — the `V-` sequence has gaps (2024's highest is
+  `V-24-242` against 160 records), unlike Milwaukee's dense `BZZA-` sequence.
+
+- **The Accela scraping dependency was DECLINED (2026-08-10).** Milwaukee and
+  Atlanta are reachable only by scraping ASP.NET Citizen Access portals —
+  viewstate, mandatory `Referer`/`Origin` CSRF headers, a session-bound page
+  method (`GetProcessingData` takes no record id; it reads the cap the preceding
+  GET put in the session), HTTP 429 after ~40–60 request pairs. Every other
+  source in this project is an official API or an open-data feed, and a scraped
+  portal differs in kind rather than degree: **a markup change breaks it
+  silently**, still returning well-formed rows, just fewer or different ones. A
+  dependency that can start returning wrong data without erroring is worse than a
+  gap, and the gap is currently honest. If this is ever revisited the condition
+  is a **structural check that fails loudly on markup drift** — record counts
+  reconciled against the record-number sequence, the outcome task asserted
+  present, a fail-closed status vocabulary that halts on any unseen value, and a
+  hand-count of one hearing's dispositions against the boards' own published
+  minutes (Milwaukee posts them under
+  `city.milwaukee.gov/ImageLibrary/Groups/cityBOZA/<year>/`) as the external
+  check per rule 9 — **not** a comment saying to watch for it. Both cities' cells
+  stay `not-built`, which is accurate: nobody built them. That is *known
+  presence, unbuilt*, and it must not render like Columbus's verified absence or
+  Chicago's PDF-only.
 
 If a portal doesn't publish outcomes in a parseable, unambiguous way, **skip
 honestly and document the gap here** rather than write a guess.

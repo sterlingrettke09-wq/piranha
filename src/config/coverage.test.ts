@@ -139,9 +139,41 @@ describe('recorded absences, spot-checked against the standing records', () => {
     }
   })
 
-  it('cities that went live after the relief survey are not-built, never not-published', () => {
-    for (const slug of ['milwaukee', 'columbus', 'charlotte', 'atlanta', 'dallas', 'lasvegas', 'phoenix']) {
+  it('cities that went live after the relief survey and were never surveyed are not-built', () => {
+    for (const slug of ['dallas', 'lasvegas', 'phoenix']) {
       expect(ABSENCE_REASONS[slug]?.relief?.code, `${slug}/relief`).toBe('not-built')
     }
+  })
+
+  // The 2026-08-10 addendum settled four cities into three different facts, and
+  // the whole point of the matrix is that they do not render the same. Pin all
+  // three shapes, because the cheap wrong move is to collapse them.
+  it('columbus relief is a verified absence — not-published, not a gap', () => {
+    // The status domain has a slot for an outcome and it holds only
+    // passed/proposed; denials are absent ROWS, so a rate would read 100% by
+    // construction. That is the jurisdiction's fact, not ours (rule 5).
+    expect(ABSENCE_REASONS.columbus?.relief?.code).toBe('not-published')
+    expect(ABSENCE_REASONS.columbus?.relief?.reason).toMatch(/passed/i)
+    expect(ABSENCE_REASONS.columbus?.relief?.reason).toMatch(/proposed/i)
+  })
+
+  it('milwaukee and atlanta relief stays not-built: known presence, unbuilt', () => {
+    // Surveyed and found FEASIBLE; blocked on our own declined scraping
+    // dependency. 'not-published' here would blame the city for our decision,
+    // so assert the code AND that the copy says a survey happened — a reason
+    // implying nobody looked is the specific regression this guards.
+    for (const slug of ['milwaukee', 'atlanta']) {
+      expect(ABSENCE_REASONS[slug]?.relief?.code, `${slug}/relief`).toBe('not-built')
+      expect(ABSENCE_REASONS[slug]?.relief?.reason, `${slug}/relief`).toMatch(/surveyed/i)
+      expect(ABSENCE_REASONS[slug]?.relief?.reason, `${slug}/relief`).not.toMatch(/never surveyed/i)
+    }
+  })
+
+  it('charlotte relief is derived-present and carries no leftover reason', () => {
+    // reliefStats.json gained charlotte.variance on 2026-08-10; the stale
+    // 'not-built' reason had to be deleted in the same change. Pinned so it
+    // cannot be re-added as a "safe" default.
+    expect(isCovered('charlotte', 'relief')).toBe(true)
+    expect(ABSENCE_REASONS.charlotte?.relief).toBeUndefined()
   })
 })

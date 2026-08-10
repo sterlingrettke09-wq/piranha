@@ -3998,3 +3998,160 @@ Both re-runs are idempotent.
 Not done here, recorded: Milwaukee, Columbus, Charlotte and Atlanta have never
 been relief-SURVEYED — their matrix cells read `not-built`, which is a statement
 that nobody has looked, not that the data is absent. The survey is queued.
+
+---
+
+## 2026-08-10 — A status column that is a workflow state, and an absence that had to be corroborated
+
+The four never-surveyed relief cities from the previous entry were surveyed
+against the live endpoints. Nothing shipped — `reliefStats.json` is unchanged and
+this is not a level change — but two of the four produced findings that outlive
+the cities that produced them, and both are the same failure wearing opposite
+clothes: a field that would have yielded a perfectly plausible grant rate and
+never a null.
+
+### Atlanta: a case-management `Status` column is a WORKFLOW state, not an outcome
+
+Recorded regardless of whether Atlanta is ever built. This is the most portable
+thing the survey produced.
+
+Atlanta's BZA records live in Accela Citizen Access, and the search-result list
+carries a `Status` column whose values read exactly like adjudications —
+`Approved`, `Denied`, `App with Conditions`, `Denied w/o Prejudice`,
+`App in Part/Den in Part`, `Withdrawn`. It is also cheap: one request per ten
+records, no per-case fetch. It is wrong on two independent counts, neither of
+them visible from the column itself.
+
+**It is stale.** Cross-tabulated against the per-record "Public Hearing" workflow
+task over 41 fully probed 2024 variances, **8 records whose list `Status` reads
+"In Progress" carry a hearing task marked `Approved`**, and a ninth
+`Approved with Conditions`. The list stops being maintained at the
+results-letter/close step and nothing backfills it — the 2022 cohort still shows
+23 of 130 (18%) as "In Progress" four years on. It also disagrees outright, not
+merely lags: V-23-034 lists `Denied` while its hearing task reads
+`Denied Without Prejudice`, and V-24-017 lists `Invoiced` while it was `Approved`
+on 03/19/2024.
+
+**It is a filing frame.** Over the full 2022–2025 enumeration (612 records)
+`In Progress` is **251 rows — 41% of the column**. Scoring granted ÷ decided
+across it is SF's retracted structure exactly, except SF's hidden censoring was
+21.7% and this is nearly double.
+
+So the column is **censored AND filing-framed simultaneously**, and what it
+returns is a number in the right units and the right range, from a field named
+`Status`, on the city's own system of record. That is rule 18 in pure form: the
+dangerous output is the one that looks like an answer, and this field has no
+failure mode that produces a null.
+
+The mechanism is why this is here rather than in a city note. **On a
+case-management system, a record-level status answers "where does this case sit
+in our process?" — it is a workflow state, not an adjudicated outcome.** The two
+are written by different steps, the list view is denormalised from the workflow,
+and so they diverge *silently* the moment maintenance stops at close. The
+adjudication, where it exists at all, sits one layer deeper on the task that made
+it (`Public Hearing … Marked as <STATUS> on <MM/DD/YYYY>`) and carries its own
+date, which the list column does not. Milwaukee is the identical architecture
+with the trap defused: its list `Status` reads Complete/In Process/Void for
+everything, so nobody could mistake it for an outcome. Atlanta's is the same
+field populated with adjudication vocabulary. **Outcome words in a status column
+are not evidence that the column records outcomes** — and the vocabulary is
+precisely what makes the wrong field the tempting one.
+
+### Columbus: an absence, and the corroboration is what makes it an answer
+
+`BZA_STATUS` on the live BZA Zoning Variances layer holds exactly two values over
+3,084 rows spanning 2004–2026: `PASSED` 2,982 and `PROPOSED` 102. Both sibling
+layers agree independently — Council Zoning Variances `CV_STATUS` 2,008/100,
+Graphics Code Variances `GC_STATUS` 765/35. **5,992 rows, three layers, two
+states, and not one value in any of them that could express a refusal.** The
+search was an enumeration rather than a hunt: all 65 datasets in the portal's
+DCAT catalogue, and the whole 18-layer `BuildingZoning` and 34-layer
+`Development` MapServers read from the service index rather than guessed at
+(rule 8). Proposed → passed is a *publication-pipeline* state; the schema has no
+outcome field besides this one, and no case or decision date at all.
+
+**That much would still only establish that we could not find denials.** What
+makes it an ANSWER is the sequence evidence. `CASE_NO` is issued sequentially as
+`BZAyy-NNN`, and the layer is missing 8–32% of every year's numbers — BZA24 holds
+152 of the 178 issued, BZA25 158 of 172, BZA22 152 of 180, BZA19 104 of 153.
+Cases that never result in a mapped variance never enter the layer. **Denials are
+not denied rows; they are absent rows.** Composed with the two-value domain, that
+is the disqualifier: a grant rate computed here would be **100% by
+construction** — not biased by an unknown magnitude, but 100% whatever the board
+actually did, in the right units, with n in the thousands. Atlanta's trap
+approached from the other side.
+
+Independently disqualifying, so the verdict does not rest on the status field
+alone: **there is no time axis either.** `CREATED_DATE` is a GIS record-creation
+stamp, not a case or decision date — it puts 384 rows in 2009 and 539 in 2020
+against a real caseload of ~130–180 cases/year, i.e. it records bulk loads.
+`LAST_EDIT_DATE` differs from it on 3,008 of 3,084 rows, median lag 56 days and
+maximum 6,181 — an edit history. Even if an outcome field appeared tomorrow there
+would be nothing to frame a cohort on. Columbus's real outcomes sit per case
+behind `WEB_LINK` → Accela, which is Chicago's posture: a per-case scrape, not a
+dataset.
+
+### Milwaukee and Atlanta are feasible only by scraping, and that dependency was declined
+
+Both cities' outcomes are reachable, by the same mechanism on the same
+third-party host (`aca-prod.accela.com`; agency `MILWAUKEE`/module `Development`
+and `ATLANTA_GA`/`Planning`). A per-record workflow task carries both the ruling
+and the date it was made, so a Boston-shaped decision-date frame exists in each
+and unheard cases drop out by construction. Roughly 1.5–2 days of work per city,
+and ~2 hours of wall clock per run behind HTTP 429, which appears after about
+40–60 request pairs.
+
+**The owner declined that dependency class, and the reason belongs in the
+record.** Every other source in this project is an official API or an open-data
+feed. A scraped ASP.NET Citizen Access portal — viewstate, mandatory
+`Referer`/`Origin` CSRF headers, a session-bound page method, control-id-dependent
+parsing — differs in kind rather than degree, because a markup change breaks it
+**silently**: the scrape goes on returning well-formed rows, just fewer or
+different ones. A dependency that can begin returning wrong data without ever
+erroring is worse than a gap, and this gap is currently honest. It is rule 5 one
+level up: a failed fetch must never quietly become a substantive answer, and here
+the failure would not even present as a fetch failure.
+
+If it is revisited, the condition is structural and not advisory — a check that
+**fails loudly on markup drift**: record counts reconciled against the record-
+number sequence, the outcome task asserted present, a fail-closed status
+vocabulary that halts on any unseen value, and a hand-count of one hearing's
+dispositions against the boards' own published minutes as the external check
+(rule 9, the only outside measurement available on these numbers). A comment
+saying to watch for drift is exactly what rule 14 rejects.
+
+Their coverage cells stay `not-built`, which is accurate: nobody built them. That
+is a different statement from Columbus's, and the two must not render alike.
+
+### What this leaves
+
+Charlotte surveyed **feasible** and is queued rather than published: the UDO
+Board of Adjustment track on the city's ArcGIS `ZoningVarianceAppeal` layer,
+92.4% over 157 decided cases 2022–2026, framed on the written-decision date that
+external validation against the Board's own signed minutes established is *not*
+the hearing date (UDO 37.8.A.15 — the letter lags the vote by 9–20 days and once
+by ~3 months), and shipping only behind a leakage gate, because reading those
+minutes also turned up a whole Board session whose letter dates were never
+entered. Columbus is a **verified no** with a reason string ready for the
+coverage matrix; applying it is a separate change, as this one touches only the
+ledger and `scripts/relief/README.md`, where all four per-city verdicts now live.
+
+### The rule
+
+**A status field is a claim about a PROCESS; only a decision field is a claim
+about an OUTCOME — and the two findings above are that sentence read from
+opposite ends.** Atlanta's column answers "where is this case in our workflow?"
+in outcome vocabulary; Columbus's answers "did this variance get mapped?" in a
+two-state pipeline vocabulary. Neither is an adjudication, and both yield a
+plausible rate rather than a null. Before scoring any status field, ask what STEP
+writes it and what would make it change: if the answer is "an office process
+advanced" rather than "a body ruled", it is not an outcome no matter what its
+values spell.
+
+Corollary, and the reason neither finding could have come from reading the
+schema: **enumerating a field's values is never enough to score it.** Atlanta
+needed a cross-tabulation against a second field to reveal that the column was
+stale; Columbus needed the case-number sequence to reveal that denials were
+missing rows rather than missing values. Rule 9 holds inside a single feed — in
+both cities the check that discriminated compared the field against something
+outside it.
