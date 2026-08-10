@@ -4128,6 +4128,17 @@ is a different statement from Columbus's, and the two must not render alike.
 Charlotte surveyed **feasible** and is queued rather than published: the UDO
 Board of Adjustment track on the city's ArcGIS `ZoningVarianceAppeal` layer,
 92.4% over 157 decided cases 2022–2026, framed on the written-decision date that
+
+> ⚠️ **SUPERSEDED the same day — the survey's figures did not survive the build.**
+> Published as **92.3% over n=155**, not 92.4%/157: the two compound dispositions
+> (`Granted (3)`, `Granted-Appeal Pending`) are excluded, and that exclusion is
+> what produces the [90.7%, 92.6%] bound quoted below. The survey's pooled-track
+> comparison (~96.9%) also failed to reproduce; the measured figure is 96.4%. See
+> "The threshold came from the failure's shape, not from the peer city".
+> Everything else in this paragraph stands, including the frame and the leakage
+> gate.
+
+The rest of the survey's account, unchanged: framed on the written-decision date that
 external validation against the Board's own signed minutes established is *not*
 the hearing date (UDO 37.8.A.15 — the letter lags the vote by 9–20 days and once
 by ~3 months), and shipping only behind a leakage gate, because reading those
@@ -4155,3 +4166,74 @@ stale; Columbus needed the case-number sequence to reveal that denials were
 missing rows rather than missing values. Rule 9 holds inside a single feed — in
 both cities the check that discriminated compared the field against something
 outside it.
+
+## 2026-08-10 — The threshold came from the failure's shape, not from the peer city
+
+Charlotte's relief odds shipped at 92.3% (143/12), n=155. Three things about how
+it was built are worth more than the number.
+
+### The builder measured instead of inheriting
+
+The brief handed the build agent the survey's figures: 92.4% over 157 cases, and
+a pooled-track comparison of ~96.9%. It reproduced neither exactly and said so:
+n=155 rather than 157, because the two compound dispositions `Granted (3)` and
+`Granted-Appeal Pending` are excluded — and that exclusion is precisely what
+produces the [90.7%, 92.6%] bound. The staff track's 99.2% reproduced; the pooled
+96.9% did not, measuring 96.4%.
+
+Its own sentence is the point: *"I report what I measured; the brief's 99.2% for
+the staff track reproduces, the pooled figure does not."*
+
+That is the builder/checker separation happening **inside a single agent**, and
+it is not the default. The path of least resistance for any builder handed a
+number is to transcribe it — the brief is upstream, it looks authoritative, and
+a matching figure never gets questioned. Two of this session's live defects
+reached production exactly that way: a claim in a header copied into a second
+file, and a survey's summary trusted over the artifact. **A brief is an input to
+be measured, not an authority to be satisfied**, and briefs should say so
+explicitly, because agents will otherwise resolve a discrepancy in the brief's
+favour and never report it.
+
+### The threshold was derived, not copied
+
+DC's residual gate ships at a 5% ceiling. The obvious move — and the one that
+would have passed review unremarked — was to reuse 5% for Charlotte. It ships at
+**4%**, and the reason is structural rather than aesthetic.
+
+Charlotte's leakage is **directional**. The February 25 2025 session's three cases
+sit in the feed marked `Granted` with a NULL `Decision_Date`; every case the date
+frame drops is a *grant*, so the residual can bias the published rate in exactly
+one direction. DC's residual is a mix of pending and closed cases with no
+established skew, so a 5% ceiling there is a symmetric tolerance. A directional
+residual of the same size is a worse defect than a symmetric one, and it compounds
+in a known direction as more sessions go undated.
+
+So the ceiling was set to fire on the **second** occurrence of the defect rather
+than the tenth. 4% is not "a bit tighter than DC" — it is the number at which one
+more missed session trips the gate.
+
+The general form: **a threshold copied from a peer city inherits that city's
+error structure along with its number.** Two gates can carry the same tolerance
+and mean different things, and which one is right depends on whether the thing
+being tolerated is symmetric. Ask what shape the residual has before choosing its
+size.
+
+### The drift guard closed the loop, and neither agent could ship alone
+
+The build agent finished with one test failing that it deliberately did not fix:
+`coverage.ts` still assigned Charlotte's relief cell
+`RELIEF_NEVER_SURVEYED_AUG8` — "Never surveyed … A gap, not an answer" — which
+had become false in both halves the moment the artifact gained a `charlotte` key.
+It flagged the failure and left the file alone; the matrix agent deleted the
+entry.
+
+This is the invariant from `coverage.ts` doing the work it was written for: every
+(city, dimension) must be derived-present or carry exactly one reason, never both.
+**Landing the data made the stale reason a test failure rather than a stale
+comment.** The builder could not ship without the matrix owner, and the matrix
+owner could not have known to look without the builder's failure. Compare the
+2026-08-08 integrator, which wrote a retraction into `hurdles.ts` and died before
+the same retraction reached `cities.ts` — nothing failed, and the false comment
+survived until a human re-read it.
+
+A comment documents a decision. A structure makes the contradiction unshippable.
