@@ -127,18 +127,6 @@
       "minPublishableN": 30
     }
   },
-  "nyc": {
-    "newConstruction": {
-      "medianMonths": 8.3,
-      "p80Months": 17,
-      "n": 4403,
-      "vintage": "filed 2022-01-01 onward; computed 2026-08-06; data.cityofnewyork.us DOB NOW: Build – Job Application Filings w9ak-ipjd (job_type = 'New Building'; initial -I1 filings only)"
-    },
-    "tierBreakdown": {
-      "attempted": false,
-      "reason": "scripts/permits/nyc.mjs computes no tier split. Its query filters on job_type = 'New Building' and job_filing_number LIKE '%-I1' — nothing in it restricts building size, so the aggregate spans all three tiers instead of standing in for one."
-    }
-  },
   "philadelphia": {
     "newConstruction": {
       "medianMonths": 3,
@@ -149,38 +137,6 @@
     "tierBreakdown": {
       "attempted": false,
       "reason": "scripts/permits/philadelphia.mjs computes no tier split. Its query filters on permitdescription (Residential/Commercial Building Permit) and typeofwork (New Construction*) — no size restriction — so the aggregate spans all three tiers."
-    }
-  },
-  "seattle": {
-    "newConstruction": {
-      "medianMonths": 5.7,
-      "p80Months": 10,
-      "n": 4996,
-      "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
-    },
-    "byTier": {
-      "single": {
-        "medianMonths": 5,
-        "p80Months": 8.5,
-        "n": 2623,
-        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
-      },
-      "multi": {
-        "medianMonths": 6.3,
-        "p80Months": 10.3,
-        "n": 1667,
-        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
-      },
-      "apartment": {
-        "medianMonths": 10.4,
-        "p80Months": 18.5,
-        "n": 424,
-        "vintage": "applied 2022-01-01 onward; computed 2026-08-06; data.seattle.gov Building Permits (permittypedesc = New, plus Addition/Alteration rows whose filing-time description states a detached ADU and not an attached one; STFI excluded)"
-      }
-    },
-    "tierBreakdown": {
-      "attempted": true,
-      "minPublishableN": 30
     }
   },
   "raleigh": {

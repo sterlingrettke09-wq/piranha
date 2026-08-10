@@ -5,12 +5,57 @@
 //
 // Pulls San Francisco's "Building Permits" dataset from data.sfgov.org (Socrata),
 // filters to new-construction permit types, computes the median and 80th-
-// percentile filing -> issuance time in months, and MERGES the result into
+// percentile filing -> issuance time in months, and WOULD merge the result into
 // netlify/functions/lib/data/permitStats.json under sf.newConstruction.
-// Idempotent: safe to run repeatedly; never touches other cities' blocks.
+//
+// ⚠️ IT DOES NOT, AND CANNOT. Read the halt section below before changing
+// anything here. This script's correct output today is *no output*.
 //
 // This is NOT a runtime dependency. The committed JSON is the only thing the
 // app reads; this script only refreshes it (re-run quarterly).
+//
+// ── THE HALT — why this script writes nothing (measured 2026-08-09) ──────────
+// SF was published for part of one session and WITHDRAWN 2026-08-06. Until today
+// nothing in this file enforced that: the withdrawal lived in permitStats.json
+// (by absence) and in a test, so re-running the script merged the disqualified
+// figure straight back into production data. The refusal is now STRUCTURAL —
+// see refuseUnlessQuantilesAreObserved(), which every write path runs downstream
+// of — rather than a comment describing a decision.
+//
+// THE DISQUALIFIER, and it is recomputed from the feed on every run: most of the
+// cohort carries NO ISSUE DATE, so the quantiles this script publishes do not
+// exist. Measured 2026-08-09 against the live feed, through this script's own
+// filters (permit_type 1,2 + primary_address_flag='Y' + the building allowlist):
+//
+//     351 filings since 2022-01-01, of which 132 carry an issue date = 37.61%
+//
+// which reproduces the 37.7% recorded on 2026-08-06 and the 37.0% re-measured on
+// 2026-08-08 (the drift is denominator growth on a live feed — the numerator was
+// unchanged at 145 pre-gate — not a contradiction).
+//
+// WHY THAT KILLS THE MEDIAN, stated as arithmetic rather than as caution. Sort
+// every filing in the cohort by time-to-issuance and the ones with no issue date
+// sort ABOVE every observed value — whatever their eventual duration, it is
+// longer than the longest we have seen. With 37.61% observed, the 50th percentile
+// of that ordering lands inside the unobserved 62.39%: it is past the last
+// observation. The median does not exist. It is not imprecise, not a floor, not
+// "biased low" — there is no number there. A label cannot rescue it; a "floor"
+// label makes an absent number look cautious, which is worse than none (rule 7).
+//
+// The same argument disqualifies the p80 a fortiori, and every per-tier figure.
+// Over this same window, measured 2026-08-09: single 39.4% (50/127), multi 30.1%
+// (34/113), apartment 43.2% (48/111) — no tier clears 50% either, and the gate
+// re-runs per tier so a future aggregate cannot carry a thin tier over the line.
+// (The 2026-08-06 record reports the MATURED 2022 cohort instead — single 32.4%,
+// multi 23.4%, apartment 44.4%. Different subpopulation, same conclusion; do not
+// read the two sets of numbers as a disagreement.)
+//
+// ⚠️ STATE THE SHARE, NOT THE FATE. This feed does not distinguish a not-yet from
+// a never. Of SF's non-issued rows, 173 sit at `filed`, 36 `approved`, 21
+// `withdrawn`, 16 `reinstated`, 1 `cancelled` — so "37.6% ever issue" is
+// unsupported phrasing and is retracted. What is measured is the share carrying
+// an issue date AT EXTRACT, and the undefinedness above does not depend on fate:
+// a median past the last observation is undefined under either reading.
 //
 // ── Two defects CORRECTED 2026-08-06 ────────────────────────────────────────
 // An audit of the published figure (n=165, median 11.8) found the sampled
@@ -169,6 +214,31 @@ function tierOf(row) {
 const SINCE = '2022-01-01'
 const SINCE_WIDE = '2018-01-01'
 
+// ── The quantiles this script publishes, and therefore the gate ─────────────
+// Every quantile written into permitStats.json is listed here, and the gate
+// below requires each one to be OBSERVED before anything is written. Adding a
+// figure to `stats` without adding its quantile here is the way to break this,
+// so keep the two together.
+//
+// WHY THESE NUMBERS AND NOT OTHERS: they are not thresholds anyone chose. The
+// threshold for a quantile IS THE QUANTILE. Order the cohort by time-to-issuance
+// and every filing without an issue date sorts above every observed one, so the
+// p-th quantile is identified only when the observed share exceeds p; at or
+// below p it lies inside the unobserved mass, i.e. past the last observation.
+// The comparison is strict — at exactly p the quantile sits on the boundary
+// between the last observed value and the censored mass and is not identified.
+//
+// NO SAFETY MARGIN IS ADDED, deliberately. Padding these to (say) 0.6 and 0.9
+// would look conservative and would be an invented number (rule 4). More
+// importantly it would misrepresent what the gate checks: this is an EXISTENCE
+// condition, NOT a quality one. Clearing it does not make the estimate good —
+// a cohort 55% observed still needs Kaplan-Meier, not a median-of-issued — which
+// is why the halt message says so rather than implying the opposite.
+const PUBLISHED_QUANTILES = [
+  { q: 0.5, name: 'medianMonths' },
+  { q: 0.8, name: 'p80Months' },
+]
+
 // Required date columns. If either is missing from the live schema we refuse to
 // fabricate a latency figure and leave the artifact untouched (the Boston lesson).
 const FILED_DATE_FIELD = 'filed_date'
@@ -229,7 +299,78 @@ function quantile(sortedDays, q) {
 
 const daysToMonths = (days) => Math.round((days / 30.44) * 10) / 10
 
-// Pull filed/issued pairs for new-construction permits filed since `since`.
+/**
+ * THE STRUCTURAL HALT (evidence rule 14: convert a caught error into an
+ * impossible state, not a comment).
+ *
+ * Returns only if every quantile this script publishes is identified by the
+ * observed share; otherwise throws a ComputabilityHalt naming the limbs that
+ * fail and the measured share behind them. Every path that could write
+ * permitStats.json runs downstream of this call, so the script cannot emit an SF
+ * figure without clearing it — the refusal is a property of the file rather than
+ * an accident of ordering, which is the distinction Boston's previous pipeline
+ * failed to make (it halted for the right reason by luck, on a missing column,
+ * while its filter was 58% contaminated underneath).
+ *
+ * There is deliberately no flag, env var or `--force` that reaches past this. A
+ * boolean someone can flip is a comment with a type; the only thing that opens
+ * the gate is SF's feed reporting a different share.
+ */
+class ComputabilityHalt extends Error {}
+
+function refuseUnlessQuantilesAreObserved(observedN, cohortN) {
+  if (cohortN === 0) {
+    throw new ComputabilityHalt(
+      `The cohort is empty, so no share can be computed. Refusing to write.`,
+    )
+  }
+  const share = observedN / cohortN
+  const failing = PUBLISHED_QUANTILES.filter(({ q }) => !(share > q))
+  if (failing.length === 0) return share
+  const pct = (x) => `${(x * 100).toFixed(2)}%`
+  throw new ComputabilityHalt(
+    `${observedN} of ${cohortN} filings carry an issue date at extract — ${pct(share)}.\n` +
+      failing
+        .map(
+          ({ q, name }) =>
+            `    · ${name} (p${q * 100}) is NOT IDENTIFIED: it needs more than ${pct(q)} of the\n` +
+            `      cohort observed and the feed gives ${pct(share)}. Filings with no issue date\n` +
+            `      sort above every observed duration, so the p${q * 100} lands inside the\n` +
+            `      unobserved ${pct(1 - share)} — past the last observation. There is no number\n` +
+            `      there to publish.`,
+        )
+        .join('\n') +
+      `\n\n  This is a GAP, not a finding that SF is slow, and NOT a floor. A "floor" label\n` +
+      `  claims the true value is higher and we have bounded it from below; nothing here\n` +
+      `  bounds anything. Labelling an undefined statistic only makes an absent number\n` +
+      `  look cautious (rule 7). Do not substitute the median of the issued rows, an\n` +
+      `  older cohort, or a caveat string — restricting to a matured cohort reduces\n` +
+      `  right-truncation but does NOT remove selection on the outcome, so it buys a\n` +
+      `  better CONDITIONAL median, never an unconditional one.\n\n` +
+      `  STATE THE SHARE, NOT THE FATE: this feed does not distinguish a not-yet from a\n` +
+      `  never, so do not rewrite the above as "${pct(1 - share)} never issue".\n\n` +
+      `  And note what clearing this gate would and would not mean. It is an EXISTENCE\n` +
+      `  condition. A cohort just over ${pct(0.5)} observed yields a median that exists and\n` +
+      `  is still badly biased by censoring — that needs Kaplan-Meier, not this script.\n` +
+      `  permitStats.json left UNCHANGED.`,
+  )
+}
+
+// Pull the in-window cohort for new-construction permits filed since `since`.
+//
+// ⚠️ NOTE WHAT IS *NOT* IN THIS WHERE CLAUSE: `issued_date IS NOT NULL`. It used
+// to be, and that is precisely why this script could not see its own
+// disqualifier — a query that selects on the outcome cannot measure how often
+// the outcome occurs. It reported n=132 issued permits and had no idea they were
+// 37.61% of the filings. The denominator has to come back from the server or
+// there is no gate. (Rule 11: measure the pipeline, not your probe.)
+//
+// Every other predicate is FILING-TIME, which is what makes the share a valid
+// denominator: permit_type and primary_address_flag are set at intake, and
+// `proposed_use` — the field the building allowlist reads — is populated on 98%
+// of non-issued rows (5 of 248 null, against 6 of 145 issued), so gating the
+// cohort does not preferentially drop unissued filings. main() re-measures that
+// on every run rather than trusting this comment.
 async function pull(since) {
   const typeList = NEW_CONSTRUCTION_TYPES.map((t) => `'${t}'`).join(',')
   // `primary_address_flag = 'Y'` collapses the one-row-per-address fan-out
@@ -239,8 +380,7 @@ async function pull(since) {
     `${TYPE_FIELD} IN (${typeList}) ` +
     `AND ${PRIMARY_ADDRESS_FIELD} = 'Y' ` +
     `AND ${FILED_DATE_FIELD} >= '${since}T00:00:00.000' ` +
-    `AND ${FILED_DATE_FIELD} IS NOT NULL ` +
-    `AND ${ISSUED_DATE_FIELD} IS NOT NULL`
+    `AND ${FILED_DATE_FIELD} IS NOT NULL`
   const rows = await socrata('json', {
     $select:
       `${FILED_DATE_FIELD} AS filed, ${ISSUED_DATE_FIELD} AS issued, ` +
@@ -276,13 +416,18 @@ async function main() {
   }
 
   // 2. Pull the sample. Widen the window if the usable slice is thin (< 50).
-  //    The threshold is checked on the count that SURVIVES the building gate,
-  //    not on the raw row count — a window that is only wide enough before
-  //    filtering is not wide enough.
+  //    The threshold is checked on the count that SURVIVES the building gate AND
+  //    carries an issue date — that is the n the figure would rest on. Checking
+  //    it on the raw row count, or on the whole cohort, measures a window that is
+  //    only wide enough before filtering.
+  const issuedBuildings = (rows) => selectBuildings(rows).filter((r) => r.issued != null)
   let since = SINCE
   let rows = await pull(since)
-  if (selectBuildings(rows).length < 50) {
-    console.warn(`  Only ${rows.length} rows since ${SINCE}; widening to ${SINCE_WIDE}.`)
+  if (issuedBuildings(rows).length < 50) {
+    console.warn(
+      `  Only ${issuedBuildings(rows).length} issued buildings (of ${rows.length} rows) ` +
+        `since ${SINCE}; widening to ${SINCE_WIDE}.`,
+    )
     since = SINCE_WIDE
     rows = await pull(since)
   }
@@ -324,10 +469,48 @@ async function main() {
     }
   }
 
-  // 5. Compute durations, dropping negatives and absurd outliers (> 120 months).
+  // 5. THE ISSUANCE SHARE, and the halt. Printed before it is judged, so the
+  //    refusal is inspectable and so a future reader can see the number move.
+  const issued = kept.filter((r) => r.issued != null)
+
+  // The gate's own validity check (rule 11 — measure the pipeline, not the
+  // probe). The share is computed AFTER the building allowlist, which is only
+  // legitimate while `proposed_use` is populated at FILING time. If SF ever
+  // starts assigning it during review, the allowlist would drop unissued rows
+  // preferentially and the denominator would be the instrument measuring itself
+  // — Raleigh's `proposeduse` does exactly that (blank on 26.8% of not-yet-issued
+  // rows), which is why its rate is computed BEFORE its building gate.
+  const nullUseUnissued = unique.filter((r) => r.issued == null && r.proposed_use == null).length
+  const nullUseIssued = unique.filter((r) => r.issued != null && r.proposed_use == null).length
+  const unissuedTotal = unique.filter((r) => r.issued == null).length
+  const issuedTotal = unique.length - unissuedTotal
+  console.log(
+    `  ${PROPOSED_USE_FIELD} null on ${nullUseUnissued}/${unissuedTotal} non-issued vs ` +
+      `${nullUseIssued}/${issuedTotal} issued — a filing-time field, so the post-gate ` +
+      `denominator is sound`,
+  )
+
+  const byTierCohort = { single: [], multi: [], apartment: [] }
+  for (const row of kept) byTierCohort[tierOf(row)].push(row)
+  console.log(`  cohort ${kept.length} filings, ${issued.length} with an issue date:`)
+  for (const [tier, rowsOfTier] of Object.entries(byTierCohort)) {
+    const obs = rowsOfTier.filter((r) => r.issued != null).length
+    const share = rowsOfTier.length ? ((obs / rowsOfTier.length) * 100).toFixed(1) : '—'
+    console.log(`     ${tier.padEnd(10)} ${String(obs).padStart(4)}/${String(rowsOfTier.length).padEnd(5)} ${share}%`)
+  }
+
+  refuseUnlessQuantilesAreObserved(issued.length, kept.length)
+
+  // ── Nothing below here has run since the gate was added. ───────────────────
+  // It is written to be correct on the day SF's observed share clears every
+  // published quantile, and it is deliberately NOT reachable by a caveat, a flag
+  // or an env var: there is no way to talk this script into publishing a
+  // quantile that is not identified. Treat its first run as new code.
+
+  // 6. Compute durations, dropping negatives and absurd outliers (> 120 months).
   const days = []
   const byTier = { single: [], multi: [], apartment: [] }
-  for (const row of kept) {
+  for (const row of issued) {
     const a = Date.parse(row.filed)
     const i = Date.parse(row.issued)
     if (Number.isNaN(a) || Number.isNaN(i)) continue
@@ -347,7 +530,7 @@ async function main() {
   const medianMonths = daysToMonths(quantile(days, 0.5))
   const p80Months = daysToMonths(quantile(days, 0.8))
 
-  // 6. Sanity gate. A median under half a month or a tiny n is not trustworthy.
+  // 7. Sanity gate. A median under half a month or a tiny n is not trustworthy.
   if (medianMonths < 0.5 || days.length < 30) {
     console.warn(
       `  Result looks unreliable (median ${medianMonths} mo, n=${days.length}); ` +
@@ -356,10 +539,17 @@ async function main() {
     return
   }
 
+  // The observed share travels WITH the figure, not just through the gate. It is
+  // the one number censoring cannot bias, and a reader of permitStats.json has
+  // to be able to see how far from undefined this median was.
+  const observedPct = ((issued.length / kept.length) * 100).toFixed(1)
   const vintage =
-    `filed ${since} onward; computed ${new Date().toISOString().slice(0, 10)}; ${DATASET_NAME}`
+    `filed ${since} onward; computed ${new Date().toISOString().slice(0, 10)}; ${DATASET_NAME}. ` +
+    `${issued.length}/${kept.length} (${observedPct}%) of the in-window cohort carries an issue ` +
+    `date at extract; this is a median over the observed subset and is still subject to ` +
+    `right-censoring.`
 
-  // 7. Per-tier figures. The aggregate is kept for compatibility but is the
+  // 8. Per-tier figures. The aggregate is kept for compatibility but is the
   //    WEAKER number — a consumer that knows the project's tier should always
   //    prefer byTier (see measuredFor()).
   //
@@ -375,6 +565,28 @@ async function main() {
   // scripts/permits/lib/tierFloor.mjs. `tierBreakdown` is written beside `byTier`
   // and is what tells measuredFor() to fail closed rather than serve the
   // aggregate for a withheld tier.
+  //
+  // The gate runs AGAIN, per tier. A tier's quantiles are identified by ITS OWN
+  // observed share, not the city's — measured 2026-08-09 over this same window,
+  // single 39.4% (50/127), multi 30.1% (34/113) and apartment 43.2% (48/111)
+  // straddle an aggregate of 37.61%, so an aggregate that cleared 50% would say
+  // nothing about whether `multi` had. This halts the
+  // whole city rather than suppressing one tier, deliberately: every SF tier
+  // fails today, so a partial-publish path would be a branch that has never run
+  // and could not be checked (rule 18's corollary — code that did not run is not
+  // code that works). Build it when a real case needs it.
+  for (const [tier, rowsOfTier] of Object.entries(byTierCohort)) {
+    const obs = rowsOfTier.filter((r) => r.issued != null).length
+    try {
+      refuseUnlessQuantilesAreObserved(obs, rowsOfTier.length)
+    } catch (err) {
+      if (err instanceof ComputabilityHalt) {
+        throw new ComputabilityHalt(`tier "${tier}" — ${err.message}`)
+      }
+      throw err
+    }
+  }
+
   const { tiers, tierBreakdown } = splitTiersAtFloor(byTier, (rows) => ({
     medianMonths: daysToMonths(quantile(rows, 0.5)),
     p80Months: daysToMonths(quantile(rows, 0.8)),
@@ -390,7 +602,7 @@ async function main() {
 
   const stats = { medianMonths, p80Months, n: days.length, vintage }
 
-  // 8. Idempotent merge into the shared artifact.
+  // 9. Idempotent merge into the shared artifact.
   let existing = {}
   try {
     existing = JSON.parse((await readFile(OUT_PATH, 'utf8')) || '{}')
@@ -407,6 +619,20 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (err instanceof ComputabilityHalt) {
+    // A refusal BY DESIGN, and it exits NON-ZERO — unlike boston.mjs, which
+    // exits 0 for its halt. The difference is deliberate and worth stating:
+    // Boston's gap is structural and permanent (a column that does not exist;
+    // no re-run can change it), so a zero exit stops a batch runner crying wolf
+    // over a known-forever gap. SF's is a LIVE-DATA condition that every run
+    // genuinely re-tests, on a city whose figure was published and then
+    // retracted. A silent exit 0 there is exactly rule 18's failure — the run
+    // would look like success. milwaukee.mjs refuses non-zero for the same
+    // reason.
+    console.error(`\nsf.mjs — NOT COMPUTABLE, by design:\n    ${err.message}\n`)
+    process.exitCode = 1
+    return
+  }
   console.error(`\nsf.mjs failed: ${err.message}\n`)
   process.exitCode = 1
 })

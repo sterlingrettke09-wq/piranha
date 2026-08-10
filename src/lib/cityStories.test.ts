@@ -105,17 +105,59 @@ describe('storyFor', () => {
     expect(story).toContain('5 months')
   })
 
-  // Was "falls back for NYC" and asserted the 54-month LIFECYCLE estimate, because
-  // NYC had no measured permit data. It does now — median 8.3 mo over n=4,394 DOB
-  // NOW initial New Building filings — so the story reports a measurement instead
-  // of an estimate. The assertion changed because the underlying claim changed
-  // from "we guess" to "we counted".
-  it('reports NYC from measured permit data rather than the lifecycle estimate', () => {
+  // ⚠️ NYC WITHDRAWN 2026-08-09 — this test is back to asserting the 54-month
+  // LIFECYCLE estimate, which is what it asserted before 2026-08-06.
+  //
+  // Between those dates it asserted "about 8 months", on the strength of median
+  // 8.3 over n=4,403 DOB NOW initial New Building filings. That figure was a
+  // CONDITIONAL median — time to issuance GIVEN issuance — over a cohort in which
+  // 45% of filings carried no issue date at extract, against a Kaplan-Meier
+  // estimate of ~15.9 months over the same filings. The condition existed only in
+  // the artifact's `vintage` string, and this sentence renders none of it: the
+  // story said New York City "issues a new-construction permit in about 8
+  // months", flatly. `scripts/permits/nyc.mjs` now halts rather than republish it.
+  //
+  // The claim moved from "we counted" back to "we estimate", and the story has to
+  // say so — an estimate labelled as one is honest; a censored measurement read
+  // as a measurement is not. Note that 8 months is the FLATTERING direction: the
+  // withdrawal makes NYC look slower, which is why nothing in the copy was
+  // pushing back on it.
+  it('falls back to the lifecycle estimate for NYC — its measured figure was withdrawn', () => {
     const nyc = byCity('nyc')
+    expect(nyc.measuredMedianMonths).toBeNull()
+    expect(nyc.measuredPermitN).toBeNull()
     const story = storyFor(nyc, ranked)
-    expect(story).toContain('about 8 months')
-    expect(story).not.toContain('about 54 months')
+    expect(story).toContain('about 54 months')
+    expect(story).not.toContain('about 8 months')
+    // And it must not claim to issue a permit in any measured time at all.
+    expect(story).not.toContain('issues a new-construction permit')
+    // The real variance adder (7 months) is still interpolated, not invented.
     expect(story).toContain('7 months')
+  })
+
+  // ⚠️ SEATTLE WITHDRAWN 2026-08-09, hours after NYC and for the same defect
+  // class. Its story said Seattle "issues a new-construction permit in about 6
+  // months" off median 5.7 over n=4,996 — a CONDITIONAL median (74.71% of the
+  // in-window cohort carried an issue date at extract; the file's own RESULTS
+  // block recorded 74.1% while the query's `issueddate IS NOT NULL` limb kept
+  // main() from seeing it). At 74.71% observed the p80 of 10.0 was unidentified,
+  // and the median is not republished alone because no surface renders its
+  // condition — the Milwaukee reason. Found by the outcome-selection guard's
+  // exemption measurement, not by anyone auditing Seattle.
+  //
+  // Seattle has no relief stat and its parking record is `partial`, so the story
+  // falls all the way to the lifecycle line — an estimate labelled as one.
+  it('falls back to the lifecycle line for Seattle — its measured figure was withdrawn', () => {
+    const seattle = byCity('seattle')
+    expect(seattle.measuredMedianMonths).toBeNull()
+    expect(seattle.measuredPermitN).toBeNull()
+    const story = storyFor(seattle, ranked)
+    expect(story).toContain('about 44 months')
+    expect(story).not.toContain('about 6 months')
+    // And it must not claim to issue a permit in any measured time at all.
+    expect(story).not.toContain('issues a new-construction permit')
+    // The real variance adder (9 months) is interpolated, not invented.
+    expect(story).toContain('9 months')
   })
 
   // ── No fabrication: a synthetic bare city still works ─────────────────────

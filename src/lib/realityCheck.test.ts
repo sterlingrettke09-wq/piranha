@@ -134,6 +134,32 @@ describe('buildRealityCards', () => {
     expect(cards[0].unit).toContain('5+ unit')
   })
 
+  // ── A city that LOSES its measured figure entirely ────────────────────────
+  // Checked when NYC was withdrawn 2026-08-09, and exercised again the same day
+  // when Seattle followed (p80 unidentified at 74.71% observed — Seattle's
+  // byTier went with it, so it must not degrade into a withheld-tier card
+  // either). The two absent-measurement states are different and must stay
+  // different:
+  //
+  //   · tier withheld — the city publishes timing BY BUILDING SIZE and this size
+  //     is missing. The card stays and names the missing measurement (above).
+  //   · city unmeasured — nothing is published for the city at all. The card is
+  //     GONE, because a "Not measured for 5+ unit buildings" card would claim NYC
+  //     publishes a per-size breakdown it has never had. Absence of the card is
+  //     absence of a claim.
+  //
+  // The place where absence could read as SPEED is Compare, which puts cities
+  // side by side; there the Timeline cell is marked "est" off
+  // hasMeasuredPermitTiming(), and NYC now falls on that branch. So the degrade
+  // path is: no card here, an explicit marker there — never a bare number that
+  // looks measured.
+  it('a city with no measurement at all drops the card rather than claiming a size gap', () => {
+    const cards = buildRealityCards(makeResult({ city: 'nowhere' }))
+    expect(cards.find((c) => c.id === 'measured')).toBeUndefined()
+    // And specifically not a "Not measured" card, which would imply a breakdown.
+    expect(cards.some((c) => c.big === 'Not measured')).toBe(false)
+  })
+
   // Mutually exclusive by construction in resolveTimeline; asserted here so a
   // future edit can't produce a card that both states a figure and denies one.
   it('a real measurement wins over a withheld record if both ever appear', () => {

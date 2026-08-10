@@ -5,13 +5,84 @@
 //
 // Pulls Seattle's "Building Permits" dataset from data.seattle.gov (Socrata),
 // filters to new-construction permits, computes the median and 80th-percentile
-// applied -> issued time in months, and MERGES the result into
+// applied -> issued time in months, and WOULD merge the result into
 // netlify/functions/lib/data/permitStats.json under seattle.newConstruction
 // (aggregate) and seattle.byTier (single / multi / apartment).
-// Idempotent: safe to run repeatedly; never touches other cities' blocks.
+//
+// ⚠️ IT DOES NOT. Read the halt section below before changing anything here.
+// This script's correct output today is *no output*.
 //
 // This is NOT a runtime dependency. The committed JSON is the only thing the
 // app reads; this script only refreshes it (re-run quarterly).
+//
+// ── THE HALT — why this script writes nothing (measured 2026-08-09) ──────────
+// Seattle published 5.7 mo / p80 10.0 / n=4,996 from 2026-08-06 and is WITHDRAWN
+// 2026-08-09, hours after NYC and for the same defect class. What makes this
+// case worth reading is HOW it was found: nobody was auditing Seattle. The
+// outcome-selection guard (scripts/permits/outcome-selection.ts) was built to
+// stop city 24 inheriting the issued-only predicate by clone, and its registry
+// refuses a `known-defect` exemption without a MEASURED share attached — so
+// measuring Seattle's predicate was the price of exempting it, and the
+// measurement disqualified the figure. The guard built to stop city 24 caught
+// city 5.
+//
+// THE BLINDFOLD, removed first: `pull()` used to end
+// `AND ${ISSUED_DATE_FIELD} IS NOT NULL`. A query that selects on the outcome
+// cannot measure how often the outcome occurs (rule 11), so main() reproduced
+// 5.7 exactly while this file's own RESULTS block below recorded a 74.1%
+// issuance share four screens up from the query that could not see it — NYC's
+// shape to the paragraph. The predicate is gone; the denominator now comes back
+// from the server, which is the only thing that makes a gate possible.
+//
+// THE DISQUALIFIER. Measured 2026-08-09 against the live feed, through this
+// script's own server-side cohort filter (both arms, applied since 2022-01-01),
+// run with and without the limb:
+//
+//     6,980 in-window applications, 5,215 with an issue date = 74.71%
+//
+// (Server-side counts; the client-side STFI/DADU gates took the published n to
+// 4,996. The RESULTS block below had already recorded the same fact client-side:
+// 4,996 issued of 6,746 filings = 74.1%.)
+//
+// NOTE WHICH LIMB BINDS — LA's and NYC's shape, not SF's. 74.71% clears p50 and
+// does not clear p80, so the median exists and the published p80 of 10.0 does
+// not: the 80th percentile lands inside the unobserved 25.29%, past the last
+// observation. The gate below therefore refuses on the p80 while the p50
+// passes, and because this script publishes both, it writes nothing.
+//
+// ⚠️ THE MEDIAN IS NOT REPUBLISHED ALONE, for the Milwaukee reason. 5.7 at
+// 74.71% observed is a CONDITIONAL median — time to issuance GIVEN issuance —
+// and the only field that could state the condition is `vintage`, which no UI
+// surface renders (src/lib/realityCheck.ts renders medianMonths / p80Months / n
+// and never vintage). A conditional figure whose condition nobody can see is
+// the exact reason Milwaukee's cleanly measured residential pair is withheld;
+// Seattle's higher observed share does not exempt it. Publishing the median
+// alone is a decision about where the condition is SHOWN, which is a product
+// decision for a person, not an edit.
+//
+// ⚠️ THE TWO ARMS DO NOT AVERAGE. This pull is a union of a 'New' arm and a
+// detached-ADU arm, and their observed shares differ (the 2026-08-06 RESULTS
+// below: New arm 3,988/5,600 = 71.2%, DADU arm 1,008/1,146 = 88.0%). The gate
+// reports each arm's share separately, because a pooled 74.71% reads as "the
+// cohort is three-quarters observed" when the arm that dominates the published
+// number — 'New', 83% of the union — sits at 71.2%. The DADU arm's high share
+// cannot rescue the New arm's p80, and averaging them would claim it does.
+// Both arms' shares are measurable at all only because both gates are
+// FILING-TIME (`permittypedesc` and `description`; description is populated on
+// 2001/2001 non-issued filings — the (A2) fix below). The pre-(A2) ADU gate on
+// `dwellingunittype` was null for 100% of non-issued filings — issued-only BY
+// CONSTRUCTION — and an arm gated that way has no denominator and cannot even
+// state its own condition. Never reintroduce an issuance-time column as a gate.
+//
+// ⚠️ AND THE TIERS ARE WORSE THAN THE AGGREGATE. The withdrawn artifact carried
+// byTier p50/p80s, and those cannot be re-identified even at a higher aggregate
+// share: per-tier observed shares are only BOUNDED (housingunitsadded is 58.2%
+// populated on non-issued rows, so 720 non-issued filings assign to no tier —
+// see WHY BOUNDS below). On the recorded bounds every tier's lower bound is
+// under 80 (single 71.1–88.4, multi 59.9–80.8, apartment 29.6–59.6), and
+// apartment's interval straddles 50, so whether an apartment-tier MEDIAN even
+// exists is indeterminate on this dataset. Republishing byTier needs that
+// interval settled per tier, not just the aggregate gate cleared.
 //
 // ── Dataset resource id ──────────────────────────────────────────────────────
 // Socrata 4x4 resource id for "Building Permits" on data.seattle.gov.
@@ -173,6 +244,12 @@ const HOST = 'data.seattle.gov'
 //     has to be done.
 //
 // ── RESULTS after the (A2) re-specification, measured 2026-08-06 ─────────────
+// ⚠️ WITHDRAWN 2026-08-09 — kept as the record of what shipped, not as figures
+// to republish. Note that the 74.1% on the first line is the disqualifier: it
+// was recorded HERE, beside the p80 it unidentifies, and restrained nothing —
+// which is why the restraint is now refuseUnlessQuantilesAreObserved() below
+// and not a comment (rule 14). See THE HALT at the top.
+//
 // Applied 2022-01-01 onward, STFI removed. Medians are over ISSUED rows; the
 // issuance rate is issued / all filings.
 //
@@ -298,6 +375,118 @@ function quantile(sortedDays, q) {
 
 const daysToMonths = (days) => Math.round((days / 30.44) * 10) / 10
 
+// ── The quantiles this script publishes, and therefore the gate ─────────────
+// Every quantile written into permitStats.json is listed here, and the gate below
+// requires each one to be OBSERVED before anything is written. Adding a figure to
+// `stats` without adding its quantile here is the way to break this, so keep the
+// two together. Mirrors PUBLISHED_QUANTILES in sf.mjs, la.mjs and nyc.mjs.
+//
+// WHY THESE NUMBERS AND NOT OTHERS: they are not thresholds anyone chose. The
+// threshold for a quantile IS THE QUANTILE. Order the cohort by time-to-issuance
+// and every filing with no issue date sorts above every observed one — whatever
+// its eventual duration, it is longer than the longest we have seen — so the p-th
+// quantile is identified only when the observed share exceeds p. The comparison
+// is strict: at exactly p the quantile sits on the boundary between the last
+// observed value and the censored mass and is not identified.
+//
+// NO SAFETY MARGIN IS ADDED, deliberately. Padding these would look conservative
+// and would be an invented number (rule 4), and it would misrepresent what the
+// gate checks. This is an EXISTENCE condition, NOT a quality one: Seattle's
+// 74.71% identifies the median and the median is still censoring-biased —
+// identification says a p50 exists, not that 5.7 was it unconditionally.
+// Clearing this gate would not make the pair publishable either: the byTier
+// quantiles this script also writes need per-tier identification, and per-tier
+// shares are only BOUNDED here (see WHY BOUNDS in the header).
+const PUBLISHED_QUANTILES = [
+  { q: 0.5, name: 'medianMonths' },
+  { q: 0.8, name: 'p80Months' },
+]
+
+/**
+ * THE STRUCTURAL HALT (evidence rule 14: convert a caught error into an
+ * impossible state, not a comment).
+ *
+ * Returns the pooled observed share only if every quantile this script publishes
+ * is identified by it; otherwise throws a ComputabilityHalt naming the limbs
+ * that fail and the measured share behind them. Every path that could write
+ * permitStats.json runs downstream of this call, so the script cannot emit a
+ * Seattle figure without clearing it.
+ *
+ * The condition is MEASURED, not declared: every count comes back from the
+ * server on every run, through the same filing-time gates that define the
+ * published cohort. There is deliberately no flag, env var or `--force` that
+ * reaches past it — a boolean someone can flip is a comment with a type, and
+ * this file already proved a comment restrains nothing: the 74.1% sat in the
+ * RESULTS block while 5.7 / p80 10.0 shipped.
+ *
+ * `arms` is reported per arm ('New' and DADU), never pooled away: the two arms'
+ * shares differ by ~17 points and the arm that dominates the published number is
+ * the LOWER one, so the pooled share alone would flatter it. The gate still
+ * REFUSES on the pooled share — the artifact it protects is the pooled figure —
+ * but the message must let a reader see which arm is dragging.
+ *
+ * @param {number} observedN filings carrying an issue date at extract
+ * @param {number} cohortN   in-window filings passing the filing-time gates
+ * @param {Array<{name: string, observed: number, cohort: number}>} arms
+ */
+class ComputabilityHalt extends Error {}
+
+function refuseUnlessQuantilesAreObserved(observedN, cohortN, arms = []) {
+  if (cohortN === 0) {
+    throw new ComputabilityHalt(
+      `The cohort is empty, so no share can be computed. Refusing to write.`,
+    )
+  }
+  const share = observedN / cohortN
+  const failing = PUBLISHED_QUANTILES.filter(({ q }) => !(share > q))
+  if (failing.length === 0) return share
+  const pct = (x) => `${(x * 100).toFixed(2)}%`
+  const armLines = arms
+    .map(
+      (a) =>
+        `    · ${a.name}: ${a.observed} of ${a.cohort} observed (${
+          a.cohort ? pct(a.observed / a.cohort) : '—'
+        })`,
+    )
+    .join('\n')
+  throw new ComputabilityHalt(
+    `${observedN} of ${cohortN} filings carry an issue date at extract — ${pct(share)}.\n` +
+      failing
+        .map(
+          ({ q, name }) =>
+            `    · ${name} (p${q * 100}) is NOT IDENTIFIED: it needs more than ${pct(q)} of the\n` +
+            `      cohort observed and the feed gives ${pct(share)}. Filings with no issue date\n` +
+            `      sort above every observed duration, so the p${q * 100} lands inside the\n` +
+            `      unobserved ${pct(1 - share)} — past the last observation. There is no number\n` +
+            `      there to publish.`,
+        )
+        .join('\n') +
+      `\n\n  PER ARM, because this cohort is a union and the arms do not average:\n` +
+      `${armLines}\n` +
+      `  The refusal is on the POOLED share (the published figure pools them), but the\n` +
+      `  'New' arm is ~83% of the union and carries the lower share — a high DADU share\n` +
+      `  cannot rescue the New arm's p80, and pooling must not be read as if it could.\n\n` +
+      `  WHAT THE PASSING LIMBS DO NOT BUY YOU. Any quantile not listed above is\n` +
+      `  IDENTIFIED, not GOOD: identification is an existence condition, and the\n` +
+      `  identified median is still a median over the observed subset, i.e.\n` +
+      `  conditional on issuance. That condition can only live in \`vintage\`, which\n` +
+      `  no UI surface renders — the Milwaukee reason. Do not publish the median\n` +
+      `  alone to get past this; deciding where the condition is SHOWN is a product\n` +
+      `  decision for a person.\n\n` +
+      `  AND THE TIERS ARE FURTHER AWAY, not closer. byTier p50/p80s need per-tier\n` +
+      `  identification, and per-tier shares are only BOUNDED on this dataset\n` +
+      `  (housingunitsadded is 58.2% populated on non-issued rows). On the recorded\n` +
+      `  bounds no tier's lower bound clears 80, and apartment's straddles 50.\n\n` +
+      `  WHAT WAS PUBLISHED AND WHY IT WAS PULLED: 5.7 mo / p80 10.0 / n=4,996\n` +
+      `  shipped 2026-08-06 and was withdrawn 2026-08-09. The 74.1% observed share\n` +
+      `  was recorded in this file's own RESULTS block while the query selected on\n` +
+      `  the issue date being present and so could not see it (rule 11). Found by\n` +
+      `  the outcome-selection guard's exemption measurement, not by an audit of\n` +
+      `  Seattle.\n\n` +
+      `  permitStats.json left UNCHANGED.`,
+  )
+}
+
 // Which tier a permit belongs to. Mirrors buildingTier() in
 // netlify/functions/lib/timeline.ts: single = 1 unit, multi = 2-4, apartment =
 // 5+ AND all commercial/institutional.
@@ -332,6 +521,21 @@ function tierOf(row) {
   return 'single'
 }
 
+// Pull the in-window COHORT of new-construction filings, issued or not.
+//
+// ⚠️ NOTE WHAT IS *NOT* IN THIS WHERE CLAUSE: `issueddate IS NOT NULL`. It was
+// here, and it is exactly why this script could not see its own disqualifier —
+// a query that selects on the outcome cannot measure how often the outcome
+// occurs (rule 11: measure the pipeline, not your probe). With it, main()
+// reproduced 5.7 faithfully while the 74.1% issuance share sat in this file's
+// own RESULTS block. The denominator has to come back from the server or there
+// is no gate.
+//
+// Every remaining predicate is FILING-TIME, which is what makes the share a
+// valid denominator: `permittypemapped`, `permittypedesc` and `applieddate` are
+// assigned at intake, and the DADU prefilter reads `description`, which (A2)
+// established is populated by the applicant at intake (2001/2001 non-issued
+// filings) — so gating the cohort cannot preferentially drop unissued filings.
 async function pull(since) {
   // See the block comment at the top for why the Addition/Alteration arm exists
   // and why it is limited to detached ADUs. DADU_SQL is only the loose server-side
@@ -345,8 +549,7 @@ async function pull(since) {
     `AND (${TYPE_FIELD} = 'New' ` +
     `     OR (${TYPE_FIELD} = 'Addition/Alteration' AND ${DADU_SQL})) ` +
     `AND ${APPLIED_DATE_FIELD} >= '${since}T00:00:00.000' ` +
-    `AND ${APPLIED_DATE_FIELD} IS NOT NULL ` +
-    `AND ${ISSUED_DATE_FIELD} IS NOT NULL`
+    `AND ${APPLIED_DATE_FIELD} IS NOT NULL`
   return socrata('json', {
     $select:
       `${APPLIED_DATE_FIELD} AS applied, ${ISSUED_DATE_FIELD} AS issued, ` +
@@ -390,12 +593,13 @@ async function main() {
     rows = await pull(since)
   }
 
-  // 3. Durations, dropping negatives and > 120-month outliers.
-  const days = []
-  const byTier = { single: [], multi: [], apartment: [] }
+  // 3. The client-side FILING-TIME gates define the cohort — issued or not.
+  //    Both gates read `description`, populated at intake (see (A2)), so a row's
+  //    membership cannot depend on whether it later issued. The cohort this loop
+  //    keeps is the population the published figure would describe, which is why
+  //    the observed share is computed AFTER these gates and not before.
+  const cohort = []
   let stfi = 0
-  let untiered = 0
-  let dadusAdded = 0
   let notDadu = 0
   for (const row of rows) {
     // The STFI gate. A no-plan-review counter permit is not a new-construction
@@ -413,6 +617,71 @@ async function main() {
         continue
       }
     }
+    cohort.push(row)
+  }
+  console.log(`  excluded ${stfi} STFI rows (no-plan-review field-inspection permits)`)
+  console.log(`  excluded ${notDadu} prefiltered Add/Alt rows the exact DADU gate rejected`)
+
+  // 4. THE ISSUANCE SHARE, per arm and pooled, and the halt. Printed before it
+  //    is judged, so the refusal is inspectable and a future reader can watch
+  //    the number move. Socrata omits null fields from row JSON, so a missing
+  //    `issued` key IS the null issue date.
+  const issued = cohort.filter((r) => r.issued != null)
+  const arms = ['New', 'detached-ADU (Add/Alt)'].map((name, idx) => {
+    const inArm = (r) => (idx === 0 ? r.ptype === 'New' : r.ptype !== 'New')
+    return {
+      name,
+      cohort: cohort.filter(inArm).length,
+      observed: issued.filter(inArm).length,
+    }
+  })
+  const pct = (obs, n) => (n ? `${((obs / n) * 100).toFixed(2)}%` : '—')
+  console.log(
+    `  cohort ${cohort.length} filings, ${issued.length} with an issue date (${pct(issued.length, cohort.length)})`,
+  )
+  for (const a of arms) {
+    console.log(`     ${a.name}: ${a.observed}/${a.cohort} (${pct(a.observed, a.cohort)})`)
+  }
+
+  // By application year, because the pooled share hides the censoring gradient:
+  // recent cohorts have had less time to issue, and it is that slope — not the
+  // pooled number — that shows a pooled median is dragged down by immature
+  // filings.
+  const byYear = {}
+  for (const r of cohort) {
+    const t = Date.parse(r.applied)
+    if (Number.isNaN(t)) continue
+    const y = new Date(t).getUTCFullYear()
+    byYear[y] ??= { n: 0, obs: 0 }
+    byYear[y].n += 1
+    if (r.issued != null) byYear[y].obs += 1
+  }
+  for (const y of Object.keys(byYear).sort()) {
+    const { n, obs } = byYear[y]
+    console.log(`     ${y}  ${String(obs).padStart(5)}/${String(n).padEnd(5)} ${((obs / n) * 100).toFixed(1)}%`)
+  }
+
+  refuseUnlessQuantilesAreObserved(issued.length, cohort.length, arms)
+
+  // ── Nothing below here has run since the gate was added. ───────────────────
+  // It is written to be correct on the day Seattle's observed share clears every
+  // published quantile, and it is deliberately NOT reachable by a caveat, a flag
+  // or an env var. Treat its first run as new code — and re-read the header
+  // first, because clearing the aggregate gate resolves IDENTIFICATION of the
+  // pooled quantiles only. It does NOT license byTier: per-tier shares are only
+  // BOUNDED on this dataset (housingunitsadded is 58.2% populated on non-issued
+  // rows, so the non-issued residue assigns to no tier), and a tier's quantile
+  // is identified only when its LOWER-bound share clears it. Settle that per
+  // tier before a byTier block ships again, or ship without one the way
+  // philadelphia.mjs does.
+
+  // 5. Durations over the ISSUED subset, dropping negatives and > 120-month
+  //    outliers.
+  const days = []
+  const byTier = { single: [], multi: [], apartment: [] }
+  let untiered = 0
+  let dadusAdded = 0
+  for (const row of issued) {
     const a = Date.parse(row.applied)
     const i = Date.parse(row.issued)
     if (Number.isNaN(a) || Number.isNaN(i)) continue
@@ -424,8 +693,6 @@ async function main() {
     if (tier === null) untiered++
     else byTier[tier].push(d)
   }
-  console.log(`  excluded ${stfi} STFI rows (no-plan-review field-inspection permits)`)
-  console.log(`  excluded ${notDadu} prefiltered Add/Alt rows the exact DADU gate rejected`)
   console.log(`  included ${dadusAdded} detached-ADU rows SDCI typed as Addition/Alteration`)
   console.log(`  ${untiered} rows carry no usable unit count — in the aggregate, in no tier`)
 
@@ -438,7 +705,7 @@ async function main() {
   const medianMonths = daysToMonths(quantile(days, 0.5))
   const p80Months = daysToMonths(quantile(days, 0.8))
 
-  // 4. Sanity gate.
+  // 6. Sanity gate.
   if (medianMonths < 0.5 || days.length < 30) {
     console.warn(
       `  Result looks unreliable (median ${medianMonths} mo, n=${days.length}); not writing.`,
@@ -446,12 +713,28 @@ async function main() {
     return
   }
 
+  // The observed share travels WITH the figure, not just through the gate. It is
+  // the one number censoring cannot bias, and it is the condition under which the
+  // median is true — which is precisely what the withdrawn 5.7 failed to carry
+  // anywhere a reader could see. Note that putting it in `vintage` is NOT
+  // sufficient on its own: src/lib/realityCheck.ts does not render `vintage`, so
+  // republishing Seattle also requires deciding where the condition is SHOWN.
   const stamp = new Date().toISOString().slice(0, 10)
-  const vintage = `applied ${since} onward; computed ${stamp}; ${DATASET_NAME}`
+  const observedPct = ((issued.length / cohort.length) * 100).toFixed(1)
+  const vintage =
+    `applied ${since} onward; computed ${stamp}; ${DATASET_NAME}. ` +
+    `${issued.length}/${cohort.length} (${observedPct}%) of the in-window cohort carries an ` +
+    `issue date at extract; this is a median over the observed subset and is still subject ` +
+    `to right-censoring.`
 
-  // Per-tier figures. The aggregate is kept for compatibility but is the WEAKER
-  // number: of the 4996 issued rows, 52.5% are single-tier at 5.0 months and
-  // 8.5% are apartment-tier at 10.4, so the 5.7-month headline understates a
+  // Per-tier figures. ⚠️ IDENTIFICATION FIRST: this split must not ship again
+  // until each published tier's LOWER-bound observed share clears each published
+  // quantile — the aggregate gate above does not check this, because per-tier
+  // shares are only bounded (see the header). The 2026-08-06 figures failed it
+  // for every tier at p80.
+  // The aggregate is kept for compatibility but is the WEAKER
+  // number: of the 4996 issued rows, 52.5% were single-tier at 5.0 months and
+  // 8.5% apartment-tier at 10.4, so the 5.7-month headline understated a
   // 5+-unit project by nearly 2x. A consumer that knows the tier should always
   // prefer byTier (see measuredFor()).
   // The n<30 publication floor and the RECORD of every tier it withholds come out
@@ -471,7 +754,7 @@ async function main() {
 
   const stats = { medianMonths, p80Months, n: days.length, vintage }
 
-  // 5. Idempotent merge.
+  // 7. Idempotent merge.
   let existing = {}
   try {
     existing = JSON.parse((await readFile(OUT_PATH, 'utf8')) || '{}')
@@ -488,6 +771,18 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (err instanceof ComputabilityHalt) {
+    // A refusal BY DESIGN, and it exits NON-ZERO — the same choice sf.mjs,
+    // nyc.mjs and milwaukee.mjs make, and for the same reason. This is a
+    // LIVE-DATA condition that every run genuinely re-tests, on a city whose
+    // figure was published and then retracted. A silent exit 0 here is rule 18's
+    // failure exactly: the run would look like success. (boston.mjs exits 0
+    // because its gap is a column that does not exist and no re-run can change
+    // it.)
+    console.error(`\nseattle.mjs — NOT COMPUTABLE, by design:\n    ${err.message}\n`)
+    process.exitCode = 1
+    return
+  }
   console.error(`\nseattle.mjs failed: ${err.message}\n`)
   process.exitCode = 1
 })

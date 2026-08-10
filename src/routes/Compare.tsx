@@ -82,12 +82,24 @@ export default function Compare() {
     },
     { label: 'Construction cost', render: (d) => <span className="tabular-nums">{usd(d.costs.total)}</span> },
     {
-      // Eleven cities carry a measured filing→issuance permit leg from their own
-      // open-data portal; four publish no application date at all, so their
-      // timeline is estimate-only. Unmarked, the difference reads as one city
-      // being faster than another when it is really one being unmeasured —
-      // absence of a finding rendering as a finding of absence, same as the
-      // hurdle count above.
+      // Some cities carry a measured filing→issuance permit leg from their own
+      // open-data portal; the rest are estimate-only. Unmarked, the difference
+      // reads as one city being faster than another when it is really one being
+      // unmeasured — absence of a finding rendering as a finding of absence, same
+      // as the hurdle count above.
+      //
+      // ⚠️ THE TOOLTIP USED TO NAME A CAUSE, and the cause was wrong for some of
+      // the cities it rendered on: "This city publishes no permit application
+      // date." True of Boston, DC, Minneapolis, San Jose and Columbus. FALSE of
+      // NYC (withdrawn 2026-08-09 — its filing dates are present and clean; what
+      // was withdrawn is a median conditional on issuance), false of SF, LA and
+      // Chicago (each withdrawn on a measured disqualifier), false of Atlanta and
+      // Milwaukee (pipelines that refuse by design), and false of Charlotte (no
+      // building-permit dataset at all). One string cannot carry six different
+      // reasons, so it no longer tries to carry any: it states what is true of
+      // every unmarked city — no measured figure is published — and points at the
+      // per-city record. Disclosure copy is code; a claim can be true in one file
+      // and false in the branch it is copied to.
       label: 'Timeline',
       render: (d) => {
         if (d.timeline.months <= 0) return <span className="tabular-nums">N/A</span>
@@ -96,7 +108,7 @@ export default function Compare() {
         ) : (
           <span
             className="tabular-nums text-piranha-charcoal/70"
-            title="Estimated. This city publishes no permit application date, so the filing-to-issuance leg cannot be measured from its open data — unlike cities showing a measured figure."
+            title="Estimated. We publish no measured filing-to-issuance figure for this city — for some the data has no application date, for others a figure was measured and withdrawn. Either way this is a lifecycle estimate, not a measurement, and it is not comparable to a city showing a measured figure."
           >
             {d.timeline.months} mo<span className="ml-1 align-super text-[0.65em]">est</span>
           </span>

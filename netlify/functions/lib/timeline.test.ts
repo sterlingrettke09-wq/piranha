@@ -81,9 +81,10 @@ describe('resolveTimeline', () => {
 })
 
 describe('measured permit timing', () => {
-  // SF + Seattle landed real data from their open portals (see scripts/permits).
-  // Assert SHAPE, not exact numbers — the figures refresh quarterly and the test
-  // must survive a re-run of the pipeline.
+  // Six cities carry real data from their open portals (see scripts/permits) —
+  // SF and Seattle, the two this comment used to name, have both since been
+  // withdrawn. Assert SHAPE, not exact numbers — the figures refresh quarterly
+  // and the test must survive a re-run of the pipeline.
   const expectMeasuredShape = (m: unknown) => {
     expect(m).toBeDefined()
     const v = m as { medianMonths: number; p80Months: number; n: number; vintage: string }
@@ -112,9 +113,28 @@ describe('measured permit timing', () => {
     expect(t.measured).toBeUndefined()
   })
 
-  it('Seattle (also present) → measured is populated', () => {
+  // ⚠️ SEATTLE WITHDRAWN 2026-08-09, hours after NYC, after shipping 5.7 mo /
+  // p80 10.0 / n=4,996 from 2026-08-06. Measured 2026-08-09 by the
+  // outcome-selection guard's own exemption rule (a known-defect exemption must
+  // carry a measured share): seattle.mjs's cohort filter run against 76t5-zqzr
+  // both ways gives 6,980 in-window applications, 5,215 with the
+  // `issueddate IS NOT NULL` limb — the predicate hid 1,765 filings, observed
+  // share 74.71%. That clears p50 and fails p80, so the published p80 of 10.0
+  // was unidentified — LA's and NYC's shape, not SF's. The file's own RESULTS
+  // block had recorded 74.1% beside the p80 it unidentifies; a recorded
+  // limitation does not restrain a published number.
+  //
+  // THE MEDIAN IS NOT REPUBLISHED ALONE, for the Milwaukee reason: 5.7 at 74.71%
+  // observed is conditional on issuance and no UI surface renders the condition
+  // (`vintage` is never shown). Asserted so neither the pair nor a bare median
+  // can be reinstated from a stale script.
+  it('Seattle is withdrawn — its p80 is unidentified at 74.71% observed', () => {
     const t = resolveTimeline('seattle', project({ city: 'seattle' }), feas('by-right'), false)
-    expectMeasuredShape(t.measured)
+    expect(t.measured).toBeUndefined()
+    // And it must not degrade into a "measured but withheld for this size" card —
+    // Seattle's byTier went with the withdrawal (per-tier shares are only
+    // BOUNDED, and no tier's lower bound clears p80).
+    expect(t.measuredTierWithheld).toBeUndefined()
   })
 
   // ⚠️ WITHDRAWN 2026-08-05. Chicago and LA were measured and published, then an
@@ -124,6 +144,16 @@ describe('measured permit timing', () => {
   // observed and the p80 of 13.0 months is undefined, not merely imprecise. These
   // assert the ABSENCE so the old figures cannot be silently reinstated from the
   // stale scripts.
+  //
+  // LA's shares are SOURCED (established 2026-08-09) to LADBS's SUBMITTED feed,
+  // Socrata `gwh9-jnip`: `permit_type='Bldg-New'`, `submitted_date >= 2022-01-01`
+  // gives 11,810 of 26,035 with no issue date (45.36%), observed 54.64%; the
+  // matured 2022 cohort is 3,901/6,085 (64.11%). They are NOT measurable from
+  // `pi9x-tg5x`, the ISSUED feed `scripts/permits/la.mjs` reads, where the share
+  // is 100% by construction — a 2026-08-09 note calling the claim irreproducible
+  // had probed that feed and has been withdrawn. Note which limb binds: at 54.64%
+  // observed the p50 is identified and the p80 is not, so it is specifically the
+  // p80 that fails, which is what the test below asserts the absence of.
   it('Chicago is withdrawn — a backfill artifact halved its median', () => {
     const t = resolveTimeline('chicago', project({ city: 'chicago' }), feas('by-right'), false)
     expect(t.measured).toBeUndefined()
@@ -134,9 +164,37 @@ describe('measured permit timing', () => {
     expectMeasuredShape(t.measured)
   })
 
-  it('Los Angeles is withdrawn — 45% of its cohort has no issue date', () => {
+  it('Los Angeles is withdrawn — only 54.6% of applications are observed, so its p80 is unidentified', () => {
     const t = resolveTimeline('la', project({ city: 'la' }), feas('by-right'), false)
     expect(t.measured).toBeUndefined()
+  })
+
+  // ⚠️ NYC WITHDRAWN 2026-08-09, after shipping 8.3 mo / p80 17.0 / n=4,403 from
+  // 2026-08-06. 8.3 was a CONDITIONAL median — time to issuance GIVEN issuance —
+  // and the condition lived only in the `vintage` string, which
+  // src/lib/realityCheck.ts never renders; the card said "Median filing→permit in
+  // New York City". `scripts/permits/nyc.mjs` had recorded the disqualifier in its
+  // own header (45% of initial New Building filings since 2022 with no issue date;
+  // Kaplan-Meier over all 8,039 ≈ 15.9 months, ~2x the published figure) while its
+  // `pull()` ended `AND first_permit_date IS NOT NULL` — a query that selects on
+  // the outcome cannot measure how often the outcome occurs, so main() reproduced
+  // 8.3 and could not see it. That predicate is gone and the script now halts.
+  //
+  // WHICH LIMB BINDS: measured 2026-08-09 through the script's own filters, 662 of
+  // 1,040 in-window -I1 filings carry an issue date = 63.65%. That clears p50 and
+  // fails p80, so it is specifically the published p80 of 17.0 that is
+  // unidentified — LA's shape, not SF's. Per filing year 2022 71.4% / 2023 63.4% /
+  // 2024 57.0% / 2025 46.8%, so no matured cohort rescues the p80 either.
+  //
+  // WITHDRAWING IS NOT PUBLISHING 15.9: that figure assumes something about the
+  // non-issued filings which has not been adopted here. Asserted so neither the
+  // old figure nor the KM one can be reinstated from a stale script.
+  it('NYC is withdrawn — its p80 is unidentified at 63.65% observed, and 8.3 was conditional on issuance', () => {
+    const t = resolveTimeline('nyc', project({ city: 'nyc' }), feas('by-right'), false)
+    expect(t.measured).toBeUndefined()
+    // And it must not degrade into a "measured but withheld for this size" card —
+    // that would claim NYC publishes timing by building size, which it never did.
+    expect(t.measuredTierWithheld).toBeUndefined()
   })
 
   it('a city absent from permitStats → measured is undefined', () => {
@@ -170,9 +228,11 @@ describe('measured permit timing', () => {
 
 // Rule 14: the coverage claim shown to users must be impossible to falsify by
 // forgetting to update it. CITIES_WITH_MEASURED_PERMITS drives Compare's
-// "estimated" marker; if a twelfth city is measured and the list is not updated,
+// "estimated" marker; if another city is measured and the list is not updated,
 // that city keeps being labelled an estimate — and the reverse omission would
-// label an unmeasured city as measured, which is worse.
+// label an unmeasured city as measured, which is worse. That reverse omission is
+// the one that bit: NYC's withdrawal has to remove it from BOTH the artifact and
+// the list, and this test is what makes a half-done withdrawal fail loudly.
 describe('the published measured-permit coverage list matches the data', () => {
   it('equals exactly the cities carrying a newConstruction measurement', async () => {
     const stats = (await import('./data/permitStats.json')).default as Record<
@@ -195,6 +255,21 @@ describe('the published measured-permit coverage list matches the data', () => {
       expect(hasMeasuredPermitTiming(city)).toBe(false)
     },
   )
+
+  // NYC and Seattle are deliberately NOT in the list above, and the distinction
+  // is the whole of rule 5. Those four cannot be measured; NYC and Seattle can
+  // be, were, and their figures were WITHDRAWN 2026-08-09 because what each
+  // measured was conditional on issuance and the condition was never rendered
+  // (the published p80 was unidentified in both — 63.65% observed for NYC,
+  // 74.71% for Seattle). Filing dates are present and clean in both feeds.
+  // Grouping them with the no-application-date cities would turn a finding into
+  // a missing lookup.
+  it('NYC is unmeasured by WITHDRAWAL, not by a missing application date', () => {
+    expect(hasMeasuredPermitTiming('nyc')).toBe(false)
+  })
+  it('Seattle is unmeasured by WITHDRAWAL, not by a missing application date', () => {
+    expect(hasMeasuredPermitTiming('seattle')).toBe(false)
+  })
 })
 
 // Austin's new-construction population is 77% single-family houses at 1.6 months

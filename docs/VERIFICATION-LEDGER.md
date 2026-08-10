@@ -2211,6 +2211,12 @@ absence so the stale scripts cannot reinstate them):
   carries one, so an 80th percentile **does not exist**. A caveat cannot repair an
   undefined statistic. *(Phrasing corrected 2026-08-08 — state the share, not the
   fate; the shares and the withdrawal are unchanged.)*
+  > ✅ **Source established 2026-08-09 — see "LA's 45.4% was real, and the
+  > re-probe that 'disproved' it read the wrong feed".** Both shares reconstruct
+  > to the decimal against LADBS's **submitted** feed `gwh9-jnip` (45.36% /
+  > 64.11%), not the issued feed `pi9x-tg5x`. **This entry stands as written.** An
+  > intervening 2026-08-09 note recording it as irreproducible is itself
+  > withdrawn.
 
 ### The dominant failure was not the date field
 
@@ -2220,6 +2226,13 @@ share never do. Every instance biases the figure LOW — the flattering directio
 
 - **NYC** — 8.3 mo published; 45% of initial New Building filings since 2022 never
   issued. Kaplan-Meier over all 8,039 gives **15.9 months**.
+  > ⚠️ **WITHDRAWN 2026-08-09 — see "NYC withdrawn: the disqualifier was in the
+  > file, and the query was blindfolded" at the end of this ledger.** The finding
+  > above is correct and was acted on three days late. Two phrasing corrections:
+  > 45% is the share with **no issue date at extract**, not a share that "never
+  > issued" (state the share, not the fate); and NYC's `filing_status` *does*
+  > record some fate — 57 of the 378 non-issued rows are `Filing Withdrawn`.
+  > Neither changes the conclusion. **15.9 was not adopted as a replacement.**
 - **Austin** — and a second, separate defect: `work_class='New'` is **not new
   buildings**. 23% is swimming pools and spas; 32% is "Structures Other Than
   Bldg". Class medians span 6×: single-family 1.64 mo, 5+ family apartments
@@ -2407,6 +2420,16 @@ audited query. Three things the old one got wrong:
 Verified by running it: **median 8.3, p80 17.0, n 4,403** — reproduces the
 committed 8.3 / 17.0 exactly, n grown from 4,394 by two days of new filings.
 
+> ⚠️ **THE FIGURE THIS ENTRY LANDED WAS WITHDRAWN 2026-08-09.** Do not read
+> "reproduces its own committed figure" as "is correct": the reproduction was
+> real and the number was still ~2x below the file's own Kaplan-Meier estimate,
+> because `pull()` ended `AND first_permit_date IS NOT NULL` and so reproduced a
+> median conditional on issuance. **Reproducibility is not validity** — it says a
+> generator and an artifact agree, not that either is true of the world. Note
+> also that the counts in this entry (19,319 permitted NB filings, 4,394 `-I1`,
+> 14,029 `-S*`) no longer reproduce at all against the same resource id; see the
+> instrument note in the 2026-08-09 entry.
+
 The right-censoring limitation is written into the script's header rather than
 left implicit: 45% of initial NB filings since 2022 never issued, permitted share
 falls 1461/1960 (2022) → 764/1764 (2025), and Kaplan-Meier over all 8,039 gives
@@ -2582,7 +2605,8 @@ Austin's apartment median by application year runs 11.1 (2022) → 9.7 → 6.2 �
 2022 cohort: single 32.4%, multi 23.4%, apartment 44.4%. When most of the cohort
 has no issue date, the unconditional median time-to-issuance **does not exist**,
 and a floor label does not rescue it — it makes an absent number look cautious.
-LA was withdrawn at 64.1%; SF is far below that.
+LA was withdrawn at 64.1%; SF is far below that. *(LA's 64.1% sourced 2026-08-09
+to LADBS's submitted feed `gwh9-jnip` — 3,901/6,085 = 64.11%. Unchanged.)*
 
 ### Where KM IS computable
 
@@ -3487,3 +3511,428 @@ from completion when the checker is the same process that did the writing.
 
 Recorded green after the fixes: 68 test files / 1,862 tests, up from 60 / 1,401 at
 Raleigh.
+
+## 2026-08-09 — A survivor rate published at the top of its own bound, and LA's 45.4% was real all along
+
+Two provenance corrections, opposite in shape. One published figure was unsound
+and had to be restated. One retraction was itself wrong and had to be un-retracted.
+
+### SF's relief rate was a filing cohort scored over its survivors
+
+`scripts/relief/sf.mjs` framed its cohort on `open_date` — variance records
+**filed** since 2022 — and then computed `granted ÷ decided` over the members
+that had reached an outcome. Records still pending were not excluded by a
+documented decision; they were dropped by the `record_status IN (granted, denied)`
+filter and never appeared in the denominator.
+
+Measured live, VAR records with `open_date >= 2022-01-01`:
+
+| | n |
+|---|---|
+| decided (293 `Closed - Approved` + 7 `Closed - Disapproved`) | 300 |
+| still undecided (Under Review 26, Pending Review 17, Submitted 15, Accepted 11, On Hold 9, Open 3, Action Pending 2) | **83** |
+| cohort | 383 |
+
+**21.7% of the cohort had no outcome and was invisible to the published rate.**
+The cohort supports only a bound — 293/383 = **76.5%** if every pending case is
+denied, 376/383 = **98.2%** if every one is granted — and the figure on the site,
+**97.6%, sat at the very top of it.** A number that can only be wrong in one
+direction is not a measurement.
+
+Boston was clean the whole time for a structural reason, not a lucky one: it
+frames on `final_decision_date`, so a cohort of "appeals decided in the window"
+**cannot contain a pending member**. Exclusion by construction, not by censoring.
+
+### The fix required a field the previous author had concluded did not exist
+
+The script's own comment asserted SF "publishes `open_date` (application date),
+not a separate decision date". The dataset has seventeen columns and **two** are
+dates: `open_date` and **`close_date`**. The absence had been established by
+probing `$limit=1` — and **Socrata omits null fields per row**, so a sample row is
+not a schema. Rule 8, exactly: a 404 on a guessed path proves the guess wrong, not
+the resource absent, and a field missing from one row proves nothing at all. The
+rebuilt script reads `/api/views/<4x4>.json` instead.
+
+`close_date` is **not** a decision date and the vintage string does not call it
+one — the publisher defines it as *"Date the record was closed."* It is used for
+cohort **membership** only. What licenses that is measured, not nominal:
+
+- populated on **100%** of terminal records (7,534/7,536 all-time; the two
+  exceptions opened 2015 and 2017), and
+- populated on **0%** of every in-progress status — Under Review 0/33, On Hold
+  0/18, Pending Review 0/18, Submitted 0/15, Open 0/3, Action Pending 0/2.
+
+So "closed in window" *is* "resolved", and all 628 in-window rows carry a terminal
+status. **Restated: 97.3% (n=406, 395 granted / 11 denied)**, replacing 97.6%
+(n=289). The rendered line moves 98% → 97%.
+
+Three checks ran before adopting the frame, and the third is the one that mattered:
+per-year rates are stable (95.6–99.1%); window-start sensitivity is mild
+(since-2021 95.49% → since-2024 97.07%); and **closure lag does not differ by
+outcome** — approved p50 269d vs disapproved p50 274d — so the new frame does not
+select on the result it is measuring. The restated 97.29% also lands inside the old
+frame's [76.5%, 98.2%] bound: two independent framings agree.
+
+The gate is `refuseUnlessCohortIsResolved()`, with a **fail-closed vocabulary** —
+any status in the window not on the TERMINAL list halts the run, so a new
+disposition code cannot be silently ignored. Threshold zero, which is not a
+tolerance but the claim itself. Verified by deleting `Closed - Withdrawn` from
+TERMINAL and watching it refuse on 152 rows and write nothing (rule 14: the caught
+error is now an impossible state, not a comment).
+
+### LA's 45.4% was real, and the re-probe that "disproved" it read the wrong feed
+
+The 2026-08-05 audit recorded *"45.4% of the cohort carries no issue date at
+extract; only 64.1% of the matured 2022 cohort carries one"*. A 2026-08-09 re-probe
+against `pi9x-tg5x` returned **100.00%** and the claim was recorded across
+`la.mjs` and `scripts/permits/README.md` as *not reproducing*.
+
+**That note was the error.** `pi9x-tg5x` is titled *"Building Permits **Issued**
+from 2020 to Present"*. Asking an issued-only feed how many applications never
+issued measures the query, not the city — **rule 11, and committed by the pass
+written to enforce rule 11.**
+
+LADBS publishes a companion feed, found by reading the portal's catalogue rather
+than guessing ids: **`gwh9-jnip`, "Building Permits SUBMITTED from 2020 to
+Present"**. All three recorded figures reconstruct to the decimal (two isolated
+passes, rule 10):
+
+| recorded | measured on `gwh9-jnip` |
+|---|---|
+| 45.4% carry no issue date | **45.36%** (11,810 / 26,035) |
+| only 54.6% observed | **54.64%** |
+| 64.1% of the matured 2022 cohort | **64.11%** (3,901 / 6,085) |
+
+The denominator is genuine. The no-issue rows carry a real pre-issuance
+`status_desc` vocabulary — Quality Review Completed 5,592, Verifications in
+Progress 2,902, PC Info Complete 1,215, Corrections Issued 698 — the very values
+correctly reported as absent from `pi9x-tg5x`. The feeds join cleanly both ways:
+**0 of 12** sampled never-issued permits appear in `pi9x-tg5x`; **12 of 12**
+sampled issued permits appear in `gwh9-jnip` with `issue_date` set. `gwh9-jnip` is
+the application population, `pi9x-tg5x` its issued subset.
+
+**This makes LA's withdrawal stronger.** The reason is not "no denominator exists"
+— the denominator exists and it *disqualifies* the figure. At 54.64% observed the
+quantile-existence rule identifies p50 and not p80, and the withdrawn pair was
+median 6.0 / **p80 13.0**.
+
+The 2026-08-08 "state the SHARE, not the FATE" retraction was re-checked against
+the better feed and **holds**: `gwh9-jnip`'s no-issue domain is entirely
+in-progress states, with no Withdrawn, Denied or Expired value anywhere.
+
+### The rule
+
+**A measurement that fails to reproduce indicts the instrument before it indicts
+the record.** Rule 16 said a result contradicting a known-good is the instrument's
+problem; this is the same asymmetry for a *negative* result. "The earlier figure
+does not reproduce" felt like the careful, humble finding — it withdraws a claim
+rather than asserting one — and that is exactly why it got less scrutiny than a
+surprising positive would have. It shipped into four files on one probe of one
+feed, and the honest-sounding phrasing "does not reproduce against the current
+feed" was doing the damage, because **"the current feed" silently assumed the feed
+we happened to read was the feed the claim was about.**
+
+Before recording a non-reproduction, enumerate the sources that could have
+produced the original. Here it took one catalogue query and the first candidate
+matched three figures to the decimal.
+
+Corollary for retraction hygiene (rule 17): **a retraction can itself need
+retracting, and it propagates just as widely.** The false "does not reproduce"
+note had already reached two files and was queued for four more as a deliberate
+propagation decision. What stopped it was checking the claim against the world
+before spreading it — not after.
+
+---
+
+## 2026-08-09 — NYC withdrawn: the disqualifier was in the file, and the query was blindfolded
+
+**Shipped:** `nyc.newConstruction` = **8.3 mo / p80 17.0 / n=4,403**, from
+2026-08-06 to 2026-08-09. Three days, in `permitStats.json`, on the result page's
+"Measured permit time" card and in the Red Tape Index's NYC story ("New York City
+issues a new-construction permit in about 8 months"), and as an unmarked figure in
+Compare's Timeline row.
+
+**Withdrawn** 2026-08-09: removed from `permitStats.json` and from
+`CITIES_WITH_MEASURED_PERMITS`, with a structural refusal gate added to
+`scripts/permits/nyc.mjs`.
+
+### Why
+
+8.3 is a **conditional median** — time to issuance GIVEN issuance. 45% of initial
+New Building filings since 2022 carried no issue date at extract; the permitted
+share fell by cohort (1461/1960 in 2022 → 764/1764 in 2025); Kaplan-Meier over all
+8,039 filings gave **~15.9 months**. The published figure was roughly **2x below
+the file's own estimate of the thing it claimed to measure**.
+
+The only place the condition could have been stated is the artifact's `vintage`
+string, and `src/lib/realityCheck.ts` renders `medianMonths`, `p80Months` and `n`
+— never `vintage`. So the caveat had no surface. Milwaukee's residential pair is
+sound and is withheld for exactly this reason; **being a large city is not an
+exemption**, and "NYC is too important to omit" is an argument about consequences,
+not about whether the number is true.
+
+### The two mechanisms, both mechanical
+
+**1. The query was blindfolded.** `pull()` ended
+`AND first_permit_date IS NOT NULL`. A query that selects on the outcome cannot
+measure how often the outcome occurs, so `main()` reproduced 8.3 faithfully and
+had no access to the 45% — which was **written in the same file, four paragraphs
+above the query**. This is rule 11 again, and note the shape it took: not a wrong
+number, but a *correct* number computed over a population the code could not see
+the boundary of. The predicate is now gone; the denominator comes back from the
+server, which is the only thing that makes a gate possible.
+
+**2. A recorded limitation does not restrain a published number.** The header
+paragraph was titled "KNOWN LIMITATION, not fixed here" and ended "correcting that
+is a separate pass". Everything in it was true and it stopped nothing. Rule 14
+says convert a caught error into an impossible state rather than a comment; this
+is the counter-example that shows what the comment version actually buys, which is
+nothing. `refuseUnlessQuantilesAreObserved()` now sits upstream of every write
+path, mirroring `sf.mjs` and `la.mjs`.
+
+### What the gate measures, and which limb binds
+
+Recomputed from the live feed on every run, through the script's own filters
+(`job_type = 'New Building'`, `job_filing_number LIKE '%-I1'`, filed since 2022):
+
+|  | measured 2026-08-09 |
+|---|---|
+| cohort | 1,040 filings |
+| carrying an issue date | 662 = **63.65%** |
+| p50 (`medianMonths`) | identified (needs > 50%) |
+| p80 (`p80Months`) | **NOT identified** (needs > 80%) |
+
+By filing year: 2022 **71.4%** (272/381), 2023 63.4% (206/325), 2024 57.0%
+(162/284), 2025 46.8% (22/47). **Even the matured 2022 cohort fails p80**, so
+narrowing the window does not rescue it.
+
+This is **LA's shape, not SF's**: SF fails at p50 and has no median at all; NYC's
+median exists and its p80 does not. The script publishes both, so it writes
+nothing. Both extracts fail the same limb — 55% observed on 2026-08-06 and 63.65%
+today — so the gate would have refused on either.
+
+> ⚠️ **A passing p50 is not a good p50.** Identification is an existence
+> condition. NYC's median clears the gate and is still ~2x below Kaplan-Meier over
+> the same filings. The halt message says so explicitly, because the tempting next
+> move is "the median passed, publish the median alone".
+
+### Withdrawing is not publishing 15.9
+
+The KM figure is **not a corrected version of the same measurement**. It rests on
+an assumption about what the non-issued filings eventually do, and nothing here
+has adopted that assumption — adopting one is a product decision for a person, of
+exactly the kind this ledger says not to automate. Removing a wrong number is
+finished work on its own. The failure mode to avoid is treating a withdrawal as
+incomplete until a replacement exists, which is the pressure that produced 8.3.
+
+### A retraction found while withdrawing (rule 17)
+
+`nyc.mjs` asserted that the feed "does not distinguish a not-yet from a never".
+True of SF's and LA's feeds; **false here**. It was copied in rather than checked
+against NYC — disclosure copy is code, and this is the third instance of a claim
+that is true in one file and false in the branch it lands in.
+
+`filing_status` over the 378 in-window `-I1` rows with no issue date: Objections
+155, Approved 151, **Filing Withdrawn 57**, Plan Examiner Review 7, On Hold –
+Administrative Action 6, QA Failed 1, OnHold-NoGoodCheck 1. So 57 *are* terminal.
+The withdrawal is unaffected — dropping them gives 662/983 = **67.3%**, still
+failing p80 — but "state the SHARE, not the FATE" is a rule against asserting a
+fate you cannot see, not a licence to assert that no feed records one. Corrected
+in `nyc.mjs`, `README.md` and `cities.ts`.
+
+The same pass fixed a live user-facing instance: Compare's Timeline tooltip read
+*"This city publishes no permit application date."* True of Boston, DC,
+Minneapolis, San Jose and Columbus. **False of NYC, SF, LA, Chicago, Atlanta,
+Milwaukee and Charlotte** — every city withdrawn on a finding or refused by a
+pipeline. One string cannot carry six reasons, so it no longer names a cause.
+
+### An unresolved instrument question, recorded and NOT resolved
+
+The committed n=4,403 **no longer reproduces from the feed under any framing
+tried**. Measured 2026-08-09:
+
+| recorded 2026-08-06 | measured 2026-08-09 |
+|---|---|
+| 19,319 permitted NB filings | **5,469** |
+| 4,394 `-I1` | **914** |
+| 14,029 `-S*` | **4,224** |
+
+Resource id, dataset name, column set and `rowsUpdatedAt` are all current and
+unchanged; the whole `New Building` population in `w9ak-ipjd` is now 13,353 rows,
+roughly 3.5x smaller than the record. Running the script's exact query and
+arithmetic over what the feed returns today gives **median 12.0 / p80 22.4 /
+n=662**, not 8.3 / 17.0 / n=4,403.
+
+**Cause not diagnosed, deliberately.** Rule 16 says a measurement contradicting a
+known-good indicts the instrument first, and the reconciliation was run — count
+and row-fetch endpoints agree, the suffix histogram sums to the count, two
+isolated passes match (rule 10) — but that only establishes the probe is
+self-consistent, not what happened to the feed. It is recorded here because a
+future reader hitting the smaller cohort must not read it as contradicting the
+shares above, and because it is a reason to distrust the 2026-08-06 extract and
+**never** a reason to publish today's pair, which fails the same gate.
+
+### Verification
+
+- Gate fires on the live feed and **writes nothing**: `permitStats.json` is
+  byte-identical by sha256 before and after `node scripts/permits/nyc.mjs`, which
+  exits 1.
+- Gate is **load-bearing**, not decorative: deleting the p80 limb from
+  `PUBLISHED_QUANTILES` in a sandboxed copy makes the same run write
+  `12.0 / 22.4 / n=662`. The refusal is the only thing stopping a write.
+- `timeline.test.ts` asserts NYC resolves to no measurement and carries no
+  "withheld for this size" record; the existing artifact↔list equality test is
+  what would have caught a half-done withdrawal.
+- NYC is deliberately **not** added to the `boston/dc/minneapolis/sanjose`
+  no-application-date group — rule 5: those cannot be measured, NYC was measured
+  and retracted, and the two must not render the same.
+
+### The rule
+
+**A limitation recorded next to a number does not restrain the number.** The
+disqualifier was in the file, in capitals, above the query. It was written by
+someone who understood it, and it was correct. What was missing was not knowledge
+— it was a code path that could fail. Rule 14's "convert a caught error into an
+impossible state, not a comment" has been stated as a preference; this is the
+measurement of what the comment version costs: three days of a 2x error, served as
+a measurement, on the largest city in the product.
+
+Corollary, sharpening rule 18: **the strongest predictor that a wrong number will
+ship is that it was produced by a query which cannot see its own denominator.**
+Every city withdrawn so far — San Diego, Chicago, LA, SF, now NYC — had a `WHERE`
+clause or a feed that selected on the outcome. The audit question is not "does
+this number look right" but **"can this query compute the share of the cohort it
+did not select?"** If it cannot, no result it produces can be checked.
+
+---
+
+## 2026-08-09 — Seattle withdrawn: the guard built to stop city 24 caught city 5
+
+**Shipped:** `seattle.newConstruction` = **5.7 mo / p80 10.0 / n=4,996**, plus a
+full `byTier` block (single 5.0/8.5, multi 6.3/10.3, apartment 10.4/18.5), from
+2026-08-06 to 2026-08-09. Three days, in `permitStats.json`, on the result page's
+"Measured permit time" card, in the Red Tape Index's Seattle story and as an
+unmarked figure in Compare's Timeline row.
+
+**Withdrawn** 2026-08-09, hours after NYC: removed from `permitStats.json` and
+from `CITIES_WITH_MEASURED_PERMITS`, with the same structural refusal gate
+(`refuseUnlessQuantilesAreObserved()`) added to `scripts/permits/seattle.mjs`.
+
+### How it was found — nobody was auditing Seattle
+
+The outcome-selection guard (`scripts/permits/outcome-selection.ts`, built
+2026-08-09) exists to stop city 24 inheriting the issued-only predicate when a
+new script is cloned from the nearest old one. Its registry refuses to exempt a
+known carrier without a **measured** share attached — a `known-defect` entry must
+state the size of the selection, not just its existence. Measuring Seattle's was
+therefore the *price of exempting it*, and the measurement disqualified the
+figure:
+
+|  | measured 2026-08-09 (server-side, script's own cohort filter, both arms) |
+|---|---|
+| in-window applications | 6,980 |
+| with the `issueddate IS NOT NULL` limb | 5,215 |
+| hidden by the predicate | **1,765 = 25.29%** |
+| observed share | **74.71%** |
+| p50 (`medianMonths`) | identified (74.71 > 50) |
+| p80 (`p80Months`) | **NOT identified** (74.71 < 80) |
+
+The client-side gates (STFI, exact DADU) take the published n from 5,215 to
+4,996; re-measured 2026-08-10 through the fixed pipeline the client-side cohort
+is 6,760 with 5,009 observed = **74.10%**, same limb failing. This is LA's and
+NYC's shape, not SF's: the median exists, the published p80 does not — it lands
+inside the unobserved quarter, past the last observation. The script publishes
+both, so it writes nothing.
+
+**The guard was built for a hypothetical future defect and its first catch was
+city 5 of the product** — a figure that had been live for three days. The
+mechanism generalises: an exemption that must carry a measurement cannot be a
+mute button, because writing it forces the check the exemption would otherwise
+suppress.
+
+### The disqualifier was in the file — again, and closer than NYC's
+
+`seattle.mjs`'s own RESULTS block recorded, on 2026-08-06:
+
+    aggregate      6746 filings, 4996 issued (74.1%)   median 5.7 mo   p80 10.0
+
+The 74.1% and the p80 it unidentifies are **on the same line**. NYC's
+disqualifier sat four paragraphs above its query; Seattle's sat in the same row
+of the same table, written by the same pass that shipped the number. A recorded
+limitation does not restrain a published figure (NYC's rule, second measurement),
+and proximity does not help — what was missing was a code path that could fail,
+not information. `pull()` carried `AND issueddate IS NOT NULL`, so `main()`
+reproduced 5.7 faithfully and could not see the denominator its own header had
+already stated (rule 11).
+
+### The median is not republished alone — the Milwaukee reason
+
+5.7 at 74.71% observed is a **conditional median** — time to issuance GIVEN
+issuance — and the only field that can state the condition is `vintage`, which no
+UI surface renders (`src/lib/realityCheck.ts` renders `medianMonths`, `p80Months`
+and `n`; Compare reads `hasMeasuredPermitTiming`). A conditional figure whose
+condition no surface shows is exactly why Milwaukee's cleanly measured
+residential pair is withheld; Seattle's higher observed share changes the size of
+the caveat, not its visibility. Republishing the median alone requires deciding
+where the condition is SHOWN, which is a product decision for a person.
+
+### Two things specific to Seattle, recorded so the next reader does not undo them
+
+**The two arms do not average.** The pull is a union of a 'New' arm and a
+detached-ADU arm, with observed shares ~17 points apart (measured 2026-08-10:
+New 4,000/5,613 = 71.26%; DADU 1,009/1,147 = 87.97%). The gate refuses on the
+pooled share — the published figure pools them — but reports each arm
+separately, because the arm that dominates the union (~83% 'New') carries the
+LOWER share, and a pooled 74% must not be read as if the DADU arm's 88% rescued
+anything. Both arms' shares are measurable at all only because both gates are
+filing-time (`permittypedesc`; `description`, populated on 2001/2001 non-issued
+filings — the (A2) fix). The pre-(A2) ADU gate on `dwellingunittype` was null
+for 100% of non-issued filings — an arm selected issued-only BY CONSTRUCTION has
+no denominator and cannot even state its own condition.
+
+**The tiers are further away than the aggregate, not closer.** The withdrawn
+artifact carried byTier p50/p80s. Per-tier observed shares are only **bounded**
+on this dataset (`housingunitsadded` is 58.2% populated on non-issued rows, so
+720 non-issued filings assign to no tier): single 71.1–88.4%, multi 59.9–80.8%,
+apartment 29.6–59.6%. No tier's lower bound clears 80, and apartment's interval
+straddles 50 — whether an apartment-tier *median* even exists is indeterminate.
+Clearing the aggregate gate would not license a byTier block; each tier's
+lower-bound share has to clear each published quantile first.
+
+### Verification
+
+- Gate fires on the live feed and **writes nothing**: `permitStats.json`
+  byte-identical by sha256
+  (`96f220bca66bbc841b39635835daf4c1062aff4c8641513a0a4d924c6c0d4420`) before
+  and after `node scripts/permits/seattle.mjs`, which exits 1.
+- Gate is **load-bearing**, not decorative: deleting the p80 limb from
+  `PUBLISHED_QUANTILES` in a sandboxed copy makes the same run write
+  `5.7 / 10 / n=5,009` — reproducing the withdrawn pair almost exactly, which
+  also confirms the withdrawn figure was precisely what the blindfolded query
+  computes. The refusal is the only thing stopping a write.
+- The stale-exemption rule closed the loop: with the predicate removed,
+  `seattle.mjs`'s registry entry became stale by the registry's own test, so the
+  exemption was deleted in the same change — a licence cannot outlive what it
+  licensed.
+- `timeline.test.ts` asserts Seattle resolves to no measurement and no
+  withheld-tier record; the artifact↔list equality test guards the half-done
+  withdrawal; Seattle is asserted unmeasured **by withdrawal**, not grouped with
+  the no-application-date cities (rule 5).
+
+### The rule
+
+**A guard pays for itself on the cities you already trust, not the one you built
+it for.** Every prior catch here required someone to point an audit at a city;
+this one fell out of the guard's demand that an exemption carry a measurement.
+The general form: when a check must be *fed evidence* to be silenced, silencing
+it does the audit. Registries of exceptions should be designed so that writing
+the exception is more work than fixing the defect — or at least the same work,
+as here, where measuring the share WAS the audit that killed the figure.
+
+And note the tally as of this entry: every city withdrawn so far — San Diego,
+Chicago, LA, SF, NYC, now Seattle — had a `WHERE` clause or a feed that selected
+on the outcome it published (the NYC entry's corollary, now six for six).
+Outcome selection has a 100% hit rate on wrong-or-unidentified published
+numbers. No unexempted `IS NOT NULL` carrier is left in `scripts/permits/`, and
+the guard exists so there
+never is one.

@@ -412,7 +412,10 @@ export function hasCitySpecificHurdles(slug: string): boolean {
  * of absence, in the direction that flatters. Third instance of that shape.
  *
  * Kept honest by a test that reads permitStats.json and asserts this list matches
- * it exactly, so measuring a twelfth city cannot silently leave the list stale.
+ * it exactly, so measuring another city cannot silently leave the list stale —
+ * nor, as NYC's 2026-08-09 withdrawal proved, can WITHDRAWING one. A half-done
+ * withdrawal (artifact emptied, list not) would keep marking NYC as measured in
+ * Compare while its result page showed nothing, which is the worse direction.
  */
 // ⚠️ chicago, la and sandiego were REMOVED 2026-08-05 after an adversarial audit.
 // They were published for part of one session and are recorded here so nobody
@@ -428,6 +431,15 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 //     is unsalvageable: only 64.1% of the matured 2022 cohort carries one, so the
 //     80th percentile lies beyond the observed range and no p80 exists. A caveat
 //     cannot repair a statistic that is undefined.
+//     SOURCE (established 2026-08-09): these shares are measured on LADBS's
+//     SUBMITTED feed, Socrata `gwh9-jnip` — `permit_type='Bldg-New'`,
+//     `submitted_date >= 2022-01-01`: 11,810 of 26,035 rows carry no issue date
+//     (45.36%), observed share 54.64%; the 2022 cohort is 3,901/6,085 = 64.11%.
+//     NOT from `pi9x-tg5x`, the ISSUED feed la.mjs reads, where the share is
+//     100% by construction. A 2026-08-09 note recording this claim as
+//     "does not reproduce" was measuring the issued feed and has been withdrawn
+//     (rule 11 — measure the pipeline, not your probe). At 54.64% observed the
+//     p50 IS identified and the p80 is not, which is exactly the finding above.
 //   · sf — WITHDRAWN 2026-08-06. Only 37.7% of new-construction filings since
 //     2022 carry an issue date at extract (matured 2022 cohort: single 32.4%,
 //     multi 23.4%, apartment 44.4%). When most of the cohort has no issue date,
@@ -441,6 +453,14 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 //     21 `withdrawn` and 1 `cancelled`, but 173 sit at `filed`; Raleigh's
 //     `statuscurrent` vocabulary has no Withdrawn/Denied/Cancelled value at all.
 //     The undefinedness above does not depend on fate, so both withdrawals stand.
+//     RE-CHECKED 2026-08-09 against LA's real denominator feed `gwh9-jnip`, which
+//     was not known when this retraction was written: its 11,810 no-issue rows
+//     run Quality Review Completed 5,592, Verifications in Progress 2,902, PC
+//     Info Complete 1,215, Corrections Issued 698, PC Approved 648, Ready to
+//     Issue 286, Submitted 87, Plans on Hold 16 — every value an IN-PROGRESS
+//     state, with no Withdrawn, Denied or Expired anywhere in the domain. So LA
+//     cannot separate a not-yet from a never either, and the retraction holds on
+//     the better feed rather than merely on the one that lacked the column.
 //
 // ⚠️ milwaukee is WITHHELD 2026-08-08, and it is the first city withheld for a
 // reason that is not about the data's quality. Milwaukee publishes both dates
@@ -475,9 +495,85 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 // to the 37.4% selects permits that issued and then stalled, which is a
 // survivorship-biased third, not a sample. That is structural, not a gap we can
 // close, so no atlanta pipeline exists.
+// ⚠️ dallas, lasvegas and phoenix are absent, and for a WEAKER reason than every
+// other city named above — those were investigated and refused on a finding;
+// these three were not investigated at all. No permit feed was opened for any of
+// them at the provider stage, so no slot test for an application date has been
+// run and there is no finding in either direction. Stated plainly rather than
+// left to sit alongside the measured refusals above, because "absent from this
+// list" would otherwise read as "checked and rejected" (rule 5: a known absence
+// and a missing lookup must not render the same).
+// ⚠️ nyc was WITHDRAWN 2026-08-09, after shipping 8.3 mo / p80 17.0 / n=4,403
+// from 2026-08-06. The disqualifier was already written down IN THE PIPELINE
+// THAT PRODUCED IT: scripts/permits/nyc.mjs recorded that 45% of initial New
+// Building filings since 2022 carried no issue date, and that Kaplan-Meier over
+// all 8,039 gave ~15.9 months — roughly 2x the number being served. The script's
+// own `pull()` could not see that, because its WHERE clause ended
+// `AND first_permit_date IS NOT NULL`: a query that selects on the outcome
+// cannot measure how often the outcome occurs (rule 11).
+//
+// 8.3 was a CONDITIONAL median — time to issuance GIVEN issuance. The only place
+// that condition could have been stated is the `vintage` string, and
+// src/lib/realityCheck.ts never renders it: the card said "Median filing→permit
+// in New York City". Milwaukee's residential pair is sound and is still withheld
+// for exactly this reason, so NYC is not an exception for being large.
+//
+// WHICH LIMB BINDS (measured 2026-08-09 against w9ak-ipjd, through the script's
+// own filters, with the IS NOT NULL removed): 662 of 1,040 in-window -I1 filings
+// carry an issue date = 63.65%. That clears p50 and does NOT clear p80, so it is
+// specifically the published p80 of 17.0 that is unidentified — LA's shape, not
+// SF's. Per filing year: 2022 71.4%, 2023 63.4%, 2024 57.0%, 2025 46.8%. Even
+// the matured 2022 cohort fails p80, so restricting the window does not rescue it.
+//
+// ⚠️ WITHDRAWING IS NOT PUBLISHING 15.9. The Kaplan-Meier figure rests on an
+// assumption about the non-issued filings that has not been adopted here, and
+// NYC's `filing_status` shows the population is mixed — over the 378 non-issued
+// rows: Objections 155, Approved 151, Filing Withdrawn 57, Plan Examiner Review
+// 7, On Hold 6, QA Failed 1, OnHold-NoGoodCheck 1. Only the 57 are a terminal
+// never. State the SHARE, not the FATE.
+//
+// ⚠️ SEPARATELY, AND NOT THE REASON FOR THE WITHDRAWAL: the committed n=4,403 no
+// longer reproduces from the feed at all. Today `job_type='New Building'` returns
+// 13,353 rows of which 5,469 are permitted and 914 are `-I1`, against the 19,319
+// permitted / 4,394 `-I1` the script's header records. No reframing recovered the
+// old counts. Cause undiagnosed; recorded so nobody reads today's smaller cohort
+// as a contradiction of the shares above.
+// ⚠️ seattle was WITHDRAWN 2026-08-09, hours after NYC, after shipping 5.7 mo /
+// p80 10.0 / n=4,996 from 2026-08-06. Same defect class, different discovery
+// path: nobody was auditing Seattle. The outcome-selection guard
+// (scripts/permits/outcome-selection.ts) was built 2026-08-09 to stop city 24
+// inheriting the issued-only predicate by clone, and its registry refuses a
+// `known-defect` exemption without a MEASURED share attached — so measuring
+// Seattle's was the price of exempting it. The measurement is what disqualified
+// the figure: seattle.mjs's own cohort filter run against 76t5-zqzr both ways
+// gives 6,980 in-window applications, 5,215 with the `issueddate IS NOT NULL`
+// limb — the predicate hid 1,765 filings (25.29%), so the observed share is
+// 74.71%. Under the quantile-existence rule (a p-th quantile is identified only
+// when the observed share exceeds p), 74.71% identifies the p50 and does NOT
+// identify the published p80 of 10.0. The guard built to stop city 24 caught
+// city 5.
+//
+// THE MEDIAN IS NOT REPUBLISHED ALONE, for the Milwaukee reason. 5.7 at 74.71%
+// observed is a CONDITIONAL median — time to issuance GIVEN issuance — and the
+// only field that could state the condition is `vintage`, which no UI surface
+// renders (src/lib/realityCheck.ts renders medianMonths/p80Months/n only). A
+// conditional figure whose condition nobody can see is the exact thing
+// Milwaukee's sound residential pair is withheld over; Seattle is not an
+// exception for having a higher share.
+//
+// THE TWO-ARM SHAPE, so the next reader doesn't re-average it: seattle.mjs pulls
+// a 'New' arm and a detached-ADU arm gated on `description`. Both gates are
+// filing-time (description is populated on 2001/2001 non-issued filings — the
+// 2026-08-06 (A2) fix), so each arm's observed share is separately measurable at
+// run time and the refusal gate reports them separately. The pre-(A2) ADU gate
+// on `dwellingunittype` — null for 100% of non-issued filings, i.e. issued-only
+// BY CONSTRUCTION — is the shape to never reintroduce: an arm with no
+// denominator cannot even state its own condition. And the per-TIER shares are
+// only bounded, not point-valued (`housingunitsadded` is 58.2% populated on
+// non-issued rows), so the withdrawn byTier p80s could not be re-identified even
+// at a higher aggregate share without settling that interval.
 export const CITIES_WITH_MEASURED_PERMITS = [
-  'austin', 'denver', 'miami', 'nashville', 'nyc', 'philadelphia', 'raleigh',
-  'seattle',
+  'austin', 'denver', 'miami', 'nashville', 'philadelphia', 'raleigh',
 ] as const
 
 export function hasMeasuredPermitTiming(slug: string): boolean {
