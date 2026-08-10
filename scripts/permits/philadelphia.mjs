@@ -99,6 +99,7 @@ const DATASET_NAME =
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { noTierBreakdown } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 const quoteList = (values) => values.map((v) => `'${v}'`).join(',')
 
@@ -120,34 +121,63 @@ async function carto(sql) {
   return body
 }
 
+// One ArcGIS request, with the transport and error handling in ONE place so the
+// paged row pull and the count probe below cannot diverge (rule 11: a count
+// fetched by a private helper measures the helper).
+async function arcgisQuery(params) {
+  const url = new URL(AGS)
+  url.searchParams.set('f', 'json')
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
+  let res
+  try {
+    res = await fetch(url, { headers: { accept: 'application/json' } })
+  } catch (err) {
+    throw new Error(`Network error reaching services.arcgis.com: ${err.message}`)
+  }
+  if (!res.ok) throw new Error(`services.arcgis.com returned HTTP ${res.status} ${res.statusText}`)
+  const body = await res.json()
+  if (body.error) throw new Error(`ArcGIS error: ${JSON.stringify(body.error).slice(0, 300)}`)
+  return body
+}
+
 // Paginated ArcGIS query. The layer caps at 2,000 records per request.
 async function arcgis(where, outFields) {
   const out = []
   let offset = 0
   for (;;) {
-    const url = new URL(AGS)
-    url.searchParams.set('where', where)
-    url.searchParams.set('outFields', outFields)
-    url.searchParams.set('returnGeometry', 'false')
-    url.searchParams.set('orderByFields', 'OBJECTID')
-    url.searchParams.set('resultOffset', String(offset))
-    url.searchParams.set('resultRecordCount', '2000')
-    url.searchParams.set('f', 'json')
-    let res
-    try {
-      res = await fetch(url, { headers: { accept: 'application/json' } })
-    } catch (err) {
-      throw new Error(`Network error reaching services.arcgis.com: ${err.message}`)
-    }
-    if (!res.ok) throw new Error(`services.arcgis.com returned HTTP ${res.status} ${res.statusText}`)
-    const body = await res.json()
-    if (body.error) throw new Error(`ArcGIS error: ${JSON.stringify(body.error).slice(0, 300)}`)
+    const body = await arcgisQuery({
+      where,
+      outFields,
+      returnGeometry: 'false',
+      orderByFields: 'OBJECTID',
+      resultOffset: String(offset),
+      resultRecordCount: '2000',
+    })
     const features = body.features ?? []
     out.push(...features.map((f) => f.attributes))
     if (features.length < 2000) break
     offset += features.length
   }
   return out
+}
+
+// Every row each of the TWO feeds holds, UNFILTERED — the grew-vs-shrank
+// numbers. Philadelphia's figure is a JOIN across two independent publishers, so
+// one summed total would be diffable against neither: either side can move on
+// its own, and a drop in the match rate is only interpretable if you can see
+// which side shrank. Best-effort; a failed count is recorded as an unknown and
+// never aborts the run.
+async function feedTotals() {
+  return [
+    await probeFeedTotal('phl.carto.com permits', async () => {
+      const body = await carto('SELECT count(*) AS n FROM permits')
+      return body.rows?.[0]?.n
+    }),
+    await probeFeedTotal('AGO_Lyr_Permit_App_Status_Eclipse/FeatureServer/0', async () => {
+      const body = await arcgisQuery({ where: '1=1', returnCountOnly: 'true' })
+      return body.count
+    }),
+  ]
 }
 
 function quantile(sortedDays, q) {
@@ -189,6 +219,10 @@ async function main() {
         `rewrite this script before trusting another run.\n`,
     )
   }
+
+  // 1b. Feed row counts, one per publisher, logged before anything is computed.
+  const totals = await feedTotals()
+  logFeedTotals(totals)
 
   // 2. Driver set: issued ground-up new-construction BUILDING permits.
   //    permitissuedate >= SINCE is a valid superset of "applied >= SINCE", since
@@ -260,6 +294,11 @@ async function main() {
     if (d >= 0 && d <= 120 * 30.44) days.push(d)
   }
 
+  logCohortRows(
+    inWindow,
+    `joined new-construction building permits whose APPLICATIONDATE is >= ${SINCE}`,
+  )
+
   if (days.length === 0) {
     console.warn('  No usable applied/issued pairs; leaving permitStats.json unchanged.')
     return
@@ -313,6 +352,19 @@ async function main() {
       tierBreakdown: noTierBreakdown(
         'scripts/permits/philadelphia.mjs computes no tier split. Its query filters on permitdescription (Residential/Commercial Building Permit) and typeofwork (New Construction*) — no size restriction — so the aggregate spans all three tiers.',
       ),
+      feed: feedCounts({
+        totals,
+        cohortRows: inWindow,
+        basis:
+          `totalRows: every row each of the two feeds holds, unfiltered, recorded SEPARATELY — ` +
+          `this figure is a join across two independent publishers and either side can move on ` +
+          `its own, so a summed total would be diffable against neither. cohortRows: issued ` +
+          `new-construction building permits (permitdescription + typeofwork gates, ` +
+          `permitissuedate >= ${SINCE}) that JOINED to an eCLIPSE application row and whose ` +
+          `APPLICATIONDATE falls on or after ${SINCE}. The published n is smaller: it also ` +
+          `drops durations that are negative or over 120 months. The join's match rate ` +
+          `(${matchPct.toFixed(1)}% this run) is the number to read these against.`,
+      }),
     },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')

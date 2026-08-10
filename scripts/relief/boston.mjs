@@ -49,6 +49,7 @@ const OUT_PATH = new URL('../../netlify/functions/lib/data/reliefStats.json', im
 const DATASET_NAME = 'data.boston.gov Zoning Board of Appeal Tracker (decision field)'
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { feedCounts, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function ckan(action, params) {
   const url = new URL(`${BASE}/${action}`)
@@ -83,6 +84,15 @@ async function main() {
       )
     }
   }
+
+  // 1b. Feed row count, logged before anything is computed. CKAN's
+  //     datastore_search already reports the resource's total on the schema probe
+  //     above, so this costs no extra request and comes back through the
+  //     pipeline's own client (rule 11).
+  const totals = [
+    await probeFeedTotal(`data.boston.gov datastore ${RESOURCE_ID}`, async () => probe.total),
+  ]
+  logFeedTotals(totals)
 
   // 2. Pull the outcome histogram for decided appeals since SINCE (server-side
   //    grouped — one round-trip, no row download).
@@ -138,7 +148,24 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, boston: { ...(existing.boston ?? {}), variance: stats } }
+  const merged = {
+    ...existing,
+    boston: {
+      ...(existing.boston ?? {}),
+      variance: stats,
+      feed: feedCounts({
+        totals,
+        cohortRows: decided,
+        basis:
+          `totalRows: every row CKAN resource ${RESOURCE_ID} holds, unfiltered. cohortRows: ` +
+          `appeals with ${DECISION_DATE_FIELD} >= ${SINCE} whose ${DECISION_FIELD} is on the ` +
+          `granted/denied list. NOTE the degenerate case: this script asks the server for an ` +
+          `outcome histogram, so its cohort selection already filters on the decision value ` +
+          `and cohortRows EQUALS the published n. Elsewhere the two differ; here they cannot, ` +
+          `and reading this pair as evidence of a clean cohort would be reading the query.`,
+      }),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log('  Wrote boston.variance:', stats)

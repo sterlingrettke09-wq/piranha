@@ -44,6 +44,19 @@ const SUBTYPE_FIELD = 'Per_SubTy'
 // the 2022 cohort survives. Starting at the window's own left edge avoids that
 // left-truncation. 2023-08-01 is the earliest application cohort the window
 // covers completely.
+//
+// ⚠ ON THAT "28,571 rows total" — the line this whole instrumentation came from.
+// It is the only feed row count any extraction script recorded at extraction
+// time, and on 2026-08-09 it is what made "did the 2026-08-06 batch degrade?"
+// answerable for Nashville in one pass while every other city forced a
+// re-derivation. It is also a hand-written comment, and it does NOT say which
+// count it is: the whole layer, or this script's own Per_Ty pull. Both readings
+// are available and they are different numbers, so it cannot be diffed against
+// anything until someone re-derives what it meant. The number is left exactly as
+// written — it is a record of what was measured that day, and rewriting it now
+// would be a guess. The machine-comparable replacement is the `feed` block a run
+// writes into permitStats.json, which records both counts under separate names
+// (netlify/functions/lib/feedCounts.ts).
 const SINCE = '2023-08-01'
 
 // ── Permit-type ALLOWLIST ──────────────────────────────────────────────────
@@ -223,6 +236,7 @@ const DATASET_NAME =
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function arcgis(params) {
   const url = new URL(`${LAYER}/query`)
@@ -254,6 +268,18 @@ function quantile(sortedDays, q) {
 }
 
 const daysToMonths = (days) => Math.round((days / 30.44) * 10) / 10
+
+// Every row the layer holds, UNFILTERED — the grew-vs-shrank number, and the one
+// count that answers whether this rolling window has rolled. Goes through this
+// script's own ArcGIS client so it travels the same transport and error handling
+// as the rows (rule 11). Best-effort: a failed count is recorded as an unknown
+// and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(LAYER, async () => {
+    const body = await arcgis({ where: '1=1', returnCountOnly: 'true', f: 'json' })
+    return body.count
+  })
+}
 
 // The layer caps a page at maxRecordCount (1000), so page explicitly rather than
 // trusting one request to have returned everything.
@@ -295,6 +321,9 @@ async function main() {
       )
     }
   }
+
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
 
   const rows = await pullAll()
   console.log(`  pulled ${rows.length} rows for Per_Ty IN (${PERMIT_TYPES.join(', ')})`)
@@ -351,7 +380,9 @@ async function main() {
     else byTier[tier].push(d)
   }
 
+  const cohortRows = inWindow - notABuilding
   console.log(`  ${inWindow} rows applied on/after ${SINCE}`)
+  logCohortRows(cohortRows, `Per_Ty allowlist, applied >= ${SINCE}, building Per_SubTy only`)
   console.log(`  excluded ${notABuilding} non-building rows (pools, garages, sheds, decks, food trucks, site work…)`)
   console.log(`  ${unresolvedTier} townhome rows kept in the aggregate but omitted from the tier split (unit band unrecorded)`)
 
@@ -457,7 +488,24 @@ async function main() {
   }
   const merged = {
     ...existing,
-    nashville: { ...(existing.nashville ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    nashville: {
+      ...(existing.nashville ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows,
+        basis:
+          `totalRows: every row the Building_Permits_Issued_2 layer holds, unfiltered — the ` +
+          `count that shows whether this ROLLING ~3-year window has moved, which is the one ` +
+          `thing a stale Nashville figure turns on. cohortRows: ${TYPE_FIELD} on the permit-type ` +
+          `allowlist AND ${APPLIED_DATE_FIELD} >= ${SINCE}, gated to building ${SUBTYPE_FIELD} ` +
+          `values. The published n is smaller: it also drops durations that are negative or ` +
+          `over 120 months. Supersedes the hand-written "28,571 rows total" in this script's ` +
+          `header, which does not say which of the two counts it is.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 

@@ -169,7 +169,137 @@ function buildAddress(p: Record<string, unknown>): string | null {
  *     incompleteness, not an absence, and the two must not read alike.
  *   · The residential proximity slope cuts the published height on the part of a
  *     site near a protected district, and no distance has been measured here.
+ *     Which slope, and originating where, DEPENDS ON THE DISTRICT — see
+ *     `SLOPE_FORM` below.
  */
+// ─── Residential proximity slope ─────────────────────────────────────────────
+//
+// The sentence this replaces said the slope rises from "a neighbouring R, R(A),
+// D, D(A), TH or TH(A) district boundary (§ 51A-4.412)" for every district that
+// publishes a height. Three separate things were wrong with that, and the third
+// is the reason this is a lookup table rather than a longer list.
+//
+//   1. § 51A-4.412 STATES NO 26-FOOT FIGURE. Read 2026-08-10 from American Legal
+//      (Volume III → Ch. 51A → Art. IV → Div. 51A-4.400 → § 51A-4.412, node
+//      0-0-0-83004, walked from the publisher's own TOC). The only numbers in
+//      the whole section are 36 (the PD/CD threshold in (a)(3)(B)), 18.4°, 45°
+//      and 50 feet. The 26 feet lives in each DISTRICT's own height paragraph,
+//      at (4)(E)(i), and that is what the note now cites.
+//
+//   2. THE SIX-DISTRICT LIST IS ONLY ONE LIMB. § 51A-4.412(c) is a two-row
+//      table, and the second row was dropped entirely: R/R(A)/D/D(A)/TH/TH(A)
+//      project at 18.4° with INFINITE extent, but CH/MF-1/MF-1(A)/MF-2/MF-2(A)
+//      project at 45° terminating 50 feet out. A 1-to-1 plane from 50 feet away
+//      is a harder constraint near the boundary than a 1-to-3 plane, so
+//      publishing only the 1:3 limb understates the binding case.
+//
+//   3. ⚠️ THE SIX-DISTRICT LIST IS NOT A PROPERTY OF § 51A-4.412 AT ALL — it is
+//      a property of the district you are standing in, and the districts split
+//      three ways. Every district section in Divisions 51A-4.110 and 51A-4.120
+//      was read (§§ 51A-4.111 through 51A-4.117 and 51A-4.121 through 51A-4.127,
+//      fetched same-origin and grepped, so the enumeration is exhaustive over
+//      the two divisions rather than sampled):
+//
+//        · CH and multifamily (§§ 51A-4.115, 51A-4.116) QUALIFY the clause —
+//          "…above a residential proximity slope originating in an R, R(A), D,
+//          D(A), TH, or TH(A) district." Six districts, 1:3 limb only. The old
+//          sentence was right here and nowhere else.
+//        · Office, retail, commercial-service/industrial, mixed use and multiple
+//          commercial (§§ 51A-4.121, .122, .123, .125, .126) say only "…above a
+//          residential proximity slope." — FULL STOP, no district named. The
+//          whole of § 51A-4.412 applies: thirteen origination districts plus
+//          PD/CD portions, and both angle limbs. On exactly these districts —
+//          the ones a commercial developer is standing in — the old sentence
+//          understated the constraint.
+//        · A(A), single family, duplex, townhouse, MH(A) and central area
+//          (§§ 51A-4.111, .112, .113, .114, .117, .124) HAVE NO SLOPE CLAUSE.
+//          The old sentence fired on all of them and was simply false. This is
+//          the rule-5 slot test, not a failure to find something: in these
+//          districts slot (E) reads "Height. Maximum structure height is 36
+//          feet." with no subparagraphs, while in the seven above it reads
+//          "Height. (i) Residential proximity slope. …(ii) Maximum height."
+//          The clause is absent exactly where the structure has no room for it.
+//
+// § 51A-4.127 (urban corridor) also carries the unqualified form, at (E)(iii)
+// rather than (E)(i) — deliberately NOT in the table below, because no UC
+// district is curated in zoning/dallas.ts and an entry no input can reach is an
+// untested claim. `slopeNote` returns null for any section it does not know, so
+// adding UC districts later yields silence rather than a wrong citation.
+type SlopeForm = 'six' | 'full' | 'none'
+
+export const SLOPE_FORM: Readonly<Record<string, SlopeForm>> = {
+  '51A-4.111': 'none', // A(A)
+  '51A-4.112': 'none', // single family
+  '51A-4.113': 'none', // D(A)
+  '51A-4.114': 'none', // townhouse
+  '51A-4.115': 'six', //  CH
+  '51A-4.116': 'six', //  multifamily
+  '51A-4.117': 'none', // MH(A)
+  '51A-4.121': 'full', // office
+  '51A-4.122': 'full', // retail
+  '51A-4.123': 'full', // commercial service and industrial
+  '51A-4.124': 'none', // central area
+  '51A-4.125': 'full', // mixed use
+  '51A-4.126': 'full', // multiple commercial
+}
+
+/** Verbatim from § 51A-4.412(a)(3)(A). Thirteen, not six. */
+const SITES_OF_ORIGINATION =
+  'R, R(A), D, D(A), TH, TH(A), CH, MF-1, MF-1(A), MF-1(SAH), MF-2, MF-2(A), or MF-2(SAH)'
+
+/**
+ * The slope note for a district, keyed off the section its height was read
+ * from. Returns null — no sentence at all — when the district carries no slope
+ * clause, and also when the section is unknown or the citation cannot be built:
+ * silence is the only safe output, because every wrong version of this sentence
+ * reads exactly as authoritative as the right one (rule 18).
+ *
+ * `heightSource` is `§ 51A-4.116(a)(4)(E)(ii)` and the slope clause is its
+ * sibling `(4)(E)(i)`, so the citation is derived from the shared prefix rather
+ * than restated — a district cannot be cited for a height from one section and a
+ * slope from another.
+ */
+export function slopeNote(heightSource: string | null): string | null {
+  if (!heightSource) return null
+
+  const sec = /51A-4\.\d+/.exec(heightSource)?.[0]
+  if (!sec) return null
+
+  const form = SLOPE_FORM[sec]
+  if (form === undefined || form === 'none') return null
+
+  const at = heightSource.indexOf('(4)(E)')
+  if (at === -1) return null
+  const cite = `${heightSource.slice(0, at + '(4)(E)'.length)}(i)`
+
+  const trigger =
+    `Residential proximity slope: this district's own height paragraph states that if any portion of a structure is over 26 feet in height, that portion may not be located above a residential proximity slope`
+
+  // Quoted verbatim from (4)(E)(ii), which is identical in all seven district
+  // sections that carry the clause — the published height is conditional in the
+  // code's own words, not merely in ours.
+  const tail =
+    `The height above is stated "unless further restricted under" that clause, and resolving the restriction needs a distance measurement this tool has not made — so the height shown is the district figure, which parts of this site may not reach.`
+
+  if (form === 'six') {
+    return (
+      `${trigger} originating in an R, R(A), D, D(A), TH, or TH(A) district (${cite}). ` +
+      `Both the 26-foot trigger and that six-district list are stated there, not in § 51A-4.412 — that section states no 26-foot figure. ` +
+      `For those six districts § 51A-4.412(c) projects the plane at 18.4° (a 1 to 3 slope) with infinite extent, rising from the origination district's boundary line at the grade of the restricted structure (§ 51A-4.412(b)). ` +
+      tail
+    )
+  }
+
+  return (
+    `${trigger} (${cite}) — naming no origination district, unlike the CH and multifamily districts, so § 51A-4.412 governs here in full. ` +
+    `The 26-foot trigger is stated at that citation, not in § 51A-4.412, which states no 26-foot figure. ` +
+    `A site of origination is any private property in an ${SITES_OF_ORIGINATION} district, or an identifiable portion of a planned development or conservation district restricted to residential uses not exceeding 36 feet in height (§ 51A-4.412(a)(3)); a private street or alley, a railroad right-of-way, a cemetery or mausoleum, and property whose main use is a utility and public service use are excluded from "private property" and so originate no slope (§ 51A-4.412(a)(1)). ` +
+    `Two angles apply, not one (§ 51A-4.412(c)): 18.4° (a 1 to 3 slope) of INFINITE extent from R, R(A), D, D(A), TH and TH(A); and 45° (a 1 to 1 slope) from CH, MF-1, MF-1(A), MF-2 and MF-2(A), terminating at a horizontal distance of 50 feet from the site of origination. That table lists no angle for MF-1(SAH) or MF-2(SAH), which subsection (a)(3) does list as sites of origination, so no angle is published for those two and none is assumed here. ` +
+    `The plane rises from the origination district's boundary line at the grade of the restricted structure (§ 51A-4.412(b)). ` +
+    tail
+  )
+}
+
 function buildArticle(
   longCode: string | null,
   zoneDist: string | null,
@@ -241,14 +371,13 @@ function buildArticle(
     )
   }
 
-  // Every district in Divisions 51A-4.110 and 51A-4.120 that states a height
-  // above 26 ft carries this clause verbatim, and it cuts the published figure
-  // on part of a site rather than across the district.
-  if (limits.heightFt != null || limits.heightUnconstrained) {
-    bits.push(
-      'Residential proximity slope: any portion of a structure over 26 feet may not sit above a 1:3 plane rising from a neighbouring R, R(A), D, D(A), TH or TH(A) district boundary (§ 51A-4.412). That is a limit on the part of the site near such a boundary, and resolving it needs a distance measurement this tool has not made — so the height shown is the district figure, which parts of this site may not reach.',
-    )
-  }
+  // NOT gated on `heightFt != null || heightUnconstrained` — that gate is what
+  // put the slope on single family, duplex, townhouse, A(A), MH(A) and the
+  // central area districts, none of which carry a slope clause. The district's
+  // own section decides, and `slopeNote` returns null where there is nothing to
+  // say.
+  const slope = slopeNote(limits.heightSource)
+  if (slope) bits.push(slope)
 
   if (supUse) {
     bits.push(

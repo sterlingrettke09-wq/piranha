@@ -52,6 +52,7 @@ const DATASET_NAME = "opendata.dc.gov DCRA Building Permits (PERMIT_SUBTYPE_NAME
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { noTierBreakdown } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function arcgis(params) {
   const url = new URL(`${LAYER_URL}/query`)
@@ -83,6 +84,17 @@ async function layerFields() {
   return (meta.fields ?? []).map((f) => f.name)
 }
 
+// Every row the layer holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own ArcGIS client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(LAYER_URL, async () => {
+    const body = await arcgis({ where: '1=1', returnCountOnly: 'true' })
+    return body.count
+  })
+}
+
 function quantile(sortedDays, q) {
   if (sortedDays.length === 0) return null
   const idx = (sortedDays.length - 1) * q
@@ -106,6 +118,15 @@ async function main() {
         `have changed. Found: ${fields.join(', ')}.`,
     )
   }
+  // 1b. Feed row count, logged BEFORE the honest-failure gate below. DC has
+  //     never written and the gate is the reason, so this line is the whole
+  //     record a run here leaves — and "was there nothing to find, or has the
+  //     feed changed?" is exactly what a future investigator asks of a script
+  //     that refuses. There is no cohort to count: the script halts before it
+  //     selects one, which is itself the answer to the second question.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   const appliedField = APPLIED_DATE_CANDIDATES.find((f) => fieldSet.has(f))
 
   // 2. The Boston / honest-failure gate: no genuine application date → we cannot
@@ -154,6 +175,8 @@ async function main() {
     if (feats.length < page) break
     offset += page
   }
+
+  logCohortRows(rows.length, where)
 
   const days = []
   let sameDay = 0
@@ -216,6 +239,16 @@ async function main() {
       tierBreakdown: noTierBreakdown(
         'scripts/permits/dc.mjs computes no tier split; the feed carries no application date, so the script writes nothing at all today. If it ever does, revisit this declaration.',
       ),
+      feed: feedCounts({
+        totals,
+        cohortRows: rows.length,
+        basis:
+          `totalRows: every row the DCRA FeatureServer layer holds, unfiltered. ` +
+          `cohortRows: ${TYPE_FIELD}='${NEW_CONSTRUCTION_TYPE}' AND applied >= ${SINCE} with ` +
+          `both dates non-null. The published n is smaller: it also drops durations that are ` +
+          `negative or over 120 months. Like everything else below the halt, this has never ` +
+          `executed.`,
+      }),
     },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')

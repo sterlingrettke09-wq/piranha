@@ -157,6 +157,7 @@ function tierOf(layer, unitsRaw) {
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function arcgis(layerUrl, params) {
   const url = new URL(`${layerUrl}/query`)
@@ -184,6 +185,18 @@ async function layerFields(layerUrl) {
   const meta = await res.json()
   if (meta.error) throw new Error(`ArcGIS metadata error: ${JSON.stringify(meta.error)}`)
   return (meta.fields ?? []).map((f) => f.name)
+}
+
+// Every row a layer holds, UNFILTERED — the grew-vs-shrank number, recorded
+// PER LAYER. Denver reads two feeds and they move independently, so a single
+// summed total could not be diffed against either of them. Goes through this
+// script's own ArcGIS client so the count travels the same transport and error
+// handling as the rows (rule 11); best-effort, and never aborts the run.
+async function feedTotal(layerUrl) {
+  return probeFeedTotal(layerUrl, async () => {
+    const body = await arcgis(layerUrl, { where: '1=1', returnCountOnly: 'true' })
+    return body.count
+  })
 }
 
 function quantile(sortedDays, q) {
@@ -246,11 +259,16 @@ async function main() {
     }
   }
 
+  // 1b. Feed row counts, one per layer, logged before anything is computed.
+  const totals = [await feedTotal(RESIDENTIAL_URL), await feedTotal(COMMERCIAL_URL)]
+  logFeedTotals(totals)
+
   // 2. Pull and pool both layers, each under its own CLASS allowlist.
   const rows = [
     ...(await pullLayer(RESIDENTIAL_URL, 'residential')),
     ...(await pullLayer(COMMERCIAL_URL, 'commercial')),
   ]
+  logCohortRows(rows.length, `both layers, CLASS allowlist + applied >= ${SINCE}, both dates non-null`)
 
   // 3. Compute durations, dropping negatives and absurd outliers (> 120 months).
   //    Also watch the NYC failure mode: a feed that stamps both legs at issuance
@@ -345,7 +363,23 @@ async function main() {
   }
   const merged = {
     ...existing,
-    denver: { ...(existing.denver ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    denver: {
+      ...(existing.denver ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows: rows.length,
+        basis:
+          `totalRows: every row each layer holds, unfiltered, recorded per layer — the ` +
+          `residential and commercial feeds move independently and a summed total could not ` +
+          `be diffed against either. cohortRows: both layers pooled under their own ` +
+          `UPPER(${TYPE_FIELD}) allowlists AND ${APPLIED_DATE_FIELD} >= ${SINCE} with both ` +
+          `dates non-null. The published n is smaller: it also drops rows whose CLASS came ` +
+          `back off the allowlist and durations that are negative or over 120 months.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 

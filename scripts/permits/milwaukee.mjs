@@ -164,6 +164,7 @@ const OUT_PATH = new URL('../../netlify/functions/lib/data/permitStats.json', im
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 const norm = (s) => String(s ?? '').trim()
 
@@ -199,6 +200,19 @@ async function resolveResourceId() {
     )
   }
   return { id: csv.id, modified: pkg.metadata_modified }
+}
+
+// Every row the datastore resource holds, UNFILTERED — the grew-vs-shrank
+// number. Asked of the SERVER (datastore_search reports `total` for a limit-0
+// query) rather than taken from pullAll()'s row array: the array is the pager's
+// output, so using it would measure this script's pagination instead of the feed
+// (rule 11), and a pager that silently stops short would report a shrunken feed.
+// Goes through this script's own CKAN client; best-effort, never aborts the run.
+async function feedTotal(resourceId) {
+  return probeFeedTotal(`${HOST} datastore ${resourceId}`, async () => {
+    const page = await ckan('datastore_search', { resource_id: resourceId, limit: '0' })
+    return page.total
+  })
 }
 
 async function pullAll(resourceId) {
@@ -342,8 +356,22 @@ async function main() {
   const { id: resourceId, modified } = await resolveResourceId()
   console.log(`  resource ${resourceId} (dataset metadata_modified ${modified})`)
 
+  // Feed row count, logged BEFORE the halt below. Milwaukee refuses to write, so
+  // this is what a run here leaves behind — and it is what answers "has the feed
+  // changed since the last extract?" without a re-derivation. It doubles as a
+  // pagination cross-check: it should equal the pulled row count below.
+  const totals = [await feedTotal(resourceId)]
+  logFeedTotals(totals)
+
   const rows = await pullAll(resourceId)
   console.log(`  pulled ${rows.length} rows`)
+  if (totals[0].totalRows != null && totals[0].totalRows !== rows.length) {
+    console.warn(
+      `  ⚠ the server reports ${totals[0].totalRows} rows but the pager returned ` +
+        `${rows.length}. The extract is partial or the feed changed mid-run; every figure ` +
+        `below is over whatever the pager happened to return.`,
+    )
+  }
 
   // 1. Confirm every field we read exists. If one is missing we refuse to
   //    fabricate a latency figure and leave the artifact untouched.
@@ -402,6 +430,10 @@ async function main() {
         `pending classification: ${resNovel.join(', ')}`,
     )
   }
+  logCohortRows(
+    dwellings.length,
+    `${TYPE_FIELD} IN (new-construction types), ${OPENED_FIELD} >= ${SINCE}, residential ${USE_FIELD} allowlist`,
+  )
   describe('residential dwellings only', durations(dwellings))
   for (const [use, tier] of Object.entries(RESIDENTIAL_TIER)) {
     describe(`  ${tier} (${use})`, durations(res.filter((r) => norm(r[USE_FIELD]) === use)))
@@ -459,7 +491,24 @@ async function main() {
   }
   const merged = {
     ...existing,
-    milwaukee: { ...(existing.milwaukee ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    milwaukee: {
+      ...(existing.milwaukee ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows: dwellings.length,
+        basis:
+          `totalRows: every row the ${HOST} ${DATASET} CSV datastore holds, unfiltered, as ` +
+          `reported by the server rather than counted off this script's pager. cohortRows: ` +
+          `${TYPE_FIELD} on the new-construction allowlist AND ${OPENED_FIELD} >= ${SINCE}, ` +
+          `gated to residential rows whose ${USE_FIELD} is a known dwelling class — the ` +
+          `commercial arm is excluded entirely (see the enumerability halt). The published n ` +
+          `is smaller: it also drops rows without a parseable date pair. Like everything else ` +
+          `below the halt, this has never executed.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
   console.log('  Wrote milwaukee.newConstruction:', stats)

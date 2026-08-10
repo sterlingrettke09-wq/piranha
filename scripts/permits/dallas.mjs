@@ -178,6 +178,7 @@ const DATASET_NAME =
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 const norm = (s) => String(s ?? '').trim()
 
@@ -223,6 +224,17 @@ const pctStr = (a, b) => (b ? `${((a / b) * 100).toFixed(2)}%` : '—')
 const WHERE =
   `${APPLIED_DATE_FIELD} >= DATE '${SINCE}' AND ` +
   `${TYPE_FIELD} = '${PERMIT_TYPE_VALUE}' AND ${ACTIVITY_FIELD} = '${ACTIVITY_VALUE}'`
+
+// Every row the layer holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own ArcGIS client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(LAYER, async () => {
+    const json = await arcgis({ where: '1=1', returnCountOnly: 'true' })
+    return json.count
+  })
+}
 
 async function pullAll() {
   const outFields = [
@@ -357,6 +369,14 @@ async function main() {
     console.log(`  snapshot end confirmed: max ${APPLIED_DATE_FIELD} = ${maxCreatedDay}`)
   }
 
+  // 2b. Feed row count, logged BEFORE the halt below. Dallas refuses to write,
+  //     so this is what a run here leaves behind — and it is what answers "has
+  //     the feed changed since the last extract?" without a re-derivation. It
+  //     doubles as a direct read on the terminal-snapshot claim: a total that
+  //     moves means the snapshot is no longer terminal.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   const rows = await pullAll()
   console.log(`  pulled ${rows.length} rows: ${WHERE}`)
 
@@ -378,6 +398,7 @@ async function main() {
     cohort.push(row)
   }
   console.log(`  excluded ${notABuilding} non-building rows (parks, parking, towers, vacant…)`)
+  logCohortRows(cohort.length, `${WHERE}, gated to the ${USE_FIELD} building allowlist`)
   const novel = [...unknownUses].filter(([u]) => !KNOWN_NON_BUILDING.has(u))
   if (novel.length) {
     console.warn(
@@ -496,7 +517,22 @@ async function main() {
   }
   const merged = {
     ...existing,
-    dallas: { ...(existing.dallas ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    dallas: {
+      ...(existing.dallas ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows: cohort.length,
+        basis:
+          `totalRows: every row the NewPermit_2008_2024 layer holds, unfiltered. ` +
+          `cohortRows: ${WHERE}, then gated to the ${USE_FIELD} building allowlist, issued and ` +
+          `not. The published n is smaller: it keeps only rows carrying an issue date, with the ` +
+          `duration non-negative and under 120 months. Like everything else below the halt, ` +
+          `this has never executed.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
   console.log('  Wrote dallas.newConstruction:', stats)

@@ -202,6 +202,7 @@ const TIER_BY_WORK_ITEM = {
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function arcgis(params) {
   const url = new URL(`${LAYER_URL}/query`)
@@ -219,6 +220,17 @@ async function arcgis(params) {
   // ArcGIS returns HTTP 200 with an {error:{...}} body on failure — surface it.
   if (body.error) throw new Error(`ArcGIS query error: ${JSON.stringify(body.error)}`)
   return body
+}
+
+// Every row the layer holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own ArcGIS client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(LAYER_URL, async () => {
+    const body = await arcgis({ where: '1=1', returnCountOnly: 'true' })
+    return body.count
+  })
 }
 
 async function layerFields() {
@@ -317,6 +329,10 @@ async function main() {
     }
   }
 
+  // 1b. Feed row count, logged before anything is computed.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   // 2. Pull the master new-construction permits.
   const rows = await pull(SINCE)
   console.log(`  ${rows.length} master new-construction permits filed since ${SINCE}`)
@@ -361,6 +377,7 @@ async function main() {
   // parks, gazebos, carports, guardhouses and sales trailers it did not.
   console.log(`  excluded ${notABuilding} rows naming no building work item ` +
     `(pools, fences, driveways, trellises/pergolas, parks, guardhouses, sales trailers…)`)
+  const cohortRows = rows.length - notABuilding
   const topDropped = [...droppedItems.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
   for (const [k, v] of topDropped) console.log(`    ${String(v).padStart(4)} × ${k}`)
 
@@ -441,7 +458,22 @@ async function main() {
   }
   const merged = {
     ...existing,
-    miami: { ...(existing.miami ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    miami: {
+      ...(existing.miami ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows,
+        basis:
+          `totalRows: every row the Building_Permits_Since_2014 layer holds, unfiltered. ` +
+          `cohortRows: ${SCOPE_FIELD}='NEW CONSTRUCTION' AND ${PERMIT_NUMBER_FIELD} LIKE ` +
+          `'%001B001' (master permits) AND ${APPLIED_DATE_FIELD} >= ${SINCE} with both dates ` +
+          `non-null, then gated to rows naming a known building work item. The published n is ` +
+          `smaller: it also drops durations that are negative or over 120 months.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 

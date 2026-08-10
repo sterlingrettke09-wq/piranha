@@ -4,6 +4,11 @@
 // pipeline produced a trustworthy figure (n ≥ 100, unambiguous outcomes) —
 // absent cities show no relief line.
 import reliefStats from './data/reliefStats.json'
+// Feed row counts observed at extraction time — see the type's own header for
+// why they exist and why an entry may legitimately lack them.
+import type { FeedCounts } from './feedCounts'
+
+export type { FeedCounts, FeedEndpointTotal } from './feedCounts'
 
 /** Historical board grant rate for variance-type relief in one city. */
 export interface ReliefOdds {
@@ -26,7 +31,19 @@ export interface ReliefOdds {
   label?: string
 }
 
-type ReliefStats = Record<string, { variance?: ReliefOdds } | undefined>
+type ReliefStats = Record<
+  string,
+  | {
+      variance?: ReliefOdds
+      /** OPTIONAL, and unpopulated on every entry written before the
+       *  instrumentation landed (2026-08-10). Those are deliberately NOT
+       *  backfilled — a count taken today is not the count at that extract's
+       *  vintage. Nothing at request time reads it: it exists so a later
+       *  grew-vs-shrank check has something to diff. */
+      feed?: FeedCounts
+    }
+  | undefined
+>
 
 /** Normalize the imported JSON to the typed shape. Exported for tests so the
  *  JSON-shape contract can be exercised with an injected fixture even if no city

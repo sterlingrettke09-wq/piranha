@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getDallasParcelInfo } from './dallas'
+import { getDallasParcelInfo, slopeNote, SLOPE_FORM } from './dallas'
+import { DALLAS_DISTRICT_CODES, resolveDallas } from '../zoning/dallas'
 import { mockArcgisFetch, ARCGIS_ERROR_200 } from './__fixtures__'
 import {
   dallasRoutes,
@@ -536,5 +537,141 @@ describe('getDallasParcelInfo', () => {
     expect(res.ok).toBe(true)
     if (!res.ok) return
     expect(JSON.stringify(res.info)).not.toContain('MAEDC')
+  })
+})
+
+// ─── Residential proximity slope ─────────────────────────────────────────────
+//
+// The shipped sentence claimed a 1:3 slope from six districts, cited
+// § 51A-4.412 for a 26-foot figure that section does not contain, and fired on
+// every district that published a height. § 51A-4.412 and every district
+// section in Divisions 51A-4.110/51A-4.120 were re-read from American Legal on
+// 2026-08-10; what follows pins the three things that were wrong, at the real
+// entry point.
+//
+// These assertions are deliberately worded against the CODE's text rather than
+// ours. The parts most likely to be quietly dropped again are the two that were
+// dropped the first time — the thirteen-district enumeration and the 1:1 limb —
+// so those are asserted as literals, not as "contains the word slope".
+describe('getDallasParcelInfo — residential proximity slope', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  // § 51A-4.122(b)(4)(E)(i) says only "…may not be located above a residential
+  // proximity slope." No district is named, so the whole of § 51A-4.412 binds.
+  // This is the case the old sentence UNDERSTATED, and it is the case a
+  // commercial developer is actually in.
+  it('CR: an unqualified district clause publishes all thirteen origination districts and BOTH limbs', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(dallasRoutesCr))
+    const res = await getDallasParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    const { article } = res.info.zoning
+    expect(article).toBeTruthy()
+    const a = article as string
+
+    // § 51A-4.412(a)(3)(A) verbatim — thirteen districts. The old copy named six.
+    expect(a).toContain(
+      'R, R(A), D, D(A), TH, TH(A), CH, MF-1, MF-1(A), MF-1(SAH), MF-2, MF-2(A), or MF-2(SAH) district',
+    )
+    // …and (a)(3)(B), the PD/CD limb of the same definition.
+    expect(a).toContain('not exceeding 36 feet in height (§ 51A-4.412(a)(3))')
+
+    // BOTH rows of the § 51A-4.412(c) table. The second row is the one the old
+    // sentence dropped entirely; near a boundary it is the harder constraint.
+    expect(a).toContain('18.4° (a 1 to 3 slope) of INFINITE extent')
+    expect(a).toContain('45° (a 1 to 1 slope) from CH, MF-1, MF-1(A), MF-2 and MF-2(A)')
+    expect(a).toContain('terminating at a horizontal distance of 50 feet from the site of origination')
+
+    // The 26 feet is the DISTRICT's figure, cited to the district's own clause.
+    expect(a).toContain('over 26 feet in height')
+    expect(a).toContain('(§ 51A-4.122(b)(4)(E)(i))')
+    expect(a).toContain('states no 26-foot figure')
+  })
+
+  // The two districts where the old six-district list was actually right.
+  // § 51A-4.116(c)(4)(E)(i) qualifies the clause itself, so § 51A-4.412's other
+  // seven origination districts and its 1:1 row do NOT reach an MF parcel — and
+  // asserting their ABSENCE here is what stops the CR text being copied across
+  // wholesale (rule 9's corollary: disclosure copy is code).
+  it('MF-3(A): a qualified district clause names six districts, and claims no 1:1 limb', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(dallasRoutesMf3))
+    const res = await getDallasParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    const a = res.info.zoning.article as string
+
+    expect(a).toContain(
+      'originating in an R, R(A), D, D(A), TH, or TH(A) district (§ 51A-4.116(c)(4)(E)(i))',
+    )
+    expect(a).toContain('18.4° (a 1 to 3 slope) with infinite extent')
+    expect(a).toContain('states no 26-foot figure')
+
+    expect(a).not.toContain('45°')
+    expect(a).not.toContain('1 to 1 slope')
+    expect(a).not.toContain('MF-1(SAH)')
+  })
+
+  // § 51A-4.112(a)(4)(E) reads "Height. Maximum structure height is 36 feet."
+  // with no subparagraphs at all — the slot has no room for a slope clause,
+  // which is a known ABSENCE and not a lookup we failed to make (rule 5). The
+  // old gate fired on every district with a height, so this parcel carried a
+  // slope it is not subject to.
+  it('R-7.5(A): a district with no slope clause publishes no slope sentence', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(dallasRoutes))
+    const res = await getDallasParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    const a = res.info.zoning.article as string
+
+    expect(a).not.toContain('Residential proximity slope')
+    expect(a).not.toContain('51A-4.412')
+    // The rest of the article is untouched.
+    expect(a).toContain('Single family district 7,500 square feet')
+  })
+
+  // Same absence reached through the OTHER limb of the old gate: CA-1(A) has no
+  // height figure at all, so `heightUnconstrained` let the sentence through.
+  // § 51A-4.124 does not contain the phrase "residential proximity slope" once.
+  it('CA-1(A): "any legal height" no longer drags in a slope the central area districts lack', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(dallasRoutesCa1))
+    const res = await getDallasParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    const a = res.info.zoning.article as string
+
+    expect(a).not.toContain('Residential proximity slope')
+    expect(a).not.toContain('51A-4.412')
+    expect(a).toContain('imposes NO maximum structure height')
+  })
+
+  // A comment documents a mistake; a structure prevents it (rule 14). Adding a
+  // district to zoning/dallas.ts without deciding which of the three forms its
+  // section carries fails HERE, rather than silently publishing whichever
+  // sentence the old gate happened to reach for.
+  it('every curated district is classified against a section that was actually read', () => {
+    const unclassified: string[] = []
+    for (const code of DALLAS_DISTRICT_CODES) {
+      const { heightSource } = resolveDallas(code)
+      if (!heightSource) continue
+      const sec = /51A-4\.\d+/.exec(heightSource)?.[0]
+      if (!sec || !(sec in SLOPE_FORM)) unclassified.push(`${code} → ${heightSource}`)
+    }
+    expect(unclassified).toEqual([])
+  })
+
+  // The retracted claim, pinned as a retraction: no district may attribute the
+  // 26-foot trigger to § 51A-4.412, and every district that speaks at all must
+  // say where the figure really lives.
+  it('no district attributes the 26-foot trigger to § 51A-4.412', () => {
+    let spoke = 0
+    for (const code of DALLAS_DISTRICT_CODES) {
+      const note = slopeNote(resolveDallas(code).heightSource)
+      if (!note) continue
+      spoke++
+      expect(note).toContain('over 26 feet in height')
+      expect(note).toContain('states no 26-foot figure')
+      expect(note).not.toContain('26 feet may not sit above')
+    }
+    expect(spoke).toBeGreaterThan(0)
   })
 })

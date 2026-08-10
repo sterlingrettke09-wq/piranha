@@ -131,6 +131,27 @@ Do not hand-write the suppression record. `splitTiersAtFloor()` in
 [`lib/tierFloor.mjs`](./lib/tierFloor.mjs) applies the floor **and** emits the
 record from the same call, so a tier cannot be dropped without one.
 
+### `feed` — the source feed's row count at extraction time
+
+Every script here records, on the run that produces a figure, how many rows its
+feed held. Optional on an entry (runs predating the instrumentation have none,
+and are **not** backfilled); written by `feedCounts()` in
+[`../lib/feedCounts.mjs`](../lib/feedCounts.mjs); the contract, and why the two
+counts must not be conflated, is the type in
+[`netlify/functions/lib/feedCounts.ts`](../../netlify/functions/lib/feedCounts.ts).
+The scripts that refuse to write **log** the same counts on their halt path.
+
+```jsonc
+"feed": {
+  "observedAt": "2026-08-06",          // must equal the vintage's compute date
+  "totals": [                          // one entry PER ENDPOINT the script read
+    { "endpoint": "data.austintexas.gov/resource/3syk-w9eu", "totalRows": 2369500 }
+  ],
+  "cohortRows": 18270,                 // rows passing this script's window + filters
+  "basis": "totalRows: … cohortRows: …"
+}
+```
+
 ## Sanity gates (every script)
 
 - Drop records with a **negative** or **> 120-month** filing→issuance span.

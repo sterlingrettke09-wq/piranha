@@ -3,6 +3,10 @@ import { resolveTimeline, buildingTier, measuredFor, measuredTierWithheldFor } f
 import type { Feasibility } from './feasibility'
 import type { AnalysisInput } from '../../src/types/analysis'
 import { CITIES_WITH_MEASURED_PERMITS, hasMeasuredPermitTiming } from '../../../src/config/cities'
+// @ts-expect-error — plain .mjs, no types. Imported from the WRITER on purpose:
+// the artifact is checked against the same definition the extraction scripts
+// enforce, not a second copy of it that can drift.
+import { assertFeedCounts } from '../../../scripts/lib/feedCounts.mjs'
 
 const project = (over: Partial<AnalysisInput> = {}): AnalysisInput => ({
   city: 'boston',
@@ -459,6 +463,68 @@ describe('every city × tier is measured, aggregate-covered, or explicitly suppr
         expect(withheld, `${city}.${tier}`).toBeDefined()
         expect(withheld!.minPublishableN).toBeGreaterThan(0)
       }
+    }
+  })
+})
+
+// ── Feed row counts: optional, never backfilled, never unlabelled ────────────
+// Recorded at extraction time so a later "did this batch degrade?" question is
+// answerable by a diff instead of a re-derivation. See
+// netlify/functions/lib/feedCounts.ts for what the two counts mean and why the
+// field is optional.
+//
+// The validator is imported from the WRITER (scripts/lib/feedCounts.mjs) rather
+// than restated here. A second copy of the rules would drift from the one the
+// scripts enforce, and then a block could be valid on one side of the boundary
+// and invalid on the other — the shape of every defect this ledger records.
+describe('feed row counts in the artifact', () => {
+  type FeedBlock = { observedAt: string; cohortRows: number; totals: unknown[]; basis: string }
+  type FeedEntry = { newConstruction?: { vintage: string }; feed?: FeedBlock }
+
+  const loadFeeds = async () =>
+    (await import('./data/permitStats.json')).default as unknown as Record<string, FeedEntry>
+
+  // Not every entry has one, and that is correct rather than a gap to fill:
+  // entries written before the instrumentation landed carry no `feed`, and
+  // backfilling them with a count taken today would assert a number that was
+  // never observed at that extract's vintage. An absent block says "this run
+  // predates the counter" — which is true.
+  it('the field is OPTIONAL — an entry without one is valid', async () => {
+    const stats = await loadFeeds()
+    expect(Object.keys(stats).length).toBeGreaterThan(0)
+    for (const [city, entry] of Object.entries(stats)) {
+      if (entry.feed === undefined) continue
+      expect(typeof entry.feed, `${city}.feed`).toBe('object')
+    }
+  })
+
+  it('every feed block present is well-formed by the writer’s own definition', async () => {
+    const stats = await loadFeeds()
+    for (const [city, entry] of Object.entries(stats)) {
+      if (!entry.feed) continue
+      expect(() => assertFeedCounts(entry.feed, `permitStats.${city}.feed`)).not.toThrow()
+    }
+  })
+
+  // THE ANTI-BACKFILL GUARD, and it is the reason this test exists at all.
+  //
+  // A count taken today is not the count at an older extract's vintage, so a
+  // `feed` block must have been written by the SAME run that produced the figure
+  // beside it. That is checkable: the vintage carries "computed YYYY-MM-DD", and
+  // observedAt must equal it. A block backfilled later fails here — which is what
+  // makes "never backfilled" a structure rather than a note in a header (rule 14).
+  it('observedAt matches the vintage’s compute date — a backfilled count fails here', async () => {
+    const stats = await loadFeeds()
+    for (const [city, entry] of Object.entries(stats)) {
+      if (!entry.feed || !entry.newConstruction) continue
+      const computed = /computed (\d{4}-\d{2}-\d{2})/.exec(entry.newConstruction.vintage)?.[1]
+      expect(computed, `${city}.newConstruction.vintage must state a compute date`).toBeTruthy()
+      expect(
+        entry.feed.observedAt,
+        `${city}.feed.observedAt (${entry.feed.observedAt}) must equal the vintage's compute ` +
+          `date (${computed}). A count observed on a different day than the figure is a ` +
+          `provenance claim about a run that did not make it.`,
+      ).toBe(computed)
     }
   })
 })

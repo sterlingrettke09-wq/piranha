@@ -336,6 +336,7 @@ const DATASET_NAME =
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function socrata(path, params) {
   const url = new URL(`https://${HOST}/resource/${RESOURCE_ID}.${path}`)
@@ -356,6 +357,17 @@ async function socrata(path, params) {
 
 // The schema lives behind the /api/views metadata endpoint (row JSON drops nulls,
 // so probing a single row can't prove a date column exists or is absent).
+// Every row the resource holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own Socrata client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(`${HOST}/resource/${RESOURCE_ID}`, async () => {
+    const rows = await socrata('json', { $select: 'count(1) AS n' })
+    return rows[0]?.n
+  })
+}
+
 async function fieldNames() {
   const url = new URL(`https://${HOST}/api/views/${RESOURCE_ID}.json`)
   const res = await fetch(url, { headers: { accept: 'application/json' } })
@@ -584,6 +596,13 @@ async function main() {
     }
   }
 
+  // 1b. Feed row count, logged BEFORE the halt below. Seattle refuses to write —
+  //     its figure was published and then WITHDRAWN — so these two lines are what
+  //     a run here leaves behind, and they are what answers "has the feed changed
+  //     since the last extract?" without a re-derivation.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   // 2. Pull the sample; widen the window if the recent slice is thin.
   let since = SINCE
   let rows = await pull(since)
@@ -619,6 +638,10 @@ async function main() {
     }
     cohort.push(row)
   }
+  logCohortRows(
+    cohort.length,
+    `permittypemapped='Building' AND (New OR detached-ADU Add/Alt), applied >= ${since}, after the STFI and DADU gates`,
+  )
   console.log(`  excluded ${stfi} STFI rows (no-plan-review field-inspection permits)`)
   console.log(`  excluded ${notDadu} prefiltered Add/Alt rows the exact DADU gate rejected`)
 
@@ -763,7 +786,25 @@ async function main() {
   }
   const merged = {
     ...existing,
-    seattle: { ...(existing.seattle ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    seattle: {
+      ...(existing.seattle ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows: cohort.length,
+        basis:
+          `totalRows: every row Socrata resource ${RESOURCE_ID} holds, unfiltered. ` +
+          `cohortRows: ${TYPE_MAPPED_FIELD}='Building' AND (${TYPE_FIELD}='New' OR the ` +
+          `detached-ADU Addition/Alteration arm) AND ${APPLIED_DATE_FIELD} >= ${since}, after ` +
+          `the client-side STFI and exact-DADU gates — issued and not, since both gates read ` +
+          `fields populated at intake. The published n is smaller: it keeps only the ` +
+          `${issued.length} rows carrying an issue date, then drops durations that are ` +
+          `negative or over 120 months. Like everything else below the halt, this has never ` +
+          `executed.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 

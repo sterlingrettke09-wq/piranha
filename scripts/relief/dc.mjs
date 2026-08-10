@@ -124,6 +124,7 @@ const OUT_PATH = new URL('../../netlify/functions/lib/data/reliefStats.json', im
 const DATASET_NAME = "DCGIS Zoning Cases MapServer/34 (CASE_TYPE 'BZA', deduped to distinct cases)"
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 /** Refusal that means "the data cannot support this figure", as distinct from a
  *  transport or schema failure. Mirrors sf.mjs's CensoringHalt. */
@@ -150,6 +151,17 @@ async function arcgis(path, params) {
   const body = await res.json()
   if (body.error) throw new Error(`ArcGIS error: ${JSON.stringify(body.error)}`)
   return body
+}
+
+// Every row the layer holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own ArcGIS client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(LAYER, async () => {
+    const body = await arcgis('/query', { where: '1=1', returnCountOnly: 'true', f: 'json' })
+    return body.count
+  })
 }
 
 const isGranted = (s) => GRANTED.includes(s) || GRANTED_PREFIXES.some((p) => s.startsWith(p))
@@ -183,6 +195,11 @@ async function main() {
       )
     }
   }
+
+  // 1b. Feed row count, logged BEFORE the censoring halt below, so a refusing
+  //     run still records what the feed held on the day it refused.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
 
   // 2. The matured filing window: [SINCE, runDate − MATURITY_YEARS).
   const now = new Date()
@@ -229,6 +246,8 @@ async function main() {
         `reliefStats.json left UNCHANGED.`,
     )
   }
+
+  logCohortRows(cases.size, `${where} — ${rows.length} rows deduped to distinct cases`)
 
   // 5. Score cases — fail closed on any unrecognised value.
   let granted = 0
@@ -296,7 +315,26 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, dc: { ...(existing.dc ?? {}), variance: stats } }
+  const merged = {
+    ...existing,
+    dc: {
+      ...(existing.dc ?? {}),
+      variance: stats,
+      feed: feedCounts({
+        totals,
+        cohortRows: cases.size,
+        basis:
+          `totalRows: every row the DCGIS Zoning Cases layer holds, unfiltered — ALL case ` +
+          `types, not just BZA. cohortRows: CASE_TYPE='${CASE_TYPE}' filed in the matured ` +
+          `window [${SINCE}, ${cutoffIso}), as DISTINCT CASES — ${rows.length} rows deduped to ` +
+          `${cases.size}, because a rate over rows is a rate over lots rather than cases. The ` +
+          `published n is smaller: it is the ${decided} cases decided on the merits, excluding ` +
+          `${notOnMerits} withdrawn/dismissed and ${unresolved} unresolved. NOTE the window ` +
+          `end is the run date minus ${MATURITY_YEARS}y, so cohortRows moves with the calendar ` +
+          `as well as with the feed.`,
+      }),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log(

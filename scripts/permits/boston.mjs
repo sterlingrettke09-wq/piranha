@@ -128,6 +128,7 @@ const DATASET_NAME =
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { noTierBreakdown } from './lib/tierFloor.mjs'
+import { feedCounts, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function ckan(action, params) {
   const url = new URL(`${BASE}/${action}`)
@@ -216,6 +217,18 @@ async function main() {
       `acceptable (it was 58.0% contaminated — see header). ` +
       `Found: ${[...fields.keys()].join(', ')}`)
   }
+
+  // 1b. Feed row count, logged BEFORE the halt. Boston refuses to write and has
+  //     always refused, so this line is the only thing a future investigator
+  //     gets from a run here — and "was there nothing to find, or has the feed
+  //     changed?" is exactly the question they will be asking. CKAN's
+  //     datastore_search already returns the resource's total row count on the
+  //     schema probe above, so this costs no extra request and comes back
+  //     through the pipeline's own client (rule 11).
+  const totals = [
+    await probeFeedTotal(`data.boston.gov datastore ${RESOURCE_ID}`, async () => probe.total),
+  ]
+  logFeedTotals(totals)
 
   // 2. The halt. Throws unless a real application-date column exists.
   const appliedField = applicationDateField(fields)
@@ -323,6 +336,16 @@ async function main() {
       tierBreakdown: noTierBreakdown(
         'scripts/permits/boston.mjs computes no tier split; the feed carries no application date, so the script writes nothing at all today. If it ever does, revisit this declaration.',
       ),
+      feed: feedCounts({
+        totals,
+        cohortRows: result.records.length,
+        basis:
+          `totalRows: every row CKAN resource ${RESOURCE_ID} holds, unfiltered. ` +
+          `cohortRows: ${PERMIT_TYPE_FIELD} on the new-construction allowlist AND applied ` +
+          `>= ${SINCE} with both dates non-null. The published n is smaller: it also drops ` +
+          `rows off the allowlist client-side and durations that are negative or over 120 ` +
+          `months. Like everything else below the halt, this has never executed.`,
+      }),
     },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')

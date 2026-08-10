@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { reliefOddsFor, _parseStats } from './relief'
 import reliefStats from './data/reliefStats.json'
+// @ts-expect-error — plain .mjs, no types. Imported from the WRITER on purpose:
+// the artifact is checked against the same definition the extraction scripts
+// enforce, not a second copy of it that can drift.
+import { assertFeedCounts } from '../../../scripts/lib/feedCounts.mjs'
 
 // Cities the committed artifact actually carries. Kept in sync with whatever the
 // offline pipeline landed — the loose shape assertions below stay valid across a
@@ -89,5 +93,51 @@ describe('reliefOddsFor', () => {
     expect(reliefOddsFor('boston', _parseStats({}))).toBeUndefined()
     expect(reliefOddsFor('boston', _parseStats(null))).toBeUndefined()
     expect(reliefOddsFor('boston', _parseStats(undefined))).toBeUndefined()
+  })
+})
+
+// ── Feed row counts: optional, never backfilled, never unlabelled ────────────
+// The relief half of the same contract asserted in timeline.test.ts. See
+// netlify/functions/lib/feedCounts.ts for what the two counts mean; the
+// validator comes from the WRITER (scripts/lib/feedCounts.mjs) so the artifact
+// and the scripts cannot drift apart on what "valid" means.
+describe('feed row counts in reliefStats.json', () => {
+  type FeedBlock = { observedAt: string; cohortRows: number; totals: unknown[]; basis: string }
+  const entries = Object.entries(
+    reliefStats as Record<string, { variance?: { vintage: string }; feed?: FeedBlock }>,
+  )
+
+  // Entries written before the instrumentation landed carry no `feed`, and they
+  // are deliberately NOT backfilled — a count taken today is not the count at
+  // that extract's vintage. An absent block is a valid, visibly unpopulated one.
+  it('the field is OPTIONAL — an entry without one is valid', () => {
+    expect(entries.length).toBeGreaterThan(0)
+    for (const [city, entry] of entries) {
+      if (entry.feed === undefined) continue
+      expect(typeof entry.feed, `${city}.feed`).toBe('object')
+    }
+  })
+
+  it('every feed block present is well-formed by the writer’s own definition', () => {
+    for (const [city, entry] of entries) {
+      if (!entry.feed) continue
+      expect(() => assertFeedCounts(entry.feed, `reliefStats.${city}.feed`)).not.toThrow()
+    }
+  })
+
+  // THE ANTI-BACKFILL GUARD — see the twin in timeline.test.ts for why this is a
+  // structure rather than a note: a block written by a different run than the
+  // figure beside it is a provenance claim about a run that did not make it.
+  it('observedAt matches the vintage’s compute date — a backfilled count fails here', () => {
+    for (const [city, entry] of entries) {
+      if (!entry.feed || !entry.variance) continue
+      const computed = /computed (\d{4}-\d{2}-\d{2})/.exec(entry.variance.vintage)?.[1]
+      expect(computed, `${city}.variance.vintage must state a compute date`).toBeTruthy()
+      expect(
+        entry.feed.observedAt,
+        `${city}.feed.observedAt (${entry.feed.observedAt}) must equal the vintage's compute ` +
+          `date (${computed}).`,
+      ).toBe(computed)
+    }
   })
 })

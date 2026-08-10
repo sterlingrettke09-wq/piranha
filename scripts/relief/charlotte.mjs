@@ -244,6 +244,7 @@ const DATASET_NAME =
   "City of Charlotte ZoningVarianceAppeal FeatureServer/0 (Request_Type 'Variance', deduped to distinct cases)"
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 /** Refusal that means "the data cannot support this figure", as distinct from a
  *  transport or schema failure. Mirrors sf.mjs / dc.mjs's CensoringHalt. */
@@ -466,6 +467,14 @@ async function main() {
   // 2. Reconcile the extract three ways BEFORE computing anything on it.
   const countRes = await arcgis('/query', { where: '1=1', returnCountOnly: 'true', f: 'json' })
   const serverCount = countRes.count
+
+  // The feed total, recorded at extraction time. Charlotte is the one script that
+  // already had it: `serverCount` is the reconciliation's own input, so the
+  // grew-vs-shrank number costs nothing here beyond writing it down. Logged
+  // immediately, upstream of every halt below, so a refusing run still records
+  // what the feed held on the day it refused.
+  const totals = [await probeFeedTotal(LAYER, async () => serverCount)]
+  logFeedTotals(totals)
   const idRes = await arcgis('/query', { where: '1=1', returnIdsOnly: 'true', f: 'json' })
   const ids = idRes.objectIds ?? []
 
@@ -518,6 +527,11 @@ async function main() {
   }
 
   const cohort = dedupeToCases(inWindow)
+  logCohortRows(
+    cohort.size,
+    `Request_Type='${TRACK}' with a parseable Decision_Date year >= ${SINCE_YEAR} — ` +
+      `${inWindow.length} rows deduped to distinct cases`,
+  )
   const cohortScore = scoreCases(cohort)
   refuseUnlessVocabularyIsKnown(cohortScore.unrecognised, `in the in-window ${TRACK} cohort`)
 
@@ -657,7 +671,26 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, charlotte: { ...(existing.charlotte ?? {}), variance: stats } }
+  const merged = {
+    ...existing,
+    charlotte: {
+      ...(existing.charlotte ?? {}),
+      variance: stats,
+      feed: feedCounts({
+        totals,
+        cohortRows: cohort.size,
+        basis:
+          `totalRows: every row the ZoningVarianceAppeal layer holds, unfiltered — ALL tracks ` +
+          `(Board variances, the staff administrative-adjustment track, appeals and undated ` +
+          `withdrawals), reconciled three ways against returnIdsOnly and the pager before ` +
+          `anything was computed on it. The hardcoded BASELINE_ROWS above was ` +
+          `${BASELINE_ROWS}; this is the same quantity, recorded per run instead of once. ` +
+          `cohortRows: Request_Type='${TRACK}' whose Decision_Date parses to a year >= ` +
+          `${SINCE_YEAR}, as DISTINCT CASES (${inWindow.length} rows deduped). The published n ` +
+          `is smaller: it is the ${decided} cases decided on the merits.`,
+      }),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log(

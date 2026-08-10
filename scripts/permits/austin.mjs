@@ -100,6 +100,7 @@ function classCode(permitClass) {
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function socrata(path, params) {
   const url = new URL(`https://${HOST}/resource/${RESOURCE_ID}.${path}`)
@@ -151,6 +152,18 @@ async function pull(since) {
   })
 }
 
+// Every row the resource holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own Socrata client so the count travels the same
+// transport and error handling as the rows (rule 11: measure the pipeline, not
+// your probe). Best-effort: a failed count is recorded as an unknown and never
+// aborts a run that would otherwise produce a legitimate figure.
+async function feedTotal() {
+  return probeFeedTotal(`${HOST}/resource/${RESOURCE_ID}`, async () => {
+    const rows = await socrata('json', { $select: 'count(1) AS n' })
+    return rows[0]?.n
+  })
+}
+
 async function main() {
   console.log(`Austin permit pipeline — resource ${RESOURCE_ID}`)
 
@@ -166,6 +179,11 @@ async function main() {
       )
     }
   }
+
+  // 1b. Feed row count, logged BEFORE any gate so it is on the record whatever
+  //     this run goes on to do.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
 
   // 2. Pull the sample. Widen the window if the recent slice is thin (< 50).
   let since = SINCE
@@ -202,6 +220,7 @@ async function main() {
     }
   }
   console.log(`  excluded ${notABuilding} non-building rows (pools, decks, docks, event tents…)`)
+  const cohortRows = rows.length - notABuilding
 
   if (days.length === 0) {
     console.warn('  No usable applied/issued pairs returned; leaving permitStats.json unchanged.')
@@ -262,7 +281,23 @@ async function main() {
   }
   const merged = {
     ...existing,
-    austin: { ...(existing.austin ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    austin: {
+      ...(existing.austin ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows,
+        basis:
+          `totalRows: every row Socrata resource ${RESOURCE_ID} holds, unfiltered. ` +
+          `cohortRows: ${PERMITTYPE_FIELD}='${PERMITTYPE_BUILDING}' AND ${WORKCLASS_FIELD} IN ` +
+          `('New','Shell') AND ${APPLIED_DATE_FIELD} >= ${since} with both dates non-null ` +
+          `(server-side), then gated to the building ${PERMITCLASS_FIELD} allowlist client-side. ` +
+          `The published n is smaller than cohortRows: it also drops rows whose applied→issued ` +
+          `duration is negative or over 120 months.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 

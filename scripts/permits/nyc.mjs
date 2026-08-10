@@ -184,6 +184,7 @@ function parseIso(s) {
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { noTierBreakdown } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function socrata(resourceId, path, params) {
   const url = new URL(`https://${HOST}/resource/${resourceId}.${path}`)
@@ -202,6 +203,17 @@ async function socrata(resourceId, path, params) {
   }
   if (!res.ok) throw new Error(`${HOST} returned HTTP ${res.status} ${res.statusText}`)
   return res.json()
+}
+
+// Every row the resource holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own Socrata client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal(resourceId) {
+  return probeFeedTotal(`${HOST}/resource/${resourceId}`, async () => {
+    const rows = await socrata(resourceId, 'json', { $select: 'count(1) AS n' })
+    return rows[0]?.n
+  })
 }
 
 async function fieldNames(resourceId) {
@@ -347,9 +359,20 @@ async function main() {
     }
   }
 
+  // 1b. Feed row count, logged BEFORE the halt below. NYC refuses to write —
+  //     its figure was published and then WITHDRAWN — so these two lines are what
+  //     a run here leaves behind, and they are what answers "has the feed changed
+  //     since the last extract?" without a re-derivation.
+  const totals = [await feedTotal(RESOURCE_ID)]
+  logFeedTotals(totals)
+
   // 2. Pull the whole COHORT — issued and not. No year-widening: filing_date is a
   //    real timestamp, so one server-side `>=` gets the window in one request.
   const rows = await pull()
+  logCohortRows(
+    rows.length,
+    `${JOBTYPE_FIELD}='${NEW_CONSTRUCTION_JOBTYPE}', ${FILING_NUMBER_FIELD} LIKE '%-I1', filed >= ${SINCE.slice(0, 10)}`,
+  )
 
   // 3. THE ISSUANCE SHARE, and the halt. Printed before it is judged, so the
   //    refusal is inspectable and a future reader can watch the number move.
@@ -458,6 +481,17 @@ async function main() {
       tierBreakdown: noTierBreakdown(
         'scripts/permits/nyc.mjs computes no tier split. Its query filters on job_type = \'New Building\' and job_filing_number LIKE \'%-I1\' — nothing in it restricts building size, so the aggregate spans all three tiers instead of standing in for one.',
       ),
+      feed: feedCounts({
+        totals,
+        cohortRows: rows.length,
+        basis:
+          `totalRows: every row Socrata resource ${RESOURCE_ID} holds, unfiltered. ` +
+          `cohortRows: ${JOBTYPE_FIELD}='${NEW_CONSTRUCTION_JOBTYPE}' AND ${FILING_NUMBER_FIELD} ` +
+          `LIKE '%-I1' AND ${FILING_DATE_FIELD} >= ${SINCE.slice(0, 10)}, issued and not. The ` +
+          `published n is smaller: it keeps only the ${issued.length} rows carrying an issue ` +
+          `date, then drops durations that are negative or over 120 months. Like everything ` +
+          `else below the halt, this has never executed.`,
+      }),
     },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')

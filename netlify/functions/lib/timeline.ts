@@ -13,8 +13,12 @@ import {
 // fetches a city portal at request time. A city is present only when its
 // pipeline produced a trustworthy figure — absent cities show no measured line.
 import permitStats from './data/permitStats.json'
+// Feed row counts observed at extraction time — see the type's own header for
+// why they exist and why an entry may legitimately lack them.
+import type { FeedCounts } from './feedCounts'
 
 export type { BuildingTier }
+export type { FeedCounts, FeedEndpointTotal } from './feedCounts'
 
 /** Empirical new-construction filing→issuance timing for one city. */
 export interface MeasuredPermit {
@@ -56,6 +60,14 @@ const PERMIT_STATS = permitStats as Record<
       newConstruction?: MeasuredPermit
       byTier?: Partial<Record<BuildingTier, MeasuredPermit>>
       tierBreakdown?: TierBreakdown
+      /** OPTIONAL, and unpopulated on every entry written before the
+       *  instrumentation landed (2026-08-10). Those are deliberately NOT
+       *  backfilled — a count taken today is not the count at that extract's
+       *  vintage. An absent `feed` means "this run predates the counter", which
+       *  is a true statement; a backfilled one would be a false provenance
+       *  claim. Nothing at request time reads it: it exists so a later
+       *  grew-vs-shrank check has something to diff. */
+      feed?: FeedCounts
     }
   | undefined
 >

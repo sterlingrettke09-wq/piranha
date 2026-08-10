@@ -136,6 +136,7 @@ const OUT_PATH = new URL('../../netlify/functions/lib/data/reliefStats.json', im
 const DATASET_NAME = 'data.sfgov.org Planning Department Records - Non-Projects (record_type VAR)'
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 /** Refusal that means "the data cannot support this figure", as distinct from a
  *  transport or schema failure. Mirrors the ComputabilityHalt in scripts/permits. */
@@ -170,6 +171,17 @@ async function socrata(params) {
 
 const quote = (s) => `'${s.replace(/'/g, "''")}'`
 const inList = (xs) => xs.map(quote).join(',')
+
+// Every row the resource holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own Socrata client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(`${HOST}/resource/${RESOURCE_ID}`, async () => {
+    const rows = await socrata({ $select: 'count(1) AS n' })
+    return rows[0]?.n
+  })
+}
 
 // ── THE GATE ────────────────────────────────────────────────────────────────
 // Refuse unless the closure-framed cohort is genuinely free of censoring. This
@@ -226,6 +238,11 @@ async function main() {
     }
   }
 
+  // 1b. Feed row count, logged BEFORE the censoring halt below, so a refusing
+  //     run still records what the feed held on the day it refused.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   const inWindow =
     `${TYPE_FIELD} = ${quote(VARIANCE_TYPE)} ` +
     `AND ${CLOSE_DATE_FIELD} >= '${SINCE}T00:00:00.000'`
@@ -242,6 +259,7 @@ async function main() {
     $limit: '200',
   })
   const cohortN = roster.reduce((a, r) => a + Number(r.c), 0)
+  logCohortRows(cohortN, `${TYPE_FIELD}=${VARIANCE_TYPE}, ${CLOSE_DATE_FIELD} >= ${SINCE}, every status`)
   refuseUnlessCohortIsResolved(roster.filter((r) => !TERMINAL.includes(r.s)))
 
   // 3. Score the resolved cohort.
@@ -293,7 +311,24 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, sf: { ...(existing.sf ?? {}), variance: stats } }
+  const merged = {
+    ...existing,
+    sf: {
+      ...(existing.sf ?? {}),
+      variance: stats,
+      feed: feedCounts({
+        totals,
+        cohortRows: cohortN,
+        basis:
+          `totalRows: every row Socrata resource ${RESOURCE_ID} holds, unfiltered. cohortRows: ` +
+          `${TYPE_FIELD}=${VARIANCE_TYPE} AND ${CLOSE_DATE_FIELD} >= ${SINCE}, across EVERY ` +
+          `status — not just the ones scored, because a roster that selects on the outcome ` +
+          `cannot measure how often the outcome is missing. The published n is smaller: it is ` +
+          `the ${decided} records whose status is a ruling on the merits, excluding ` +
+          `${notOnMerits} withdrawn/cancelled/informational.`,
+      }),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log(

@@ -197,6 +197,7 @@ const DATASET_NAME = "data.lacity.org Building & Safety Permit Information (perm
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { noTierBreakdown } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function socrata(path, params) {
   const url = new URL(`https://${HOST}/resource/${RESOURCE_ID}.${path}`)
@@ -341,6 +342,20 @@ async function pull(since) {
   })
 }
 
+/** Every row the resource holds, UNFILTERED — the grew-vs-shrank number. Goes
+ *  through this script's own Socrata client so the count travels the same
+ *  transport and error handling as the rows (rule 11). Best-effort: a failed
+ *  count is recorded as an unknown and never aborts the run.
+ *
+ *  DISTINCT from feedWideNullIssuedCount() below, which counts a SUBSET of the
+ *  feed for the halt's denominator test. This one is the feed itself. */
+async function feedTotal() {
+  return probeFeedTotal(`${HOST}/resource/${RESOURCE_ID}`, async () => {
+    const rows = await socrata('json', { $select: 'count(1) AS n' })
+    return rows[0]?.n
+  })
+}
+
 /** Rows in the WHOLE feed carrying no issue date — the denominator's existence test. */
 async function feedWideNullIssuedCount() {
   const rows = await socrata('json', {
@@ -377,6 +392,13 @@ async function main() {
     }
   }
 
+  // 1b. Feed row count, logged BEFORE the halt below. LA refuses to write, so
+  //     these two lines are what a run here leaves behind — and they are what
+  //     answers "has the feed changed since the last extract?" without a
+  //     re-derivation.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   // 2. Pull the cohort. Widen the window if the slice that would carry the
   //    figure is thin (< 50) — counted on the rows with an issue date, since
   //    those are the only ones a duration can come from.
@@ -394,6 +416,7 @@ async function main() {
   // 3. THE HALT. Everything it judges is measured and printed first, so the
   //    refusal is inspectable and a future reader can see the numbers move.
   const observed = cohort.filter((r) => r.issued != null)
+  logCohortRows(cohort.length, `${TYPE_FIELD}='${NEW_CONSTRUCTION_TYPE}', submitted >= ${since}`)
   const feedNullIssued = await feedWideNullIssuedCount()
   const statusDomain = await statusVocabulary()
   console.log(
@@ -485,6 +508,17 @@ async function main() {
       tierBreakdown: noTierBreakdown(
         'scripts/permits/la.mjs computes no tier split. Its query filters on permit_type = \'Bldg-New\' only, with no size restriction. (LA is WITHDRAWN and this script writes nothing today — see src/config/cities.ts.)',
       ),
+      feed: feedCounts({
+        totals,
+        cohortRows: cohort.length,
+        basis:
+          `totalRows: every row Socrata resource ${RESOURCE_ID} holds, unfiltered. ` +
+          `cohortRows: ${TYPE_FIELD}='${NEW_CONSTRUCTION_TYPE}' AND ${APPLIED_DATE_FIELD} ` +
+          `>= ${since}, issued and not. The published n is smaller: it keeps only the ` +
+          `${observed.length} rows carrying an issue date, then drops durations that are ` +
+          `negative or over 120 months. Like everything else below the halt, this has never ` +
+          `executed.`,
+      }),
     },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')

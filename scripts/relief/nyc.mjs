@@ -113,6 +113,7 @@ const OUT_PATH = new URL('../../netlify/functions/lib/data/reliefStats.json', im
 const DATASET_NAME = 'data.cityofnewyork.us BSA Applications Status (application BZ)'
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 /** Refusal that means "the data cannot support this figure", as distinct from a
  *  transport or schema failure. Mirrors sf.mjs's CensoringHalt. */
@@ -146,6 +147,17 @@ async function socrata(params) {
 }
 
 const quote = (s) => `'${s.replace(/'/g, "''")}'`
+
+// Every row the resource holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own Socrata client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(`${HOST}/resource/${RESOURCE_ID}`, async () => {
+    const rows = await socrata({ $select: 'count(1) AS n' })
+    return rows[0]?.n
+  })
+}
 
 const RECOGNISED = [...GRANTED, ...DENIED, ...NOT_ON_MERITS, ...UNCODED]
 
@@ -192,6 +204,11 @@ async function main() {
     }
   }
 
+  // 1b. Feed row count, logged BEFORE the censoring halt below, so a refusing
+  //     run still records what the feed held on the day it refused.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   const inTrackSince =
     `${TRACK_FIELD} = ${quote(TRACK)} ` +
     `AND ${ACTION_DATE_FIELD} >= '${SINCE}T00:00:00.000'`
@@ -221,6 +238,10 @@ async function main() {
     $limit: '200',
   })
   const cohortN = roster.reduce((a, r) => a + Number(r.c), 0)
+  logCohortRows(
+    cohortN,
+    `${TRACK_FIELD}=${TRACK}, ${ACTION_DATE_FIELD} in [${SINCE}, ${windowEnd ?? 'open'}), every status`,
+  )
   refuseUnlessWindowIsCoded(
     roster.filter((r) => !RECOGNISED.includes(r.s) || UNCODED.includes(r.s)),
     windowEnd,
@@ -278,7 +299,25 @@ async function main() {
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
-  const merged = { ...existing, nyc: { ...(existing.nyc ?? {}), variance: stats } }
+  const merged = {
+    ...existing,
+    nyc: {
+      ...(existing.nyc ?? {}),
+      variance: stats,
+      feed: feedCounts({
+        totals,
+        cohortRows: cohortN,
+        basis:
+          `totalRows: every row Socrata resource ${RESOURCE_ID} holds, unfiltered. cohortRows: ` +
+          `${TRACK_FIELD}=${TRACK} AND ${ACTION_DATE_FIELD} inside the scored window ` +
+          `[${SINCE}, ${windowEnd ?? 'open'}), across EVERY status — not just the ones scored, ` +
+          `because a roster that selects on the outcome cannot measure how often the outcome ` +
+          `is missing. The published n is smaller: it is the ${decided} rows decided on the ` +
+          `merits, excluding ${notOnMerits} withdrawn/dismissed. NOTE the window end is ` +
+          `measured at run time, so cohortRows moves with it as well as with the feed.`,
+      }),
+    },
+  }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 
   console.log(

@@ -91,6 +91,30 @@ requests" there would be a claim true of neither track, i.e. the
 pooled-rate-under-an-unpooled-label error, in the rendered line rather than in a
 comment. `relief.test.ts` pins that exact string.
 
+### `feed` — the source feed's row count at extraction time
+
+Every script here records, on the run that produces a figure, how many rows its
+feed held, as a sibling of `variance`. Optional on an entry (runs predating the
+instrumentation have none, and are **not** backfilled); written by
+`feedCounts()` in [`../lib/feedCounts.mjs`](../lib/feedCounts.mjs); the contract,
+and why the two counts must not be conflated, is the type in
+[`netlify/functions/lib/feedCounts.ts`](../../netlify/functions/lib/feedCounts.ts).
+The scripts that refuse to write **log** the same counts on their halt path.
+
+```jsonc
+"feed": {
+  "observedAt": "2026-08-10",   // must equal the vintage's compute date
+  "totals": [                   // one entry PER ENDPOINT the script read
+    { "endpoint": "…/ZoningVarianceAppeal/FeatureServer/0", "totalRows": 3142 }
+  ],
+  "cohortRows": 155,            // rows/cases passing this script's window + filters
+  "basis": "totalRows: … cohortRows: …"
+}
+```
+
+Charlotte already probed this number — `returnCountOnly` feeds its three-way
+row reconciliation — so there it costs nothing beyond writing it down.
+
 ## Sanity gates (every script)
 
 - **Probe the schema first — the COLUMN LIST, not one row.** If the expected

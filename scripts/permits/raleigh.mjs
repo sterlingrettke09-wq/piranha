@@ -183,6 +183,7 @@ const DATASET_NAME =
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function arcgis(params) {
   const url = new URL(`${LAYER}/query`)
@@ -226,6 +227,17 @@ const WHERE =
   `${APPLIED_DATE_FIELD} >= DATE '${SINCE}' AND ` +
   `${WORKCLASS_FIELD} IN (${WORKCLASSES.map((w) => `'${w}'`).join(',')})`
 
+// Every row the layer holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own ArcGIS client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(LAYER, async () => {
+    const json = await arcgis({ where: '1=1', returnCountOnly: 'true' })
+    return json.count
+  })
+}
+
 // maxRecordCount is 2000, so page explicitly rather than trusting one request to
 // have returned everything.
 async function pullAll() {
@@ -267,6 +279,9 @@ async function main() {
       )
     }
   }
+
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
 
   const rows = await pullAll()
   console.log(`  pulled ${rows.length} rows: applied >= ${SINCE} AND ${WORKCLASS_FIELD} IN (…)`)
@@ -330,7 +345,9 @@ async function main() {
     else byTier[tier].push(d)
   }
 
+  const cohortRows = rows.length - notABuilding
   console.log(`  excluded ${notABuilding} non-building rows (sheds, signs, ADU-mixed, garages…)`)
+  logCohortRows(cohortRows, `${WHERE}, gated to the ${USE_FIELD} building allowlist`)
   console.log(
     `  ${unresolvedTier} townhouse rows kept in the aggregate but omitted from the tier split ` +
       `(per-unit child permits; development size unrecorded)`,
@@ -447,7 +464,23 @@ async function main() {
   }
   const merged = {
     ...existing,
-    raleigh: { ...(existing.raleigh ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    raleigh: {
+      ...(existing.raleigh ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows,
+        basis:
+          `totalRows: every row the Building_Permits layer holds, unfiltered. cohortRows: ` +
+          `${APPLIED_DATE_FIELD} >= ${SINCE} AND ${WORKCLASS_FIELD} on the new-construction ` +
+          `allowlist, then gated to the ${USE_FIELD} building allowlist — issued and not, ` +
+          `because this feed carries non-issued applications. The published n is smaller: it ` +
+          `keeps only rows with both dates present and a duration that is non-negative and ` +
+          `under 120 months.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 

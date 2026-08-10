@@ -257,6 +257,7 @@ const DATASET_NAME =
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { splitTiersAtFloor } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function socrata(path, params) {
   const url = new URL(`https://${HOST}/resource/${RESOURCE_ID}.${path}`)
@@ -279,6 +280,17 @@ async function socrata(path, params) {
 // Column names from the dataset METADATA, not from a sample row. A `$limit=1`
 // probe omits any field that happens to be null on that row, so it reports a
 // present column as missing — measuring the probe rather than the schema.
+// Every row the resource holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own Socrata client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(`${HOST}/resource/${RESOURCE_ID}`, async () => {
+    const rows = await socrata('json', { $select: 'count(1) AS n' })
+    return rows[0]?.n
+  })
+}
+
 async function fieldNames() {
   const url = new URL(`https://${HOST}/api/views/${RESOURCE_ID}.json`)
   const res = await fetch(url, { headers: { accept: 'application/json' } })
@@ -415,6 +427,13 @@ async function main() {
     }
   }
 
+  // 1b. Feed row count, logged BEFORE the halt below. SF refuses to write, so
+  //     these two lines are what a run here leaves behind — and they are what
+  //     answers "has the feed changed since the last extract?" without a
+  //     re-derivation.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   // 2. Pull the sample. Widen the window if the usable slice is thin (< 50).
   //    The threshold is checked on the count that SURVIVES the building gate AND
   //    carries an issue date — that is the n the figure would rest on. Checking
@@ -498,6 +517,11 @@ async function main() {
     const share = rowsOfTier.length ? ((obs / rowsOfTier.length) * 100).toFixed(1) : '—'
     console.log(`     ${tier.padEnd(10)} ${String(obs).padStart(4)}/${String(rowsOfTier.length).padEnd(5)} ${share}%`)
   }
+
+  logCohortRows(
+    kept.length,
+    `${TYPE_FIELD} IN (${NEW_CONSTRUCTION_TYPES.join(',')}), ${PRIMARY_ADDRESS_FIELD}='Y', filed >= ${since}, gated to the building ${PROPOSED_USE_FIELD} allowlist`,
+  )
 
   refuseUnlessQuantilesAreObserved(issued.length, kept.length)
 
@@ -611,7 +635,25 @@ async function main() {
   }
   const merged = {
     ...existing,
-    sf: { ...(existing.sf ?? {}), newConstruction: stats, byTier: tiers, tierBreakdown },
+    sf: {
+      ...(existing.sf ?? {}),
+      newConstruction: stats,
+      byTier: tiers,
+      tierBreakdown,
+      feed: feedCounts({
+        totals,
+        cohortRows: kept.length,
+        basis:
+          `totalRows: every row Socrata resource ${RESOURCE_ID} holds, unfiltered. ` +
+          `cohortRows: ${TYPE_FIELD} IN (${NEW_CONSTRUCTION_TYPES.join(',')}) AND ` +
+          `${PRIMARY_ADDRESS_FIELD}='Y' AND ${FILED_DATE_FIELD} >= ${since}, deduped on ` +
+          `permit number and gated to the building ${PROPOSED_USE_FIELD} allowlist — issued ` +
+          `and not, since proposed_use is a filing-time field. The published n is smaller: it ` +
+          `keeps only the ${issued.length} rows carrying an issue date, then drops durations ` +
+          `that are negative or over 120 months. Like everything else below the halt, this ` +
+          `has never executed.`,
+      }),
+    },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
 

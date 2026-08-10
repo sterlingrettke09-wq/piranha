@@ -133,6 +133,7 @@ const DATASET_NAME = "data.cityofchicago.org Building Permits (permit_type = 'PE
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { noTierBreakdown } from './lib/tierFloor.mjs'
+import { feedCounts, logCohortRows, logFeedTotals, probeFeedTotal } from '../lib/feedCounts.mjs'
 
 async function socrata(path, params) {
   const url = new URL(`https://${HOST}/resource/${RESOURCE_ID}.${path}`)
@@ -300,6 +301,17 @@ async function pull(since) {
   })
 }
 
+// Every row the resource holds, UNFILTERED — the grew-vs-shrank number. Goes
+// through this script's own Socrata client so the count travels the same
+// transport and error handling as the rows (rule 11). Best-effort: a failed
+// count is recorded as an unknown and never aborts the run.
+async function feedTotal() {
+  return probeFeedTotal(`${HOST}/resource/${RESOURCE_ID}`, async () => {
+    const rows = await socrata('json', { $select: 'count(1) AS n' })
+    return rows[0]?.n
+  })
+}
+
 async function main() {
   console.log(`Chicago permit pipeline — resource ${RESOURCE_ID}`)
 
@@ -316,6 +328,13 @@ async function main() {
     }
   }
 
+  // 1b. Feed row count, logged BEFORE the halt below. Chicago refuses to write,
+  //     so these two lines are what a run here leaves behind — and they are what
+  //     answers "has the feed changed since the last extract?" without a
+  //     re-derivation.
+  const totals = [await feedTotal()]
+  logFeedTotals(totals)
+
   // 2. Pull the sample. Widen the window if the recent slice is thin (< 50).
   let since = SINCE
   let rows = await pull(since)
@@ -324,6 +343,7 @@ async function main() {
     since = SINCE_WIDE
     rows = await pull(since)
   }
+  logCohortRows(rows.length, `${TYPE_FIELD}='${NEW_CONSTRUCTION_TYPE}', applied >= ${since}`)
 
   // 3. Compute durations, dropping negatives and absurd outliers (> 120 months).
   //    Also watch the NYC failure mode: if most rows are same-day (applied ==
@@ -458,6 +478,16 @@ async function main() {
       tierBreakdown: noTierBreakdown(
         'scripts/permits/chicago.mjs computes no tier split. Its query filters on permit_type = \'PERMIT - NEW CONSTRUCTION\' only, with no size restriction. (Chicago is WITHDRAWN and this script writes nothing today — see src/config/cities.ts.)',
       ),
+      feed: feedCounts({
+        totals,
+        cohortRows: rows.length,
+        basis:
+          `totalRows: every row Socrata resource ${RESOURCE_ID} holds, unfiltered. ` +
+          `cohortRows: ${TYPE_FIELD}='${NEW_CONSTRUCTION_TYPE}' AND ${APPLIED_DATE_FIELD} ` +
+          `>= ${since}, issued and not. The published n is smaller: it keeps only rows ` +
+          `carrying an issue date, with the duration non-negative and under 120 months. ` +
+          `Like everything else below the halt, this has never executed.`,
+      }),
     },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
