@@ -1,5 +1,7 @@
 City hero photos — sourced from Wikimedia Commons, openly licensed.
 Downloaded and resized for web use on the /cities page.
+Licensing is per image, not blanket: CC-BY and CC-BY-SA require attribution,
+public domain does not. No NC- or ND-licensed image is usable here.
 Format: file | subject | author | license
 
 boston.jpg      | Old State House, Boston            | Marco Almbauer        | Public Domain
@@ -12,3 +14,19 @@ austin.jpg      | Texas State Capitol                | (Wikimedia Commons)   | C
 la.jpg          | Hollywood Sign                     | Downtowngal           | CC-BY-SA-4.0
 denver.jpg      | Red Rocks Amphitheatre, Colorado   | Sarbjit Bahga         | CC-BY-SA-4.0
 minneapolis.jpg | Stone Arch Bridge + Minneapolis skyline | Tony Webster   | CC-BY-2.0
+
+The entries below additionally record the Commons file page each came from.
+Every licence and author was read off that file's own page (and confirmed
+against the page's licence template) rather than assumed from a search result.
+Format: file | subject | author | license | source
+
+philadelphia.jpg | Independence Hall                          | Mys 721tx        | CC-BY-SA-3.0 | https://commons.wikimedia.org/wiki/File:Exterior_of_the_Independence_Hall,_Aug_2019.jpg
+milwaukee.jpg    | Milwaukee Art Museum, Quadracci Pavilion   | Michael Hicks (Mulad) | CC-BY-2.0 | https://commons.wikimedia.org/wiki/File:Milwaukee_Art_Museum_1_(Mulad).jpg
+nashville.jpg    | Ryman Auditorium                           | Daniel Schwen    | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:Ryman_Auditorium.jpg
+atlanta.jpg      | Atlanta skyline from Jackson Street Bridge | Marc Merlin      | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:Atlanta_skyline_from_Jackson_Street_Bridge_2020.jpg
+miami.jpg        | Ocean Drive, Miami Beach Art Deco district | Robbschultz69    | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:Ocean_Drive_in_the_Miami_Beach_Art_Deco_Historic_District.jpg
+sandiego.jpg     | California Tower, Balboa Park              | GualdimG         | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:Museu_do_Homem_San_Diego_02.jpg
+charlotte.jpg    | Uptown Charlotte skyline                   | Precisionviews   | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:Uptown_Charlotte_-_DJI_Phantom_4_pro.jpg
+columbus.jpg     | Ohio Statehouse                            | Ɱ (Wikimedia user) | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:Ohio_Statehouse_exterior_01.jpg
+raleigh.jpg      | North Carolina State Capitol               | P. Hughes        | CC-BY-4.0 | https://commons.wikimedia.org/wiki/File:Raleigh_-_North_Carolina_State_Capitol.jpg
+sanjose.jpg      | San José City Hall rotunda                 | The wub          | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:San_Jose_City_Hall_2023-07-16_(1).jpg
