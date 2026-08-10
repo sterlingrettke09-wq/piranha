@@ -51,6 +51,7 @@ node scripts/permits/seattle.mjs      # p80 unidentified at 74.71% observed → 
 node scripts/permits/sf.mjs           # no quantile identified at 37.61% → throws, exit 1
 node scripts/permits/chicago.mjs      # applied==issued backfill mass → throws, exit 1
 node scripts/permits/la.mjs           # issued-only feed, no denominator → throws, exit 1
+node scripts/permits/dallas.mjs       # p80 unidentified at 73.44% + terminal snapshot → throws, exit 1
 
 ```
 
@@ -154,7 +155,7 @@ this table ever disagrees with them, they are right and this is stale — the
 figures move whenever a script is re-run, but the *set* of publishing cities is
 test-enforced.
 
-**6 of the 20 cities in the index publish a measured figure.** The other 14 do
+**6 of the 23 cities in the index publish a measured figure.** The other 17 do
 not, and the reason differs per city — a city with no line is unmeasured, never
 "fast". *(This line said 8 until 2026-08-09; NYC and Seattle were withdrawn the
 same day.)*
@@ -172,7 +173,7 @@ same day.)*
 | **Denver** | `denver.mjs` | **4.5 mo** | **11.1 mo** | **6,922** | 2026-08-06 | ArcGIS denvergov Construction Permits; residential `CLASS = 'NEW BUILDING'` + commercial `CLASS IN ('NEW BUILDING','PHASED CONSTRUCTION')`. ⚠️ `multi` tier **suppressed** under the n<30 floor. |
 | **Miami** | `miami.mjs` | **12.6 mo** | **21.4 mo** | **991** | 2026-08-06 | ArcGIS "Building Permits Since 2014"; `ScopeofWork = 'NEW CONSTRUCTION'`, master permits `PermitNumber LIKE '%001B001'`, building `WorkItems` allowlist; `PlanCreatedDate → IssuedDate`. Issued-only → a FLOOR. |
 
-### Not publishing (14)
+### Not publishing (17)
 
 | City | Script | Why no figure |
 |---|---|---|
@@ -190,6 +191,9 @@ same day.)*
 | **Seattle** | `seattle.mjs` | **WITHDRAWN 2026-08-09; refuses by design.** Published **5.7 mo / p80 10.0 / n=4,996** from 2026-08-06. Same defect class as NYC, found differently: the **outcome-selection guard's** registry demands a measured share on every `known-defect` exemption, and measuring Seattle's — its own cohort filter against `76t5-zqzr` run with and without the `issueddate IS NOT NULL` limb — gave **6,980** in-window applications, **5,215** observed = **74.71%** (the limb hid 1,765 filings). That clears p50 and fails p80, so the published **p80 of 10.0** was unidentified. The script's own RESULTS block had recorded 74.1% observed beside the p80 it unidentifies. The median is **not republished alone** — at 74.71% it is conditional on issuance and no UI surface renders the condition (the Milwaukee reason) — and `byTier` cannot come back on an aggregate share: per-tier shares are only **bounded** (`housingunitsadded` is 58.2% populated on non-issued rows), no tier's lower bound clears 80, and apartment's interval straddles 50. `refuseUnlessQuantilesAreObserved()` throws before any write → **exits 1, by design.** |
 | **LA** | `la.mjs` | **WITHDRAWN 2026-08-05; refuses by design since 2026-08-09.** The feed *this script reads* (`pi9x-tg5x`) is **issued-only** — `issue_date` is non-null on 404,414 of 404,414 rows, and `status_desc` carries no pre-issuance value — so the issuance rate is not computable **from it**. `refuseUnlessIssuanceIsMeasurable()` throws before any write → **exits 1, by design.** ✅ The recorded reason (45.4% / 64.1%) **does reproduce** — against LADBS's *submitted* feed `gwh9-jnip`, sourced 2026-08-09; at 54.64% observed the p80 of 13.0 is unidentified. See the note under the table. |
 | **San Diego** | *none* | **WITHDRAWN 2026-08-05. Wrong date field** — the start stamp is documented as when a permit is "added to the Permit System", never earlier than intake (median +14 d, p90 +181 d), and 8.93% of rows are `create == issue` on projects filed a median 928 days earlier. The UI called it "Median filing→permit". It was not. No script retained. |
+| **Dallas** | `dallas.mjs` | **CLASSIFIED 2026-08-10 — refuses by design.** The only feed with both dates ("New Permits 1971-2024", City of Dallas GIS Services) is a **terminal snapshot** of the retired Posse system ("no updates planned", max dates 2024-11-12). CREATED_DATE is a real per-row application date (checked against the DC ETL-stamp trap) and the new-construction filter is a closed vocabulary — but **8,509 of 11,587** gated 2022+ filings carry an issue date = **73.44%**, identifying the p50 and **not the p80** (per tier: single 93.01%, multi 70.74%, apartment 47.76% — below even the median). Live Dallas permitting (Accela) publishes no open-data feed; the Socrata dataset is flagged historical, frozen 2020-08-30, `issued_date` only. `refuseUnlessQuantilesAreObserved()` throws before any write → **exits 1, by design.** |
+| **Las Vegas** | *none* | **No application-date slot.** The portal's live "Building Permits" (436,689 rows, refreshed through 2026-08-07) carries exactly one date field, `ISSDTTM` — established by the slot test, not a blank row. The only both-dates layer (`Bldg_Permits`, an operational INFOR dump) is not an open-data product and measured unusable: ~11.6× row duplication (288,841 rows vs 24,861 distinct permits in 2024), misaligned columns, `DD-MON-YY` two-digit-year strings, and no enumerable new-construction class ('SFD Tract' exists; custom/commercial ground-up hides in `Building`/`OTC` free text). No script written. |
+| **Phoenix** | *none* | **Publishes no per-permit dataset at all** — the portal's full 160-package CKAN catalogue was enumerated through its own API (2026-08-10). The sole building-permit package is a HUD SOCDS export of **annual counts** (no dates, no permit rows), and the PDD ArcGIS dashboards are fed by CMPR KPI aggregates. Charlotte's class: a verified absence of the dataset itself. |
 
 > ✅ **`sf.mjs`, `chicago.mjs` and `la.mjs` now refuse structurally (2026-08-09).**
 > Until then nothing in the three scripts stopped a write — the withdrawal lived
