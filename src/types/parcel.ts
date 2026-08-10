@@ -350,6 +350,77 @@ export const ATLANTA_BBOX: Bbox = {
   east: -84.28,
 }
 
+// ── The 2026-08-09 cohort: dallas, lasvegas, phoenix ───────────────────────
+// ZONING layer, queried 2026-08-09 with
+// `where=1=1&returnExtentOnly=true&outSR=4326`, then rounded OUTWARD to 2 dp.
+// The raw returns are recorded per city below so the rounding is checkable.
+//
+// ⚠️ ALL THREE ARE THE MISMATCH CASE, AND FOR ALL THREE THE BBOX IS NOT THE
+// GUARD. Each city's parcel layer is regional (a county or multi-county fabric)
+// while its zoning layer stops at the city line, and in each one a neighbouring
+// jurisdiction sits INSIDE the rectangle — Highland Park and University Park are
+// enclaves entirely surrounded by Dallas; North Las Vegas, Henderson and
+// unincorporated Clark County interleave with Las Vegas; Scottsdale, Tempe and
+// Glendale abut Phoenix. No rectangle separates them.
+//
+// So each provider fetches a CITY-BOUNDARY POLYGON as a gate and REFUSES a point
+// outside it, the pattern columbus.ts established. The bbox below is the coarse
+// first cut; the polygon is the real gate, and the two must not be confused.
+//
+// Why a polygon and not a `CITY = '…'` attribute, measured rather than assumed
+// (cross-tabbed against each city's zoning layer over random in-bbox points that
+// returned a parcel, 2026-08-09):
+//   · dallas   polygon 119/119, attribute `CITY` 118/119 — it refuses a parcel
+//     whose CITY is null and which the zoning layer resolves to TH-3(A)
+//   · lasvegas polygon agrees; `STRCITY` refuses in-city parcels whose SITE
+//     ADDRESS is blank, i.e. vacant land — the land this tool is asked about
+//   · phoenix  polygon 87/87; the parcel layer has NO city column at all (27
+//     fields enumerated), so there is no attribute to use
+// Each provider header carries the coordinates of the specific disagreements.
+
+// Zoning layer: sdc_public/Zoning/MapServer/15 (Base Zoning). Returned
+//   xmin -97.000646  ymin 32.605923  xmax -96.464391  ymax 33.030771
+// which matches Basemap/CityLimits/MapServer/0's own extent to four decimals.
+// The parcel layer is the five-county appraisal-district fabric — its own
+// description says "Includes City of Dallas and one-mile buffer" — and only
+// 290,743 of its 500,142 rows carry CITY='DALLAS'.
+// Gate: Basemap/CityLimits/MapServer/0 (one polygon, CITY='Dallas').
+export const DALLAS_BBOX: Bbox = {
+  south: 32.60,
+  west: -97.01,
+  north: 33.04,
+  east: -96.46,
+}
+
+// Zoning layer: DevelopmentServices/Zoning/MapServer/0. Returned
+//   xmin -115.424217  ymin 36.128958  xmax -115.060645  ymax 36.410535
+// The parcel layer is the Clark County fabric republished by the City —
+// 834,987 rows, of which 291,830 carry STRCITY='LV'.
+// Gate: AdministrativeBoundaries/Jurisdictions/MapServer/0, and this is the one
+// city of the three where the gate must compare a NAME rather than read
+// presence: the layer holds seven jurisdictions (Las Vegas, North Las Vegas,
+// Henderson, Mesquite, Boulder City, Nellis AFB, and one named ' ' for
+// unincorporated Clark County), so every point in the valley is inside SOME
+// polygon. A presence check would pass the entire Strip.
+export const LAS_VEGAS_BBOX: Bbox = {
+  south: 36.12,
+  west: -115.43,
+  north: 36.42,
+  east: -115.06,
+}
+
+// Zoning layer: Public/Zoning/MapServer/0. Returned
+//   xmin -112.325977  ymin 33.289971  xmax -111.925471  ymax 33.918693
+// The parcel layer is the Maricopa County fabric (1,759,634 features, extent
+// -113.354…-111.077, i.e. the whole county).
+// Gate: Public/CityBoundary/MapServer/0 (one polygon, NAME='City of Phoenix').
+export const PHOENIX_BBOX: Bbox = {
+  south: 33.28,
+  west: -112.33,
+  north: 33.92,
+  east: -111.92,
+}
+
 export function isInBbox(bbox: Bbox, lat: number, lng: number): boolean {
   return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east
 }

@@ -250,6 +250,30 @@ export const cityCostIndex: Record<string, number> = {
   sandiego: 1.09, // 919-921 = 109.4
   minneapolis: 1.07, // 554-555 = 107.0
   seattle: 1.07, // 980-981 = 106.7
+  // ── 2026-08-09 cohort: lasvegas, phoenix, dallas ─────────────────────────
+  // All three re-verified 2026-08-09 by downloading the cited PDF and reading
+  // the rows out of the weighted-average (A-G) TOTAL column directly, rather
+  // than by trusting the extraction that proposed them. The same pull
+  // reproduced ELEVEN values already committed here — SF 129.8, LA 111.8,
+  // San Diego 109.4, Milwaukee 103.9, Columbus 92.3, Atlanta 89.2,
+  // Nashville 89.0, Charlotte 87.0, Miami 85.1, Raleigh 84.4, Austin 82.9 —
+  // which is what makes the three below evidence rather than plausible digits
+  // (CLAUDE.md rule 16).
+  //
+  // ⚠️ A TRAP THAT WOULD HAVE PRODUCED PLAUSIBLE WRONG NUMBERS. The same PDF
+  // also carries SUMMARY location-factor tables near the end, two columns of
+  // bare decimals, and they are a DIFFERENT series. Phoenix reads .84/.87
+  // there, Dallas .84/.86, Las Vegas 1.03/1.05 — close enough to pass a glance.
+  // Raleigh is the one that gives it away: the summary reads .94 against the
+  // 0.84 committed above and confirmed in the main table. Read the main table's
+  // TOTAL column, as every row in this file does.
+  //
+  // ⚠️ NAME COLLISION, LIVE, IN THIS DOCUMENT, AND THE WORST ONE YET. "Las
+  // Vegas" occurs TWICE as a ZIP-group row: 877 Las Vegas (NEW MEXICO) = 86.3
+  // and 889-891 Las Vegas (NEVADA) = 105.4. That is a 22% spread — the Miami-OK
+  // trap one notch worse — and a name match alone picks the wrong one half the
+  // time. Both were read; the ZIP group decides.
+  lasvegas: 1.05, // 889-891 = 105.4 (NEVADA) — mat. 104.2 / inst. 107.0. NOT 877 Las Vegas NM = 86.3
   // ── 2026-08-08 cohort: milwaukee, columbus, charlotte, atlanta ────────────
   // All four extracted in ONE pull from the PDF cited above, by the same method
   // (the "TOTAL" column of the location-factor table, ÷100), and reconciled
@@ -267,6 +291,15 @@ export const cityCostIndex: Record<string, number> = {
   nashville: 0.89, // 370-372 = 89.0
   atlanta: 0.89, // 300-303,399 = 89.2 (GEORGIA block)
   charlotte: 0.87, // 281-282 = 87.0 (NORTH CAROLINA block) — NOT Charlottesville VA 229 = 88.7
+  // 850,853 = 87.0 (mat. 98.4 / inst. 72.1). The adjacent row is 851,852
+  // Mesa/Tempe = 86.4 — different cities in the same metro, sharing neither ZIP
+  // group nor value, which is exactly why the ZIP group is what gets matched.
+  // The lookalike "Phenix City" (Alabama, 368 = 86.1) is a different spelling.
+  phoenix: 0.87,
+  // 752-753 = 86.0 (mat. 100.1 / inst. 67.4). "Dallas" appears as a ZIP-group
+  // row exactly ONCE in the whole document; 750 McKinney (83.2) and 751
+  // Waxahachie (83.3) are separate suburbs with their own rows.
+  dallas: 0.86,
   miami: 0.85, // 330-332,340 = 85.1 (NOT Miami OK 743 = 80.3)
   // 275-276 = 84.4. Extracted 2026-08-07 from the same PDF cited above, by the
   // same method, and reconciled against three known-good rows in the SAME pull
@@ -400,10 +433,18 @@ export const lifecycleMonths: Record<string, Record<BuildingTier, number>> = {
   // SF is the slowest-permitting major US city: discretionary review, CEQA, and
   // Planning Commission routinely push even modest projects past 3 years.
   sf: { single: 30, multi: 46, apartment: 66 },
-  // ⚠️ NO ROW FOR raleigh, milwaukee, columbus, charlotte OR atlanta, AND THAT
-  // IS DELIBERATE FOR ALL FIVE. Each is live and fully wired (provider, zoning
-  // module, dispatcher, cost index, probe), so a missing row here is a decision
-  // rather than an oversight, and this is where a reader will look for it.
+  // ⚠️ NO ROW FOR raleigh, milwaukee, columbus, charlotte, atlanta, dallas,
+  // lasvegas OR phoenix, AND THAT IS DELIBERATE FOR ALL EIGHT. Each is live and
+  // fully wired (provider, zoning module, dispatcher, cost index, probe), so a
+  // missing row here is a decision rather than an oversight, and this is where
+  // a reader will look for it.
+  //
+  // ⚠️ AMENDED AGAIN 2026-08-09, when Dallas, Las Vegas and Phoenix were wired.
+  // Note that this sentence has now been wrong twice by going stale — see the
+  // 2026-08-08 amendment below — which is the argument for counting the cities
+  // rather than gesturing at them. Nothing about the three new cities was
+  // measured either: no permit feed was examined for any of them at this stage,
+  // so there is not even an argument to reject.
   //
   // ⚠️ AMENDED 2026-08-08 — this note used to read "every OTHER city in the
   // registry has a row here". That was true of the 16-city registry and became

@@ -2,6 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { handler } from '../parcel'
 import { mockArcgisFetch, ARCGIS_ERROR_200 } from './providers/__fixtures__'
 import { bostonRoutes } from './providers/__fixtures__/boston'
+import { LIVE_CITIES } from './parcel'
+import {
+  CITIES,
+  CITIES_WITH_SPECIFIC_HURDLES,
+  CITIES_WITH_MEASURED_PERMITS,
+} from '../../../src/config/cities'
+import { cityCostIndex } from '../../../src/config/estimates'
+import { isInBbox } from '../../../src/types/parcel'
 
 const callHandler = (qs: Record<string, string> = {}) =>
   handler({
@@ -307,5 +315,74 @@ describe('parcel handler — resilience', () => {
     const res = await callHandler({ lat: '42.3601', lng: '-71.0589' })
     expect(res.statusCode).toBe(404)
     expect(JSON.parse(res.body).code).toBe('NO_PARCEL')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE WIRING BUNDLE
+//
+// Adding a city touches several files that have no compile-time relationship to
+// one another, and until 2026-08-09 nothing checked that they moved together.
+// `parkingRules.test.ts` covered the parking table and `redTapeIndex.test.ts`
+// the lifecycle gaps, but the DISPATCHER and the COST INDEX were unguarded: a
+// `CITIES` entry with `live: true` and no dispatcher row typechecks perfectly
+// and fails only in front of a user, as `OUT_OF_BBOX` for a city the app is
+// advertising in its own menu.
+//
+// These are the same shape as the guards this repo already relies on
+// (`hurdles.test.ts` reading branches back out of the code,
+// `citiesWithoutParkingRule` deriving its list rather than holding one): the
+// registry is the single source of truth and everything else is checked
+// AGAINST it, in both directions, so neither an orphan nor an omission passes.
+describe('city registry — every live city is wired end to end', () => {
+  it('every live registry city has a dispatcher row, and no dispatcher row is an orphan', () => {
+    const live = CITIES.filter((c) => c.live).map((c) => c.slug).sort()
+    expect([...LIVE_CITIES].sort()).toEqual(live)
+  })
+
+  // Without this, a missing index silently becomes `undefined` in the cost
+  // multiplication. That is not a crash — it is a NaN or a dropped factor,
+  // which is a plausible-looking number, and rule 18 says those are the ones
+  // that survive review.
+  it('every live registry city has a cost index, and no cost index is an orphan', () => {
+    const live = CITIES.filter((c) => c.live).map((c) => c.slug).sort()
+    expect(Object.keys(cityCostIndex).sort()).toEqual(live)
+    for (const slug of live) {
+      const v = cityCostIndex[slug]
+      expect(typeof v, `${slug} cost index`).toBe('number')
+      expect(Number.isFinite(v), `${slug} cost index`).toBe(true)
+      // A location factor is a multiplier around 1.0. The band is deliberately
+      // wide — it is here to catch a percentage pasted in unscaled (86.0 rather
+      // than 0.86), which is the actual failure mode of this table's source.
+      expect(v, `${slug} cost index looks unscaled`).toBeGreaterThan(0.5)
+      expect(v, `${slug} cost index looks unscaled`).toBeLessThan(2)
+    }
+  })
+
+  // The bbox is the coarse first cut, never the jurisdiction gate — but a bbox
+  // that is inverted or empty refuses the whole city, so it is worth pinning.
+  it('every live city has a non-degenerate bbox and a landmark inside it', () => {
+    for (const c of CITIES.filter((x) => x.live)) {
+      expect(c.bbox.north, `${c.slug} bbox`).toBeGreaterThan(c.bbox.south)
+      expect(c.bbox.east, `${c.slug} bbox`).toBeGreaterThan(c.bbox.west)
+      const [lng, lat] = c.landmark
+      expect(isInBbox(c.bbox, lat, lng), `${c.slug} landmark outside its own bbox`).toBe(true)
+      const [clng, clat] = c.center
+      expect(isInBbox(c.bbox, clat, clng), `${c.slug} center outside its own bbox`).toBe(true)
+    }
+  })
+
+  // Both `CITIES_WITH_*` lists drive a "partial coverage" marker in Compare, so
+  // a typo in either reads as a coverage claim about a city that does not
+  // exist. `hurdles.test.ts` and `timeline.test.ts` check each list against
+  // what is actually encoded; this checks the slugs are real.
+  it('no coverage list names a slug that is not in the registry', () => {
+    const known = new Set(CITIES.map((c) => c.slug))
+    for (const slug of CITIES_WITH_SPECIFIC_HURDLES) {
+      expect(known.has(slug), `CITIES_WITH_SPECIFIC_HURDLES names unknown slug ${slug}`).toBe(true)
+    }
+    for (const slug of CITIES_WITH_MEASURED_PERMITS) {
+      expect(known.has(slug), `CITIES_WITH_MEASURED_PERMITS names unknown slug ${slug}`).toBe(true)
+    }
   })
 })

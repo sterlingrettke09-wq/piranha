@@ -174,12 +174,58 @@ const EXTRA: Record<string, [number, number]> = {
   // the returned attribute instead. The returned lot size, 7,274, is
   // SHAPE.AREA verbatim — the provider converts nothing.
   atlanta: [33.751563, -84.313204],
+
+  // ── The 2026-08-09 cohort ────────────────────────────────────────────────
+  // All three chosen from a PARCEL QUERY on the layer's own attributes, then
+  // taken as the polygon's own centroid rather than an address pin, and all
+  // three stability-checked over repeated isolated calls before adoption.
+  //
+  // All three cities also gained a CITY-BOUNDARY GATE in this session (their
+  // parcel layers are regional and each has a neighbouring jurisdiction inside
+  // its bbox), so a probe point must now be inside the city POLYGON and not
+  // merely inside the rectangle. Each point below was re-checked against its
+  // city's boundary layer, not assumed from the bbox.
+
+  // 7322 THURSTON DR — R-7.5(A), 7,610 sq ft, account 00000213379000000,
+  // privately owned, SPTBCODE 'A11' (single family residence), FEMA zone X, no
+  // historic / SUP / PD overlay. Filter: CITY='DALLAS', SPTBCODE='A1',
+  // AREA_FEET 7,600–8,600. Verified developable through the real
+  // `assessDevelopability` → { developable: true, reason: null }, and stable
+  // over four isolated calls 400 ms apart — one distinct
+  // (ACCT, AREA_FEET, LONG_ZONE_DIST) triple.
+  dallas: [32.833874, -96.851017],
+
+  // 4617 PROVIDENCE LN — R-1, 7,064 sq ft, parcel 13931210029, privately owned,
+  // single-family (LUCODE 110, CONSTYR 1961), FEMA zone X. Filter: ZONE='R-1'
+  // AND SHAPE_Area 7,000–11,000, then LUCODE 110 and STRCITY='LV'.
+  //
+  // ⚠️ The lot figure is SHAPE_Area, never LOTSQFT. On this parcel LOTSQFT reads
+  // 1,690 — the RESIDENTIAL BUILDING floor area — so a probe reading it would
+  // have recorded a 7,064 sq ft lot as 1,690 and looked entirely plausible.
+  // Stability verified through the provider's exported entry point: two
+  // independent runs of four isolated calls, eight in all, every one returning
+  // parcel 13931210029 at 7,064 sq ft, R-1. One distinct value.
+  lasvegas: [36.169485, -115.203709],
+
+  // 805 W AMELIA AVE — R1-6, 7,025 sq ft, APN 110-11-022, privately owned, no
+  // overlay, no historic listing, FEMA zone X. Filter: DESCRIPTION LIKE 'SFR%',
+  // 7,000–11,000 sq ft, inside a central-Phoenix envelope.
+  //
+  // Neighbouring candidates were rejected because they fall inside the Campus
+  // Vista Historic District — the same reasoning that moved the Columbus probe
+  // out of the University District overlay, and for the same reason: a probe
+  // sitting under an overlay measures the overlay path on every run and never
+  // exercises the base table the city was built around. Stability verified
+  // through the provider entry point over six isolated calls 400 ms apart:
+  // one distinct 110-11-022 | 7025 | R1-6 | 30 ft | 2 storeys.
+  phoenix: [33.493479, -112.08442],
 }
 
 const CITIES = [
   'boston', 'nyc', 'chicago', 'sf', 'seattle', 'dc', 'austin', 'la',
   'denver', 'minneapolis', 'philadelphia', 'miami', 'sandiego', 'sanjose', 'nashville',
   'raleigh', 'milwaukee', 'columbus', 'charlotte', 'atlanta',
+  'dallas', 'lasvegas', 'phoenix',
 ]
 
 interface Row {

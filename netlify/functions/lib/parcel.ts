@@ -20,6 +20,9 @@ import {
   COLUMBUS_BBOX,
   CHARLOTTE_BBOX,
   ATLANTA_BBOX,
+  DALLAS_BBOX,
+  LAS_VEGAS_BBOX,
+  PHOENIX_BBOX,
   type Bbox,
   type ParcelInfo,
 } from '../../../src/types/parcel'
@@ -46,6 +49,9 @@ import { getMilwaukeeParcelInfo } from './providers/milwaukee'
 import { getColumbusParcelInfo } from './providers/columbus'
 import { getCharlotteParcelInfo } from './providers/charlotte'
 import { getAtlantaParcelInfo } from './providers/atlanta'
+import { getDallasParcelInfo } from './providers/dallas'
+import { getLasVegasParcelInfo } from './providers/lasvegas'
+import { getPhoenixParcelInfo } from './providers/phoenix'
 import { computeEnvelope } from './envelope'
 import { resolveBostonFar } from './zoning/boston'
 
@@ -183,6 +189,9 @@ const CITIES: Record<string, CityConfig> = {
   columbus: { bbox: COLUMBUS_BBOX, label: 'Columbus', provider: getColumbusParcelInfo },
   charlotte: { bbox: CHARLOTTE_BBOX, label: 'Charlotte', provider: getCharlotteParcelInfo },
   atlanta: { bbox: ATLANTA_BBOX, label: 'Atlanta', provider: getAtlantaParcelInfo },
+  dallas: { bbox: DALLAS_BBOX, label: 'Dallas', provider: getDallasParcelInfo },
+  lasvegas: { bbox: LAS_VEGAS_BBOX, label: 'Las Vegas', provider: getLasVegasParcelInfo },
+  phoenix: { bbox: PHOENIX_BBOX, label: 'Phoenix', provider: getPhoenixParcelInfo },
 }
 
 export const LIVE_CITIES = Object.keys(CITIES)

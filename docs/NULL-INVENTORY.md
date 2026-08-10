@@ -14,7 +14,7 @@ level up.
 **This is the artifact that says whether the tool is fit to ship — not the test
 count.** 709 tests pass whether a city resolves a FAR or assumes one.
 
-## Verified 2026-08-09
+## Verified 2026-08-10
 
 | City | District probed | Outcome | Verdict | What it means |
 |---|---|---|---|---|
@@ -38,8 +38,11 @@ count.** 709 tests pass whether a city resolves a FAR or assumes one.
 | columbus | `R4` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
 | charlotte | `N1-C` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
 | atlanta | `R-4` | **RESOLVED** | AS_OF_RIGHT | FAR 0.5 from published data |
+| dallas | `R-7.5(A)` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
+| lasvegas | `R-1` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
+| phoenix | `R1-6` | **UNCONSTRAINED (an answer)** | AS_OF_RIGHT | code affirmatively imposes no FAR; lot area is a placeholder |
 
-**7 resolved from published data · 8 unconstrained (an answer) · 5 gaps · 0 probe failures.**
+**7 resolved from published data · 11 unconstrained (an answer) · 5 gaps · 0 probe failures.**
 
 ## What a "gap" costs the user, post fail-closed audit
 

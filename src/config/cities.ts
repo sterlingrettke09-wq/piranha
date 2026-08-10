@@ -19,6 +19,9 @@ import {
   COLUMBUS_BBOX,
   CHARLOTTE_BBOX,
   ATLANTA_BBOX,
+  DALLAS_BBOX,
+  LAS_VEGAS_BBOX,
+  PHOENIX_BBOX,
   type Bbox,
 } from '../types/parcel'
 
@@ -202,6 +205,94 @@ export const CITIES: City[] = [
     // evidence here is a live 200 plus the page's own title — weaker than
     // Columbus's canonical tag, and recorded as such.
     zoningLayer: undefined },
+
+  // ── The 2026-08-09 cohort ────────────────────────────────────────────────
+  // Same provenance discipline as the cohort above, and one thing that is NEW to
+  // all three and stated once rather than per city:
+  //   · Each has a regional parcel layer and a city-only zoning layer, and each
+  //     has a neighbouring jurisdiction INSIDE its bounding box. Their providers
+  //     therefore fetch a CITY-BOUNDARY POLYGON as a gate and REFUSE a point
+  //     outside it — the columbus.ts pattern, now the third, fourth and fifth
+  //     instance. See src/types/parcel.ts for why the gate is a polygon and not
+  //     a `CITY = '…'` attribute in any of the three; it was cross-tabbed
+  //     against each zoning layer and the attribute lost twice and did not exist
+  //     the third time.
+  //   · center/landmark are MEASURED — the area-weighted centroid of each
+  //     city's own downtown-district polygons, the same instrument the
+  //     2026-08-08 cohort used.
+  //   · zoom is NOT a measurement. It is a display choice set from each city's
+  //     bbox span to match cities already in this file with comparable spans.
+  //   · zoningLayer is undefined for all three. For Las Vegas and Phoenix the
+  //     reason is the same CSP gap Raleigh's entry records — netlify.toml's
+  //     connect-src carries no lasvegasnevada.gov or phoenix.gov host (grepped,
+  //     zero matches) — and NOT a CORS finding, since no cross-origin probe was
+  //     run against either. Dallas is the exception and its reason is different
+  //     and worse; it is stated at its own entry rather than folded in here.
+
+  { slug: 'dallas', stateLabel: 'Dallas, TX', name: 'Dallas', live: true, center: [-96.8017, 32.7790], zoom: 12.4, bbox: DALLAS_BBOX, permitName: 'Dallas Planning & Development', permitUrl: 'https://dallascityhall.com/departments/sustainabledevelopment/Pages/default.aspx', tagline: 'A skyline the prairie never asked for.', landmark: [-96.8094, 32.7757],
+    // center: area-weighted centroid of the CA-1(A) Central Area District
+    // polygon (the code's own CBD, 686.7 mapped acres), computed from its rings
+    // in 4326 with holes subtracted — not the extent midpoint, which is a
+    // bounding-box artifact. Cross-checked: adding CA-2(A) and PD-619 (the other
+    // downtown districts, 69.8 ac) moves it 0.07 km, to -96.801011, 32.779415.
+    // landmark: polygon centroid of 300 Reunion Blvd (Reunion Tower / Hyatt
+    // Regency), identified FROM THE DATA rather than from memory — the parcel row
+    // at that point returns ST_NUM 300, ST_NAME 'REUNION BLVD', BLDG_CL 'HOTEL'.
+    // 0.9 km from center.
+    // permitUrl: read, not guessed. /departments/developmentservices/Pages/
+    // default.aspx and /departments/development-services/... were tried FIRST
+    // and both returned 404 — which proves those guesses wrong, not that a
+    // development-services department is absent (rule 8). The URL above returns
+    // 200 with <title>Planning and Development</title> and its own
+    // <link rel="canonical"> (the canonical prints a ':443' SharePoint artifact,
+    // stripped here).
+    //
+    // ⚠️ zoningLayer is undefined for a reason that is NOT the usual CSP gap, and
+    // this matters because the obvious fix would ship a false map. Two things
+    // were probed and both came back fine: CORS is OPEN (a GET of
+    // .../MapServer/15/query?f=geojson with an Origin header returns 200 with
+    // access-control-allow-origin echoing it, probed twice), and the CSP gap is
+    // real but closable. The BLOCKING reason is the shared classifier. Running
+    // `classifyZoningFamily` over all 60 live ZONE_DIST values gives 45 'other',
+    // 8 'residential', 7 'commercial', 0 'industrial' — and one of the eight
+    // "residential" hits is RR, which in Dallas is the REGIONAL RETAIL district,
+    // 3,275 acres, matched by the classifier's Boston `^RR` convention. Shipping
+    // the overlay would paint 3,275 acres of retail green while leaving ~9,600
+    // acres of MF districts neutral. That is a false claim on a map, so the
+    // overlay stays off until classifyZoningFamily learns Dallas's vocabulary.
+    // If it is extended, the entry is { url: '…/sdc_public/Zoning/MapServer/15',
+    // codeField: 'LONG_ZONE_DIST' } plus gis.dallascityhall.com in the CSP.
+    zoningLayer: undefined },
+
+  { slug: 'lasvegas', stateLabel: 'Las Vegas, NV', name: 'Las Vegas', live: true, center: [-115.1541, 36.1729], zoom: 12.4, bbox: LAS_VEGAS_BBOX, permitName: 'Las Vegas Building & Safety', permitUrl: 'https://www.lasvegasnevada.gov/Business/Planning-Zoning/Building-Safety', tagline: 'A city the desert was not asked about.', landmark: [-115.1541, 36.1729],
+    // center/landmark: the SHAPE_Area-weighted centroid of all 1,755 Form-Based
+    // Code transect polygons (ZONE IN T3-N…T6-UGL, 866.9 acres) on
+    // DevelopmentServices/Zoning/MapServer/0, computed 2026-08-09 from geometry
+    // returned at outSR=4326 — the same method Atlanta's SPI-1 centre used. The
+    // FBC area IS downtown Las Vegas: LVMC Appendix F establishes the DTLV-O
+    // over it. Deliberately NOT the Strip, which is unincorporated Clark County
+    // and returns no City zoning at all (measured: 8 of 8 sampled points) — and
+    // which the jurisdiction gate now refuses outright. The extent midpoint of
+    // the same set is [-115.146218, 36.172696]; the area-weighted figure is used
+    // because it is less sensitive to one outlying polygon.
+    // permitUrl: `/Government/Departments/Building-Safety` was tried first and
+    // 301-redirects to the URL above, which returns 200 with
+    // <title>Building & Safety</title>. lasvegasnevada.gov publishes NO
+    // <link rel="canonical"> anywhere (checked on three pages), so the evidence
+    // is a live redirect target plus the page's own title — weaker than
+    // Columbus's canonical tag, and recorded as such.
+    zoningLayer: undefined },
+
+  { slug: 'phoenix', stateLabel: 'Phoenix, AZ', name: 'Phoenix', live: true, center: [-112.074124, 33.4528], zoom: 12.2, bbox: PHOENIX_BBOX, permitName: 'Phoenix Planning & Development Department', permitUrl: 'https://www.phoenix.gov/administration/departments/pdd.html', tagline: 'A desert grid, running out of edges.', landmark: [-112.074124, 33.4528],
+    // center/landmark: acres-weighted centroid of the 104 Downtown Code (DTC-*)
+    // polygons on Public/Zoning/MapServer/0 — 1,248.9 acres. Measured, not
+    // eyeballed.
+    // permitUrl: read from the department page's own <link rel="canonical">,
+    // which resolves https://www.phoenix.gov/pdd to the URL above. Page <title>
+    // is "Planning and Development Department | City of Phoenix". Same strength
+    // of evidence as Raleigh's and Columbus's canonical tags, and stronger than
+    // Atlanta's title-only line.
+    zoningLayer: undefined },
 ]
 
 export const DEFAULT_CITY = 'boston'
@@ -262,6 +353,27 @@ export function cityName(slug: string): string {
 // not. It says a city has SOME encoded specifics, never that the encoding is
 // complete — no city's is. Each branch names its own gaps and unevaluable limbs
 // inline; that is where coverage actually lives.
+// ⚠️ dallas, lasvegas and phoenix went live 2026-08-09 and are DELIBERATELY
+// ABSENT from this list. Each is otherwise fully wired — provider, zoning
+// module, dispatcher, jurisdiction gate, parking rule, cost index, probe — so
+// their absence here is a decision, and this is where a reader will look for it.
+// No city-specific hurdle was encoded for any of the three because none was
+// researched; they get the generic floor (historic review, flood, permit fees,
+// demolition), which is why their probes return 3 hurdles rather than more.
+//
+// Real candidates exist for each and are NOT verified, recorded so the next
+// session starts from a list rather than from scratch: Dallas — the residential
+// proximity slope (§ 51A-4.412), development impact review at ≥6,000 trips/day
+// (§ 51A-4.803), SUP conditions (§ 51A-4.219, 1,338 mapped footprints), historic
+// overlay certificates (§ 51A-4.501, 158 footprints) and the 18% of the city
+// under Chapter 51P planned developments. Las Vegas — LVMC 19.10.150's HD-O
+// historic overlay, which CANNOT be gated because no layer publishes it (all 19
+// service folders enumerated 2026-08-09; Clark County's lookalike was tested and
+// rejected as the County's overlay over County land), and the Regional Flood
+// Control District's HCDDM referenced by § 19.08.040(E). Phoenix — not surveyed.
+// Each needs its own read before it becomes a gate: an unverified hurdle that
+// over-fires is the DC disturbed-area defect, and one that under-fires is
+// invisible.
 export const CITIES_WITH_SPECIFIC_HURDLES = [
   'atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dc',
   'denver', 'la', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc',
