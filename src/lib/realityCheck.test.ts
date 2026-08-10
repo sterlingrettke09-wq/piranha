@@ -71,7 +71,25 @@ describe('buildRealityCards', () => {
     expect(cards[0].big).toBe('72%')
     expect(cards[0].kicker).toBe('Board approval rate')
     expect(cards[0].sub).toContain('n=410')
+    // No label → the variance-only default. Only sound for cities whose track
+    // IS variances alone (Boston, SF).
+    expect(cards[0].sub).toContain('variance requests')
     expect(cards[0].soWhat).toContain('usually yes')
+  })
+
+  it("relief card renders the entry's own denominator label, not the variance default", () => {
+    // NYC's BZ calendar mixes §72-21 variances with §73 special permits, and
+    // DC's rate is whole-board (variances + special exceptions). For those
+    // entries the pipeline ships a `label` naming the real denominator, and the
+    // rendered line MUST use it — "variance requests" would be a false claim.
+    const cards = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        reliefOdds: { ...RELIEF, label: 'variance and special-permit applications' },
+      }),
+    )
+    expect(cards[0].sub).toContain('variance and special-permit applications')
+    expect(cards[0].sub).not.toContain('variance requests')
   })
 
   it('parking-only (abolished): a city that abolished minimums yields a None card', () => {

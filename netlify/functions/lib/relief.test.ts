@@ -31,6 +31,26 @@ describe('reliefOddsFor', () => {
       expect(odds.window.length).toBeGreaterThan(0)
       expect(typeof odds.vintage).toBe('string')
       expect(odds.vintage.length).toBeGreaterThan(0)
+      if (odds.label !== undefined) {
+        expect(typeof odds.label).toBe('string')
+        expect(odds.label.length).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('cities whose track is broader than variances MUST carry a denominator label', () => {
+    // The realityCheck card renders `label ?? 'variance requests'`. For NYC
+    // (BZ calendar: variances + §73 special permits) and DC (whole-board:
+    // variances + special exceptions) the fallback would be a FALSE published
+    // claim, so a missing label on these entries is an impossible state, not a
+    // style choice. If a quarterly refresh ever drops the label, this fails
+    // before the false line ships.
+    for (const city of ['nyc', 'dc'] as const) {
+      const odds = reliefOddsFor(city)
+      expect(odds, `${city} should be present`).toBeDefined()
+      expect(odds?.label, `${city} must label its denominator`).toBeTruthy()
+      // And the label must not itself claim variances-only.
+      expect(odds?.label).not.toBe('variance requests')
     }
   })
 

@@ -15,6 +15,15 @@ export interface ReliefOdds {
   window: string
   /** Provenance string: dataset, date filter, compute date, granted/denied split. */
   vintage: string
+  /** What the denominator IS, in user-facing words — rendered verbatim in the
+   *  reality-check line. Absent for cities whose track is variances alone
+   *  (Boston, SF — the renderer falls back to "variance requests"); REQUIRED
+   *  wherever the track is broader (NYC mixes §72-21 variances with §73 special
+   *  permits; DC's is a whole-board rate over variances + special exceptions),
+   *  because a caveat that lives only in the vintage JSON string is a caveat
+   *  nobody renders. The JSON slot name `variance` is historical schema, not
+   *  the claim; this label is the claim. */
+  label?: string
 }
 
 type ReliefStats = Record<string, { variance?: ReliefOdds } | undefined>

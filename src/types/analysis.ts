@@ -145,7 +145,7 @@ export interface AnalysisResult {
    *  context, not a prediction for any specific project. Attached only when the
    *  verdict needs relief (feasibility.path === 'variance') and the city's
    *  offline relief pipeline produced a trustworthy figure; absent otherwise. */
-  reliefOdds?: { grantRate: number; n: number; window: string; vintage: string }
+  reliefOdds?: { grantRate: number; n: number; window: string; vintage: string; label?: string }
   hurdles: Hurdle[]
   costs: { hard: number; soft: number; permit: number; demolition: number; impact: number; total: number; currency: 'USD' }
   timeline: {

@@ -91,22 +91,29 @@ describe('storyFor', () => {
     expect(story).toContain('about 41 months')
   })
 
-  // ── Branch 4: FALLBACK from lifecycle months alone ───────────────────────
-  it('falls back to the lifecycle line for a city with no extras (DC)', () => {
+  // DC moved from branch 4 to branch 2 on 2026-08-10, when its relief pipeline
+  // landed (scripts/relief/dc.mjs: whole-board BZA decided-cases share, 97.4%
+  // n=617, matured filing cohort). Branch 4 (no extras at all) is still
+  // exercised by the synthetic bare-city test at the bottom of this file.
+  it('uses the says-yes angle for DC now that its relief rate is measured', () => {
     const dc = byCity('dc')
-    // DC: no measured permit data, no relief stat, partial (not abolished) parking.
     expect(dc.measuredMedianMonths).toBeNull()
-    expect(dc.reliefGrantRate).toBeNull()
-    expect(dc.parkingStatus).not.toBe('abolished')
+    expect(dc.reliefGrantRate).toBeCloseTo(0.974, 3)
     const story = storyFor(dc, ranked)
+    expect(story).toContain('says yes')
+    expect(story).toContain('97%')
+    // Lifecycle (40) and the real variance adder (5 months) are interpolated.
     expect(story).toContain('about 40 months')
-    expect(story).toContain('land, not the labor')
-    // The real variance adder (5 months) is interpolated.
     expect(story).toContain('5 months')
   })
 
-  // ⚠️ NYC WITHDRAWN 2026-08-09 — this test is back to asserting the 54-month
-  // LIFECYCLE estimate, which is what it asserted before 2026-08-06.
+  // ⚠️ NYC's PERMIT figure remains WITHDRAWN (2026-08-09) — the history below
+  // stands. What changed on 2026-08-10: NYC landed a RELIEF grant rate (BSA BZ
+  // calendar, action-date framed, 98.1% n=210 — scripts/relief/nyc.mjs), so the
+  // story now leads with the says-yes angle (branch 2) instead of the bare
+  // lifecycle fallback. Branch 2 still interpolates the 54-month lifecycle
+  // ESTIMATE and must still never resurrect the withdrawn 8-month measurement —
+  // every assertion below is unchanged.
   //
   // Between those dates it asserted "about 8 months", on the strength of median
   // 8.3 over n=4,403 DOB NOW initial New Building filings. That figure was a
@@ -122,11 +129,13 @@ describe('storyFor', () => {
   // as a measurement is not. Note that 8 months is the FLATTERING direction: the
   // withdrawal makes NYC look slower, which is why nothing in the copy was
   // pushing back on it.
-  it('falls back to the lifecycle estimate for NYC — its measured figure was withdrawn', () => {
+  it('leads NYC with the relief angle while its withdrawn permit figure stays absent', () => {
     const nyc = byCity('nyc')
     expect(nyc.measuredMedianMonths).toBeNull()
     expect(nyc.measuredPermitN).toBeNull()
     const story = storyFor(nyc, ranked)
+    expect(story).toContain('says yes')
+    expect(story).toContain('98%')
     expect(story).toContain('about 54 months')
     expect(story).not.toContain('about 8 months')
     // And it must not claim to issue a permit in any measured time at all.

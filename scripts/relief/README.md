@@ -33,6 +33,8 @@ One command per city. No dependencies beyond Node 18+ (global `fetch`):
 ```bash
 node scripts/relief/boston.mjs
 node scripts/relief/sf.mjs
+node scripts/relief/nyc.mjs
+node scripts/relief/dc.mjs
 ```
 
 Each script is **idempotent**: it reads the existing `reliefStats.json`, merges
@@ -58,10 +60,26 @@ anonymously.
       "window": "2022–2026",
       "vintage": "closed 2022-01-01 onward; computed 2026-08-10; data.sfgov.org … ; 395 granted, 11 denied"
     }
+  },
+  "nyc": {
+    "variance": {
+      // ...same fields, plus:
+      "label": "variance and special-permit applications"
+    }
   }
   // ...other cities merge in alongside
 }
 ```
+
+**`label` is the published denominator, and it renders.** The reality-check card
+prints `granted N% of <label>` (falling back to "variance requests" only when
+the field is absent). The `variance` KEY is a schema slot, not a claim: where a
+city's cleanest track is broader than variances — NYC's BZ calendar (variances
+AND §73 special permits), DC's whole-board rate (variances AND special
+exceptions) — the script MUST ship a `label` naming the real denominator, and
+`relief.test.ts` fails if nyc/dc ever lose theirs. A caveat that lives only in
+the `vintage` JSON string is a caveat nobody renders — that is the defect that
+got five permit figures withdrawn.
 
 ## Sanity gates (every script)
 
@@ -84,6 +102,15 @@ anonymously.
   assert that every record in the window carries a terminal status, with a
   fail-closed vocabulary so an unrecognised value halts the run. The threshold is
   zero — it is the claim itself, not a tolerance.
+
+  *The one permitted exception is DC*, where the layer publishes **no**
+  resolution date of any kind, so a resolution frame does not exist. `dc.mjs`
+  instead scores a **matured filing cohort** (filings ≥ 2 years old), publishes
+  it explicitly as a *decided-cases share*, requires the residual unresolved
+  share to stay under 5% (measured 1.5%; SF's retracted figure hid 21.7%), and
+  writes the adversarial floor into the vintage every run. That is a mitigated
+  version of the defect, disclosed — not the defect's absence. Do not copy the
+  DC frame to a city that has any resolution stamp.
 - The outcome field must be **unambiguous**: map only the statuses that are a
   board ruling on the merits to granted/denied, and **exclude** withdrawn,
   deferred, cancelled, informational, and still-in-progress records from the
@@ -98,6 +125,8 @@ anonymously.
 |------|--------|--------|-----------:|------------:|--------|---------|
 | **Boston** | `boston.mjs` | **✅ landed** (2026-06-10) | **92.7%** | **3820** | 2022–2026 | CKAN `0f0fa8c2-…` — Zoning Board of Appeal Tracker; `decision` ∈ {AppProv, Approved} granted, {DeniedPrej, Denied} denied; **framed on `final_decision_date` ≥ 2022**. 3542 granted, 278 denied. |
 | **SF** | `sf.mjs` | **✅ landed — RESTATED 2026-08-09** | **97.3%** | **406** | 2022–2026 | Socrata `y673-d69b` — Planning Department Records · Non-Projects; `record_type = 'VAR'`; `record_status` ∈ {Closed - Approved, Approved} granted, {Closed - Disapproved} denied; **framed on `close_date` ≥ 2022** (was `open_date` — see below). 395 granted, 11 denied. |
+| **NYC** | `nyc.mjs` | **✅ landed** (2026-08-10) | **98.1%** | **210** | 2022–2026 | Socrata `yvxd-uipr` — BSA Applications Status; `application = 'BZ'` **whole track, labelled "variance and special-permit applications"** (strict §72-21 is n=93 < 100; widening by regex to n=102 would let a string-match decide the gate — refused); **framed on the action date `date`** — the feed has NO pending value (pending cases are absent rows, so a filing denominator cannot be audited; the tell: 31 of 36 cases filed in 2025 already show Granted). Window end measured each run: min(`date`) of the transient `Decision` (acted-on, outcome not yet coded) rows, so partially-coded sessions are never scored. Excludes Withdrawn (49) and Dismissed (10, procedural). 206 granted, 4 denied. |
+| **DC** | `dc.mjs` | **✅ landed — CAVEATED** (2026-08-10) | **97.4%** | **617** | 2022–2024 (filings) | DCGIS `Planning_Landuse_and_Zoning_WebMercator/MapServer/34` — Zoning Cases; `CASE_TYPE='BZA'`; **deduped rows→cases** (2,003 rows / 1,121 cases since 2022; matured window 1,200 rows / 688 cases; 0 outcome conflicts — script halts if any appear); **WHOLE-BOARD rate, labelled "zoning relief requests (variances and special exceptions combined)"** — every field that could split them (RELIEFSOUGHT, CASE_TYPE_RELIEF, BZAPURSUANTTO, BZARELIEFOF) is 0/2,003 populated 2022+, and the label renders on the user-facing card; **matured filing cohort** (`DATEFILED` is the layer's only date — filings ≥ 2y before run), residual unresolved 10/688 = 1.5%, gated ≤ 5%, adversarial floor 95.9% stated in the vintage. `Grant in Part` prefix → granted (Boston's AppProv treatment). 601 granted, 16 denied. |
 
 ### ⚠️ SF was restated 2026-08-09 — the previous 97.6% / n=289 was censored
 
@@ -143,17 +172,31 @@ verified against the live distinct-value histogram before being hard-coded.
 ## Other cities (still TODO — one script each)
 
 Follow the same probe → outcome-map → sanity-gate → merge pattern, mapping each
-portal's relief/appeal outcome field to granted/denied. Portals to start from:
+portal's relief/appeal outcome field to granted/denied. The 2026-08 relief
+survey (re-verified against the live endpoints before NYC/DC landed) classified
+most remaining cities as structurally NOT obtainable — the notes below record
+why, so nobody re-spends the research:
 
-- **NYC** — BSA (Board of Standards & Appeals) decisions. Check NYC Open Data
-  (`data.cityofnewyork.us`) for a BSA case/decision dataset; CPC/ULURP actions
-  are a separate, more complex track (use-permit, not variance).
-- **Chicago** — Zoning Board of Appeals decisions on `data.cityofchicago.org`.
-- **Seattle** — SDCI land-use decisions / Hearing Examiner; check
-  `data.seattle.gov` and the SDCI decisions feed.
-- **DC** — BZA (Board of Zoning Adjustment) orders via DC Open Data
-  (`opendata.dc.gov`) / the Office of Zoning IZIS case records.
-- **Austin** — Board of Adjustment cases on `data.austintexas.gov`.
+- **Chicago** — ZBA outcomes exist only as monthly resolution PDFs; no dataset.
+- **Seattle** — `data.seattle.gov` `ht3q-kdvx` has a `decisiondate`, but
+  `statuscurrent` is pure workflow (Completed/Canceled/Withdrawn/Issued…): **no
+  granted/denied value exists in the domain**. Outcomes are SDCI
+  Notice-of-Decision PDFs / Hearing Examiner documents.
+- **Philadelphia** — `appeals` on phl.carto.com has a perfect schema
+  (`decision`, `decisiondate`) but the values degraded to `Complete` (2025: 836
+  `Complete` vs 22 `Granted` / 1 `Denied` / 3 `Refused`); ~3% of 2022+ rows
+  carry a real disposition, and that 3% is not a random sample.
+- **Austin** — `data.austintexas.gov` `ykxk-t5y9` outcomes look usable until
+  the dates: `status_date` maxes 2019-06-20 across the whole 3,291-row table
+  (2026 cases carry 2019 stamps). No sound time axis; `Closed` + null ≈ 30% of
+  the table unresolvable. Do not ship.
+- **LA / Denver / Minneapolis / Raleigh / Miami** — PDF/agenda only, no outcome
+  dataset. **San Diego / San Jose / Nashville** — datasets exist, outcome field
+  doesn't (no granted/denied value in the status domain, or the field sits on
+  the wrong board).
+- **Milwaukee / Columbus / Charlotte / Atlanta** — never surveyed (added
+  2026-08-09, after the survey ran). A gap, not an answer — do not record these
+  as negatives.
 - **LA** — Zoning Administrator / Area Planning Commission determinations; check
   `data.lacity.org` and the Planning case-tracking (PCTS) exports.
 - **Denver** — Board of Adjustment for Zoning Appeals; check

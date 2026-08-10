@@ -14,5 +14,23 @@
       "window": "2022–2026",
       "vintage": "closed 2022-01-01 onward; computed 2026-08-10; data.sfgov.org Planning Department Records - Non-Projects (record_type VAR); framed on close_date (\"Date the record was closed\" — a record-closure stamp, not a decision date; SF publishes none), so pending cases are excluded by construction rather than censored; granted (Closed - Approved/Approved) ÷ decided, excludes withdrawn/cancelled/informational; 395 granted, 11 denied"
     }
+  },
+  "nyc": {
+    "variance": {
+      "grantRate": 0.981,
+      "n": 210,
+      "window": "2022–2026",
+      "label": "variance and special-permit applications",
+      "vintage": "BSA acted 2022-01-01 onward and before 2026-07-13 (earliest not-yet-coded session, measured at run time); computed 2026-08-10; data.cityofnewyork.us BSA Applications Status (application BZ); framed on the action date — the feed has no pending value (pending cases are absent rows), so a filing frame cannot be audited; BZ calendar whole-track: §72-21 variances, §73 special permits, and §11-41 reinstatements/amendments of prior variances (strict §72-21 alone is n=93 < 100 and was NOT widened by regex to pass); granted ÷ decided, excludes withdrawn/dismissed; 206 granted, 4 denied"
+    }
+  },
+  "dc": {
+    "variance": {
+      "grantRate": 0.974,
+      "n": 617,
+      "window": "2022–2024",
+      "label": "zoning relief requests (variances and special exceptions combined)",
+      "vintage": "BZA cases FILED 2022-01-01 … 2024-08-10 (≥ 2y before run — DC publishes no decision date, so the frame is a matured filing cohort, not Boston's decision frame); computed 2026-08-10; DCGIS Zoning Cases MapServer/34 (CASE_TYPE 'BZA', deduped to distinct cases); 1200 rows deduped to 688 cases (0 outcome conflicts); WHOLE-BOARD rate — variances and special exceptions cannot be separated (every relief field is unpopulated 2022+); decided-cases share: granted (Approved/Grant in Part) ÷ decided, excludes withdrawn/dismissed; 601 granted, 16 denied; 10 cases (1.6% of decided+unresolved) remain unresolved (Pending/Closed/blank) — if every one resolved to denial the cohort rate floor is 95.9%"
+    }
   }
 }

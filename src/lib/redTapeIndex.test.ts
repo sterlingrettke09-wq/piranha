@@ -161,10 +161,17 @@ describe('computeRedTapeIndex', () => {
     const boston = ranked.find((r) => r.slug === 'boston')!
     expect(boston.reliefGrantRate).toBeCloseTo(0.927, 3)
     expect(boston.reliefN).toBeGreaterThan(0)
-    // A city with no artifact for a field gets null, never a fabricated number.
+    // DC landed a relief rate 2026-08-10 (whole-board BZA decided-cases share,
+    // matured filing cohort — see scripts/relief/dc.mjs) but still has no
+    // measured permit median.
     const dc = ranked.find((r) => r.slug === 'dc')!
     expect(dc.measuredMedianMonths).toBeNull()
-    expect(dc.reliefGrantRate).toBeNull()
+    expect(dc.reliefGrantRate).toBeCloseTo(0.974, 3)
+    expect(dc.reliefN).toBeGreaterThanOrEqual(100)
+    // A city with no artifact for a field gets null, never a fabricated number
+    // (chicago has no relief pipeline; its permit figure is withdrawn above).
+    expect(chicago.reliefGrantRate).toBeNull()
+    expect(chicago.reliefN).toBeNull()
   })
 
   it('does NOT let parking influence the composite score (informational only)', () => {

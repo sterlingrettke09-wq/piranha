@@ -99,7 +99,12 @@ export function buildRealityCards(result: AnalysisResult): RealityCard[] {
       id: 'relief',
       kicker: 'Board approval rate',
       big: `${pct}%`,
-      sub: `${name}'s board granted ${pct}% of variance requests (${relief.window}, n=${relief.n})`,
+      // The denominator label comes from the city's own pipeline when the track
+      // is broader than variances (NYC: + special permits; DC: whole-board
+      // variances + special exceptions). Hardcoding "variance requests" here was
+      // a claim that would have been false for those cities — the caveat has to
+      // live on the rendered surface, not in the vintage JSON string.
+      sub: `${name}'s board granted ${pct}% of ${relief.label ?? 'variance requests'} (${relief.window}, n=${relief.n})`,
       soWhat: 'The answer is usually yes — the cost is the months it takes to ask.',
     })
   }
