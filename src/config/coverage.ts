@@ -338,11 +338,10 @@ export const ABSENCE_REASONS: Partial<
     relief: RELIEF_NEVER_SURVEYED_AUG9,
   },
   lasvegas: {
-    hurdles: {
-      code: 'not-built',
-      reason:
-        'No city-specific hurdle was researched or encoded; the generic floor applies. The HD-O historic overlay cannot be gated in any case — no layer publishes it (all 19 service folders enumerated).',
-    },
+    // hurdles: DERIVED-PRESENT since 2026-08-10. Titles 19, 4, 14 and 20 were
+    // read and the branch encoded, so the cell fills from
+    // CITIES_WITH_SPECIFIC_HURDLES and carrying a reason here would be both —
+    // which the drift guard rejects.
     lifecycle: LIFECYCLE_NOT_BUILT,
     permits: {
       code: 'not-published',
@@ -352,11 +351,6 @@ export const ABSENCE_REASONS: Partial<
     relief: RELIEF_NEVER_SURVEYED_AUG9,
   },
   phoenix: {
-    hurdles: {
-      code: 'not-built',
-      reason:
-        'No city-specific hurdle was researched or encoded — the city was not surveyed for them; the generic floor applies.',
-    },
     lifecycle: LIFECYCLE_NOT_BUILT,
     permits: {
       code: 'not-published',

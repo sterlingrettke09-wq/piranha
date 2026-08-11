@@ -10,6 +10,11 @@ import { PARKING_RULES } from '../../../src/config/parkingRules'
 import { normalizeMilwaukeeZone } from './zoning/milwaukee'
 import { parseCharlotteZone } from './zoning/charlotte'
 import { dallasZoneKey } from './zoning/dallas'
+import { parseLasVegasZone, resolveLasVegas } from './zoning/lasvegas'
+// Same reason. `resolvePhoenix` carries the `planGoverned` / `countyJurisdiction`
+// flags the Phoenix branch gates on, so a district that changes category in the
+// zoning module changes here too, with no second copy of the claim.
+import { resolvePhoenix } from './zoning/phoenix'
 
 // Curated private-governance sites (no public dataset exists for HOAs/covenants).
 const PRIVATE_SITES: Array<{ bbox: [number, number, number, number]; label: string; note: string }> = [
@@ -90,6 +95,8 @@ const HISTORIC_BODY: Record<string, string> = {
     'Exterior work and new construction inside a Landmark or Historic District, and on any Landmark or Historic Building or Site, need a certificate of appropriateness from the Atlanta Urban Design Commission before permits issue — the code reaches "To erect a new structure or to make an addition to any structure within an Historic District" and the parallel provision for Landmark Districts, plus any request "To vary any applicable regulation" (Atlanta Code § 16-20.007(a)(3)–(4)). There are four types. Ordinary repair and maintenance is a type I signed off by the director; ground-up new construction is a type III "major alteration", which goes to a noticed public hearing with notice published on the City website and in a newspaper at least 30 days before the meeting, the property posted at least 15 days before, and mailed notice to owners within 300 feet (§ 16-20.008(c)(2)). The code clocks the commission rather than the applicant: "Hearings of the commission on type III applications shall be held within 90 days from the date on which the director receives in due form a complete application from the applicant. The commission shall make a decision on said applications within 21 days of the date of the final public hearing" (§ 16-20.008(c)(3)), and failure to decide within those limits "shall be deemed to be approval of the application" with the bureau of buildings directed to issue the dependent permit (§ 16-20.008(c)(6)). Conservation Districts are different and much lighter: no certificate is required, only an advisory written recommendation from the commission, and if it fails to provide one within 30 days of the owner\'s initial application "the bureau of buildings shall issue the permit(s) at the request of the owner without compliance with this subsection" (§ 16-20.007(b)). Where a project is also in one of the affordable-housing overlays, the more stringent of the two regimes controls (§§ 16-36A.001, 16-37.001(3), 16-41.001(3)).',
   dallas:
     'A parcel inside a historic overlay district needs a certificate of appropriateness before any work — and the trigger expressly reaches a vacant lot, because it is written to the SITE and not only to a building: "A person shall not alter a site within a historic overlay district, or alter, place, construct, maintain, or expand any structure on the site without first obtaining a certificate of appropriateness in accordance with this subsection and the regulations and preservation criteria contained and in the historic overlay district ordinance" (Dallas Development Code § 51A-4.501(g)(1)). Two procedures exist and ground-up construction is not on the light one: routine maintenance work is decided by the director within 20 days, and § 51A-4.501(g)(5)(B) enumerates what that means — chimneys on an accessory building or the rear half of a main building, awnings on a rear facade, like-for-like roof replacement, wood or chain-link fence, gutters, skylights and solar panels, storm windows, screens, repainting in an appropriate colour, restoration of original elements, minor repair in the original material, sidewalk repair, cleaning short of sandblasting. Everything else goes to the landmark commission at a public hearing. The commission is clocked, and the clock is a deemed approval: "Within 40 days after a complete application is filed for a noncontributing structure, the landmark commission shall hold a public hearing and shall approve, deny with prejudice, or deny without prejudice the application", "Within 65 days after a complete application is filed for a contributing structure" for the same, and if the commission has not taken final action inside 40 or 65 days "the director shall issue the certificate of appropriateness to the applicant" and the building official shall issue the dependent building permit (§ 51A-4.501(g)(6)(B), (D)). Note that the contributing/noncontributing call is the director\'s, made on receipt, and it decides which clock you are on. The applicant carries the burden of proof, and the standard for a contributing structure is four-part: consistency with the district\'s preservation criteria, and no adverse effect on the structure\'s architectural features, on the district, or on the future preservation, maintenance and use of either (§ 51A-4.501(g)(6)(C)(i)). A denial is appealable to the city plan commission within 30 days on a substantial-evidence standard, and that appeal is the final administrative remedy (§ 51A-4.501(g)(6)(E)); a final denial bars reapplication for the same subject matter for one year unless it was without prejudice or the commission finds changed circumstances (§ 51A-4.501(g)(6)(F)). One trap that bites before designation is final: once notice of the hearing to INITIATE a historic designation has gone out, "No permits to alter or demolish the property may be issued after provision of this notice until action is taken at that initial hearing" (§ 51A-4.501(c)(2)(C)) — a neighbourhood can freeze a permit without the city council ever voting.',
+  phoenix:
+    'A parcel carrying Phoenix’s HP or HP-L zoning suffix is inside a Historic Preservation District, and the certificate is a deferral of the permit rather than a step alongside it: "When a building permit or other permit is sought from the City to alter, remodel, move, build or otherwise develop or landscape property or archaeological sites in the HP District, issuance of the permit shall be deferred until after a Certificate of No Effect or a Certificate of Appropriateness is obtained from the Historic Preservation Officer, or the HP Commission" (Phoenix Zoning Ordinance § 812.A). Note what the trigger reaches — to "build" and to "landscape", and archaeological sites as well as buildings, so a vacant lot and a hardscape plan are both inside it. The route is decided at a mandatory meeting rather than by a form: "The Building Official shall refer applicants for building permits located within an HP District to the HP Officer. The HP Officer shall hold a pre-application meeting with the applicant to review the request and determine whether a certificate of no effect or certificate of appropriateness is required" (§ 812.C). A Certificate of No Effect is the light path and it has three conjunctive conditions — the work is "minor and clearly within adopted design guidelines", any modifications the Officer asks for are agreed to, and "In any case, the proposed work will not diminish, eliminate, or adversely affect the historic character of the subject property or its affect on the district" (§ 812.C.1). Ground-up new construction will not clear "minor", so expect the Certificate of Appropriateness, and expect a hearing at the first instance rather than an over-the-counter approval: "The HP Officer shall review the application and shall conduct a public hearing within twenty days of the filing of an application for a certificate of appropriateness. Notice of application shall be posted on the property at least ten days before the date set for the public hearing" (§ 812.C.3.a). The Officer may grant, deny, or grant with stipulations. Appeals are short and stacked: five days to the HP Commission, which hears it on its next available agenda with fourteen days’ mailed notice and ten days’ posting, then five days from that decision to the City Council, then a special action in Superior Court (§ 812.C.3.b–c, § 812.E). One clock runs your way — "In the event the initial hearing on an appeal to the HP Commission is not held within sixty days of the date the appeal was filed, the application shall be deemed approved" (§ 812.C.3.d) — but it only ever operates on an appeal, never on the first decision. The standard is compatibility rather than replication: the work must be "compatible with the relevant historic, cultural, educational or architectural qualities characteristic of the structure, site or district", judged on "size, scale, massing, proportions, orientation, surface textures and patterns, details and embellishments and the relation of these elements to one another", together with conformance to the Commission’s adopted guidelines (§ 812.D). Two administrative traps: any change to the approved plans after issuance must be resubmitted and re-approved "in the same manner as provided above" (§ 812.F), and "All certificates approved in accordance with this section expire one year from the date of issuance unless work is started within that time" (§ 812.G) — a certificate obtained early can lapse before financing closes. Working without one is enforced by a Stop Work Order at the Officer’s request, backed by an injunction (§ 812.B). Demolition is a separate and much heavier process at § 813, encoded as its own row.',
   // NOTE — no minneapolis entry on purpose. The Minneapolis research returned a
   // citywide DEMOLITION screen (§§ 599.910, 599.920, encoded below) but no
   // section for historic-district design review, so this city falls through to
@@ -100,6 +107,24 @@ const HISTORIC_BODY: Record<string, string> = {
   // a historical resource is present (§ 143.0210(e)(2)) — both encoded in the
   // city branch below — but no section naming a design-review body for a
   // historic district, so it keeps the generic copy rather than an invented one.
+  //
+  // NOTE — no lasvegas entry on purpose, and this one is a REFUSAL rather than
+  // a gap in the research. LVMC 19.10.150 establishes an HD-O overlay, a
+  // Historic Preservation Commission and a Certificate of Appropriateness that
+  // reaches new construction and demolition; it was read in full on 2026-08-10.
+  // The reason there is no entry is that this record is keyed to a row that can
+  // never render for this city: `providers/lasvegas.ts` sets
+  // `overlays.historicDistrict = null` unconditionally, because no layer on the
+  // City's GIS publishes the boundary (19 service folders enumerated 2026-08-09
+  // and re-enumerated 2026-08-10) and Clark County's lookalike was tested and
+  // rejected as the County's overlay over County land.
+  //
+  // An entry here would therefore be code that never runs — and worse, it would
+  // read to anyone scanning this table as coverage. That is rule 5 one level up:
+  // in a Record<string, string>, an entry that cannot render and an entry that
+  // does look exactly the same. The HD-O content is carried instead as an
+  // ungated 'info' row in the lasvegas branch, whose whole subject is that the
+  // boundary is unknown here.
 }
 
 // Design-review months for the historic hurdle. 3 is the module's standing
@@ -160,6 +185,29 @@ const HISTORIC_BODY: Record<string, string> = {
 // required to meet within 15 working days; DC's 120 runs from a referral
 // already made. Neither has an open-ended completeness gate in front of it.
 // Publishing 2 would be publishing the fast half of a two-part process.
+//
+// ⚠️ Phoenix deliberately gets NO override, and like Dallas this one is
+// arguable rather than obvious, so it is written down to be argued. § 812.C.3.a
+// puts a hard twenty-day clock on the first decision — the HP Officer "shall
+// conduct a public hearing within twenty days of the filing of an application"
+// and at it "shall either grant or deny the application, or grant it with
+// stipulations" — and unlike Dallas's the clock runs from FILING rather than
+// from a complete application, with no completeness gate in front of it. Twenty
+// days is 0.66 months, so a reader could reasonably argue for 1 here, which is
+// what Nashville has.
+//
+// It stays at the standing 3 for two reasons, and the first is decisive. The
+// twenty days is a DUTY WITHOUT A REMEDY: the section attaches no consequence to
+// the Officer missing it. The only deemed approval anywhere in Chapter 8 sits on
+// the APPEAL branch — § 812.C.3.d, sixty days for the HP Commission to open an
+// appeal hearing — so the code fixes when an appeal resolves and not when the
+// application does. Nashville's 30 days and DC's 120 both carry a consequence
+// (a deemed approval and a required finding respectively); this does not. Second,
+// "grant it with stipulations" is a disposition inside the clock that can send
+// the design back around § 812.F's resubmittal loop indefinitely, and the
+// mandatory § 812.C pre-application meeting sits in front of the filing with no
+// clock on it at all. Publishing 1 would be publishing the first hearing date as
+// though it were the resolution.
 const HISTORIC_MONTHS: Record<string, number> = { dc: 4, nashville: 1, atlanta: 4 }
 
 // Private projects that are large enough to plausibly seek a subsidy/abatement.
@@ -404,6 +452,168 @@ const DALLAS_RESIDENTIAL_DISTRICTS = new Set([
  * this engine cannot map onto without inventing the mapping (rule 4).
  */
 const DALLAS_TRIPS_PER_DU = 6.59
+
+/**
+ * The Form-Based Code transect zones, as the CITY'S OWN LAYER spells them.
+ *
+ * MEASURED, not transcribed from the chapter: a distinct-values query against
+ * DevelopmentServices/Zoning/MapServer/0 on 2026-08-10 with `ZONE LIKE 'T%'`
+ * returns fifteen strings, and exactly two of them are NOT transect zones —
+ * `T-C` (Town Center, §19.10.060) and `T-D` (Traditional Development,
+ * §19.10.070), which are plan-governed special-area districts. The other
+ * thirteen are this set.
+ *
+ * ⚠️ EXACT-SET MEMBERSHIP, NEVER A PREFIX TEST. `/^T/` sweeps T-C and T-D into
+ * the Form-Based Code and would tell a Town Center applicant that §19.09
+ * governs their site. The two are distinct strings, so `has()` cannot collide
+ * with them; `startsWith` can. (Same failure Columbus's UCRPD/LUCRPD note
+ * records.)
+ *
+ * ⚠️ T4-M and T6-UGL are DELIBERATELY INCLUDED even though
+ * `zoning/lasvegas.ts` resolves neither — §19.09.050.E publishes no standards
+ * body for either. That is a gap in the STANDARDS, not in the mapping: both are
+ * mapped transect zones (T4-M 5.8 ac, T6-UGL 55.1 ac), so §19.09.020.D(1)'s
+ * "applies only to the Downtown Las Vegas Overlay District" reaches every one of
+ * them and the review row below must render.
+ *
+ * ⚠️ RETRACTED 2026-08-10. This note previously singled out two of the thirteen
+ * as zones whose standards could not be looked up, and justified the matching
+ * strategy on their behalf. Both were resolved the same day: T4-M has a full
+ * section (19.09.050.E.026, 4 stories max / 80% lot coverage) and T6-UGL is a
+ * sub-zone stated inside its parent (19.09.050.E.008(B), 1–14 stories). The
+ * unreadable-code set in `zoning/lasvegas.ts` no longer contains either. See the
+ * retraction block above `LAS_VEGAS_UNREADABLE_CODES` there for what the two
+ * withdrawn claims were and why each was wrong.
+ *
+ * The matching strategy is unchanged and still correct, for a reason that does
+ * not depend on the retracted claim: `parseLasVegasZone().normalized`
+ * (uppercased, whitespace collapsed) is what the layer's own ZONE vocabulary
+ * yields, and matching there rather than on `.base` keeps this set aligned with
+ * the strings the provider actually sees.
+ */
+const LAS_VEGAS_FBC_TRANSECT_ZONES = new Set([
+  'T3-N', 'T3-N-O',
+  'T4-C', 'T4-M', 'T4-MS', 'T4-N',
+  'T5-C', 'T5-M', 'T5-MS', 'T5-N',
+  'T6-UC', 'T6-UG', 'T6-UGL',
+])
+
+/**
+ * The one phrase `providers/lasvegas.ts` writes into `zoning.article` that this
+ * module gates on. STRING COUPLING ACROSS A MODULE BOUNDARY, named here for the
+ * same reason `DALLAS_ARTICLE_PHRASE` and `MILWAUKEE_OVERLAY_PHRASE` are.
+ *
+ * `entitlementNote()` emits it when the parcel's own zoning row carries any of
+ * ORD (rezoning ordinance), USE_1 (the first of ten Special Use Permit columns),
+ * VAR_1 (the first of five Variance columns) or ROIZONE. `ParcelInfo` has no
+ * field for any of them, so `article` is the only place the fact exists.
+ *
+ * A miss is a false NEGATIVE — the row does not render. It can never assert an
+ * entitlement that is not recorded.
+ *
+ * Pinned at the provider end by providers/lasvegas.test.ts and at this end by
+ * the Las Vegas entitlement test. If you reword `entitlementNote`, both fail.
+ */
+const LAS_VEGAS_ARTICLE_PHRASE = {
+  /** entitlementNote: `The City's zoning record for this parcel carries …` */
+  recordedEntitlement: /The City's zoning record for this parcel carries/,
+} as const
+
+/**
+ * LVMC 19.02.300(C)(1), verbatim: the Clark County Multiple Species Habitat
+ * Conservation Plan mitigation fee is "$550.00 per gross acre (or portion
+ * thereof)". Carried as the ordinance's own figure and used for nothing else.
+ *
+ * The per-acre rate is IN the ordinance — unusual for this city, where the
+ * traffic-signal fee and every Title 19 application fee route to a schedule
+ * held by the City Clerk. That is why this row states a number and the others
+ * refuse to.
+ */
+const LAS_VEGAS_MSHCP_PER_ACRE = 550
+
+/** LVMC 4.24.040(A), verbatim: "the rate of the residential construction tax
+ *  shall be one thousand dollars per residential dwelling unit, or as otherwise
+ *  provided by State law." The ceiling that phrase points at is NRS
+ *  278.4983(2)(a) — "1 percent of the valuation of each building permit issued
+ *  or $1,000 per residential dwelling unit, whichever is less" — so on a
+ *  low-valuation permit the actual charge can be LESS than $1,000 and the note
+ *  says so rather than publishing the cap as the price. */
+const LAS_VEGAS_RCT_PER_UNIT = 1000
+
+/**
+ * The one phrase `providers/phoenix.ts` writes into `zoning.article` that this
+ * module gates on. STRING COUPLING ACROSS A MODULE BOUNDARY, named here for the
+ * same reason `DALLAS_ARTICLE_PHRASE`, `LAS_VEGAS_ARTICLE_PHRASE` and
+ * `MILWAUKEE_OVERLAY_PHRASE` are.
+ *
+ * `buildArticle` emits `Mapped overlay: …` / `Mapped overlays: …` when the
+ * ZONING_OVERLAYS layer returns any polygon for the point, and appends
+ * ` (regulatory)` to the name of each one whose `REGULATORY` field reads 'Yes'.
+ * `ParcelInfo` has no field for either fact, so `article` is the only place
+ * "is this parcel in a mapped overlay, and is that overlay regulatory?" has an
+ * answer.
+ *
+ * A miss here is a false NEGATIVE — the row does not render. It can never assert
+ * an overlay that is not mapped.
+ *
+ * Pinned at the provider end by providers/phoenix.test.ts and at this end by the
+ * Phoenix overlay tests. If you reword `buildArticle`, both fail.
+ */
+const PHOENIX_ARTICLE_PHRASE = {
+  /** buildArticle: `Mapped overlay: …` / `Mapped overlays: …` */
+  mappedOverlay: /Mapped overlays?: /,
+  /** buildArticle: each regulatory overlay's name is suffixed ` (regulatory)` */
+  regulatoryOverlay: /\(regulatory\)/,
+} as const
+
+/**
+ * The nine impact-fee service areas Phoenix City Code ch. 29 Appendix A names,
+ * transcribed from the schedules' own "Service Area" column.
+ *
+ * ⚠️ THIS IS NOT A GATE AND MUST NOT BECOME ONE. No layer this tool fetches
+ * publishes the impact-fee area boundaries — `providers/phoenix.ts` reads the
+ * parcel, zoning, overlay, historic, city-boundary and FEMA services and none of
+ * them carries one — so the set exists only to NAME the areas in the fee row.
+ * Matching these strings against a district code or an overlay name would be a
+ * proxy, and § 29-4 scopes the chapter to "all development within any impact fee
+ * area … as defined in the adopted infrastructure financing plan", which is a
+ * separate instrument.
+ */
+const PHOENIX_IMPACT_FEE_AREAS: readonly string[] = [
+  'Northwest', 'Deer Valley', 'Northeast', 'Paradise Ridge',
+  'Estrella North', 'Estrella South', 'Laveen West', 'Laveen East', 'Ahwatukee',
+]
+
+/**
+ * MEASURED, and it is the whole reason the Phoenix fee row has two halves.
+ *
+ * Phoenix City Code ch. 29 Appendix A contains NINETEEN fee schedules, A through
+ * S. Each is a table whose rows are service areas. Exactly SIX of them —
+ * K, L, M (wastewater treatment) and Q, R, S (water treatment) — carry a
+ * "Balance of the City" row in addition to the nine named areas. The other
+ * thirteen (fire protection, police, parks, library, major arterials residential
+ * and non-residential, storm drainage, wastewater collection ×3, water
+ * transmission ×3) have only the nine.
+ *
+ * That is the slot test applied PER SCHEDULE, and it is the difference between
+ * "Phoenix charges impact fees" (true of six categories citywide, and of thirteen
+ * more only inside nine named areas) and the sentence a summariser writes. Note
+ * particularly that water TRANSMISSION is area-only while water TREATMENT is
+ * citywide — two adjacent schedules, opposite answers.
+ *
+ * The four constants below are the "Balance of the City" residential rows of
+ * Schedules K and Q, transcribed verbatim. Appendix A's currency line is
+ * "(Ord. No. G-7375, § 1, 2025)".
+ */
+const PHOENIX_WASTEWATER_TREATMENT_SFR_PER_DU = 1190
+const PHOENIX_WASTEWATER_TREATMENT_MFR_PER_DU = 797
+const PHOENIX_WATER_TREATMENT_SFR_PER_DU = 4387
+const PHOENIX_WATER_TREATMENT_MFR_PER_DU = 1579
+
+/** Phoenix City Code § 32A-24.A's own threshold: "isolated developments under
+ *  one-half acre". Half of 43,560. Carried as the arithmetic rather than a
+ *  rounded 21,800 so the code's figure and ours cannot drift. */
+const PHOENIX_HALF_ACRE_SQFT = 43560 / 2
 
 // Assess non-zoning regulatory hurdles for a project. Boston is fully modeled;
 // other cities get the shared overlay + private-governance hurdles for now.
@@ -3728,6 +3938,589 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
         label: 'Historic demolition: a certificate that can be refused outright',
         status: 'required',
         note: 'Demolition inside a Dallas historic overlay is a veto point, not a delay — and that makes it different from most cities this tool covers, where the ordinance trades refusal for a waiting period. "The landmark commission shall deny the application unless it makes the following findings" (Dallas Development Code § 51A-4.501(h)(4)), and there are only four doors: that the replacement structure "is more appropriate and compatible with the historic overlay district than the structure to be demolished or removed" AND that "the owner has the financial ability and intent to build the new structure"; that no economically viable use exists; that the structure "constitutes a documented major and imminent threat to public health and safety"; or that it is noncontributing because it is newer than the district\'s period of significance (§ 51A-4.501(h)(2)(B), (h)(4)(A)–(D)). The burden is yours and it is the high one: "The property owner has the burden of proof to establish by clear and convincing evidence the necessary facts to warrant favorable action" (§ 51A-4.501(h)(3)(B)). If you are going the replacement route, the sequence is the trap — the commission "must first approve the predesignation certificate of appropriateness or certificate of appropriateness for the proposed new structure and the guarantee agreement to construct the new structure before it may consider the application to demolish", and that guarantee agreement carries a covenant to build by a date certain plus a performance and payment bond, letter of credit, escrow or cash deposit (§ 51A-4.501(h)(2)(C)(v), (h)(4)(A)). Your new building must be designed, approved and bonded before the old one can come down. The no-economically-viable-use route is a documentary siege: two years of profit and loss statements, two years of listings, prices asked and offers received, five years of mortgage history, an independent appraisal, a restoration feasibility study by a licensed architect, engineer or financial analyst including a ten-year pro forma, and an ad hoc three-person independent economic review panel whose recommendation must land before the application is even complete (§ 51A-4.501(h)(2)(D), (h)(3)(A)). One clock runs your way: "Within 65 days after submission of a complete application, the landmark commission shall hold a public hearing and shall approve or deny the application. If the landmark commission does not make a final decision within that time, the building official shall issue a permit to allow the requested demolition or removal" (§ 51A-4.501(h)(3)(B)) — but "complete" is doing the work in that sentence, and on the economic route completeness waits on the panel. Any interested person may appeal an approval to the city plan commission within 30 days, and the permit does not issue until that window closes (§ 51A-4.501(h)(5)). A final denial bars reapplication on the same subject matter for one year unless it was without prejudice or the commission finds changed circumstances (§ 51A-4.501(h)(6)), and a granted certificate expires if work has not commenced within 180 days (§ 51A-4.501(h)(7)). Screen the building\'s contributing status before you price a teardown here — it is the difference between a schedule item and a dead deal.',
+      })
+    }
+  } else if (city === 'lasvegas') {
+    // Las Vegas Municipal Code, read 2026-08-10 from TWO publishers, because
+    // the city splits its development law across two and only one of them is
+    // the zoning code:
+    //   · TITLE 19 (Unified Development Code) from online.encodeplus.com —
+    //     the publisher the City's own Zoning Code page links by name, the same
+    //     one zoning/lasvegas.ts read. Latest amending ordinance anywhere in
+    //     the title: Ord. 6963 §4, effective 07/01/26. The publisher warns of
+    //     up to 60 days' lag after adoption.
+    //   · TITLES 4, 14 and 20 from library.municode.com/nv/las_vegas — the link
+    //     on the City Attorney's own Laws & Codes page. Municode states its
+    //     currency itself: "Codified through Ordinance No. 6937, passed January
+    //     21, 2026. (Supp. No. 61)".
+    // The two currencies differ and are stated separately on purpose; do not
+    // merge them into one "read 2026-08-10" claim.
+    //
+    // ⚠️ THE STRUCTURAL FINDING FOR THIS CITY, and the reason half these rows
+    // cite a title a zoning reader would never open: Title 19 contains NO fee,
+    // NO drainage permit and NO landscape-water rule. The residential
+    // construction tax is LVMC 4.24, the traffic-signal impact fee is 4.32, the
+    // sewer occupancy fee is 14.04, the turf prohibition is 14.11, and the
+    // citywide development permit for drainage is Title 20. A read that stopped
+    // at the UDC would have reported Las Vegas as a city with almost no
+    // exactions, which is the "plausible output" failure of rule 18.
+    //
+    // JURISDICTION IS ALREADY SETTLED UPSTREAM and nothing here re-hedges it:
+    // providers/lasvegas.ts gates on the Jurisdictions polygon and refuses any
+    // point outside "City of Las Vegas", so unincorporated Clark County (the
+    // Strip), Henderson and North Las Vegas never reach this branch.
+    //
+    // The parking finding is PARKING_RULES['lasvegas'] and must NOT be
+    // duplicated here. There is deliberately no HISTORIC_BODY['lasvegas'] — see
+    // the HD-O row below for why an entry would be dead code.
+    const lvZone = parseLasVegasZone(parcel.zoning.districtCode)
+    const lvLimits = resolveLasVegas(parcel.zoning.districtCode)
+    const lvArticle = parcel.zoning.article ?? ''
+    const LV_ACRE = 43560
+    const lvAcres = lotSqFt / LV_ACRE
+    const lvFbc = LAS_VEGAS_FBC_TRANSECT_ZONES.has(lvZone.normalized)
+
+    if (isResidential) {
+      // ABSENCE — and it is a FOURTH shape, distinct from all three already in
+      // this file, which is why it cannot borrow any of their sentences.
+      //
+      //   Milwaukee: Wisconsin BANS inclusionary zoning by name.
+      //   Raleigh:   North Carolina is SILENT; Raleigh simply never adopted one.
+      //   Dallas:    Texas caps a maximum SALES PRICE and expressly preserves
+      //              voluntary density bonuses — neither a ban nor silence.
+      //   Las Vegas: Nevada EXPRESSLY AUTHORISES inclusionary zoning BY NAME,
+      //              defines it in statute, and Las Vegas has still not adopted
+      //              one.
+      //
+      // That last shape is the strongest possible refutation of the sentence a
+      // summariser reaches for. NRS 278.250(4) lists inclusionary zoning among
+      // the controls a governing body "may use", and subsection 5(b) defines it.
+      // Writing "Nevada bars inclusionary zoning" here would not merely be
+      // unsupported — it would be the opposite of the statute.
+      hurdles.push({
+        category: 'affordability',
+        label: 'No inclusionary requirement — and Nevada expressly allows one',
+        status: 'info',
+        note: 'Las Vegas sets no affordable-unit requirement at any project size. Every affordability obligation in Title 19 hangs off a bonus the developer elects, under Chapter 19.17 (Incentives), which exists "as … authorized by NRS 278.235" (LVMC 19.17.010). Read what that buys and what it costs. The density bonus is up to 10 dwelling units per acre in TOD-1/TOC-1, 5 in TOD-2/TOC-2 and NMXU, and 3 in "Any other category (but excluding R, DR, and RNP)", each at a minimum of 10 percent of total dwelling units affordable (§ 19.17.070 Table 1). The height bonus runs 1 to 6 stories on a ladder keyed to the transect zone and the share affordable — T6-UC alone reaches "50% → 6 stories" (§ 19.17.080 Table 2) — but "Nothing in the preceding two sentences … shall be deemed to authorize additional heights that would exceed the height limitations on an applicable overlay district or conflict with applicable residential adjacency standards." The fee reduction is 100 percent of applicable fees, but only for Very-Low Income projects and only at 50% of units inside the Form-Based Code, 25% in TOD/TOC/NMXU and 10% elsewhere (§ 19.17.090 Table 3) — and it is rationed: "The total amount of fee reductions for all qualified projects for any particular fiscal year shall not exceed the limit … established by the City Council for that fiscal year" (§ 19.17.090), with the Council setting that limit annually at a public meeting (§ 19.17.100(A)). The strings are long: units "must retain the same affordable housing status … for a term of at least thirty years, commencing from the date of the issued certificate of occupancy", must not be clustered, must use the same materials and finishes as the market-rate units, and the bonuses must be recorded against the property and transferred to any future purchaser at point of sale (§ 19.17.030(B)(1)–(6)). Now the state-law backdrop, stated precisely, because this is where a summary would go wrong in the confident direction. Nevada has NOT prohibited inclusionary zoning. It has authorised it by name: a governing body "may use any controls relating to land use or principles of zoning that the governing body determines to be appropriate, including, without limitation, density bonuses, inclusionary zoning and minimum density zoning" (NRS 278.250(4)), and the statute defines the term — "‘Inclusionary zoning’ means a type of zoning pursuant to which a governing body requires or provides incentives to a developer who builds residential dwellings to build a certain percentage of those dwellings as attainable housing" (NRS 278.250(5)(b)). Note the word "requires". NRS 278.235 separately obliges the City to adopt at least six measures from a menu that is entirely incentives — fee reductions, discounted land sales, land donations and leases, a trust fund, expedited approvals, density bonuses, direct assistance — and none of them is a mandate on a developer. Treat Las Vegas as a city that has chosen not to require affordability, in a State that has told it that it may.',
+      })
+
+      // Two 2025 Nevada statutes that command the CITY, whose implementing
+      // ordinances are not in the code this build read. Stated as a question to
+      // ask, never as a finding that the City is out of compliance — a search
+      // that comes up empty in one title is not proof of an absence in the
+      // whole code (rule 8), and Municode's own currency stops at 21 January
+      // 2026, which is BEFORE the 1 March 2026 deadline one of them sets.
+      //
+      // What WAS measured is stated: a full-text search of all fifteen Title 19
+      // chapter exports for "attainable", "278.0207" and "by right" returns
+      // four bare hits on "by right", none of them an implementing provision,
+      // and zero hits on the other two.
+      hurdles.push({
+        category: 'review',
+        label: 'Two 2025 Nevada mandates on the City that this tool cannot see in the published code',
+        status: 'info',
+        note: 'Nevada passed two statutes in 2025 that require every city to change how it approves housing, and neither implementing ordinance appears in the Title 19 this tool models — so ask for them before you plan around the base districts. First: "not later than March 1, 2026, each governing body shall adopt an ordinance that authorizes by-right a multifamily housing development or mixed-use development that includes a residential use on property zoned for commercial use", though "The ordinance may establish standards and requirements to qualify" (NRS 278.02071(1)); it does not reach property zoned for or in relation to an airport, and "‘property zoned for commercial use’ does not include property zoned for industrial use" (§ 278.02071(2)–(3)). That deadline has passed. It matters here because Las Vegas’s commercial districts do not currently allow housing outright — LVMC 19.12.070 carries the Conditional Use Regulation "This use is permitted only in conjunction with an approved Mixed-Use development" for Residential, Multi-Family — so a by-right ordinance would change the answer for C-1 and C-2 parcels specifically. Second: each governing body "shall enact by ordinance … An expedited process for the consideration and approval of projects for attainable housing … [that] must prioritize, to the extent practicable, the processing of projects for attainable housing … over all other projects", including "authorizing the administrative approval for any applications relating to attainable housing projects", plus "Incentives for the development of projects for attainable housing … that encourage the use of the expedited process" (NRS 278.02072(1)). What this tool checked, stated plainly so you can judge it: a full-text search of all fifteen Title 19 chapter exports from the City’s own publisher, current through Ord. 6963 effective 07/01/26, finds no implementing text for either statute, and the general Municipal Code on Municode is codified only through Ordinance No. 6937 of 21 January 2026 — before the first statute’s deadline. An ordinance adopted and not yet codified would be invisible to both searches. This is a gap in what could be read, not a finding that the City has not acted.',
+      })
+    }
+
+    // ── SITE DEVELOPMENT PLAN REVIEW. The row a reader coming from a
+    // by-right city most needs, because Las Vegas has no by-right path at all.
+    //
+    // ⚠️ NOT tagged sizeDependent, and the call is arguable enough to write
+    // down. The four-unit line in §19.16.100(F)(2)(a)(i) decides the ROUTE
+    // (folded into the building permit vs a separate planning application), not
+    // whether the row applies — §19.16.100(B)(1) requires the review for all
+    // development regardless of size. softenSizeDependent downgrades a
+    // 'required' row to 'info' wholesale, which would turn an always-true
+    // obligation into a hedge because a *secondary* sentence used a unit count.
+    // So the status is unconditional and the unit-keyed sentence hedges itself
+    // in text instead.
+    hurdles.push({
+      category: 'review',
+      label: 'Site Development Plan Review — required for all development, with only three exemptions',
+      status: 'required',
+      note: `Las Vegas has no by-right development path. "Except as otherwise provided in this Subsection (B), a Site Development Plan Review is required for all development in the City", and the exemption list is three items long: "a. Demolition of a structure; b. Normal repairs and maintenance of an existing building or structure; and c. Activities and improvements undertaken in conjunction with a Temporary Commercial Permit or a special event permit" (LVMC 19.16.100(B)(1)–(2)). Converting an apartment building to condominium or co-op status is expressly caught (§ 19.16.100(B)(3)). What decides your cost is whether the review is Minor or Major, and the Director makes that call (§ 19.16.100(C)(1)(b)). A Minor Review is administrative, and for the smallest projects it is not even a separate application: "Issuance of a building permit shall constitute approval of the Minor Review and no further action is required" for "Single family dwelling units, duplex dwelling units or multi-family residential development not exceeding four units", residential accessory buildings, signs, walls and fences, patio covers and carports, alterations that do not change external dimensions, alterations that change the use or occupancy, and alterations that change external dimensions without increasing net floor area (§ 19.16.100(F)(2)(a)). Anything larger that still complies goes in as a Minor Site Development Plan Review application — "New residential construction that complies with all applicable requirements of this Title and is not part of a sequential application for additional units", and the same for commercial and industrial (§ 19.16.100(F)(1)(b)–(c)).${
+        units > 0
+          ? ` As programmed here — ${units} unit${units === 1 ? '' : 's'} — that puts this project ${units <= 4 ? 'on the building-permit-level track, provided it complies with every requirement of Title 19' : 'past the four-unit line, so it needs a Site Development Plan Review application of its own even if it complies with everything'}. The unit count is this tool's, not your design; re-check the line against your actual programme.`
+          : ''
+      } A Major Review is a different animal and it is where the schedule risk is. It is triggered when the project does NOT qualify as Minor — i.e. when it needs any deviation — or when "The Director determines that the proposed development could significantly impact the land uses on the site or on surrounding properties" (§ 19.16.100(G)(1)). It requires a pre-application conference, then a Planning Commission public hearing on at least ten days' notice, published in a newspaper AND mailed to "Each owner of real property located within a minimum of one thousand feet of the property", every tenant of any mobile home park within a thousand feet, "The owner of each of the thirty separately-owned parcels nearest to the property", any advisory board for the area, and "The president or head of any registered local neighborhood organization whose organization boundaries are located within a minimum of one mile of the property" (§ 19.16.100(G)(2)(d)). A thousand feet and a one-mile neighbourhood-organisation radius are both wide by the standards of the other cities in this tool. Approval can be appealed to the City Council by the applicant, by any property owner inside that notice area, or by anyone who appeared — within ten days (§ 19.16.100(G)(2)(f)) — and even an administrative Minor approval is not final for ten days, because any single member of the City Council may pull it up into the Major Review process by written request (§ 19.16.100(F)(3)). Applications for any hearing must be filed at least 30 days before the meeting (§ 19.16.010(B)(1)). Plan for expiry: an unexercised Site Development Plan is void after the period stated in the approval "and is two years otherwise", where "exercised" means a building permit issued for a principal structure or, for a subdivision, a recorded final map — and if that permit is allowed to expire inside the approval period, the Site Development Plan expires with it (§ 19.16.100(J)).`,
+    })
+
+    // ── DEVELOPMENT IMPACT NOTICE AND ASSESSMENT (DINA). Las Vegas's analogue
+    // of Dallas's development impact review and Atlanta's DRI.
+    //
+    // THE WHOLE CONDITION, and it is FOUR disjunctive limbs of which only two
+    // are computable here:
+    //   (a) "Tentative maps, final maps or planned unit developments of 500
+    //       units or more" — note what this limb is attached to. It is not "any
+    //       500-unit project": it needs a map or a PUD. A 500-unit apartment
+    //       building on one existing legal parcel may need no map at all. So
+    //       the gate fires on the unit count and the STATUS stays 'likely',
+    //       with the map limb quoted.
+    //   (b) "Tourist accommodations of 300 units or more" — no tenure/hotel
+    //       field exists on ParcelInfo. Not evaluated; stated.
+    //   (c) "A commercial or industrial facility generating more than 3,000
+    //       average daily vehicle trips" — NOT computed. Title 19 publishes no
+    //       trip-generation table (unlike Dallas's Table 1), so a rate would
+    //       have to be imported from ITE and applied to a use vocabulary this
+    //       engine does not carry. That is rule 4's invented conversion twice
+    //       over. Stated, never computed.
+    //   (d) "A nonresidential development encompassing more than 160 acres" —
+    //       computable from lot area, and gated.
+    //
+    // sizeDependent: TRUE — limb (a) is a unit count.
+    // NO addsMonths: the section publishes no duration at all.
+    {
+      const lvDinaUnits = isResidential && units >= 500
+      const lvDinaAcres = !isResidential && lvAcres > 160
+      if (lvDinaUnits || lvDinaAcres) {
+        hurdles.push({
+          category: 'review',
+          label: 'Development Impact Notice and Assessment — the application will not be processed without it',
+          sizeDependent: true,
+          status: 'likely',
+          note: `Las Vegas screens large projects before the pre-application conference, not after. "Before scheduling a pre-application conference … a person proposing a development of significant impact in connection with an application for tentative map, rezoning, site development plan review, or a special use permit must meet with agencies and service providers from which the information required for a DINA report must be obtained", the agency responses must be presented at that conference on the Department's forms, "A completed DINA report must be submitted no later than at the time of making an application", and "The department is authorized to withhold the processing of an application until a completed DINA report has been submitted" (LVMC 19.16.010(F)(3)). The report itself covers "vehicle trips, student enrollment, sewage generation, water demand, storm water runoff, distance from public safety facilities, existing and planned capacities of service required for the project, and other anticipated effects" (§ 19.16.010(F)(1)). Read the trigger whole, because it is four alternatives and only two of them can be evaluated from a parcel record. A project is one "of significant impact" if it would create: "a. Tentative maps, final maps or planned unit developments of 500 units or more; b. Tourist accommodations of 300 units or more; c. A commercial or industrial facility generating more than 3,000 average daily vehicle trips; or d. A nonresidential development encompassing more than 160 acres." ${
+            lvDinaUnits
+              ? `At ${units} units this project clears limb (a)'s number — but note what limb (a) is attached to. It reaches tentative maps, final maps and planned unit developments, not every large building: a project on an existing legal parcel that needs no map and is not a PUD may not be caught by it at all. Confirm whether your project requires a map before pricing this.`
+              : `This is a nonresidential project on about ${lvAcres.toFixed(1)} acres, which clears limb (d)'s 160-acre figure.`
+          } Limb (b) is not evaluated — this tool holds no hotel or tourist-accommodation field. Limb (c) is NOT computed and no trip figure is estimated for you: Title 19 publishes no trip-generation table, so producing one would mean importing outside rates and mapping them onto a use vocabulary this tool does not carry. Run your own trip generation against the 3,000-per-day figure. Two exclusions: the subchapter does not apply to a project "Located on property which was the subject of a development agreement with a local government, if the agreement became effective before June 8, 1999", or one "approved before June 8, 1999" (§ 19.16.010(F)(2)). What the City can do with the answer is the part to plan for: on a project of significant impact the Council "may approve a project with respect to which the capacities of roads, sources of water supply or facilities for wastewater and flood control will not be sufficient to support the project if the Council requires the person who proposes to develop the project to carry out appropriate measures of mitigation" (§ 19.16.010(F)(4)) — infrastructure mitigation as a condition of approval. Separately, a proposal near another jurisdiction's boundary is referred out as a "project of regional significance", the affected local government gets 15 calendar days to comment, and mitigation is required "to the maximum practical extent"; distances and notification are measured "without regard to jurisdictional boundaries" (§ 19.16.010(G)(2)–(6)). The ordinance recites that this implements "1999 Statutes of Nevada, Chapter 481"; that session law was not read for this entry, so nothing is claimed about its text beyond the City's own recital.`,
+        })
+      }
+    }
+
+    // ── PLAN-GOVERNED DISTRICTS. The instrument is the resolver's own typed
+    // field, not a regex over prose (rule 11: exercise the real entry point).
+    // C-V, P-C, PD, R-PD, T-C and T-D cover 39,432.6 of 76,917.5 mapped acres —
+    // 51.3% of the city, measured 2026-08-09 — so this is the majority case,
+    // not an edge case.
+    if (lvLimits.planGoverned) {
+      hurdles.push({
+        category: 'review',
+        label: 'Plan-governed district: your standards are in a document, not in the zoning code',
+        status: 'required',
+        note: `This parcel is in a special-area district whose dimensional standards are not in Title 19 at all — they are fixed in a plan, manual or site-plan approval that is not published as data. ${lvLimits.planSource ?? ''} The figures this tool shows for the base district are therefore INCOMPLETE here rather than absent, and that distinction is the whole point of this row: nothing above should be read as "no limit applies". Six district families work this way — C-V (§ 19.10.020(E)(1)), P-C (§ 19.10.030(C), (E)(2)), PD (§ 19.10.040(F)), R-PD (§ 19.10.050(B)(1)), T-C (§ 19.10.060(B)(2)) and T-D (§ 19.10.070(F)(1)) — and together they cover 39,432.6 of the city's 76,917.5 mapped zoned acres, 51.3 percent, measured against the City's own zoning layer on 2026-08-09. Two consequences worth pricing. Getting INTO one of these districts is gated on size: rezoning to P-C requires "Minimum site area of three thousand acres" and to PD "Minimum site area of 40 acres" (LVMC 19.16.090(D)(1)–(2)), and a concept plan or site development plan must be filed concurrently with the rezoning application (§ 19.16.090(F)(2)–(3)). And R-PD is a closed door for new work: § 19.10.050(A) says new R-PD development "is not favored and will not be available under this Code", so an R-PD parcel's numeral (R-PD4 = up to four units per gross acre) describes what was approved, not what you can now ask for. Get the governing document — the Master Development Plan, Planned Community Program, Town Center Development Standards Manual or approved Site Development Plan Review — from the Office of the City Clerk before you size anything.`,
+      })
+    }
+
+    // ── DOWNTOWN LAS VEGAS OVERLAY, gated on the Form-Based Code transect
+    // zones, and the gate is a CODE-STATED implication rather than a proxy:
+    // §19.09.020.D(1) says the FBC "applies only to the Downtown Las Vegas
+    // Overlay District established in LVMC Section 19.10.110". Transect zone ⟹
+    // DTLV-O. The converse is FALSE (the DTLV-O covers twelve downtown
+    // districts and the FBC is a pilot in one), so this row's misses are false
+    // negatives, which is the safe direction and is disclosed below.
+    //
+    // Parking is NOT repeated here — PARKING_RULES['lasvegas'] carries
+    // 19.09.100.G Table G-1 and its Downtown Parking Load Map zones.
+    if (lvFbc) {
+      hurdles.push({
+        category: 'review',
+        label: 'Form-Based Code and the Downtown Las Vegas Overlay: a second rulebook on top of the base zone',
+        status: 'required',
+        note: `This parcel's zoning code is "${lvZone.normalized}", a Form-Based Code transect zone, and the code draws a conclusion from that which this tool does not have to infer: "The FBC applies only to the Downtown Las Vegas Overlay District established in LVMC Section 19.10.110" (LVMC 19.09.020.D(1)). So this site is inside the DTLV-O, and two rulebooks apply. Which one wins is settled and it is not the friendlier one: "Whenever any provisions within the FBC impose overlapping or contradictory regulations, or whenever any provisions of the FBC and any other City code, rule, or regulation impose overlapping or contradictory regulations, the provision which is more restrictive or imposes higher standards or requirements shall govern, so that in all cases the most restrictive provision shall apply" (§ 19.09.020.D(4)). The Form-Based Code reaches more than ground-up work: "All proposed new development within the Transect Zones", "All additions to existing developments that increase the building footprint by 10 percent or 5,000 sf or more", "A facade renovation to the primary or secondary street frontage of an existing building", and "Improvements to pedestrian or vehicular access" (§ 19.09.020.D(3)). A Site Development Plan Review, Minor or Major, is required for all development in the overlay (§ 19.09.030.G). Relief is available administratively but it is narrow and capped, and it must be asked for BEFORE the application: Table 1 (Pre-Entitlement Exceptions) allows 2 ft on a setback, 10 percent off a minimum façade zone, 5 percent on maximum lot coverage, 10 percent on building or frontage dimensions and 20 percent for accessibility features — no more — and "A request for Exception must be submitted in writing to the Director in connection with the submittal of a pre-application conference request", with the Director's endorsement required before the Site Development Plan Review is filed; if the Director does not endorse it, "the relief sought is available only by means of a Waiver pursuant to LVMC 19.16.130" (§ 19.09.030.I(2)). Two things this row does NOT tell you, said plainly rather than left to look like coverage. First, it fires only on the thirteen mapped transect zones, which cover 866.9 of the city's 76,917 zoned acres; the DTLV-O itself is much larger — it "encompasses the twelve Downtown Districts", with the Form-Based Code rolling out district by district starting from "a pilot area located within the Las Vegas Medical District" (§ 19.09.020.D(1)) — so a downtown parcel with a conventional base zone gets no row here even though Appendix F's Interim Downtown Las Vegas Development Standards apply to it. Its absence is not evidence the overlay is absent. Second, the DTLV-O is divided into Area 1, Area 2 and Area 3 (Appendix F § A.4), and which one a parcel is in changes the answer a great deal — properties in Area 1 "are exempt from the automatic application of the mandatory maximum building height, required building setback, maximum lot coverage, residential adjacency, standard landscaping requirements, and standard parking requirements in this Title", to be "evaluated on a case-by-case basis" at Site Development Plan Review (§ 19.10.110(B), Special Provisions). This tool does not hold the Area boundary, so it never applies that exemption and never assumes it does not apply. Read Appendix F and the official Zoning Map Atlas for your site.`,
+      })
+    }
+
+    // ── A recorded entitlement on the parcel's own zoning row. Gated on the
+    // phrase providers/lasvegas.ts writes into `zoning.article`, because
+    // ParcelInfo has no field for ORD / USE_1 / VAR_1 / ROIZONE — a miss is a
+    // false negative and can never be a false positive.
+    if (LAS_VEGAS_ARTICLE_PHRASE.recordedEntitlement.test(lvArticle)) {
+      hurdles.push({
+        category: 'review',
+        label: 'An entitlement is already recorded on this parcel — its conditions may bind below the district',
+        status: 'required',
+        note: 'The City’s own zoning record for this parcel carries a rezoning ordinance number, a Special Use Permit, a Variance or a second value in its ROIZONE column, and every one of those can carry conditions that limit height, density or use BELOW the base district. The conditions live in the case file, not in the mapped dataset, so the district figures this tool publishes are a ceiling this site may not have. Three things follow. First, the conditions run with the land and with the approval: a Special Use Permit application must be signed by the record owner, and where a lessee or contract purchaser signs, the owner must agree "to honor and be bound by the requested Special Use Permit if it is approved and by any conditions of approval attached thereto" (LVMC 19.16.110(C)(2)). Second, an entitlement can lapse and take your assumptions with it — an unexercised Special Use Permit is void after the period stated in the approval "and is two years otherwise", and it is void without further action if the building permit required to exercise it is allowed to expire and is not reissued inside that period (§ 19.16.110). The same two-year default applies to a Site Development Plan (§ 19.16.100(J)), and a rezoning approval carried by a Resolution of Intent is itself time-limited to not more than two years (§ 19.16.090(P)(1)). Third, an existing entitlement can be revoked: the Planning Commission or City Council may revoke or modify a Special Use Permit for cause after a hearing, and a Site Development Plan may be revoked where the approval "was obtained by misrepresentation or fraud", "the development is not in compliance with one or more of the conditions of approval", or the time limits have expired (§ 19.16.100(I)(2)). Pull the case file for the recorded number before you rely on anything above it. Note also that a fresh application is not always available: after a denial or a withdrawal following public notice, a rezoning or Special Use Permit for the same or a less restrictive classification cannot even be accepted for one year after the first, and two years after the second or any subsequent one (§§ 19.16.090(G)(1), 19.16.110(D)(1)) — unless the withdrawal was specifically approved without prejudice.',
+      })
+    }
+
+    if (discretionary) {
+      // NO addsMonths. The only figures §19.16.090 publishes are FILING LEAD
+      // TIMES and NOTICE periods — 30 days before the meeting, 10 days'
+      // notice — plus the one- and two-year bars after a denial. A submittal
+      // deadline is not a duration for the work, and a penalty is not a
+      // schedule (rule 6 in the time dimension). Nothing clocks the Council.
+      hurdles.push({
+        category: 'review',
+        label: 'Rezoning: Planning Commission recommendation, City Council decision, and your burden of proof',
+        status: 'likely',
+        note: 'Asking for more than the base district in Las Vegas is a City Council act on a Planning Commission recommendation, and the code puts the burden squarely on you: "The applicant bears the burden of proof to establish that the approval of the rezoning is warranted" (LVMC 19.16.090(J)). Check the General Plan first, because it is a hard gate rather than a consideration: "If a proposed rezoning will not conform as to use or density, the application may not be approved unless the General Plan is amended first to accommodate the proposed rezoning" (§ 19.16.090(C)) — the two applications may be filed and heard together, but a General Plan Amendment additionally requires a mandatory neighbourhood meeting, conducted by the applicant, with notice and fees paid before it is held (§ 19.16.010(E)(2)(a), (E)(4)). A pre-application conference is required before filing (§ 19.16.010(B)(5)), and a complete application must be in at least 30 days before the meeting at which it is to be heard (§ 19.16.010(B)(1)(b)). Notice is wide: at least ten days before the Planning Commission hearing, published in a newspaper and mailed to every owner within a minimum of one thousand feet, every tenant of a mobile home park within a thousand feet, "The owner of each of the thirty separately-owned parcels nearest to the property", any advisory board for the area, and the head of "any registered local neighborhood organization whose organization boundaries are located within a minimum of one mile of the property" (§ 19.16.090(I)(2)(a)); notification signs at least four feet by three feet are posted by the City at your expense, one for tracts of five acres or less and potentially one more per additional five acres, and "An application will not be processed until the applicant has paid the fees established by the City for the posting of signs" (§ 19.16.010(D)). To approve, the Commission or Council must determine all four of: conformance to the General Plan; that the uses allowed "will be compatible with the surrounding land uses and zoning districts"; that "Growth and development factors in the community indicate the need for or appropriateness of the rezoning"; and that street or highway facilities "are or will be adequate in size" (§ 19.16.090(L)). Both bodies may approve a MORE restrictive classification than you asked for, or rezone fewer than all the parcels in the application (§§ 19.16.090(I)(3), (K)(2)(a)), and either may reserve the right to review any subsequent Site Development Plan (§ 19.16.090(N)). Plan for the downside: after a denial or a withdrawal made after public notice, no application for the same or a less restrictive classification may even be accepted for one year, or two years after a second or subsequent one, unless the withdrawal was approved without prejudice (§ 19.16.090(G)). A tabled application expires six months after the last announced hearing date unless rescheduled (§ 19.16.010(H)). And the code publishes no clock on the process as a whole — the 30-day filing lead and the 10-day notice are deadlines on you and on notice, not a schedule for the project.',
+      })
+    }
+
+    // ── FEES. Three separate regimes, three separate ordinances, none of them
+    // in Title 19. Only one publishes its rate.
+
+    // MSHCP. Gated on new construction because both exemptions are about work
+    // on what is already there. NOT sizeDependent: the trigger is LOT acreage,
+    // which is measured, not a placeholder derived from an assumed FAR.
+    if (project.projectType === 'new' && lotSqFt > 0) {
+      const lvMshcpAcres = Math.ceil(lvAcres)
+      const lvMshcpFee = lvMshcpAcres * LAS_VEGAS_MSHCP_PER_ACRE
+      hurdles.push({
+        category: 'fees',
+        label: 'Desert-tortoise habitat mitigation fee — $550 per gross acre, and no permit without it',
+        status: 'required',
+        note: `Las Vegas collects the Clark County Multiple Species Habitat Conservation Plan fee at the permit counter, and it is a hard gate: "No development permit for or real property located within the City shall be issued or approved without payment of the mitigation fee", at "the mitigation fee of $550.00 per gross acre (or portion thereof) that is included within any parcel to be developed and any additional area to be disturbed for related off-site improvements" (LVMC 19.02.300(C)(1)). On this parcel's ${lvAcres.toFixed(2)} acres that rounds up to ${lvMshcpAcres} acre${lvMshcpAcres === 1 ? '' : 's'} — about $${lvMshcpFee.toLocaleString()} — plus a processing fee of "$25.00 per residential development permit and $50.00 per non-residential development permit" (§ 19.02.300(C)(1)(b)). The figure above is the PARCEL only; the ordinance also charges for "any additional area to be disturbed for related off-site improvements", which is not in the parcel record, so treat it as a floor. Paying it is what makes your project lawful under the Endangered Species Act: payment "allows a development permit applicant, by means of certificate of inclusion, to comply with the Act through the Incidental Take Permit" issued under § 10(a)(1)(B), and the City may revoke that certificate immediately and without notice if the permitted activities fall out of compliance (§ 19.02.300(C)(1), (D)(4)). Three exceptions, and none of them helps a ground-up project: reconstruction of a structure damaged or destroyed by fire or other natural causes; "Rehabilitation or remodeling of existing structures or existing off-site improvements"; and land already covered by a separate habitat conservation plan and incidental take permit approved by the U.S. Fish and Wildlife Service (§ 19.02.300(C)(2)). If you have already paid Section 7 fees on the same land you pay only the difference up to $550 per acre, and nothing if you paid $550 or more (§ 19.02.300(C)(3)). Withdraw the application before the permit issues and you get 80 percent back, via a Clark County Board of Commissioners consent agenda; the processing fee is not refundable (§ 19.02.300(C)(4)).`,
+      })
+    }
+
+    // Residential construction tax. sizeDependent: TRUE — this row multiplies a
+    // unit count by a published per-unit rate, which is exactly the shape
+    // softenSizeDependent exists for.
+    if (isResidential && units > 0 && (project.projectType === 'new' || project.projectType === 'change_of_use')) {
+      hurdles.push({
+        category: 'fees',
+        label: 'Residential construction tax for neighbourhood parks — up to $1,000 per unit, due before the permit',
+        sizeDependent: true,
+        status: 'required',
+        note: `Las Vegas takes a park levy per dwelling unit, and it is collected before anything is issued: "Prior to the issuance of any building or development permit for the construction of any apartment house or residential dwelling unit … or prior to the issuance of any building permit for the remodeling of any nonresidential structure for the purpose of residential dwelling use, the applicant for the permit shall pay to the City the residential construction tax" (LVMC 4.24.060). Note that last limb — converting a non-residential building to dwellings is taxed as new residential construction (§ 4.24.030). The rate is "one thousand dollars per residential dwelling unit, or as otherwise provided by State law" (§ 4.24.040(A)), which at ${units} unit${units === 1 ? '' : 's'} is about $${(units * LAS_VEGAS_RCT_PER_UNIT).toLocaleString()}. Treat that as a CEILING rather than a price: the State law it defers to caps the tax at "1 percent of the valuation of each building permit issued or $1,000 per residential dwelling unit, whichever is less" (NRS 278.4983(2)(a)), and the City bases permit valuation "on the actual costs of residential construction in the area" (LVMC 4.24.050), so a permit valued under $100,000 per unit yields less than $1,000. The money is ring-fenced by park district — it "may be used only for the acquisition, improvement or expansion … of neighborhood parks, or the installation of park facilities in existing parks … in the respective park districts that are created for the benefit of the neighborhoods from which such money was derived", where a neighbourhood park is one not exceeding 25 acres (§§ 4.24.020(B), 4.24.070(B), 4.24.080). Two refund routes are worth knowing before you write the cheque. If the City does not develop a park or install facilities in that park district within three years after 75 percent of your units are first occupied, the whole payment plus interest "must be refunded on a pro rata basis to the persons who own the dwelling units" — the owners, not you (§ 4.24.090). But if you build the park yourself you get it all back: a developer is entitled to a refund with interest for establishing an HOA-owned developed park, constructing a public park, or a combination, provided it "contains a minimum of three hundred thirty square feet of developed open space per dwelling unit" with the amenities listed (§ 4.24.100). At ${units} units that is about ${(units * 330).toLocaleString()} square feet of developed open space, roughly ${(((units * 330) / 43560)).toFixed(2)} acres — run that against your site before assuming the cash is cheaper. Finally, note that the State forbids doubling up: dedication under NRS 278.4979–278.4981 and the residential construction tax under NRS 278.4983 "are mutually exclusive as to any particular subdivision, apartment house, mobile home lot or residential dwelling unit", and a city must "elect, for any one period, to follow only one of the procedures" (NRS 278.4987). Las Vegas has elected the tax, so there is no separate park land dedication requirement on top of it — a subdivider may propose park improvements in lieu, shown on the tentative map (LVMC 19.16.050(K)).`,
+      })
+    }
+
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'fees',
+        label: 'Sewer connection (occupancy) fee and a traffic-signal impact fee, both at the building permit',
+        status: 'required',
+        note: 'Two more charges land at permit issuance, and neither is in the zoning code. The sewer occupancy fee is charged per Equivalent Residential Unit and it escalates on a schedule written into the ordinance: "Commencing January 1, 2023, the occupancy fee for sewer connections is calculated by multiplying the number of ERU’s by two thousand five hundred fifty-one dollars", and from January 1, 2024 through January 1, 2032 it increases each year by "Four percent, plus … an amount equal to the charge rate of the preceding fiscal year (as actually implemented) multiplied by the lesser of five percent or the average percentage for the preceding five years of increase in the Consumer Price Index for All Urban Consumers" (LVMC 14.04.210(C)–(E)). ⚠️ NO CURRENT-YEAR FIGURE IS GIVEN HERE, and that is deliberate rather than a gap: the escalator depends on a CPI average and on the rate "as actually implemented" each year, neither of which is in the ordinance, so any number this tool computed for today would be a fabrication dressed as a citation. Get the current per-ERU rate from Public Works. The ERU count is not a single number per unit either — LVMC 14.04.020 rates "Multiple-family dwelling: Each dwelling unit 1.00" but "Apartment house: Each dwelling unit 0.80 … Plus: Fixtures outside of dwelling units, Each fixture 0.45", "Condominium: Each dwelling unit 0.80" and "Senior apartment house: Each dwelling unit 0.50", with commercial classes rated per plumbing fixture and large commercial by "Annual water use ÷ 90,000 gallons". Which class you are in is determined by the Department of Community Development "from the submitted construction documents", and credit is given for fixtures removed on an ERU-for-ERU basis (§ 14.04.200), so a teardown-and-rebuild is charged on the net. Payment "must be paid at the time the building permit for the structure which will be connected to the sewer is issued" (§ 14.04.230(A)) — but ask about deferral if you are downtown: for property in a redevelopment area created by City ordinance the City Manager may defer payment for up to three years, subject to interest, a repayment agreement and possible liens (§ 14.04.230(B)). The traffic-signal impact fee is separate, adopted under NRS Chapter 278B, and it "shall apply to all territory within the corporate limits of the City" with no size threshold: "The impact fee for particular development shall be determined and paid at the time of issuance of a building permit" (LVMC 4.32.010(A), 4.32.050). Its rate is NOT in the ordinance — § 4.32.150 adopts a schedule "maintained on file in the office of the City Clerk" that "may be revised or amended from time to time by resolution of the City Council" — so no figure is stated here either. The City is divided into three zones for collection and spending, split at Cheyenne Avenue and Rancho Drive (§ 4.32.080(A)). Exemptions are narrow and all of them are about not adding anything: altering an existing dwelling unit with no new units; replacing a destroyed, partially destroyed or moved residential structure "with no increase in the number of dwelling units"; the same for a nonresidential structure "with no increase in gross floor area"; and development under a master plan and developer agreement funding all signalisation in the area (§ 4.32.060(A)). On a change of use or a redevelopment "the fee shall be based on the net increase in the fee for the new land use type … as compared to the previous", and a net decrease earns no refund (§ 4.32.070(D)–(E)). Where the fee schedule does not list your use, the Administrator picks the nearest comparable land use guided by ITE Trip Generation (§ 4.32.070(B)).',
+      })
+    }
+
+    // ── OFF-SITE IMPROVEMENTS. The exaction most likely to be missed, because
+    // it reads like boilerplate and is not.
+    if (project.projectType === 'new') {
+      hurdles.push({
+        category: 'fees',
+        label: 'Full off-site improvements and dedications — required for all development, deferrable only for houses',
+        status: 'required',
+        note: 'Las Vegas requires the full street section in front of your site, and the requirement is unconditional: "Full off-site improvements meeting current City Standards are required for all development regulated by this Title, which include but is not limited to: full depth pavement, curb and gutter, sidewalk, streetlights, traffic signals, traffic appurtenances, sanitary sewer, drainage improvements and landscaping in the public right-of-way. All development must, at a minimum, match and extend existing improvements that are immediately adjacent to the proposed development" (LVMC 19.02.025(B)). Dedication rides on the same permit: a use is "allowed only when the permit for any proposed improvement on the land includes provisions for the … Dedication of all essential rights-of-way for major streets, minor streets, flood control, utilities and other public purposes" and for installing the essential off-site improvements, which are defined to include anything "required by the Director of Public Works as appropriate and necessary to mitigate the impact of the development of property in the area" (§ 19.02.025(A)). That last clause is open-ended by design and is where a project’s off-site budget usually goes. Deferral exists but it is not for you unless you are building houses: administrative deferral by the Director of Public Works normally requires all five of no adjacent improvements existing, a frontage of not more than 660 feet, not being on the corner of two streets on the Planned Streets and Highways Map, being 330 feet or more from developed or entitled property whose improvements were not deferred, and being "a single-family residential subdivision, or … a single lot that is developed for a single-family residence" (§ 19.02.025(E)). Even when granted, deferral costs money and a covenant: an improvement contribution of "100% of the City’s bond estimate costs for deferred/waived improvements" on a highway, Major Collector or Primary Arterial, or 50 percent on lesser classifications of 60 feet or less, plus a "Covenant Running with Land Agreement" recorded with the County Recorder (§ 19.02.025(D), (F)). Where a map is involved, improvements must be completed before the parcel map or final map is recorded unless you post security — a bond, cash, government securities, a lending-institution agreement withholding funds from the construction loan, or a first deed of trust worth at least 125 percent of the required security — "in an amount equal to the estimated cost of construction plus ten percent additional for contingencies" (§ 19.02.130(A)–(B), (D)). Sidewalks, curb and gutter dimensions, street lighting and driveway standards all come from the Clark County-area Uniform Standard Drawings and Specifications the City has adopted as "City Standards" (§ 19.18.020).',
+      })
+    }
+
+    // ── FLOOD CONTROL AND DRAINAGE. Title 20, NOT Title 19, and NOT gated on
+    // the FEMA zone — §20.08.060 says "This Chapter shall apply to all areas
+    // within the City", so gating on `overlays.floodZone` would publish a
+    // citywide obligation as a floodplain-only one. The FEMA zone is used to
+    // ADD a sentence, never to decide whether the row renders.
+    if (project.projectType === 'new') {
+      const lvFloodZone = parcel.overlays.floodZone
+      const lvMappedFlood = !!lvFloodZone && !FLOOD_OK.has(lvFloodZone.toUpperCase())
+      hurdles.push({
+        category: 'environmental',
+        label: 'A Public Works development permit for drainage — citywide, not just in the floodplain',
+        status: 'required',
+        note: `Las Vegas regulates drainage through Title 20, which is a separate title from the zoning code and is easy to miss. It is not limited to mapped floodplain: "This Chapter shall apply to all areas within the City" (LVMC 20.08.060), and the permit requirement is written as a prohibition — "it shall be unlawful for any person to begin any construction or development on any land within the City without first obtaining a development permit from the Director of Public Works", with the application carrying elevations of the lowest floor and of any floodproofing, an engineer's floodproofing certification for nonresidential structures, a description of any watercourse alteration, and "Documentation to show compliance with the Flood Control Master Plan and Drainage Design Manual" (§ 20.08.130(A)). Where Public Works does not run a separate permit process, that requirement may be satisfied inside the building-permit review instead (§ 20.08.130(B)) — the obligation does not go away, the counter does. The standards behind it are the Clark County Regional Flood Control District's Hydrologic Criteria and Drainage Design Manual and the Uniform Regulations for the Control of Drainage, both adopted by the City as "City Standards" (LVMC 19.18.020), and all curbs, gutters and drainage facilities must comply "with any site-specific drainage plan and technical drainage study that has been accepted or approved by the City" (§ 19.02.050). Budget the technical drainage study early — it decides curb type, grades and lot layout, not the other way round. Three specific traps. First, a mapped flood control channel is a building prohibition rather than a design constraint: "It is unlawful for anyone to construct, erect or place any building, structure or improvement on any land within any proposed or existing flood control channel as set forth on the Flood Control Master Plan Map", and the word "proposed" is doing real work there — the reservation can precede the channel by years (§ 20.04.050(A)); placing a structure in, or encroaching on, a drainage easement running in favour of the City is separately unlawful without the Director's authorisation (§ 20.04.050(B)). This tool does not hold the Flood Control Master Plan Map, so check it against your site. Second, "Any development larger than two acres which is not a subdivision shall be required to meet the requirements for subdivisions if the Director of Public Works determines that the flood hazard and the implementation of the drainage master plan so require" (§ 20.08.440) — a discretionary escalation onto the subdivision drainage standards, which include no lots in a regulatory floodway, base flood elevation data for all proposals, concrete curb and gutter at not less than 0.4 percent longitudinal slope, and on-site drainage structures subdivided as a common lot, recorded as a public drainage easement and maintained by a private community association with the obligation recorded as a covenant (§ 20.08.370). Third, low impact development is mandatory for larger nonresidential sites: "With respect to any development or significant redevelopment of a site for non-residential purposes that is one acre in size or larger, low impact development measures must be undertaken as required by the Drainage Design Manual and the Stormwater Management Plan in effect for the Las Vegas Valley" (§ 20.08.445(A)); below an acre they are encouraged. Where base flood elevation data exists, new residential construction must have its lowest floor elevated above base flood elevation per the Drainage Design Manual, and nonresidential construction must either do the same or be floodproofed watertight below base flood level "plus an allowance for sediment and for future development", certified by a registered engineer or architect (§§ 20.08.400, .410, .420). Separately, the Director of Public Works may require construction-site and post-development stormwater best management practices and a written BMP plan under the City's MS4 ordinance (§ 14.18.130(A), (D)). ${
+          lvMappedFlood
+            ? `A FEMA flood zone of "${lvFloodZone}" is mapped on this parcel, so the base-flood-elevation standards above are live here as well as the citywide permit — but note that the City's own findings warn the FEMA map understates the problem: the special flood hazard areas are "based on the one-hundred-year flood, with watershed development conditions as they existed in 1978, and without consideration of erosion and sedimentation", and "As urbanization continues to increase the rate and volume of storm runoff … the Flood Insurance Rate Map will understate the extent and degree of the flood problem" (§ 20.08.020(C)). The City also regulates areas outside the FEMA map entirely — "those subject to flood or sediment hazard and those which produce flood or sediment runoff as identified by the Director of Public Works and/or by the Flood Control Master Plan" (§ 20.08.070(B)).`
+            : `No FEMA flood zone is mapped on this parcel, and that does NOT take you out of Title 20. The chapter applies citywide, and the City's own map basis reaches beyond FEMA: the areas covered include "those subject to flood or sediment hazard and those which produce flood or sediment runoff as identified by the Director of Public Works and/or by the Flood Control Master Plan" (§ 20.08.070(B)). The findings behind the chapter say the FEMA map understates the problem because it is "based on the one-hundred-year flood, with watershed development conditions as they existed in 1978, and without consideration of erosion and sedimentation" (§ 20.08.020(C)).`
+        }`,
+      })
+    }
+
+    // ── WATER AND LANDSCAPE. The Las Vegas row — nothing else in this tool
+    // looks like it, and it constrains the site plan directly.
+    if (project.projectType !== 'change_of_use') {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Turf, irrigation and water: prohibitions that decide the landscape plan before you draw it',
+        status: 'required',
+        note: 'Las Vegas does not regulate landscape water by allowance; it prohibits. Since 1 September 2023 the rule is categorical: "No nonfunctional turf may be installed on any property developed or constructed on or after September 1, 2023. This prohibition applies without limitation to the front, side and rear yard areas of single-family development" (LVMC 14.11.140(D)). Alongside it: "Single-family and multifamily developments are prohibited from installing nonfunctional turf in common areas of residential neighborhoods", "the installation of new functional or nonfunctional turf in non-residential developments is prohibited", and "New functional turf may be installed only at schools, cemeteries, and parks, whether privately or publicly owned or maintained" (§ 14.11.140(A)–(C)). The irrigation system is prohibited too, not just the grass: "It is unlawful to install a spray irrigation system in connection with any new development, regardless of landscaping or groundcover type, except in areas where functional turf is permitted in accordance with LVMC 14.11.140 and its installation is in accordance with applicable development standards set forth in LVMC Title 19" (§ 14.11.100(B)). Get the definition right, because it is where projects go wrong. "Functional turf" is defined by the Las Vegas Valley Water District’s Service Rules and adopted here as turf that "Provides a recreational benefit to the City", "Is completely contiguous", "Is not less than thirty feet in any dimension", "Is one thousand five hundred square feet in area or greater", "Is installed on a slope of less than twenty-five percent", and "Is located at least ten feet away from the back of curb of a public or private street" — all six, together. It expressly includes "Multi-family, mixed-use, and transit-oriented residential property used by tenants for recreation or leisure, but only to the extent conforming with applicable turf limitations set forth in this Title" (§ 14.11.020). Nonfunctional turf is everything else and is named: turf at an entryway or driveway to a park, commercial entrance, neighbourhood or subdivision; turf in a street median, amenity zone or streetscape; and turf in landscape maintenance or common areas not otherwise qualifying (§ 14.11.020). The City cannot waive any of it — "The standards and requirements set forth in this Chapter may not be waived or varied by the City" (§ 14.11.060). Title 19 stacks on top, with the more restrictive governing: turf for institutional uses is "Prohibited, except for schools, parks and cemeteries" (§ 19.08.040(F)(7) Table 1), landscaping must be designed so that "within three years of normal growth, at least fifty percent of the area covered by non-turf landscaping will consist of water efficient vegetation" (§ 19.08.040(F)(7)(b)), plant material must come from the Southern Nevada Regional Planning Coalition Regional Plant List, perimeter buffers take "1-24” box tree per 20 linear feet" for commercial and industrial (30 feet where the neighbour is commercial, industrial or a freeway), and each required tree carries "a minimum of four 5-gallon shrubs" with ground cover to a minimum depth of two inches everywhere (§ 19.08.040(F)(8)). Plans must be stamped by a registered architect, landscape architect, residential designer or civil engineer, perimeter landscaping must be installed before occupancy, and automatic irrigation with no run-off into the right of way is mandatory (§ 19.08.040(F)(1)(b), (5)(a), (6)). Four more prohibitions that catch amenity programmes: fountains and water features are prohibited on District-served property except for swimming pools, features on private water rights, one feature of not more than ten square feet at a single-family residence, one such feature in the common areas of a single-family or multi-family development provided it is not an entryway or streetscape feature, recreational features in parks and water parks, and indoor features (§ 14.11.190(A)); no swimming pool, spa or hot tub exceeding 600 square feet of combined surface area may be built on single-family residential property (§ 14.11.193); no golf course may be permitted for construction (§ 14.11.195); and no new septic system using Colorado River water may be installed on single-family residential property, with removal of an existing one obliging connection to the public sewer (§ 14.11.197). Spray irrigation is also unlawful between 11 a.m. and 7 p.m. from 1 May to 31 August (§ 14.11.090). Landscape materials approved with a land use application or construction permit granted before 1 August 2003 are grandfathered (§ 14.11.130).',
+      })
+    }
+
+    // ── HD-O. INFO, and permanently ungateable. See the note for why this is a
+    // stated absence of DATA rather than of designations, and why there is no
+    // HISTORIC_BODY['lasvegas'] entry: providers/lasvegas.ts sets
+    // `overlays.historicDistrict = null` unconditionally, so the generic
+    // historic row can never fire for this city and a HISTORIC_BODY entry would
+    // be code that never runs while reading, to anyone scanning that table, as
+    // coverage. Rule 5 one level up: an entry that cannot render and an entry
+    // that renders are indistinguishable in a Record<string, string>.
+    hurdles.push({
+      category: 'historic',
+      label: 'Historic overlay: real, and NOT checkable from any published layer',
+      status: 'info',
+      note: 'Las Vegas has a historic overlay and this tool cannot tell you whether you are in it. The HD-O Historic Designation Overlay District is established at LVMC 19.10.150 along with an eleven-member Historic Preservation Commission and a Historic Preservation Officer, and the boundary is published only in "the Official Zoning Map Atlas" (§ 19.10.150(D), Figure 1 note). No layer on the City’s GIS carries it: all nineteen service folders on mapdata.lasvegasnevada.gov were enumerated on 2026-08-09 and again on 2026-08-10, and none publishes a historic or preservation layer. Clark County’s GIS has a lookalike — a 43-polygon "Historic Neighborhood Overlay District" — and it was tested rather than adopted: eight of its polygon centroids were point-queried and every one returned no City of Las Vegas zoning and a parcel in unincorporated Paradise. It is the County’s overlay over County land, and using it would have attached another jurisdiction’s districts to City parcels. So the silence here means "not published", never "this parcel is not in one" — check the Zoning Map Atlas and the Las Vegas Historic Property Register before you assume. What applies if you are in one is substantial and reaches vacant land as well as buildings. "A pre-application conference with the HPO is required prior to submitting a building permit or other required development or zoning permit whenever it is proposed to alter, remodel, build, or otherwise develop an Historic Landmark, District, Site, Building, Structure or Object … the applicant must first obtain the approval of the HPC", on a Certificate of Appropriateness application signed and notarised by the owner, with photographs of every side, drawings, material samples and a site plan (§ 19.10.150(K)(1)–(2)). Where the HPO judges the work "minor in nature and impact" the HPO decides instead. New construction on a NON-contributing property inside a district is caught once it is "major", which the code defines numerically: "new construction is ‘major’ if such construction equals or exceeds 25 percent of the land area of a parcel without a building or of the building ground floor area of a parcel with a building, at the time of the property’s identification as non-contributing" (§ 19.10.150(K)(4)(c)). Demolition is a delay, not a veto — which makes Las Vegas unlike Dallas or Atlanta. The application must be accompanied by "A preliminary plan of redevelopment for the parcel indicating an intended use that is in compliance with the General Plan" and a preliminary restoration plan, and may be denied where the structure "is of historic or architectural value or significance and contributes to the distinctive character of the property" or where its loss "would adversely affect the integrity or diminish the distinctive character of an Historic District" (§ 19.10.150(L)(2), (4)). But a denial buys only time: "If an application for demolition or removal is denied by the HPC, the City may deny a permit for such activity for up to 180 days", during which the Commission tries to find funding, a preservation easement or a buyer willing to sign a five-year preservation covenant — and "If the HPC or HPO is unable to secure such assistance within the period of restraint, the proposed demolition or removal will be allowed" (§ 19.10.150(L)(8)). Economic hardship relief is separately available on a showing that retaining the contributing features "will not permit the owner a reasonable rate of return" for income-producing property, or leaves non-income-producing property with "no reasonable use as a single family dwelling or for an institutional use"; it is unavailable to an owner who damaged the property, overpaid for it, failed at ordinary maintenance, or failed to solicit tenants (§ 19.10.150(L)(6)). Approvals under either subsection are valid for one year, and appeals run to the City Council within 10 days — with the Director or any Council member entitled to call an HPC approval up for review inside the same window (§ 19.10.150(K)(6), (L)(7), (M)). One thing designation does NOT do: the design guidelines "do not regulate maximum building height, maximum lot coverage, minimum setbacks, landscaping, parking, allowable signs, or other development aspects addressed elsewhere in the Unified Development Code" (§ 19.10.150(I)(8)(b)(ii)) — the envelope stays the district’s, and the review is about exterior character viewed from the public right of way.',
+    })
+  } else if (city === 'phoenix') {
+    // TWO instruments, read 2026-08-10, and they are separate documents:
+    //   · the PHOENIX ZONING ORDINANCE (§§ 501–1313), and
+    //   · the PHOENIX CITY CODE (chs. 19A–19D, 29, 30, 32A–32C, 34, 41A),
+    // both published by General Code at phoenix.municipal.codes, walked from
+    // /ZO/contents and /CC/contents rather than from guessed paths. The split is
+    // load-bearing and is why half these rows cite a chapter a zoning reader
+    // would never open: the Zoning Ordinance contains NO impact fee, NO
+    // retention standard and NO grading permit. Those are City Code ch. 29, ch.
+    // 32A and ch. 32A respectively.
+    //
+    // ⚠️ HOW IT WAS READ, because it bears on what is checkable. The host sits
+    // behind a Cloudflare bot challenge that answers curl and any plain fetch
+    // with HTTP 403, so every page was opened in a real browser and its rendered
+    // text read — the same constraint zoning/phoenix.ts records. Consequence:
+    // scripts/check-citations.ts cannot fetch these URLs and this block reports
+    // UNCHECKED, which is the honest state and not a pass. The publisher's ZO
+    // table of contents is carried in `sources.zoningCode` by
+    // providers/phoenix.ts, where a reader can click it.
+    //
+    // The Arizona Revised Statutes cited below were read from azleg.gov, which
+    // answers curl normally — the section index at /arsDetail/?title=9 was
+    // walked and each section fetched from the URL that index gives. No mirror
+    // was used.
+    //
+    // ⚠️ § 501 "Required permits and approvals" is RESERVED — it has no text at
+    // all. A reader looking for the permit list will land there and find
+    // nothing; the applicability rule is § 507.B, which is why that section and
+    // not § 501 is quoted below.
+    //
+    // Two findings are carried elsewhere on purpose and must NOT be duplicated
+    // here: the parking finding (§ 702.C, § 702.E.3) is PARKING_RULES['phoenix'],
+    // and the certificate of appropriateness is HISTORIC_BODY['phoenix'] above.
+    const phxLimits = resolvePhoenix(parcel.zoning.districtCode)
+    const phxArticle = parcel.zoning.article ?? ''
+
+    // ── County island ────────────────────────────────────────────────────────
+    // FIRST, because if it fires everything after it is about the wrong
+    // jurisdiction. Gated on the zoning module's own flag rather than a string:
+    // zoning/phoenix.ts sets `countyJurisdiction` on the mapped ZONING='COUNTY'
+    // polygons and on nothing else.
+    if (phxLimits.countyJurisdiction) {
+      hurdles.push({
+        category: 'review',
+        label: 'County island: the Phoenix ordinance does not govern this parcel',
+        status: 'info',
+        note: 'This polygon is a county island — land inside the City of Phoenix’s mapped area that the Phoenix Zoning Ordinance does not govern. The Maricopa County zoning ordinance does, and this tool has not read it. Nothing in the rest of this list should be applied here without first confirming the jurisdiction: the process, the fees, the retention standard and the review body are all the County’s, not the City’s. The City’s own zoning layer says so — the polygon’s ZONING value is the literal string "COUNTY", on nine polygons totalling 1,853 acres (measured 2026-08-09). Annexation would change the answer, and is itself a process.',
+      })
+    }
+
+    // ── Development review approval, § 507 ───────────────────────────────────
+    // The headline for Phoenix, and note how wide it is: this is not a
+    // threshold-triggered "major project review" like Boston's Article 80. It
+    // applies in EVERY district to EVERY development, and the code writes its
+    // exceptions as a closed list of three, none of which is a size.
+    //
+    // NOT tagged sizeDependent, deliberately. The 2,000 sq ft line in § 507.B.4
+    // decides the SCOPE of the review (full design review vs. review limited to
+    // the parts being modified), not whether the review happens — so a
+    // placeholder GFA cannot make this row wrong, and downgrading it to 'info'
+    // under `assumed-far-1.0` would understate a requirement that holds at any
+    // size. The size is quoted in the note instead.
+    if (project.projectType !== 'adu') {
+      const phxFullReview =
+        project.projectType === 'new' ||
+        (project.projectType === 'addition' && project.gfa >= 2000)
+      hurdles.push({
+        category: 'review',
+        label: 'Development review approval: administrative, but it gates the building permit',
+        status: 'required',
+        note: `Phoenix runs one integrated development review over essentially everything, and the ordinance says so in the widest possible terms: "Development review applies to all public and private facilities in residential, commercial and industrial developments in the City in all zoning districts. The only complete exceptions to compliance with this section are as follows: a. Interior tenant alterations or improvements which do not affect parking requirements or exterior building appearance; b. Nonstructural remodeling of facade treatment (such as paint); c. Sign permits for properties not otherwise subject to development review" (Phoenix Zoning Ordinance § 507.B.1). There is no size threshold in that trigger — the 2,000 square feet in § 507.B.4 decides how much of the code you are reviewed against, not whether you are reviewed. ${
+          phxFullReview
+            ? 'This project is on the FULL track: "Properties with additions of 2,000 square feet or larger, vacant properties, and/or properties undergoing full demolition and redevelopment are subject to full development review, including all applicable design review principles and guidelines, unless stated otherwise within this Zoning Ordinance" (§ 507.B.4).'
+            : 'This project is on the PARTIAL track, which reaches "Exterior structural remodeling/new building facade treatment, and/or modifications to existing site improvements (driveways, parking, site walls, landscape, drainage facilities, or similar), or properties with additions (including new accessory structures) of up to 2,000 square feet" and requires "Compliance with development regulations applicable only to the exterior portion of the building and/or site improvements being modified" (§ 507.B.2). A change of use or interior structural remodel is separately caught by § 507.B.3 and must meet CURRENT automobile and bicycle parking standards even with no added floor area.'
+        } The decision is ADMINISTRATIVE — the Planning and Development Department approves, conditionally approves or disapproves, and there is no commission hearing on the merits — but three things about it cost real time. First, a pre-application conference is mandatory before you may even submit: "A pre-application conference is required before submittal of all preliminary (new preliminary, revised preliminary and amendment) development review documents and time extensions" (§ 507.E.2), and it requires a context plan covering "all adjacent parcels and property within approximately three hundred feet" (§ 507.E.3.a). Second, the standards are not all requirements, and the ones that are not are the expensive ones. § 507.C splits them into requirements (R), presumptions (P), technical items (T) and considerations (C), and a presumption is not optional: "A plan submitted for design review is incomplete if it does not demonstrate that the presumptive elements have been in some way incorporated or overcome" (§ 507.C.2), while "Increase in the cost of development is not an acceptable reason to waive a guideline or determine that a guideline is inappropriate" (§ 507.C.2.a). Anything unlabelled defaults to a requirement: "Items within Section 507 Tab A and other sections of the Zoning Ordinance which are not qualified by an (R), (R*), (P), (T) or (C) shall be treated as requirements (R)" (§ 507.C.5). Third, disagreeing is where the hearings appear. A presumption or an (R*) goes to the Design Review Committee, and there the applicant carries the notice: "No later than 15 calendar days prior to the scheduled Design Review Committee hearing, the applicant shall mail a notice to all property owners and registered neighborhood associations within 150 feet of the subject site" (§ 507.G.2.d) — and "The decision of the Design Review Committee is final and nonappealable" (§ 507.G.2.h). A technical item or an infrastructure requirement goes instead to the Technical Appeals Committee, then to the City Manager’s representative within 15 days, then to the Development Advisory Board (§ 507.H.1–7). One clock runs your way and it is on the City: "The Planning and Development Department shall notify the applicant in writing of the decision within thirty calendar days after the application has been filed by the applicant. Following this decision, the City shall not impose additional requirements" (§ 507.F.1.e) — read the second sentence, it is the useful one. Fees are charged again after the second resubmittal (§ 507.F.1.f). Approvals expire: preliminary approval is valid 24 months, extendable to 36 in a phased project and beyond that only by written approval of the Planning and Development Director; final approval is valid 24 months and survives longer only if a building permit has issued and has not expired (§ 507.K.6). And the compliance gate is the certificate of occupancy, not the permit: "No final certificate of occupancy or certificate of completion will be issued if the structure and associated site improvements, including but not limited to site utilities, paving, grading, plant salvage and tree protection, and landscape installation, including irrigation, have not been installed, protected, or salvaged in accordance with the approved development review documents" (§ 507.K.4). § 507.I.1 lists the technical standards applied through this review and they are not all zoning: Grading and Drainage (City Code ch. 32A), the Storm Drain Design Manual, Floodplains (ch. 32B), Streets and Sidewalks (ch. 31), the Driveway Standards Ordinance, the City’s Landscape Standards and Guidelines, the Low Water Using Plant List, the Water Conservation Ordinance, the Dark Sky lighting rule at City Code § 23-100, the Phoenix Construction Code and the Phoenix Fire Code.`,
+      })
+    }
+
+    // ── Inclusionary: an ABSENCE the STATE establishes ───────────────────────
+    // This is the Milwaukee shape, not the Dallas shape, and the difference is
+    // exactly the thing rule 1 is about. Arizona's statute is a genuine
+    // inclusionary-zoning preemption: it reaches the LEASE price as well as the
+    // sales price, and it separately bars requiring that a unit "be designated
+    // for sale or lease to any particular class or group of residents", which is
+    // what a set-aside is. Texas § 214.905, by contrast, caps a for-sale price
+    // and says nothing about rental — which is why the Dallas row above must NOT
+    // be copied here and this one must not be copied there. Disclosure copy is
+    // code (rule 9's corollary): the same sentence is true in one state and
+    // false in the other.
+    if (isResidential) {
+      hurdles.push({
+        category: 'affordability',
+        label: 'No inclusionary requirement — Arizona forbids one',
+        status: 'info',
+        note: 'Phoenix imposes no affordable-unit requirement at any project size, and unlike most cities in this tool that is not a policy choice it could reverse next year: the State forbids it. Ariz. Rev. Stat. § 9-461.16(A): "Except as provided in subsection B of this section, a city or town shall not adopt a land use regulation or general or specific plan provision, or impose as a condition for approving a building or use permit, a requirement or fee that has the effect of establishing the sales or lease price for a residential housing unit or residential dwelling lot or parcel or that requires a residential housing unit or residential dwelling lot or parcel to be designated for sale or lease to any particular class or group of residents." Read both limbs — the statute reaches the LEASE price as well as the sale price, and separately bars requiring that a unit be set aside for any particular class or group, which is what a mandatory set-aside is. What survives is the voluntary side, preserved expressly: § 9-461.16(B) says the section "does not limit the authority of a city or town to adopt or enforce a land use regulation, general or specific plan provision or condition of approval creating or implementing an incentive, density bonus or other voluntary provision or condition designed to increase the supply of moderate or lower cost housing." Phoenix uses that room in two places, and both are bonuses you elect rather than obligations you incur. In the residential districts, "One additional unit shall be allowed for every two affordable housing units; provided, that the overall project density does not exceed ten percent beyond that which would otherwise be allowed", stacking with the planned-residential and open-space bonuses, with "The total number of units within a project shall be as approved by the Housing Department" (Phoenix Zoning Ordinance § 608.H.3.b–c). Downtown, affordable units are one of the ways to earn the Chapter 12 sustainability bonus (§ 1223), with a recorded restriction ensuring affordability for a minimum term. The word "inclusionary" appears nowhere in the Phoenix Zoning Ordinance — searched 2026-08-10 across the whole ordinance on the publisher’s own index. Treat Phoenix as a city the State has forbidden to impose a mandate, and read any bonus you take as the price of the density it buys.',
+      })
+    }
+
+    // ── On-site stormwater retention, City Code § 32A-24 ─────────────────────
+    // The desert row, and the one most likely to be missed by anyone reading
+    // only the Zoning Ordinance: this is not in the Zoning Ordinance at all.
+    //
+    // The WHOLE condition, not the first clause. § 32A-24.A is a citywide
+    // requirement with a THREE-limb waiver — isolated, under one-half acre, AND
+    // no critical drainage problem — and only the acreage limb is computable
+    // here. So the row is 'required' where the acreage limb alone already fails,
+    // and 'likely' with all three limbs quoted where it does not.
+    //
+    // NOT sizeDependent: the trigger is LOT area, which is measured, not floor
+    // area or a unit count (same reasoning as the Dallas tree row).
+    if (project.projectType !== 'change_of_use') {
+      const phxRetentionWaivable = lotSqFt > 0 && lotSqFt < PHOENIX_HALF_ACRE_SQFT
+      hurdles.push({
+        category: 'environmental',
+        label: 'On-site stormwater retention — required for all developments',
+        status: phxRetentionWaivable ? 'likely' : 'required',
+        note: `Phoenix retains its stormwater on the parcel, and the rule is written as a citywide default rather than a threshold: "On-site retention of stormwater shall be required for all developments. This requirement may be waived for isolated developments under one-half acre where there will be no critical drainage problem created by the additional runoff from the proposed development. The NPDES program may require on-site retention for parcels less than one-half acre" (Phoenix City Code § 32A-24.A). ${
+          phxRetentionWaivable
+            ? `This lot is about ${(lotSqFt / 43560).toFixed(2)} acres, so the acreage limb of the waiver is satisfied — but the waiver has THREE limbs and all of them must hold: the development must also be "isolated" and must create "no critical drainage problem". Neither of those is in the parcel record, and the same sentence notes that the NPDES programme may impose retention below half an acre anyway. Assume retention until the City says otherwise.`
+            : `This lot is about ${lotSqFt > 0 ? (lotSqFt / 43560).toFixed(2) : 'an unknown number of'} acres, so the under-one-half-acre limb of the waiver fails on its face and the other two limbs never arise. Retention applies.`
+        } The performance standard sits in the same section and applies to everyone: "All developments shall not increase the 100-year two-hour peak runoff, change the time of the peak, nor increase the total runoff from its pre-development values." ⚠️ The VOLUME is not in the ordinance and is deliberately not stated here: § 32A-24.B sends you to "the latest edition of the City of Phoenix Stormwater Policies and Standards Manual in effect at the time of the first submittal of plans to the Planning and Development Department", a manual adopted by reference at § 32A-23 and not published in the code text. Get the current manual — and note that the edition is fixed by your first submittal date, which is a real reason not to sit on a submittal across a manual revision. A separate grading permit is its own gate, with three distinct triggers: no building permit may issue "for work in or over any natural watercourse, drainageway, canyon, ravine, arroyo or other potential flood hazard area" without one (§ 32A-6.A); none may issue "in an area of special flood hazard" without one, additionally approved by the Street Transportation Director (§ 32A-6.B); and grading, filling or excavating needs one outright, with the nine exemptions at § 32A-6.C available only "to the extent such grading, filling or excavating does not result in land disturbance over one acre". Hillside land and land carrying grading stipulations lose the exemptions entirely (§ 32A-6.D), and the NPDES/AZPDES programme may require a construction stormwater management plan on top (§ 32A-6.E).${
+          parcel.overlays.floodZone && !FLOOD_OK.has(parcel.overlays.floodZone.toUpperCase())
+            ? ' A FEMA flood zone is mapped here, so § 32A-6.B is live on its face and City Code ch. 32B (Floodplains) applies in addition to everything above — this tool has not read ch. 32B and does not evaluate it.'
+            : ''
+        } Retention areas are also a design-review subject, not just a civil one: § 507 Tab A treats common retention as countable toward required common open space only "if it has a minimum area of 1,000 square feet of level bottom with maximum side slopes of 4:1 and is properly landscaped as usable open space (minimum 50 percent vegetation)" — a presumption (P), so it is negotiable, but the negotiation is the cost.`,
+      })
+    }
+
+    // ── Impact fees, City Code ch. 29 ────────────────────────────────────────
+    // THE ROW WHERE THE SLOT TEST WAS APPLIED PER SCHEDULE. See the constants
+    // block: nineteen schedules, six of which carry a "Balance of the City" row
+    // and thirteen of which do not. Encoding "Phoenix charges impact fees" as a
+    // flat claim would over-fire on thirteen categories for a central-Phoenix
+    // parcel and under-fire on none — so the row states both halves and computes
+    // only the citywide one.
+    //
+    // sizeDependent: the citywide figures are priced per dwelling unit.
+    if (project.projectType !== 'change_of_use') {
+      const phxMfrTotal = units * (PHOENIX_WASTEWATER_TREATMENT_MFR_PER_DU + PHOENIX_WATER_TREATMENT_MFR_PER_DU)
+      const phxSfrTotal = units * (PHOENIX_WASTEWATER_TREATMENT_SFR_PER_DU + PHOENIX_WATER_TREATMENT_SFR_PER_DU)
+      hurdles.push({
+        category: 'fees',
+        label: 'Impact fees: two of the categories are citywide, the other seven are not',
+        sizeDependent: true,
+        status: 'required',
+        note: `Phoenix assesses development impact fees under Arizona’s statutory framework (Ariz. Rev. Stat. § 9-463.05, under which "A municipality may assess development fees to offset costs to the municipality associated with providing necessary public services to a development"), and the local chapter is City Code ch. 29. Read the scope before you price anything: "Except as otherwise provided herein, this chapter shall apply to all development within any impact fee area for the City of Phoenix, as defined in the adopted infrastructure financing plan" (§ 29-4). That is an AREA trigger, not a citywide one, and the nine areas Appendix A names are ${PHOENIX_IMPACT_FEE_AREAS.join(', ')} — all of them on the city’s growth edges. This tool does not fetch an impact-fee-area layer and cannot tell you whether this parcel is in one. What CAN be said is which categories reach the rest of the city, and it was established by reading Appendix A’s own structure rather than by inference: the appendix carries nineteen fee schedules, A through S, each a table whose rows are service areas, and exactly six of them — Schedules K, L and M (wastewater treatment) and Q, R and S (water treatment) — carry a "Balance of the City" row alongside the nine named areas. The other thirteen do not. So fire protection, police, parks, library, major arterials, storm drainage, wastewater collection and water TRANSMISSION are area-only, while wastewater TREATMENT and water TREATMENT are priced for the balance of the city. Water transmission and water treatment are adjacent schedules with opposite answers, which is why this had to be read schedule by schedule. ${
+          isResidential && units > 0
+            ? `At the "Balance of the City" residential rates — wastewater treatment $${PHOENIX_WASTEWATER_TREATMENT_MFR_PER_DU.toLocaleString()} per multifamily dwelling and $${PHOENIX_WASTEWATER_TREATMENT_SFR_PER_DU.toLocaleString()} per single-family dwelling on a meter of 1 inch or less (Schedule K), water treatment $${PHOENIX_WATER_TREATMENT_MFR_PER_DU.toLocaleString()} and $${PHOENIX_WATER_TREATMENT_SFR_PER_DU.toLocaleString()} respectively (Schedule Q) — ${units} dwelling units come to about $${phxMfrTotal.toLocaleString()} at the multifamily rate or about $${phxSfrTotal.toLocaleString()} at the single-family rate. BOTH are shown and neither is chosen for you: Appendix A splits SFR from MFR without defining the boundary between them in the schedule, and the single-family rows are further keyed to meter size (the 1½-inch column runs $2,594 and $9,564 instead), which is not in the parcel record. Those two categories are the FLOOR, not the total: if this parcel is in one of the nine named areas, add the fire, police, parks, library, arterial, storm drainage, wastewater collection and water transmission schedules on top, and in the Estrella and Laveen areas storm drainage alone is priced per acre at four EDUs an acre for anything that is not single-family.`
+            : 'No dwelling-unit count is available for this project, so no figure is computed. Appendix A prices fire protection, police, parks and library "per 1,000 square feet, or part thereof, for non-residential developments", major arterials per room for lodging and per 1,000 sq ft otherwise, storm drainage per acre, and water and wastewater by meter size (§ 29-11.B.1.a–e) — run your own programme against the schedules rather than taking a number from here.'
+        } Timing is the thing most likely to bite. The fee SCHEDULE locks early and the PAYMENT lands late: for anything that is not single-family, "the impact fee schedules in effect at the time of final approval of a site plan (or plat if no site plan is required) shall be applied to all subsequent permits issued within the same development for a period of 24 months following the date of final approval" (§ 29-11.A.2), while collection is "prior to issuance of permission to commence development" — "If a building permit is required for the development, all impact fees shall be paid at the time the building permit is issued" (§ 29-11.C.1), and "No building permit, water or wastewater connection, or civil/site permit shall be issued if an impact fee is not paid" (§ 29-11.C.5). Arizona fixes the same point at § 9-463.05: "The developer of residential dwelling units shall be required to pay development fees when construction permits for the dwelling units are issued, or at a later time if specified in a development agreement." Amending an approved plat or site plan inside the 24 months to add EDUs re-prices only the added ones, at the schedule in force when the permit issues (§ 29-11.A.3.a), and a schedule DECREASE inside the window is passed on to you (§ 29-11.A.3.b). Redevelopment is charged on the delta, not the whole: "Impact fees shall not be assessed if modifications to existing residential or non-residential development are being made that do not increase the number of EDUs attributed to a development" (§ 29-11.D.3), and where they do, the fee is the difference (§ 29-11.D.4). Where your use is not in the schedule you may — or the Director may require you to — commission an independent impact analysis, reviewed by the Planning and Development Director before payment (§ 29-11.D.5). ⚠️ Two adjacent instruments that a stale summary will get wrong. First, the Chapter 19A/19C "development occupational fees" of $600 per single-family residence and $360 per apartment for sewer and again for water are NOT additional here as of last year: "Beginning on June 23, 2025, fees in this section are not applicable if a wastewater treatment impact fee or in-lieu payment is due under Chapter 29" (§ 19A-2(f), added by Ord. G-7376, 2025), with the identical provision for water at § 19C-2(c). Since wastewater treatment and water treatment are the two categories Appendix A prices for the balance of the city, expect the impact fee rather than the occupational fee — but confirm, because the supersession is written conditionally on the impact fee being due. Second, City Code ch. 30 imposes a separate Water Resources Acquisition Fee that is NOT part of ch. 29 and is genuinely citywide: "This chapter shall apply to all development connecting with the water system of the City of Phoenix" (§ 30-11), triggered by a new meter, an increase in meter size above ¾ inch commercial or 1 inch residential, or additional dwelling units on an existing meter. Its AMOUNT is deliberately not stated here: § 30-9 puts the schedules in the Water Resource Acquisition Report and Impact Fee Study filed on the City’s website, not in the code, and there are separate on-project and off-project service areas. Unpriced and disclosed rather than guessed. Appendix A’s own currency line is "(Ord. No. G-7375, § 1, 2025)"; get the live schedule before you underwrite.`,
+      })
+    }
+
+    // ── Landscape and open space for multifamily, § 703.B ────────────────────
+    // A clean unit threshold — "five or more dwelling units" — so this is
+    // sizeDependent and gated on it. Under five units the code sends you to
+    // § 507 Tab A residential lot design review instead, which the § 507 row
+    // above already covers.
+    if (isResidential && units >= 5) {
+      hurdles.push({
+        category: 'environmental',
+        label: 'Multifamily landscape and common open space: 5% of the site, priced per square foot of setback',
+        sizeDependent: true,
+        status: 'required',
+        note: 'At five units the Phoenix Zoning Ordinance switches on a prescriptive landscape and open-space standard: "Landscaping and open space shall be provided as follows at the time of initial development and shall be maintained in a living condition on any lot subject to residential district standards with five or more dwelling units. Properties with four or fewer dwelling units should refer to Section 507 Tab A.II.C.9, Residential Lot Design Review" (§ 703.B.2). The numbers are per unit of AREA, not per unit of building, which is what makes them expensive on a tight site. Along the street: the required building setbacks must be landscaped at "One minimum fifteen-gallon drought resistant tree for each five hundred square feet of required setback area, less driveways and sidewalks" and "One minimum five-gallon drought resistant shrub for each one hundred square feet of required setback", over a ground cover drawn from at least two of turf or low-growing evergreen vegetation, flowering vegetation, and sculpted rock or decomposed granite (§ 703.B.3.a). Along interior property lines: "One minimum fifteen-gallon tree for each twenty feet of linear distance" and "One minimum five-gallon shrub for each five feet of linear distance", in a strip at least five feet wide (§ 703.B.3.b). Side and rear yards not occupied by pools, structures, parking or driveway are added to the landscaped area at the street ratios (§ 703.B.3.c), and every landscaped area needs "a water source with an appropriate permanent water distribution system" (§ 703.B.3.d). Then the open space: "Active and passive leisure and outdoor recreation areas are to be provided and maintained in central locations for use by residents", totalling "a minimum of five percent of the gross site area", with "No portion of any area … less than two hundred square feet or less than twenty feet in width", and at least two of a swimming pool, tot lot, barbecue and picnic area, game court, jogging or parcours route, or lawn (§ 703.B.4). Parking lots, driveways, buildings and required setbacks do not count toward it (§ 703.B.4.b). Failure to maintain any of it is itself a zoning violation (§ 703.B.5). The five percent is worth carrying into the pro forma early — it is measured on GROSS site area, so it comes off the same land the building, the parking and the retention basin are competing for, and § 507 Tab A will treat a retention basin as countable open space only if it is level-bottomed, at least 1,000 sq ft, sloped no steeper than 4:1 and at least half vegetated.',
+      })
+    }
+
+    // ── Plant salvage permit, § 703.E ────────────────────────────────────────
+    // The exemption is written to a lot TYPE ("a single-family lot having one
+    // home or duplex"), and this tool has no field for lot type — Phoenix's
+    // parcel layer has no dwelling-unit count at all (providers/phoenix.ts note
+    // 4). So the row renders always and its STATUS carries the uncertainty:
+    // 'required' where the exemption cannot apply on the project's own terms,
+    // 'likely' with the exemption quoted where it might.
+    if (project.projectType !== 'change_of_use') {
+      const phxMaybeExemptLot = isResidential && units > 0 && units <= 2
+      hurdles.push({
+        category: 'environmental',
+        label: 'Plant salvage permit before any tree, plant or cactus comes out',
+        status: phxMaybeExemptLot ? 'likely' : 'required',
+        note: `In Phoenix the vegetation already on the site is regulated before you touch it, and the default is that it stays: "All trees, plants and cacti on site and in the abutting rights-of-way must remain in place in a healthy, structurally sound, and viable condition, in accordance with approved development review documents" (Phoenix Zoning Ordinance § 703.E.1.a). Removal needs a permit: "No trees, plants or cacti may be removed or destroyed on a property without first obtaining a plant salvage permit from the Planning and Development Department", subject to four exceptions — the Planning and Development Department has stated in writing that no plant salvage plan is required for the site, the plants are "located on a single-family lot having one home or duplex", the plants were destroyed by a natural or accidental cause, or a utility removed them to maintain electric transmission or distribution facilities (§ 703.E.1.b). ${
+          phxMaybeExemptLot
+            ? 'This project is small enough that the single-family-lot exemption may reach it — but the exemption is written to the LOT ("a single-family lot having one home or duplex"), not to a unit count, and neither the City’s zoning layer nor the County parcel layer publishes a dwelling-unit count for Phoenix, so this tool cannot resolve it. Confirm the lot’s status before assuming.'
+            : 'None of the four exceptions reaches a project of this kind: the single-family-lot exception is limited to "a single-family lot having one home or duplex", and the written-waiver exception is a decision the Department makes on the site, not a class of project.'
+        } The paperwork is where the cost is. Landscape plans "must … be sealed by a landscape architect registered in the State of Arizona" (§ 703.E.2), and there are up to three of them: a plant inventory plan identifying every existing tree, cactus and plant with its health as determined by that registered landscape architect; a plant salvage and tree protection plan giving the disposition of each one ("remain/protect in place", "salvage" or "destroy") plus nursery details and watering, pruning, fertilisation, monitoring and inspection schedules through to final completion, and a description of how critical root zones will be protected during construction, with the minimum root zones set "according to the current standards set forth by the American National Standards Institute (ANSI), the Sustainable Landscape Management Standards of the Arizona Landscape Contractors’ Association, or other acceptable sustainable landscape standards as determined by the Planning and Development Department landscape architect"; and a landscape installation plan with a maintenance schedule naming "seasonal water application rates, types and methods of fertilization, and pruning" per plant type (§ 703.E.2.a–c). Replacement is mandatory where protected or salvaged material dies or is removed — "with like kinds and sizes or equivalent as determined by the Planning and Development Department landscape architect" — and the enforcement point is the end of the job: "no final certificate of occupancy or certificate of completion will be issued prior to the installation of the like kind and size replacements" (§ 703.E.1.c). Commission the inventory before the site plan, not after: it feeds the plan rather than the other way round. Two hard site-wide requirements sit alongside it in § 507 Tab A and are labelled (R) rather than presumptions — "Landscape treatment must be used for the entire site exclusive of building(s) and pavement for vehicular use" (3.2.2) and "Five percent of the surface parking lot, exclusive of perimeter landscaping and all setbacks, must be landscaped. Landscaping shall be dispersed throughout the parking area" (6.1.1), with tree planters at least five feet wide inside dimension (6.1.2). ⚠️ Phoenix’s well-known shade percentages are mostly NOT requirements, and the distinction is worth understanding rather than glossing: the 50% shading of walkways, plazas and open space and the 75% shading of on-site pedestrian paths in § 507 Tab A are marked (P) — presumptions — which under § 507.C.2 means a plan is incomplete unless it incorporates or overcomes them, and cost is expressly not a reason to overcome one. The street-frontage shade trees at Tab A 5.2.1 and 5.4.1 are marked (T), technical items, appealable to the Technical Appeals Committee. Budget them as negotiable-but-not-optional rather than as either a hard number or a nicety.`,
+      })
+    }
+
+    // ── Plan-governed districts: PUD, PAD-*, PC ──────────────────────────────
+    // Gated on the zoning module's own `planGoverned` flag, not on a string.
+    // This row does NOT claim a limit; it says where the limits are and that this
+    // tool has not read them — an incompleteness, not an absence (rule 5).
+    if (phxLimits.planGoverned) {
+      hurdles.push({
+        category: 'review',
+        label: 'Plan-governed district: your standards are in an approved narrative, not in the ordinance',
+        status: 'required',
+        note: 'This parcel is in a Planned Unit Development, a Planned Area Development or a Planned Community District, and its dimensional standards are not in the district tables of the Phoenix Zoning Ordinance. They are in the instrument the City Council approved for this specific site, and that instrument is not published as data — so the figures this tool shows for the base district are INCOMPLETE here, not absent. A height, a density and a coverage limit do apply; we cannot read them. For a PUD the standards are authored by the applicant: "an applicant authors and proposes standards and guidelines that are tailored to the context of a site on a case by case basis" (§ 671.A), set out in a development narrative that must include "Development standards, including, but not limited to, density (residential projects), building height, setbacks, and lot coverage" plus design guidelines and infrastructure (§ 671.D.2), and "Where the approved PUD narrative is silent on a requirement, the applicable Zoning Ordinance provision shall control" (§ 671.B.2). Getting one, or changing one materially, is a rezoning: "The application for the PUD District shall conform to the zoning map amendment (rezoning) section of the Zoning Ordinance" (§ 671.D.1), and a major amendment "shall follow the application and approval process stated in the zoning map amendment (rezoning) section", where major is defined by a closed list — a change in the PUD boundary, "Any change in the height, density, setback, or lot coverage development standards", any change in the location of a land use on the land use plan, "Any addition to the list of uses", or any change to the design guidelines inconsistent with the narrative’s intent (§ 671.E.1). Anything else is minor and may be approved administratively by the Planning and Development Director (§ 671.E.2). Conceptual site plans and elevations have their own, narrower administrative window: staff may approve an increase in building height of less than five percent, a change in density of less than five percent, a change in building or landscape setbacks of less than five percent, any increase in open space, a traffic-circulation change that improves circulation or safety, or an increase in building footprint of less than five percent — and anything outside those numbers goes to the Planning Hearing Officer at a public hearing (§ 671.E.3.a–b). Two more things worth knowing before you count on a PUD. A PUD cannot buy you out of an overlay: "Existing overlay districts and regulatory portions of specific plans and special planning districts, as described in the Zoning Ordinance, may not be removed or modified by a PUD" (§ 671.B.1). And at scale it adds a step: "PUD applications for a property where the gross land area is three hundred twenty (320) acres or more shall submit Master Plans", which "shall be approved prior to preliminary site plan approval", and the Department may require one below that threshold where intensity impacts existing infrastructure (§ 671.B.3). The Council may also condition the PUD on commencing development within a specific timeframe (§ 671.B.4). Read the approved narrative and the adopting ordinance — they are what bind, and they are not in this tool.',
+      })
+    }
+
+    // ── Mapped overlays ─────────────────────────────────────────────────────
+    // Gated on the phrase providers/phoenix.ts writes into `zoning.article`,
+    // because ParcelInfo has no overlay field. A miss is a false negative.
+    if (PHOENIX_ARTICLE_PHRASE.mappedOverlay.test(phxArticle)) {
+      const phxRegulatory = PHOENIX_ARTICLE_PHRASE.regulatoryOverlay.test(phxArticle)
+      hurdles.push({
+        category: 'review',
+        label: phxRegulatory
+          ? 'A REGULATORY overlay is mapped here and its standards are not resolved'
+          : 'An overlay is mapped here and its standards are not resolved',
+        status: phxRegulatory ? 'likely' : 'info',
+        note: `The City’s zoning-overlay layer returns at least one polygon for this point, and the overlay’s own name is carried in the zoning summary above.${
+          phxRegulatory
+            ? ' At least one of them is flagged REGULATORY in the City’s own data, which means it can change what you may build.'
+            : ' None of them is flagged REGULATORY in the City’s own data, so each is more likely a specific plan or a planning-area boundary than a rule — but "not flagged" is the layer’s claim, not a reading of the overlay’s text.'
+        } This tool does not resolve overlay standards, and the direction of the error matters: an overlay in Phoenix binds BELOW the base district, not above it, so the height, coverage and density figures shown for the base district are a ceiling that the overlay may lower. The Zoning Ordinance carries roughly thirty of them at §§ 644–672 — among them the Airport Noise Impact Overlay (§ 644), the Warehouse Overlay (§ 645), Desert Character Overlay Districts (§ 653), North Black Canyon (§ 654), the Rio Salado and Central City South interim overlays (§§ 655, 656), the FH Flood Hazard and Erosion Management District (§ 657), the Deer Valley Airport Overlay (§ 658), Interim Transit-Oriented Overlays One and Two (§§ 662, 663), the North Central Avenue Special Planning District (§ 664), the Seventh Avenue Urban Main Street Overlay (§ 665) and the Middle Housing Overlay (§ 632) — with § 668 carrying the summary list of special planning and specific plan overlay districts. Read the one that names your parcel before you size the building. Where a project also needs a rezoning, note that a PUD cannot remove or modify an overlay (§ 671.B.1).`,
+      })
+    }
+
+    // ── Rezoning, § 506 ──────────────────────────────────────────────────────
+    // NO addsMonths, and the numbers § 506 publishes are exactly why. The 180
+    // days is an outer LIMIT on the whole substantive-review-and-hearings period
+    // (Raleigh's shape), and the 120 days produces a deemed RECOMMENDATION, not
+    // a decision — the Council still has to vote. Neither is a duration for the
+    // work (rule 6 in the time dimension).
+    if (discretionary) {
+      hurdles.push({
+        category: 'review',
+        label: 'Rezoning: two mandatory pre-application meetings, mail-outs to a one-mile radius, and a 20% protest forces a supermajority',
+        status: 'likely',
+        note: 'Asking for more than the base district means a zoning map amendment, and in Phoenix that is a legislative act of the City Council reached through the Planning Commission or a hearing officer. Start with the two things that happen before you may file. "Prior to submitting an application for rezoning, the applicant shall request and attend two separate meetings: a rezoning pre-application meeting, and a development pre-application meeting, unless waived by the Planning Director" (Phoenix Zoning Ordinance § 506.B.5.b(1)) — two, not one. And if your application covers land you do not own, you need the neighbours first: "the applicant shall file … a petition in favor of the request signed by the real property owners representing at least seventy-five percent of the land area to be included in the application" before it will even be accepted for processing (§ 506.A.6). Notice is unusually heavy and most of it is on YOU rather than on the City. Within ten working days of filing you must "mail a notice by first class mail explaining the request and all appropriate review and comment opportunities to real property owners, as shown on the last assessment of the property, within six hundred feet of the site, the nearest resident within the four quadrants to the site, and to neighborhood associations registered with the City which are within a one-mile radius of the site", and file a notarised affidavit proving it; a SECOND identical mailing goes out within ten working days of the post-application meeting, adding the village planning committee date and the first hearing date; and you must post a sign on the site, keep it updated and graffiti-free through every appeal, and remove it within seven days of final Council action (§ 506.B.7.a–e). The one-mile radius for registered neighbourhood associations is the part people underestimate. The City publishes the hearing itself at least fifteen days out in a newspaper of general circulation and posts the area for fifteen days, seven on a continuance (§ 506.A.4, § 506.A.11). The village planning committee is a real forum even though it is advisory: any member of the public may raise concerns there before the Commission and Council hearings, and the chair controls how long they get (§ 506.B.6). The vote is the risk to price. A simple majority carries — unless a protest lands: "In the event that a written protest against a proposed amendment is filed in the office of the City Clerk … no later than seven days following Planning Commission action by the owners of 20 percent or more of the property by area and number of lots, tracts and condominium units within the zoning petition area, excluding government owned property, such amendment shall not become effective except by the favorable vote of three-fourths of all the members of the City Council" (§ 506.A.9). Read the measure carefully, because it is not the usual one: the threshold is twenty percent by AREA and by NUMBER of lots, tracts and condominium units, and the zoning petition area is "The area of the proposed amendment" PLUS "The area within 150 feet of the proposed amendment, including all rights-of-way" (§ 506.A.9.a). On a block of small condominium units the unit-count limb is reached long before the area limb. Two clocks exist and neither is a schedule you can plan on. "If the hearing officer or the Commission, if applicable, shall fail to report on any such amendment within one hundred twenty days after its receipt thereof, such failure shall be deemed to be a recommendation of approval", with receipt dated from acceptance of the complete application (§ 506.A.8) — that produces a recommendation, not an approval; the Council still votes. And "the substantive review shall begin a 180-day period within which the substantive review and all required public hearings shall be conducted. The City Council must approve or deny an application before the end of the 180-day period", extendable once by the City for up to 30 days for extenuating circumstances and in 30-day increments at your own request (§ 506.B.5.e(2)) — an outer limit on the City, not an expectation. Rezonings to or from HP, HP-L or PUD, and properties on the National Register, are outside that 180-day scheme entirely and run to time frames published in an application packet on the City website (§ 506.B.5.c(1), § 506.B.5.e(1)). Administrative completeness has its own loop: 30 days for the first review, 15 days for each resubmittal, repeated until complete, and an application not resubmitted within 15 days of a deficiency notice "may be considered void" with fees refunded less an administrative charge (§ 506.B.5.c(2)). A denial or a post-Commission withdrawal costs a year: the Commission "shall have the authority to refuse and accept another application for any amendment on the same property or any part thereof, within a year of the date of filing the previous application" (§ 506.A.5). Finally, what you get may be conditional in two ways that outlive the hearing. The Council "may approve a change of zone conditioned upon a schedule for development", and if no building permit issues in that window — or one issues, stays active, and expires without an occupancy permit — the Commission initiates a reversion to the former classification (§ 506.B.1). And the conditions themselves may include "Reductions in the otherwise applicable floor area ratio, lot coverage, building height, or density", "Increases in otherwise applicable building setbacks, lot area, parking spaces, landscaping, or open space", and "Public dedication of rights-of-way as streets, alleys, public ways, drainage and public utilities, and the installation of off-site improvements" (§ 506.B.1.b(2)–(4)). A violation of any stipulation is a zoning violation, and deleting or modifying one later is its own public hearing before the Planning Hearing Officer (§ 506.B.3.a(1)).',
+      })
+    }
+
+    // ── Arizona exaction appeal, A.R.S. § 9-500.12 ───────────────────────────
+    // An ANSWER the STATE establishes, and it runs the other way from most rows
+    // here: it is a right, not an obligation. Encoded because the two rows above
+    // (§ 506.B.1.b(4) dedications as rezoning conditions, and § 507.H
+    // infrastructure requirements) are exactly what it answers, and because its
+    // 30-day window is short enough that not knowing about it forfeits it.
+    if (project.projectType === 'new' || discretionary) {
+      hurdles.push({
+        category: 'review',
+        label: 'Arizona gives you a free, fast appeal against a dedication or exaction — and puts the burden on the City',
+        status: 'info',
+        note: 'If the City conditions an approval on a dedication or an exaction, Arizona hands you a statutory appeal that is quick, costs nothing to file, and reverses the usual burden of proof. "a property owner may appeal … The requirement by a city or town of a dedication or exaction as a condition of granting approval for the use, improvement or development of real property" (Ariz. Rev. Stat. § 9-500.12(A)(1)), and a zoning regulation that effects a taking under § 9-500.13 is appealable on the same track (§ 9-500.12(A)(2)). Read the carve-out in the same paragraph before you rely on it: the section "does not apply to a dedication or exaction required in a legislative act by the governing body of a city or town that does not give discretion to the administrative agency or official to determine the nature or extent of the dedication or exaction" — so a citywide schedule adopted by ordinance is outside it, while a condition an official shaped for your site is inside it. The mechanics are fast and the deadline is short. The appeal "shall be in writing and filed with or mailed to a hearing officer designated by the city or town within thirty days after the final action is taken", the municipality must submit a takings impact report, and "No fee shall be charged for filing the appeal" (§ 9-500.12(C)). The hearing must be scheduled "not later than thirty days after receipt", with at least ten days’ notice to you (§ 9-500.12(D)), and "The hearing officer shall decide the appeal within five working days after the appeal is heard" (§ 9-500.12(F)). The burden is the City’s, not yours: "In all proceedings under this section the city or town has the burden to establish that there is an essential nexus between the dedication or exaction and a legitimate governmental interest and that the proposed dedication, exaction or zoning regulation is roughly proportional to the impact of the proposed use, improvement or development" (§ 9-500.12(E)) — that is Nollan and Dolan, put on the municipality by statute, and § 9-500.13 separately commands Arizona cities to comply with Nollan, Dolan, Lucas and First English by name. If the City fails to carry it, the hearing officer "shall … Modify or delete the requirement". If you lose, you get a trial de novo in superior court within thirty days, with interim relief available so the project can proceed, calendar preference on the same footing as condemnation, attorney fees to the prevailing party, and "damages that are deemed appropriate to compensate the property owner for direct and actual delay damages on a finding that the city or town acted in bad faith" (§ 9-500.12(G), (H)). One procedural protection is worth knowing during negotiation: "The city or town shall not request the property owner to waive the right of appeal or trial de novo at any time during the consideration of the property owner’s request" (§ 9-500.12(B)).',
+      })
+    }
+
+    // ── Arizona licensing time frames, A.R.S. §§ 9-835, 9-836 ────────────────
+    // Every Arizona city, so 'info'. This is the Texas § 214.904 row's Arizona
+    // analogue and it is a stronger instrument — but it is still a shot clock
+    // with a fee remedy, NOT a duration for the work, so it carries NO
+    // addsMonths. Note also that the NUMBER is not in the statute: the statute
+    // requires the municipality to SET and PUBLISH the time frames, and Phoenix's
+    // published schedule was not read in this build. Stating one would be
+    // inventing it.
+    hurdles.push({
+      category: 'review',
+      label: 'State law makes Phoenix publish its own permit clocks — and refund every review fee if it misses one',
+      status: 'info',
+      note: 'Arizona clocks the municipality rather than the applicant, and the remedy has teeth that most such statutes lack. Every Arizona city must "have in place an overall time frame during which the municipality will either grant or deny each type of license that it issues", stated as a separate administrative completeness review time frame and substantive review time frame, and "posted on the municipality’s website" (Ariz. Rev. Stat. § 9-835(A)–(B)); a "license" here includes the permits and approvals needed for land development and building construction. ⚠️ The NUMBERS are not in the statute and are deliberately not stated here — they are Phoenix’s own published time frames, and this build did not read them. Get them from the City’s posted schedule rather than from a figure quoted anywhere else. What the statute itself fixes is the process and the penalty. The City must issue a written notice of administrative completeness or of deficiencies inside the completeness window, and if it does not, "the application is deemed administratively complete" (§ 9-835(D), (F)). During substantive review "a municipality may make one comprehensive written or electronic request for corrections", amendable once to add legal requirements it missed, plus supplemental requests limited to issues already raised (§ 9-835(G)). Then the consequence, which is unusual in reaching both the clock AND the number of correction rounds: "If a municipality makes more than one comprehensive written or electronic request for corrections and one supplemental written or electronic request for corrections to a license application necessary for residential building construction or land development … or does not issue the applicant the written or electronic notice granting, conditionally granting or denying a license within the overall time frame … the municipality shall refund to the applicant all fees charged for reviewing and acting on the application" and shall excuse unpaid fees, without any application from you, inside thirty working days, continuing to process the application meanwhile — and "The right to receive a refund of fees charged for reviewing and acting on the application for the license may not be waived by an applicant" (§ 9-835(K)). Read the remedy before you plan around it: missing the deadline does NOT approve your permit. A fee refund is the entire consequence, so this is a cost cap, not a schedule you can rely on. Note too that each clock suspends the moment a deficiency notice or correction request goes out and restarts when you answer (§ 9-835(E), (G)), and that time frames may exclude delays caused by public hearings and by non-municipal approvals (§ 9-835(C)(8)(c), (C)(9)) — which is why a rezoning does not sit inside them. Two other provisions are worth having in hand. On denial the City must give you written justification with statutory citations, an explanation of your appeal rights including the number of working days to protest, and the fee consequence of resubmitting (§ 9-835(J)). And once you are approved and building, "A municipality may not modify, rescind or request any subsequent modifications or revisions to an approved plan or permit for residential land development or residential building construction during construction if the construction is done in accordance with the approved plan or permit", with three exceptions — an unknown field condition, a change you asked for, or a correction of code noncompliance that was not identified before approval and relied on (§ 9-835(N)). The City must also hand you, at the time you pick up an application, "A list of all of the steps the applicant is required to take in order to obtain the license" and "The applicable licensing time frames" (§ 9-836(A)).',
+    })
+
+    // ── Historic demolition, §§ 806, 813 ─────────────────────────────────────
+    // Gated on teardown AND a mapped historic designation, exactly like Dallas.
+    // Note what the row does NOT do: § 806's pending-designation freeze reaches
+    // parcels with no designation at all, and no layer publishes "an HP
+    // application has been initiated here", so that limb is stated inside the
+    // note rather than made a gate on a proxy.
+    if (teardown && parcel.overlays.historicDistrict) {
+      hurdles.push({
+        category: 'demolition',
+        label: 'Historic demolition: a one-year restraint, three years for a landmark, and a reuse plan before the permit',
+        status: 'required',
+        note: 'Demolition inside a Phoenix HP district is gated absolutely: "No permit shall be issued by the Building Official to move or demolish all or any part of a house, building, or other structure in an Historic Preservation District without a demolition approval authorized by the HP Officer, HP Commission or City Council" (Phoenix Zoning Ordinance § 813.A). The first decision is fast and narrow: within three days of the application the Historic Preservation Officer must decide whether approval can issue, on two criteria that must BOTH hold — that "The structure is of no historic or architectural value or significance and does not contribute to the historic value of the property" and that "Loss of the structure would not adversely affect the integrity of the HP District or the historic, architectural or aesthetic relationship to adjacent properties and its demolition shall be inconsequential to historic preservation needs of the area" (§ 813.B.2). If it cannot, you may request a public hearing — and the code requires that the request "contain a completed request for Certification of Economic Hardship" (§ 813.B.3), so the hardship case has to be built before the hearing rather than after it. The HP Officer then holds a public hearing within twenty days of the request, with the property posted at least ten days beforehand (§ 813.B.4); appeals run to the HP Commission within five days and then to the City Council within five more, and a missed appeal hearing works in your favour: "In the event the initial hearing on an appeal to the HP Commission is not held within sixty days of the date the appeal was filed, the application shall be deemed approved" (§ 813.B.7). The cost of a denial is measured in YEARS, not months, and this is the part to price. "If a demolition approval is not granted, then no demolition permit shall be issued for a period of one year from the date on which the request for demolition approval was denied", during which the HP Officer must try to find a productive use and then "investigate methods of private or public acquisition of the property" (§ 813.C). "For properties designated landmarks, the restraint of demolition shall be three years", reviewable on the owner’s request after two, with the Commission weighing the owner’s efforts to repair, to find a user and to find a purchaser (§ 813.D). Phoenix’s HP zoning suffixes distinguish the two — "HP" and "HP-L" — and the suffix is what decides whether you are on the one-year or the three-year clock, so establish which one this parcel carries before you underwrite a teardown. And the restraint expiring is not the end of it: where approval was granted on any basis other than economic hardship, or was denied and the restraint has run out, "the Building Official shall not issue a demolition permit until a redevelopment or reuse plan for the property has been filed with the HP Officer", in compliance with the zoning, the General Plan, any Specific Plan and the HP design guidelines — and "Vacant or non-use shall not be responsive to this requirement" (§ 813.E). You then have one year from that point to pull the permit, extendable by up to six months for unforeseeable conditions, after which you start over with a new demolition application. Any new building must conform to the plan filed with the demolition approval, and departing from it requires a Certificate of Appropriateness (§ 813.F). Two exits exist: the requirement for a reuse plan is waived where no historic feature will remain in the district after demolition and the Officer finds the plan unnecessary for compatibility (§ 813.E.b), and the whole demolition-review scheme is bypassed where the City Manager or the Rehabilitation Appeals Board has ordered the building demolished to protect public health and safety (§ 813.B.8–9). ⚠️ One trap reaches parcels with NO designation at all, and this tool cannot see it. Section 806 freezes demolition in "areas where an application for HP designation is under consideration": no demolition permit issues in such an area without HP approval, and the freeze runs "between such time as the application is initiated or filed and the time the action is taken on the application by the City Council" (§ 806.C–D). A denial there also buys a one-year restraint, lifting automatically if HP zoning has not been adopted by the end of it (§ 806.E.4). No layer this tool reads publishes pending HP applications, so its silence here means "not published", never "no application is pending" — check with the Historic Preservation Office before you commit to a demolition schedule.',
       })
     }
   }

@@ -269,8 +269,19 @@ export const CITIES: City[] = [
     // Code transect polygons (ZONE IN T3-N…T6-UGL, 866.9 acres) on
     // DevelopmentServices/Zoning/MapServer/0, computed 2026-08-09 from geometry
     // returned at outSR=4326 — the same method Atlanta's SPI-1 centre used. The
-    // FBC area IS downtown Las Vegas: LVMC Appendix F establishes the DTLV-O
-    // over it. Deliberately NOT the Strip, which is unincorporated Clark County
+    // FBC area is INSIDE downtown Las Vegas, and the containment runs one way
+    // only — RETRACTED 2026-08-10, this line previously read "The FBC area IS
+    // downtown Las Vegas: LVMC Appendix F establishes the DTLV-O over it", which
+    // is backwards. § 19.09.020.D(1): "The FBC applies only to the Downtown Las
+    // Vegas Overlay District established in LVMC Section 19.10.110 which
+    // encompasses the 12 Downtown Districts … The City will begin the process of
+    // implementing the FBC with a pilot area located within the Las Vegas
+    // Medical District." Transect zone ⟹ DTLV-O; the converse is false. Measured:
+    // the transect polygons are 866.9 acres against ~2,997 acres of DTLV-O Area
+    // polygons, so treating the two as coextensive understates the overlay by
+    // ~3.5×. The centre point is unchanged — an 866.9-acre downtown pilot is
+    // still the right place to open the map — but the claim about what it IS is
+    // not. Deliberately NOT the Strip, which is unincorporated Clark County
     // and returns no City zoning at all (measured: 8 of 8 sampled points) — and
     // which the jurisdiction gate now refuses outright. The extent midpoint of
     // the same set is [-115.146218, 36.172696]; the area-weighted figure is used
@@ -353,13 +364,60 @@ export function cityName(slug: string): string {
 // not. It says a city has SOME encoded specifics, never that the encoding is
 // complete — no city's is. Each branch names its own gaps and unevaluable limbs
 // inline; that is where coverage actually lives.
-// ⚠️ lasvegas and phoenix went live 2026-08-09 and are DELIBERATELY ABSENT from
-// this list. Each is otherwise fully wired — provider, zoning module,
-// dispatcher, jurisdiction gate, parking rule, cost index, probe — so their
-// absence here is a decision, and this is where a reader will look for it. No
-// city-specific hurdle was encoded for either because none was researched; they
-// get the generic floor (historic review, flood, permit fees, demolition), which
-// is why their probes return 3 hurdles rather than more.
+//
+// ⚠️ THE DELIBERATE-ABSENCE CARVE-OUT THIS NOTE CARRIED IS EMPTY AS OF
+// 2026-08-10, and the record of it is kept rather than deleted because a reader
+// who remembers it needs to see why it went (rule 17). From 2026-08-09 it named
+// cities that were fully wired — provider, zoning module, dispatcher,
+// jurisdiction gate, parking rule, cost index, probe — and DELIBERATELY ABSENT
+// from the list below, because no city-specific hurdle had been researched for
+// any of them. Being wired is precisely where a reader would otherwise assume
+// encoding, and each one's probe returned 3 hurdles — the generic floor of
+// historic review, flood, permit fees and demolition — rather than more. It
+// named dallas, lasvegas and phoenix; PHOENIX WAS THE LAST OF THE THREE AND WAS
+// SO NAMED UNTIL 2026-08-10. The list below is now 23 of 23 live cities, so the
+// carve-out applies to no city today. Do NOT read that as completeness — the
+// paragraph above already disclaims it, and it is the claim most likely to be
+// made on this list's behalf: it is binary, and says only that a city has SOME
+// encoded specifics. `src/config/cities.test.ts` still guards this note, and one
+// of its tests fails if NEITHER this note nor the permits note names a
+// deliberately-absent city; the permits note still names three, so the guard is
+// live rather than inert. If that ever changes, delete that test on purpose
+// rather than leaving one that can only pass.
+//
+// LAS VEGAS WAS THE SECOND CITY IN THIS NOTE UNTIL 2026-08-10 and is now on the
+// list above. Title 19 was read from the publisher the City's own Zoning Code
+// page links by name, and Titles 4, 14 and 20 from the publisher the City
+// Attorney's Laws & Codes page links — which is the structural finding of that
+// read and the reason it is recorded here: Title 19 carries NO fee, NO drainage
+// permit and NO landscape-water rule, so a reader who stopped at the zoning code
+// would have reported Las Vegas as a city with almost no exactions. Eleven rows
+// are encoded — the inclusionary ABSENCE (a FOURTH shape: NRS 278.250(4)–(5)
+// authorises inclusionary zoning BY NAME and defines it, and the City has still
+// not adopted one, which is neither Wisconsin's ban, North Carolina's silence
+// nor Texas's price cap), two 2025 State mandates on the City that are not
+// visible in the published code, Site Development Plan Review, the Development
+// Impact Notice and Assessment, plan-governed districts, the Form-Based Code /
+// DTLV-O overlay, a recorded entitlement on the parcel's own zoning row,
+// rezoning, the desert-tortoise MSHCP fee, the residential construction tax, the
+// sewer and traffic-signal fees, off-site improvements, the Title 20 drainage
+// permit, the turf prohibition and the HD-O overlay. What was researched and
+// deliberately NOT encoded is recorded on the rows themselves and in the ledger
+// entry, not here: any `addsMonths` (Las Vegas publishes no shot clock at all —
+// every figure is a filing lead, a notice period, an appeal window, an expiry or
+// a re-application bar), DINA's trip-generation limb (Title 19 publishes no trip
+// table, so an ITE rate would be rule 4's invented conversion), the DTLV-O Area
+// 1/2/3 boundary and the `CLV_DTMasterPlan` / `RedevelopmentAreas` layers as
+// gates (measured to exist, but the label match to Appendix F's own figures is a
+// plausible inference, not a measurement), a park land dedication row (positively
+// excluded — NRS 278.4987 makes dedication and the construction tax mutually
+// exclusive and the City elected the tax), and Titles 6, 9–13 and 16, which were
+// not opened at all. The candidate line this note used to carry was half wrong
+// in the direction that flatters, and is kept for that reason: it recorded
+// § 19.08.040(E)'s HCDDM reference as a hurdle, and that sentence is hortatory
+// ("drainageways SHOULD be lined") — the binding rule is LVMC Title 20's
+// citywide "unlawful … without first obtaining a development permit", in a title
+// a zoning reader never opens.
 //
 // DALLAS WAS THE THIRD CITY IN THIS NOTE UNTIL 2026-08-10 and is now on the list
 // above. Chapter 51A was read from the city's electronic code of record and nine
@@ -386,19 +444,55 @@ export function cityName(slug: string): string {
 // residential proximity slope sentence omits seven origination districts and the
 // 1:1 limb of § 51A-4.412(c) — is a separate fix and is NOT closed by this list.
 //
-// Real candidates exist for the remaining two and are NOT verified, recorded so
-// the next session starts from a list rather than from scratch: Las Vegas —
-// LVMC 19.10.150's HD-O historic overlay, which CANNOT be gated because no layer
-// publishes it (all 19 service folders enumerated 2026-08-09; Clark County's
-// lookalike was tested and rejected as the County's overlay over County land),
-// and the Regional Flood Control District's HCDDM referenced by § 19.08.040(E).
-// Phoenix — not surveyed. Each needs its own read before it becomes a gate: an
-// unverified hurdle that over-fires is the DC disturbed-area defect, and one
-// that under-fires is invisible.
+// PHOENIX WAS THE LAST CITY IN THIS NOTE UNTIL 2026-08-10 and is now on the list
+// above. Surveyed 2026-08-10 and encoded as thirteen rows, and the structural
+// finding of that read is why half of them cite a chapter a zoning reader never
+// opens: the Phoenix ZONING ORDINANCE contains no impact fee, no retention
+// standard and no grading permit — those are City Code chs. 29 and 32A, a
+// separate instrument from the same publisher. The rows are the county island
+// (mapped ZONING='COUNTY', where the Maricopa County ordinance governs and this
+// tool has not read it), § 507 development review, the inclusionary ABSENCE
+// (Milwaukee's shape and NOT Dallas's — Ariz. Rev. Stat. § 9-461.16(A) is a
+// genuine preemption reaching the LEASE price as well as the sale price and
+// barring a set-aside by class, where Texas's § 214.905 caps a for-sale price
+// only, so neither row may be copied onto the other city), § 32A-24 on-site
+// stormwater retention, ch. 29 impact fees, § 703.B multifamily landscape and
+// open space, § 703.E plant salvage, plan-governed districts, mapped overlays,
+// § 506 rezoning, the A.R.S. § 9-500.12 exaction appeal, the A.R.S. § 9-835
+// licensing clocks and § 813 historic demolition, plus a `HISTORIC_BODY` entry.
+// The branch carries NO addsMonths at all: every number § 506, § 507, § 812,
+// § 813 and A.R.S. § 9-835 publish is a shot clock, a ceiling, an appeal window,
+// an expiry or a restraint. Unlike Las Vegas and Dallas there was no candidate
+// line to inherit — this note carried only "Phoenix — not surveyed" — which cut
+// both ways: nothing to correct, and nothing to start from. What Phoenix
+// researched and deliberately did NOT encode is recorded on the rows themselves
+// and in the ledger entry, not here: the impact-fee AREA boundaries (no layer
+// publishes them, so the fee row names the nine areas and computes only the two
+// categories Appendix A prices for the balance of the city), City Code ch. 32B
+// floodplains and ch. 32C stormwater quality, the Stormwater Policies and
+// Standards Manual (adopted by reference at § 32A-23 and not in the code text),
+// Phoenix's own published A.R.S. § 9-835 time frames, the roughly thirty overlay
+// districts at §§ 644–672, and Chapters 12 and 13 (the Downtown Code and the
+// Walkable Urban Code), which are separate regulatory regimes this branch does
+// not read. Three corrections the read produced are worth keeping: City Code ch.
+// 34 "Trees and Vegetation" is a street-tree ASSESSMENT DISTRICT procedure with
+// no development trigger and is not Phoenix's tree ordinance (§ 703.E is);
+// § 501 "Required permits and approvals" is RESERVED and has no text, so the
+// applicability rule is § 507.B; and the $600/$360 ch. 19A/19C occupational fees
+// are superseded wherever a ch. 29 treatment impact fee is due (§ 19A-2(f),
+// § 19C-2(c), Ord. G-7376, 2025), so anything written before 2025-06-23
+// double-counts them.
+//
+// The Las Vegas candidate line is kept above rather than deleted, because both
+// of its entries turned out to be instructive: the HD-O overlay is real and was
+// encoded as an ungated 'info' row precisely BECAUSE no layer publishes it
+// (re-enumerated 2026-08-10, finding unchanged), and § 19.08.040(E) was the
+// hortatory sentence that the Title 20 permit replaced.
 export const CITIES_WITH_SPECIFIC_HURDLES = [
   'atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas',
-  'dc', 'denver', 'la', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc',
-  'philadelphia', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf',
+  'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis',
+  'nashville', 'nyc', 'philadelphia', 'phoenix', 'raleigh', 'sandiego',
+  'sanjose', 'seattle', 'sf',
 ] as const
 
 export function hasCitySpecificHurdles(slug: string): boolean {

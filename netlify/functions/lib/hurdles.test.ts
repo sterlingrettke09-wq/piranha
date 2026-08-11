@@ -769,7 +769,7 @@ describe('assessHurdles — DC', () => {
   })
 
   it('the historic-district demolition finding needs a building to demolish', () => {
-    const hd = { overlays: { historicDistrict: 'Capitol Hill Historic District', floodZone: null } }
+    const hd: Partial<ParcelInfo> = { overlays: { historicDistrict: 'Capitol Hill Historic District', floodZone: null } }
     // Vacant lot in a historic district: nothing is being demolished, so
     // § 6-1104's public-interest finding does not apply…
     const vacant = dc({ projectType: 'new' }, { ...hd, existing: { landUse: 'Vacant Land' } })
@@ -799,7 +799,7 @@ describe('assessHurdles — DC', () => {
   // Restored-source sweep (2026-08-07), unreached-gate batch. 21 DCMR § 599
   // triggers on the area an activity DISTURBS; the gate read lot area instead.
   it('stormwater retention needs an activity that disturbs land, not just a big lot', () => {
-    const big = { lot: { sizeSqFt: 6000, lotType: null } }
+    const big: Partial<ParcelInfo> = { lot: { sizeSqFt: 6000, lotType: null } }
     // MUST NOT FIRE: a change of use disturbs no land at all, so the § 599
     // definition is never met however large the lot is.
     expect(byLabel(dc({ projectType: 'change_of_use' }, big), /Stormwater Retention/)).toBeFalsy()
@@ -1874,12 +1874,17 @@ describe('assessHurdles — San Diego', () => {
   })
 
   it('coastal replacement takes the multi-structure threshold: 3 units in one building, 5 across two', () => {
-    const coastalZone = { historicDistrict: null, floodZone: null, coastalZone: true }
+    const coastalZone: ParcelInfo['overlays'] = { historicDistrict: null, floodZone: null, coastalZone: true }
     const repl = (units: number, numBuildings?: number) =>
       byLabel(
         sd(
           { projectType: 'new', units: 40 },
-          { existing: { landUse: 'Apartment', units, ...(numBuildings === undefined ? {} : { numBuildings }) }, overlays: coastalZone },
+          // `numBuildings` written directly, not conditionally spread: a spread
+          // turns off excess-property checking for the whole literal, and
+          // hurdles.ts only ever reads `?? `, so an explicit undefined is the
+          // same input. (Assessed 2026-08-10: no `in`/hasOwnProperty/Object.keys
+          // anywhere in hurdles.ts, so key PRESENCE is never observed.)
+          { existing: { landUse: 'Apartment', units, numBuildings }, overlays: coastalZone },
         ),
         /Coastal Overlay Zone affordable housing replacement/,
       )
@@ -1908,7 +1913,7 @@ describe('assessHurdles — San Diego', () => {
   // gate meant a commercial project on a historical-resource parcel was never
   // told a Process Four hearing applies.
   it('Process Four also reaches a commercial project on a historical-resource parcel', () => {
-    const histo = { overlays: { historicDistrict: 'Sherman Heights Historic District', floodZone: null } }
+    const histo: Partial<ParcelInfo> = { overlays: { historicDistrict: 'Sherman Heights Historic District', floodZone: null } }
     const comm = byLabel(sd({ use: 'commercial', units: 0, gfa: 40000 }, histo), /Process Four/)
     expect(comm?.status).toBe('required')
     expect(comm?.note).toMatch(/commercial or industrial/)
@@ -2047,7 +2052,7 @@ describe('assessHurdles — San José', () => {
       byLabel(
         assessHurdles(
           'sanjose',
-          parcel({ existing: { landUse: 'Apartment', ...(units === undefined ? {} : { units }) } }),
+          parcel({ existing: { landUse: 'Apartment', units } }),
           project({ city: 'sanjose', projectType: 'new', units: 40 }),
         ),
         /Ellis Act withdrawal/,
@@ -2230,7 +2235,12 @@ describe('assessHurdles — Nashville', () => {
   // unconditional, so nothing widened here — the copy now states both limbs.
   it('the sidewalk row names both limbs of the exaction’s scope', () => {
     const note = (over: Partial<AnalysisInput>) => byLabel(nash(over), /Sidewalk construction or in-lieu fee/)?.note ?? ''
-    for (const over of [{ use: 'residential' as const, units: 90 }, { use: 'residential' as const, units: 2 }, { use: 'commercial' as const, gfa: 60000 }]) {
+    const scopes: Partial<AnalysisInput>[] = [
+      { use: 'residential', units: 90 },
+      { use: 'residential', units: 2 },
+      { use: 'commercial', gfa: 60000 },
+    ]
+    for (const over of scopes) {
       expect(note(over)).toMatch(/multi-family and non-residential development/)
       expect(note(over)).toMatch(/single- or two-family construction inside the Urban Zoning Overlay or a designated center/)
       // Still an absence, not a cost line: the injunction claim must survive.
@@ -3216,9 +3226,9 @@ describe('assessHurdles — Columbus', () => {
 
   // ── Parkland dedication: rezoning AND over one acre AND Title 33 ──────────
   it('parkland dedication needs all three limbs, and is not sizeDependent', () => {
-    const big = { lot: { sizeSqFt: 100000, lotType: null } } // ~2.3 acres
-    const small = { lot: { sizeSqFt: 40000, lotType: null } } // under an acre
-    const j = { use: 'residential' as const, units: 60 }
+    const big: Partial<ParcelInfo> = { lot: { sizeSqFt: 100000, lotType: null } } // ~2.3 acres
+    const small: Partial<ParcelInfo> = { lot: { sizeSqFt: 40000, lotType: null } } // under an acre
+    const j: Partial<AnalysisInput> = { use: 'residential', units: 60 }
     const fire = (p: Partial<ParcelInfo>, path: 'as_of_right' | 'variance') =>
       byLabel(
         assessHurdles('columbus', parcel({ ...zone('R3'), ...p }), project({ city: 'columbus', ...j }), { path }),
@@ -3277,16 +3287,17 @@ describe('assessHurdles — Columbus', () => {
 
   // ── Demolition: an OVERLAY power, never a citywide screen ─────────────────
   it('the demolition certificate fires only on a mapped condition, not on every teardown', () => {
-    const ex = { existing: { landUse: 'Single Family', numBuildings: 1, yearBuilt: 1910 } }
-    const j = { projectType: 'new' as const, use: 'residential' as const, units: 20 }
+    const ex: Partial<ParcelInfo> = { existing: { landUse: 'Single Family', numBuildings: 1, yearBuilt: 1910 } }
+    const j: Partial<AnalysisInput> = { projectType: 'new', use: 'residential', units: 20 }
     // Plain old building on an ordinary parcel: NO certificate row. Columbus has
     // no citywide age or National-Register demolition trigger.
     expect(byLabel(col(j, { ...zone('R3'), ...ex }), /Certificate of appropriateness before a demolition permit/)).toBeUndefined()
-    for (const p of [
+    const mapped: Partial<ParcelInfo>[] = [
       { ...zone('DD'), ...ex },
       { ...zone('EFD'), ...ex },
       { ...zone('R3'), ...ex, overlays: { historicDistrict: 'German Village Historic District', floodZone: null } },
-    ]) {
+    ]
+    for (const p of mapped) {
       const d = byLabel(col(j, p), /Certificate of appropriateness before a demolition permit/)
       expect(d?.status, JSON.stringify(p.zoning?.districtCode)).toBe('required')
       expect(d?.note).toMatch(/4113\.79\(B\)/)
@@ -3849,7 +3860,7 @@ describe('assessHurdles — Atlanta', () => {
   // The exemption attaches to the BUILDING. Reporting only its first half would
   // hand a developer an exemption the code withdraws the moment they demolish.
   it('the pre-1965 exemption flips to a forfeiture warning on a teardown', () => {
-    const old = { existing: { landUse: 'Apartment', units: 6, yearBuilt: 1928 } }
+    const old: Partial<ParcelInfo> = { existing: { landUse: 'Apartment', units: 6, yearBuilt: 1928 } }
     const keep = byLabel(atl({ projectType: 'addition', use: 'residential', units: 8 }, old), /Pre-1965 building/)
     expect(keep?.status).toBe('info')
     expect(keep?.note).toMatch(/Residential uses: No parking is required/)
@@ -3861,7 +3872,11 @@ describe('assessHurdles — Atlanta', () => {
   })
 
   it('does not claim the pre-1965 exemption for a newer or undated building', () => {
-    for (const ex of [{ landUse: 'Apartment', units: 6, yearBuilt: 1992 }, { landUse: 'Apartment', units: 6 }]) {
+    const newerOrUndated: ParcelInfo['existing'][] = [
+      { landUse: 'Apartment', units: 6, yearBuilt: 1992 },
+      { landUse: 'Apartment', units: 6 },
+    ]
+    for (const ex of newerOrUndated) {
       const hs = atl({ projectType: 'addition', use: 'residential', units: 8 }, { existing: ex })
       expect(byLabel(hs, /Pre-1965|forfeits its parking exemption/), JSON.stringify(ex)).toBeUndefined()
     }
@@ -3939,10 +3954,10 @@ describe('Milwaukee / Columbus / Charlotte / Atlanta — no invented durations',
   // Atlanta's key on the district, the existing building's age and an overlay,
   // none of which is a size, so none of theirs may be.
   it('every size-triggered row carries sizeDependent, and no other one does', () => {
-    const tagged = [
+    const tagged: Array<{ city: string; p: Partial<ParcelInfo>; re: RegExp }> = [
       { city: 'milwaukee', p: zone('RM6'), re: /Off-street parking minimum/ },
       { city: 'columbus', p: zone('R3'), re: /depends on which of Columbus/ },
-    ] as const
+    ]
     for (const t of tagged) {
       const h = byLabel(assessHurdles(t.city, parcel(t.p), project({ city: t.city, use: 'residential', units: 40, gfa: 60000 })), t.re)
       expect(h, `${t.city} expected a row matching ${t.re}`).toBeTruthy()
@@ -4178,7 +4193,7 @@ describe('assessHurdles — Dallas', () => {
 
   describe('urban forest conservation', () => {
     it('exempts a small single-family lot only when ALL THREE limbs hold', () => {
-      const small = { lot: { sizeSqFt: 8000, lotType: null } }
+      const small: Partial<ParcelInfo> = { lot: { sizeSqFt: 8000, lotType: null } }
       // under 2 acres + SF use + residential district → exempt
       expect(byLabel(dal({ use: 'residential', units: 1 }, { ...dz('R-7.5(A)'), ...small }), /Tree removal permit/)).toBeUndefined()
       // same lot, same use, NONresidential district → not exempt
@@ -4226,7 +4241,7 @@ describe('assessHurdles — Dallas', () => {
   })
 
   it('fires the historic demolition row only on a teardown inside a mapped overlay, and calls it a veto', () => {
-    const inOverlay = { overlays: { historicDistrict: 'Swiss Avenue Historic District', floodZone: null }, existing: { landUse: 'Apartment', units: 8 } }
+    const inOverlay: Partial<ParcelInfo> = { overlays: { historicDistrict: 'Swiss Avenue Historic District', floodZone: null }, existing: { landUse: 'Apartment', units: 8 } }
     const h = byLabel(dal({ use: 'residential', units: 40, projectType: 'new' }, { ...dz('MF-3(A)'), ...inOverlay }), /Historic demolition/)
     expect(h?.status).toBe('required')
     expect(h?.note).toMatch(/clear and convincing evidence/)
@@ -4287,6 +4302,661 @@ describe('assessHurdles — Dallas', () => {
     expect(park?.note).toMatch(/placeholder size/)
     // District-keyed rows are untouched — the district was measured.
     expect(byLabel(soft, /Tree removal permit/)?.note).not.toMatch(/placeholder size/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Las Vegas
+// ---------------------------------------------------------------------------
+describe('assessHurdles — Las Vegas', () => {
+  const lz = (districtCode: string, over: Partial<ParcelInfo['zoning']> = {}): Partial<ParcelInfo> => ({
+    zoning: {
+      districtCode,
+      subdistrict: null,
+      article: null,
+      maxHeightFt: 55,
+      maxFAR: null,
+      allowedUses: ['residential'],
+      ...over,
+    },
+  })
+  const lv = (j: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('lasvegas', parcel({ ...lz('R-3'), lot: { sizeSqFt: 43560, lotType: null }, ...p }), project({ city: 'lasvegas', ...j }))
+
+  describe('the inclusionary ABSENCE — a fourth shape, and the one most easily got backwards', () => {
+    it('states that Nevada AUTHORISES inclusionary zoning by name', () => {
+      const h = byLabel(lv({ use: 'residential', units: 40 }), /No inclusionary requirement/)
+      expect(h?.status).toBe('info')
+      expect(h?.note).toMatch(/NRS 278\.250\(4\)/)
+      expect(h?.note).toMatch(/density bonuses, inclusionary zoning and minimum density zoning/)
+      expect(h?.note).toMatch(/requires or provides incentives to a developer/)
+    })
+
+    it('never says the State forbids it — the sentence a summariser would reach for', () => {
+      const h = byLabel(lv({ use: 'residential', units: 40 }), /No inclusionary requirement/)
+      // Rule 1 + rule 17. Milwaukee's sentence is TRUE in Milwaukee and is the
+      // exact opposite of the law here; this assertion is what stops it being
+      // copied in.
+      expect(h?.note).not.toMatch(/bars inclusionary|prohibits inclusionary|forbids inclusionary|may not (adopt|enact|require)[^.]*inclusionary/i)
+      expect(h?.note).toMatch(/chosen not to require affordability, in a State that has told it that it may/)
+    })
+
+    it('does not emit the affordability row for a commercial project', () => {
+      expect(byLabel(lv({ use: 'commercial', units: 0 }), /No inclusionary requirement/)).toBeUndefined()
+    })
+  })
+
+  describe('Site Development Plan Review', () => {
+    it('renders for every project type, because there is no by-right path', () => {
+      for (const projectType of ['new', 'addition', 'change_of_use', 'adu'] as const) {
+        const h = byLabel(lv({ projectType, units: 2 }), /Site Development Plan Review/)
+        expect(h?.status, projectType).toBe('required')
+      }
+    })
+
+    it('quotes the whole exemption list, not just the first item', () => {
+      const h = byLabel(lv({}), /Site Development Plan Review/)
+      expect(h?.note).toMatch(/Demolition of a structure/)
+      expect(h?.note).toMatch(/Normal repairs and maintenance/)
+      expect(h?.note).toMatch(/Temporary Commercial Permit/)
+    })
+
+    it('puts a four-unit project on the building-permit track and a five-unit project off it', () => {
+      expect(byLabel(lv({ use: 'residential', units: 4 }), /Site Development Plan Review/)?.note)
+        .toMatch(/on the building-permit-level track/)
+      expect(byLabel(lv({ use: 'residential', units: 5 }), /Site Development Plan Review/)?.note)
+        .toMatch(/past the four-unit line/)
+    })
+
+    it('is NOT sizeDependent — the unit count changes the route, never whether the rule applies', () => {
+      // If this ever becomes true, softenSizeDependent will downgrade an
+      // always-applicable 'required' obligation to 'info' on a placeholder GFA.
+      expect(byLabel(lv({ use: 'residential', units: 400 }), /Site Development Plan Review/)?.sizeDependent).toBeUndefined()
+    })
+
+    it('carries the 1,000-foot and one-mile notice radii for a Major Review', () => {
+      const h = byLabel(lv({}), /Site Development Plan Review/)
+      expect(h?.note).toMatch(/one thousand feet/)
+      expect(h?.note).toMatch(/thirty separately-owned parcels/)
+      expect(h?.note).toMatch(/within a minimum of one mile/)
+    })
+  })
+
+  describe('DINA — the whole condition, four limbs', () => {
+    it('fires on 500+ residential units and stays "likely" because limb (a) needs a map or a PUD', () => {
+      const h = byLabel(lv({ use: 'residential', units: 500 }), /Development Impact Notice/)
+      expect(h?.status).toBe('likely')
+      expect(h?.sizeDependent).toBe(true)
+      expect(h?.note).toMatch(/Tentative maps, final maps or planned unit developments of 500 units or more/)
+      expect(h?.note).toMatch(/not every large building/)
+    })
+
+    it('does NOT fire at 499 units', () => {
+      expect(byLabel(lv({ use: 'residential', units: 499 }), /Development Impact Notice/)).toBeUndefined()
+    })
+
+    it('fires on a nonresidential site over 160 acres and not at 160 exactly', () => {
+      const big: Partial<ParcelInfo> = { ...lz('C-2'), lot: { sizeSqFt: 161 * 43560, lotType: null } }
+      const exact: Partial<ParcelInfo> = { ...lz('C-2'), lot: { sizeSqFt: 160 * 43560, lotType: null } }
+      expect(byLabel(lv({ use: 'commercial', units: 0 }, big), /Development Impact Notice/)).toBeTruthy()
+      expect(byLabel(lv({ use: 'commercial', units: 0 }, exact), /Development Impact Notice/)).toBeUndefined()
+    })
+
+    it('never computes a trip figure — Title 19 publishes no trip table', () => {
+      const h = byLabel(lv({ use: 'commercial', units: 0, gfa: 900000 }, { ...lz('C-2'), lot: { sizeSqFt: 200 * 43560, lotType: null } }), /Development Impact Notice/)
+      expect(h?.note).toMatch(/Limb \(c\) is NOT computed/)
+      expect(h?.note).toMatch(/3,000 average daily vehicle trips/)
+    })
+  })
+
+  describe('the Form-Based Code gate', () => {
+    it('fires on every one of the thirteen mapped transect zones', () => {
+      for (const z of ['T3-N', 'T3-N-O', 'T4-C', 'T4-M', 'T4-MS', 'T4-N', 'T5-C', 'T5-M', 'T5-MS', 'T5-N', 'T6-UC', 'T6-UG', 'T6-UGL']) {
+        expect(byLabel(lv({}, lz(z)), /Form-Based Code and the Downtown Las Vegas Overlay/), z).toBeTruthy()
+      }
+    })
+
+    it('does NOT fire on T-C or T-D — a prefix test would sweep them in', () => {
+      // Town Center (§19.10.060) and Traditional Development (§19.10.070) are
+      // plan-governed special-area districts, not transect zones. This is the
+      // Columbus UCRPD assertion in Las Vegas clothing.
+      for (const z of ['T-C', 'T-D']) {
+        expect(byLabel(lv({}, lz(z)), /Form-Based Code and the Downtown Las Vegas Overlay/), z).toBeUndefined()
+        expect(byLabel(lv({}, lz(z)), /Plan-governed district/), z).toBeTruthy()
+      }
+    })
+
+    it('states the code-stated implication and discloses that the converse is false', () => {
+      const h = byLabel(lv({}, lz('T5-M')), /Form-Based Code and the Downtown Las Vegas Overlay/)
+      expect(h?.note).toMatch(/The FBC applies only to the Downtown Las Vegas Overlay District/)
+      expect(h?.note).toMatch(/Its absence is not evidence the overlay is absent/)
+      expect(h?.note).toMatch(/the most restrictive provision shall apply/)
+    })
+
+    it('does not duplicate the parking rule, which lives in PARKING_RULES', () => {
+      const h = byLabel(lv({}, lz('T6-UC')), /Form-Based Code and the Downtown Las Vegas Overlay/)
+      expect(h?.category).toBe('review')
+      expect(h?.note).not.toMatch(/Table G-1|Parking Load Map/)
+    })
+  })
+
+  describe('plan-governed districts', () => {
+    it('fires on all six families and never on a table district', () => {
+      for (const z of ['C-V', 'P-C', 'PD', 'R-PD4', 'T-C', 'T-D']) {
+        expect(byLabel(lv({}, lz(z)), /Plan-governed district/), z).toBeTruthy()
+      }
+      for (const z of ['R-1', 'R-3', 'C-1', 'M', 'T5-N']) {
+        expect(byLabel(lv({}, lz(z)), /Plan-governed district/), z).toBeUndefined()
+      }
+    })
+
+    it('says INCOMPLETE, never "no limit applies"', () => {
+      const h = byLabel(lv({}, lz('PD')), /Plan-governed district/)
+      expect(h?.note).toMatch(/INCOMPLETE here rather than absent/)
+      expect(h?.note).toMatch(/51\.3 percent/)
+    })
+  })
+
+  it('fires the recorded-entitlement row on the provider’s own sentence', () => {
+    // Rule 9's boundary problem: this string is the contract with
+    // providers/lasvegas.ts entitlementNote(). If that is reworded, this fails
+    // here and in providers/lasvegas.test.ts.
+    const article = "Apartment district · The City's zoning record for this parcel carries rezoning ordinance 6512, Special Use Permit SUP-12345. Case-specific conditions can limit height, density or use BELOW the base district."
+    const h = byLabel(lv({}, lz('R-3', { article })), /An entitlement is already recorded/)
+    expect(h?.status).toBe('required')
+    expect(byLabel(lv({}, lz('R-3')), /An entitlement is already recorded/)).toBeUndefined()
+  })
+
+  describe('fees', () => {
+    it('computes the MSHCP fee by rounding gross acres UP, as the ordinance says', () => {
+      // 1.20 acres → 2 acres → $1,100. "per gross acre (or portion thereof)".
+      const h = byLabel(lv({ projectType: 'new' }, { ...lz('R-3'), lot: { sizeSqFt: Math.round(1.2 * 43560), lotType: null } }), /habitat mitigation fee/)
+      expect(h?.status).toBe('required')
+      expect(h?.note).toMatch(/\$1,100/)
+      expect(h?.note).toMatch(/\$550\.00 per gross acre \(or portion thereof\)/)
+      // Lot area is measured, not derived from a placeholder FAR.
+      expect(h?.sizeDependent).toBeUndefined()
+    })
+
+    it('states the residential construction tax as a CEILING, not a price', () => {
+      const h = byLabel(lv({ use: 'residential', units: 40, projectType: 'new' }), /Residential construction tax/)
+      expect(h?.sizeDependent).toBe(true)
+      expect(h?.note).toMatch(/\$40,000/)
+      expect(h?.note).toMatch(/whichever is less/)
+      expect(h?.note).toMatch(/Treat that as a CEILING/)
+      // The State's mutual-exclusivity rule is why there is no separate park
+      // land dedication row for this city.
+      expect(h?.note).toMatch(/mutually exclusive/)
+    })
+
+    it('refuses to publish a current-year sewer connection rate', () => {
+      const h = byLabel(lv({ projectType: 'new' }), /Sewer connection/)
+      expect(h?.note).toMatch(/two thousand five hundred fifty-one dollars/)
+      expect(h?.note).toMatch(/NO CURRENT-YEAR FIGURE IS GIVEN HERE/)
+      // Rule 4: the escalator depends on a CPI average that is not in the code.
+      expect(h?.note).not.toMatch(/\$[0-9],[0-9]{3} per ERU today|the current rate is \$/)
+    })
+
+    it('does not state a traffic-signal fee amount — the schedule is not in the ordinance', () => {
+      const h = byLabel(lv({ projectType: 'new' }), /Sewer connection/)
+      expect(h?.note).toMatch(/maintained on file in the office of the City Clerk/)
+    })
+
+    it('emits no fee rows for a change of use', () => {
+      const hs = lv({ projectType: 'change_of_use', use: 'commercial', units: 0 })
+      expect(byLabel(hs, /habitat mitigation fee/)).toBeUndefined()
+      expect(byLabel(hs, /Sewer connection/)).toBeUndefined()
+    })
+  })
+
+  describe('drainage — Title 20, and NOT gated on the FEMA zone', () => {
+    it('renders on new construction with no flood zone mapped', () => {
+      const h = byLabel(lv({ projectType: 'new' }), /Public Works development permit for drainage/)
+      expect(h?.status).toBe('required')
+      expect(h?.note).toMatch(/This Chapter shall apply to all areas within the City/)
+      expect(h?.note).toMatch(/does NOT take you out of Title 20/)
+    })
+
+    it('adds the base-flood-elevation limb when a real FEMA zone is mapped', () => {
+      const h = byLabel(
+        lv({ projectType: 'new' }, { ...lz('R-3'), overlays: { historicDistrict: null, floodZone: 'AE' } }),
+        /Public Works development permit for drainage/,
+      )
+      expect(h?.note).toMatch(/A FEMA flood zone of "AE" is mapped/)
+    })
+
+    it('treats zone X as no mapped hazard but still renders the row', () => {
+      const h = byLabel(
+        lv({ projectType: 'new' }, { ...lz('R-3'), overlays: { historicDistrict: null, floodZone: 'X' } }),
+        /Public Works development permit for drainage/,
+      )
+      expect(h).toBeTruthy()
+      expect(h?.note).toMatch(/No FEMA flood zone is mapped/)
+    })
+
+    it('does not import §19.08.040(E)’s "should" as a mandate', () => {
+      const h = byLabel(lv({ projectType: 'new' }), /Public Works development permit for drainage/)
+      // The recorded lead pointed at a hortatory sentence. The row cites the
+      // binding one instead.
+      expect(h?.note).toMatch(/20\.08\.130/)
+      expect(h?.note).not.toMatch(/19\.08\.040\(E\)/)
+    })
+  })
+
+  it('carries the turf prohibition with the six-part functional-turf definition', () => {
+    const h = byLabel(lv({ projectType: 'new' }), /Turf, irrigation and water/)
+    expect(h?.status).toBe('required')
+    expect(h?.note).toMatch(/September 1, 2023/)
+    expect(h?.note).toMatch(/one thousand five hundred square feet in area or greater/)
+    expect(h?.note).toMatch(/unlawful to install a spray irrigation system in connection with any new development/)
+    expect(h?.note).toMatch(/may not be waived or varied by the City/)
+  })
+
+  describe('the historic overlay', () => {
+    it('is INFO and says the boundary is unpublished, never that the parcel is outside it', () => {
+      const h = byLabel(lv({}), /Historic overlay/)
+      expect(h?.status).toBe('info')
+      expect(h?.note).toMatch(/not published/)
+      expect(h?.note).toMatch(/never "this parcel is not in one"/)
+      expect(h?.note).toMatch(/180 days/)
+    })
+
+    it('is not the generic historic row — that one can never fire for this city', () => {
+      // providers/lasvegas.ts sets overlays.historicDistrict = null always. If
+      // someone adds HISTORIC_BODY['lasvegas'], it is dead code; if someone
+      // makes the provider populate the field from Clark County's layer, this
+      // test is the tripwire.
+      const hs = lv({})
+      expect(hs.filter((h) => h.category === 'historic').length).toBe(1)
+      expect(byLabel(hs, /^Historic district design review$/)).toBeUndefined()
+    })
+  })
+
+  it('emits no invented duration anywhere in the branch', () => {
+    const scenarios: Array<{ p: Partial<ParcelInfo>; j: Partial<AnalysisInput> }> = [
+      { p: lz('R-3'), j: { use: 'residential', units: 500, projectType: 'new' } },
+      { p: lz('T6-UC'), j: { use: 'mixed', units: 200, projectType: 'new' } },
+      { p: lz('PD'), j: { use: 'residential', units: 40 } },
+      { p: { ...lz('C-2'), lot: { sizeSqFt: 200 * 43560, lotType: null }, overlays: { historicDistrict: null, floodZone: 'AE' }, existing: { landUse: 'Apartment', units: 6 } }, j: { use: 'commercial', units: 0, gfa: 500000, projectType: 'new' } },
+      { p: lz('R-1'), j: { use: 'residential', units: 1, projectType: 'new' } },
+    ]
+    for (const s of scenarios) {
+      for (const path of ['as_of_right', 'variance'] as const) {
+        for (const h of assessHurdles('lasvegas', parcel(s.p), project({ city: 'lasvegas', ...s.j }), { path })) {
+          const expected =
+            /^Replacing existing housing$/.test(h.label) ? 6
+            : /^Public-funding process/.test(h.label) ? 4
+            : undefined
+          expect(h.addsMonths, `lasvegas / ${h.label}`).toBe(expected)
+        }
+      }
+    }
+  })
+
+  it('a placeholder GFA softens the two unit-keyed rows and nothing else', () => {
+    const soft = assessHurdles(
+      'lasvegas',
+      parcel({ ...lz('R-3'), lot: { sizeSqFt: 43560, lotType: null } }),
+      project({ city: 'lasvegas', use: 'residential', units: 600, projectType: 'new', gfaBasis: 'assumed-far-1.0' }),
+    )
+    // The RCT row is 'required' + sizeDependent, so it downgrades.
+    expect(byLabel(soft, /Residential construction tax/)?.status).toBe('info')
+    expect(byLabel(soft, /Residential construction tax/)?.note).toMatch(/placeholder size/)
+    // DINA is 'likely' by construction, so softenSizeDependent leaves it alone.
+    expect(byLabel(soft, /Development Impact Notice/)?.status).toBe('likely')
+    // Lot-keyed and always-on rows are untouched.
+    expect(byLabel(soft, /habitat mitigation fee/)?.note).not.toMatch(/placeholder size/)
+    expect(byLabel(soft, /Site Development Plan Review/)?.status).toBe('required')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phoenix
+// ---------------------------------------------------------------------------
+describe('assessHurdles — Phoenix', () => {
+  const pz = (districtCode: string, over: Partial<ParcelInfo['zoning']> = {}): Partial<ParcelInfo> => ({
+    zoning: {
+      districtCode,
+      subdistrict: null,
+      article: null,
+      maxHeightFt: 48,
+      maxFAR: null,
+      allowedUses: ['residential'],
+      ...over,
+    },
+  })
+  const phx = (j: Partial<AnalysisInput> = {}, p: Partial<ParcelInfo> = {}) =>
+    assessHurdles('phoenix', parcel({ ...pz('R-3'), lot: { sizeSqFt: 43560, lotType: null }, ...p }), project({ city: 'phoenix', ...j }))
+
+  describe('inclusionary — an absence the STATE establishes', () => {
+    it('states the Arizona bar and quotes both limbs of § 9-461.16(A)', () => {
+      const h = byLabel(phx({ use: 'residential', units: 40 }), /No inclusionary requirement/)
+      expect(h?.status).toBe('info')
+      expect(h?.note).toMatch(/§ 9-461\.16/)
+      // Both limbs. The lease-price limb is what makes Arizona different from
+      // Texas, and dropping it turns this row into the Dallas row.
+      expect(h?.note).toMatch(/establishing the sales or lease price/)
+      expect(h?.note).toMatch(/designated for sale or lease to any particular class or group of residents/)
+      // Subsection B is why Phoenix's own bonus is lawful; without it the row
+      // reads as though the density bonus were also barred.
+      expect(h?.note).toMatch(/incentive, density bonus or other voluntary provision/)
+      expect(h?.note).toMatch(/One additional unit shall be allowed for every two affordable housing units/)
+    })
+
+    it('does not emit the affordability row for a commercial project', () => {
+      expect(byLabel(phx({ use: 'commercial', units: 0 }), /No inclusionary requirement/)).toBeUndefined()
+    })
+  })
+
+  describe('§ 507 development review', () => {
+    it('renders for every district — the trigger has no size and no district limb', () => {
+      for (const code of ['R1-6', 'R-3', 'C-2', 'A-1', 'CP/GCP', 'S-1', 'UR']) {
+        expect(byLabel(phx({ use: 'residential', units: 20 }, pz(code)), /Development review approval/), code).toBeTruthy()
+      }
+    })
+
+    it('quotes the exceptions as the closed list the code writes', () => {
+      const h = byLabel(phx({ use: 'residential', units: 20 }), /Development review approval/)
+      expect(h?.status).toBe('required')
+      expect(h?.note).toMatch(/The only complete exceptions to compliance with this section/)
+      expect(h?.note).toMatch(/A pre-application conference is required before submittal/)
+      // The presumption machinery is the expensive part and must survive edits.
+      expect(h?.note).toMatch(/incomplete if it does not demonstrate that the presumptive elements/)
+      expect(h?.note).toMatch(/Increase in the cost of development is not an acceptable reason/)
+    })
+
+    it('switches between the full and partial tracks on the code’s own 2,000 sq ft line', () => {
+      expect(byLabel(phx({ projectType: 'new' }), /Development review approval/)?.note).toMatch(
+        /subject to full development review/,
+      )
+      expect(byLabel(phx({ projectType: 'addition', gfa: 2500 }), /Development review approval/)?.note).toMatch(
+        /subject to full development review/,
+      )
+      expect(byLabel(phx({ projectType: 'addition', gfa: 900 }), /Development review approval/)?.note).toMatch(
+        /applicable only to the exterior portion/,
+      )
+    })
+
+    it('is NOT sizeDependent — the 2,000 sq ft decides scope, not applicability', () => {
+      expect(byLabel(phx({ projectType: 'addition', gfa: 2500 }), /Development review approval/)?.sizeDependent).toBeUndefined()
+    })
+  })
+
+  describe('§ 32A-24 on-site retention — the whole waiver, not its first limb', () => {
+    it('is required outright once the half-acre limb fails', () => {
+      const h = byLabel(phx({}, { lot: { sizeSqFt: 43560, lotType: null } }), /On-site stormwater retention/)
+      expect(h?.status).toBe('required')
+      expect(h?.note).toMatch(/On-site retention of stormwater shall be required for all developments/)
+      expect(h?.note).toMatch(/100-year two-hour peak runoff/)
+    })
+
+    it('drops to likely under half an acre and names all THREE limbs of the waiver', () => {
+      const h = byLabel(phx({}, { lot: { sizeSqFt: 20000, lotType: null } }), /On-site stormwater retention/)
+      expect(h?.status).toBe('likely')
+      expect(h?.note).toMatch(/THREE limbs/)
+      expect(h?.note).toMatch(/isolated/)
+      expect(h?.note).toMatch(/no critical drainage problem/)
+      expect(h?.note).toMatch(/NPDES/)
+    })
+
+    it('refuses to publish a retention VOLUME — the manual is not in the code', () => {
+      const h = byLabel(phx({}), /On-site stormwater retention/)
+      expect(h?.note).toMatch(/Stormwater Policies and Standards Manual/)
+      expect(h?.note).not.toMatch(/retain the 100-year, 2-hour storm|inches of runoff/)
+    })
+
+    it('adds the § 32A-6.B flood-hazard grading limb only when a FEMA zone is mapped', () => {
+      expect(byLabel(phx({}, { overlays: { historicDistrict: null, floodZone: 'AE' } }), /On-site stormwater retention/)?.note)
+        .toMatch(/§ 32A-6\.B is live on its face/)
+      expect(byLabel(phx({}), /On-site stormwater retention/)?.note).not.toMatch(/live on its face/)
+    })
+  })
+
+  describe('ch. 29 impact fees — the slot test applied per schedule', () => {
+    it('separates the six citywide schedules from the thirteen area-only ones', () => {
+      const h = byLabel(phx({ use: 'residential', units: 100 }), /Impact fees/)
+      expect(h?.status).toBe('required')
+      expect(h?.sizeDependent).toBe(true)
+      expect(h?.note).toMatch(/all development within any impact fee area/)
+      expect(h?.note).toMatch(/Balance of the City/)
+      // The finding that had to be read schedule by schedule.
+      expect(h?.note).toMatch(/water TRANSMISSION/)
+      expect(h?.note).toMatch(/water TREATMENT/)
+      for (const area of ['Paradise Ridge', 'Laveen East', 'Ahwatukee']) {
+        expect(h?.note, area).toContain(area)
+      }
+    })
+
+    it('shows BOTH the SFR and MFR arithmetic and picks neither', () => {
+      const h = byLabel(phx({ use: 'residential', units: 100 }), /Impact fees/)
+      // 100 × (797 + 1,579) = 237,600 and 100 × (1,190 + 4,387) = 557,700.
+      expect(h?.note).toContain('$237,600')
+      expect(h?.note).toContain('$557,700')
+      expect(h?.note).toMatch(/BOTH are shown and neither is chosen for you/)
+    })
+
+    it('computes nothing without a unit count', () => {
+      const h = byLabel(phx({ use: 'commercial', units: 0, gfa: 120000 }), /Impact fees/)
+      expect(h?.note).toMatch(/no figure is computed/)
+    })
+
+    it('records the 2025 supersession of the ch. 19A/19C occupational fees', () => {
+      const h = byLabel(phx({ use: 'residential', units: 100 }), /Impact fees/)
+      expect(h?.note).toMatch(/Beginning on June 23, 2025, fees in this section are not applicable/)
+      expect(h?.note).toMatch(/§ 19A-2\(f\)/)
+    })
+
+    it('leaves the ch. 30 water resources acquisition fee unpriced rather than guessed', () => {
+      const h = byLabel(phx({ use: 'residential', units: 100 }), /Impact fees/)
+      expect(h?.note).toMatch(/Water Resources Acquisition Fee/)
+      expect(h?.note).toMatch(/Unpriced and disclosed rather than guessed/)
+    })
+  })
+
+  describe('§ 703 landscape rows', () => {
+    it('fires the multifamily open-space row at five units and not at four', () => {
+      expect(byLabel(phx({ use: 'residential', units: 5 }), /Multifamily landscape and common open space/)).toBeTruthy()
+      expect(byLabel(phx({ use: 'residential', units: 4 }), /Multifamily landscape and common open space/)).toBeUndefined()
+    })
+
+    it('carries the unit trigger as sizeDependent and quotes the 5%', () => {
+      const h = byLabel(phx({ use: 'residential', units: 40 }), /Multifamily landscape and common open space/)
+      expect(h?.sizeDependent).toBe(true)
+      expect(h?.note).toMatch(/five or more dwelling units/)
+      expect(h?.note).toMatch(/minimum of five percent of the gross site area/)
+    })
+
+    it('hedges the plant salvage row where the single-family-lot exemption might reach', () => {
+      expect(byLabel(phx({ use: 'residential', units: 2 }), /Plant salvage permit/)?.status).toBe('likely')
+      expect(byLabel(phx({ use: 'residential', units: 40 }), /Plant salvage permit/)?.status).toBe('required')
+      expect(byLabel(phx({ use: 'residential', units: 2 }), /Plant salvage permit/)?.note).toMatch(
+        /a single-family lot having one home or duplex/,
+      )
+    })
+
+    it('keeps Phoenix’s shade percentages labelled as presumptions, not requirements', () => {
+      const h = byLabel(phx({ use: 'residential', units: 40 }), /Plant salvage permit/)
+      expect(h?.note).toMatch(/are marked \(P\) — presumptions/)
+    })
+  })
+
+  describe('district-keyed rows come from zoning/phoenix.ts, not from a second copy', () => {
+    it('fires the plan-governed row on PUD, PAD-* and PCD and on nothing else', () => {
+      for (const code of ['PUD', 'PAD-7', 'PCD']) {
+        expect(byLabel(phx({}, pz(code)), /Plan-governed district/), code).toBeTruthy()
+      }
+      for (const code of ['R-3', 'C-2', 'A-1', 'CP/BP']) {
+        expect(byLabel(phx({}, pz(code)), /Plan-governed district/), code).toBeUndefined()
+      }
+    })
+
+    it('quotes the PUD amendment thresholds rather than summarising them', () => {
+      const h = byLabel(phx({}, pz('PUD')), /Plan-governed district/)
+      expect(h?.note).toMatch(/Any change in the height, density, setback, or lot coverage development standards/)
+      expect(h?.note).toMatch(/may not be removed or modified by a PUD/)
+      expect(h?.note).toMatch(/three hundred twenty \(320\) acres or more/)
+    })
+
+    it('fires the county-island row only on ZONING=COUNTY', () => {
+      expect(byLabel(phx({}, pz('COUNTY')), /County island/)).toBeTruthy()
+      expect(byLabel(phx({}, pz('R-3')), /County island/)).toBeUndefined()
+    })
+  })
+
+  describe('rows gated on the phrase providers/phoenix.ts writes into zoning.article', () => {
+    // Rule 9's boundary problem: this string is the contract. If buildArticle is
+    // rewritten, this fails here and in providers/phoenix.test.ts.
+    it('escalates when the City’s own layer flags the overlay REGULATORY', () => {
+      const reg = byLabel(
+        phx({}, pz('R-3', { article: 'Mapped overlays: Rio Salado Interim Overlay (regulatory); Central City Village. Overlay standards are not resolved by this tool and can bind BELOW the base district.' })),
+        /overlay is mapped here/,
+      )
+      expect(reg?.status).toBe('likely')
+      expect(reg?.label).toMatch(/REGULATORY/)
+
+      const nonReg = byLabel(
+        phx({}, pz('R-3', { article: 'Mapped overlay: Central City Village. Overlay standards are not resolved by this tool and can bind BELOW the base district.' })),
+        /overlay is mapped here/,
+      )
+      expect(nonReg?.status).toBe('info')
+      expect(nonReg?.label).not.toMatch(/REGULATORY/)
+    })
+
+    it('does not fire when no overlay is mapped', () => {
+      expect(byLabel(phx({}, pz('R-3', { article: 'R-3 Multi-Family Residence District.' })), /overlay is mapped here/)).toBeUndefined()
+    })
+  })
+
+  describe('§ 506 rezoning', () => {
+    const rez = () =>
+      assessHurdles('phoenix', parcel({ ...pz('R-3'), lot: { sizeSqFt: 43560, lotType: null } }), project({ city: 'phoenix', use: 'residential', units: 60 }), { path: 'variance' })
+
+    it('only renders on the discretionary path', () => {
+      expect(byLabel(phx({ use: 'residential', units: 60 }), /^Rezoning:/)).toBeUndefined()
+      expect(byLabel(rez(), /^Rezoning:/)).toBeTruthy()
+    })
+
+    it('states the protest measure whole — area AND lot count, over a 150-foot ring', () => {
+      const h = byLabel(rez(), /^Rezoning:/)
+      expect(h?.note).toMatch(/20 percent or more of the property by area and number of lots, tracts and condominium units/)
+      expect(h?.note).toMatch(/The area within 150 feet of the proposed amendment, including all rights-of-way/)
+      expect(h?.note).toMatch(/three-fourths of all the members of the City Council/)
+    })
+
+    it('keeps the applicant-borne notice, which is the part people underestimate', () => {
+      const h = byLabel(rez(), /^Rezoning:/)
+      expect(h?.note).toMatch(/within six hundred feet of the site/)
+      expect(h?.note).toMatch(/one-mile radius/)
+      expect(h?.note).toMatch(/two separate meetings/)
+      expect(h?.note).toMatch(/seventy-five percent of the land area/)
+    })
+  })
+
+  describe('the two Arizona statutes', () => {
+    it('states the exaction appeal with its carve-out, not just the right', () => {
+      const h = byLabel(phx({ projectType: 'new' }), /dedication or exaction/)
+      expect(h?.status).toBe('info')
+      expect(h?.note).toMatch(/essential nexus/)
+      expect(h?.note).toMatch(/roughly proportional/)
+      // The limb that decides whether the appeal is even available.
+      expect(h?.note).toMatch(/does not give discretion to the administrative agency or official/)
+      expect(h?.note).toMatch(/No fee shall be charged for filing the appeal/)
+    })
+
+    it('states the § 9-835 clock WITHOUT inventing Phoenix’s published time frames', () => {
+      const h = byLabel(phx({}), /publish its own permit clocks/)
+      expect(h?.status).toBe('info')
+      expect(h?.note).toMatch(/shall refund to the applicant all fees charged/)
+      expect(h?.note).toMatch(/may not be waived by an applicant/)
+      expect(h?.note).toMatch(/missing the deadline does NOT approve your permit/)
+      // No number may appear for the time frames themselves — the statute makes
+      // the city publish them and this build did not read Phoenix's schedule.
+      expect(h?.note).toMatch(/NUMBERS are not in the statute/)
+      expect(h?.note).not.toMatch(/\b\d+ (business |working )?days? overall time frame/)
+    })
+  })
+
+  describe('historic', () => {
+    const hist = (over: Partial<ParcelInfo> = {}) =>
+      assessHurdles(
+        'phoenix',
+        parcel({ ...pz('R-3'), lot: { sizeSqFt: 43560, lotType: null }, overlays: { historicDistrict: 'Coronado Historic District', floodZone: null }, ...over }),
+        project({ city: 'phoenix', use: 'residential', units: 20, projectType: 'new' }),
+      )
+
+    it('routes design review through HISTORIC_BODY and keeps the standing 3 months', () => {
+      const h = byLabel(hist(), /^Historic district design review$/)
+      expect(h?.addsMonths).toBe(3)
+      // The trigger reaching a vacant lot is the load-bearing part.
+      expect(h?.note).toMatch(/alter, remodel, move, build or otherwise develop or landscape property/)
+      expect(h?.note).toMatch(/conduct a public hearing within twenty days/)
+      expect(h?.note).toMatch(/expire one year from the date of issuance/)
+    })
+
+    it('fires the demolition row only on a teardown inside a designation', () => {
+      expect(byLabel(hist({ existing: { landUse: 'Single family', yearBuilt: 1928 } }), /Historic demolition/)).toBeTruthy()
+      // No existing building: nothing to demolish.
+      expect(byLabel(hist(), /Historic demolition/)).toBeUndefined()
+      // Existing building but no designation: the generic demolition row only.
+      const undesignated = assessHurdles(
+        'phoenix',
+        parcel({ ...pz('R-3'), lot: { sizeSqFt: 43560, lotType: null }, existing: { landUse: 'Single family', yearBuilt: 1928 } }),
+        project({ city: 'phoenix', use: 'residential', units: 20, projectType: 'new' }),
+      )
+      expect(byLabel(undesignated, /Historic demolition/)).toBeUndefined()
+    })
+
+    it('carries BOTH restraint lengths and the § 806 pending-designation freeze', () => {
+      const h = byLabel(hist({ existing: { landUse: 'Single family', yearBuilt: 1928 } }), /Historic demolition/)
+      expect(h?.note).toMatch(/no demolition permit shall be issued for a period of one year/)
+      expect(h?.note).toMatch(/the restraint of demolition shall be three years/)
+      expect(h?.note).toMatch(/redevelopment or reuse plan/)
+      expect(h?.note).toMatch(/§ 806/)
+      // Never a claim that no HP application is pending.
+      expect(h?.note).toMatch(/never "no application is pending"/)
+    })
+  })
+
+  it('emits no invented duration anywhere in the branch', () => {
+    const scenarios: Array<{ p: Partial<ParcelInfo>; j: Partial<AnalysisInput> }> = [
+      { p: pz('R-3'), j: { use: 'residential', units: 200, projectType: 'new' } },
+      { p: pz('C-2'), j: { use: 'commercial', units: 0, gfa: 250000 } },
+      { p: pz('PUD'), j: { use: 'mixed', units: 300 } },
+      { p: pz('COUNTY'), j: { use: 'residential', units: 12 } },
+      {
+        p: { ...pz('R-5'), overlays: { historicDistrict: 'Roosevelt Historic District', floodZone: 'AO' }, existing: { landUse: 'Apartment', units: 6 } },
+        j: { use: 'residential', units: 40, projectType: 'new' },
+      },
+      { p: { ...pz('R-3'), lot: { sizeSqFt: 15000, lotType: null } }, j: { use: 'residential', units: 3, projectType: 'new' } },
+    ]
+    for (const s of scenarios) {
+      for (const path of ['as_of_right', 'variance'] as const) {
+        for (const h of assessHurdles('phoenix', parcel(s.p), project({ city: 'phoenix', ...s.j }), { path })) {
+          const expected =
+            /^Historic district design review$/.test(h.label) ? 3
+            : /^Replacing existing housing$/.test(h.label) ? 6
+            : /^Public-funding process/.test(h.label) ? 4
+            : undefined
+          expect(h.addsMonths, `phoenix / ${h.label}`).toBe(expected)
+        }
+      }
+    }
+  })
+
+  // Only the two unit-keyed rows are downgradeable. The § 507 review row is
+  // deliberately NOT sizeDependent, and the retention row is keyed to lot area,
+  // which is measured — so neither may soften.
+  it('a placeholder GFA softens the unit-keyed rows and nothing else', () => {
+    const soft = assessHurdles(
+      'phoenix',
+      parcel({ ...pz('R-3'), lot: { sizeSqFt: 43560, lotType: null } }),
+      project({ city: 'phoenix', use: 'residential', units: 60, projectType: 'new', gfaBasis: 'assumed-far-1.0' }),
+    )
+    expect(byLabel(soft, /Impact fees/)?.status).toBe('info')
+    expect(byLabel(soft, /Impact fees/)?.note).toMatch(/placeholder size/)
+    expect(byLabel(soft, /Multifamily landscape and common open space/)?.status).toBe('info')
+    expect(byLabel(soft, /Development review approval/)?.status).toBe('required')
+    expect(byLabel(soft, /On-site stormwater retention/)?.status).toBe('required')
   })
 })
 
