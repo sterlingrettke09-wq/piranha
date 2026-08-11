@@ -4748,3 +4748,149 @@ Recorded because the failure mode is not "slightly noisy": a guard that flags tr
 negatives is read as broken and then ignored, which is strictly worse than not
 having it. The same reasoning set the ship-or-abandon criterion for the ledger
 guard — zero exemptions on the current file, or narrow it.
+
+## 2026-08-10 — Two suppressions on one file, and a probe that destroyed what it measured
+
+### Fixing the visible defect would have shipped the file as resolved
+
+`netlify/functions/lib/envelope.test.ts` imported `ParcelInfo` from a path two
+directories up where every sibling uses three. Because it is an `import type`,
+esbuild erases it and vitest never complains, so the type resolved to `any` and
+every fixture annotation in the tests covering the FAR/height→envelope module —
+upstream of the verdict, the cost and the unit count — was vacuous.
+
+That is the defect a diff shows. Fixing it alone would have changed nothing,
+because the same file also carried five casts: an `as ParcelInfo` on the factory's
+return and four `as never` on the zoning fixtures. **Either suppression alone
+leaves the fixtures unchecked, and repairing the obvious one makes the file look
+fixed.** Same shape as the Denver table entry that survived a fix correcting both
+pattern branches: the repair was real, and the thing being repaired was not the
+only thing wrong.
+
+Measured, in three states, by injecting a wrong field name and asking what
+TypeScript says:
+
+| state | wrong field name caught? |
+|---|---|
+| broken import + casts | no — nothing to check against |
+| import fixed, casts present | only against the local helper's inline shape, never `ParcelInfo` |
+| import fixed, casts removed | **yes — TS2561** |
+
+**The check is the deliverable, not the fix.** Compiling clean under a restored
+boundary proves the file has no errors; it does not prove the file has any
+constraints. When the 63 excluded test files come under a checker, each one needs
+the injection, not just a green build — a file can compile perfectly and assert
+nothing, for exactly these two reasons.
+
+### The probe destroyed the work it was measuring
+
+The first probe config was written to `/tmp`, so it could not resolve
+`@types/node` and returned a single unrelated error. Both the clean run and the
+injected-typo run produced that same error, which "proved" nothing — measuring the
+probe, not the file, for the fifth time in this ledger.
+
+The recoverable part was the config. The unrecoverable part was reverting the
+injected typo with `git checkout -- <file>`, which also discarded an agent's
+**uncommitted** fix to that file. Nothing warned; the working tree simply lost it.
+It was reconstructible only because the agent had described its edits in a report.
+
+**The rule: the working tree is shared state, and `git checkout` is a destructive
+write to it.** Never revert a file another agent is or was editing, and check
+`git status` for uncommitted work before any checkout, stash or reset. When a
+probe needs to mutate a file, restore it by inverting the exact mutation — not by
+reverting to HEAD, which throws away everything else in the file that is not yet
+committed. The blast radius of `checkout -- <file>` is the whole file, not the
+change you made.
+
+Corollary for probes generally: put a scratch tsconfig **inside the repo** so it
+inherits module resolution, and delete it afterwards. A probe that cannot resolve
+the project's own types is not a weaker measurement, it is a different one.
+
+## 2026-08-10 — 1,922 fixture paths, and the number that was nearly written down
+
+`tsconfig.scripts.json` covered `scripts` and `netlify` but carried
+`exclude: ["**/*.test.ts"]`, so 63 test files — 79% of the repo's tests — were
+typechecked by nothing. Closing that exclusion, and fixing
+`tsconfig.node.json` to include `*.config.ts` by GLOB rather than by a second
+filename (include-by-name is what produced the original gap), brought them under
+the checker.
+
+The sweep reported **63/63 files reject an injected wrong field name**. That was
+true, and it is the wrong number.
+
+### Why the file-level number is nearly meaningless
+
+Three separate weaknesses, each found only by asking a harder question:
+
+**Nineteen of the 63 files have no object fixture at all.** They are scalar
+parsers — `parseMaxFAR`, `resolveMinneapolisFar`, `mapZoningUse`. There is no
+field name in them to misspell, so "rejects an injection" is *vacuously* true.
+That is rule 20 turned on the sweep's own denominator: a check passing over an
+empty set, reported as a pass.
+
+**A file is not a unit of coverage.** `envelope.test.ts` was hand-injected
+earlier the same evening, correctly, and passed — its `info()` factory rejected a
+misspelling. The file was still inert in a second place: an un-annotated `const
+base` spread into the call, so the whole `storiesBasis` block accepted anything.
+That block is the rule-12 regression suite pinning the Miami 87-stories defect.
+**One factory proved; the file assumed.** The injection has to hit every distinct
+fixture path, not the first one that rejects.
+
+**So the honest measurement is per PATH:**
+
+| | paths | reject | inert |
+|---|---|---|---|
+| before | 1,919 | 1,764 | **155** |
+| after | 1,922 | 1,872 | **50** |
+
+Counted separately, because they are library and boundary limits rather than
+suppressions anyone chose: 58 vitest matcher literals and 131 untyped-JSON paths.
+
+### Where the inert paths were, which is the part that matters
+
+Ranked by what they guarded, not by count. **`hurdles.test.ts` held 41** — every
+one inside a city hurdle regression suite: DC historic demolition, DC stormwater,
+San Diego coastal replacement and Process Four, San José Ellis Act, Nashville
+sidewalk exaction, Columbus parkland, Atlanta's pre-1965 forfeiture, Dallas urban
+forest, Las Vegas DINA. Those suites pin the gates that took 29 over-firing
+corrections, and four of the cities sit in `CITIES_WITH_SPECIFIC_HURDLES`, which
+`Compare.tsx` reads to decide whether a hurdle count renders as a floor.
+
+`laZone.test.ts` was worse in kind: it re-declared LA's qualifier regex locally
+under a comment instructing the reader to keep the copy in sync by hand — rule 14
+(enforcement by comment) and rule 15 (a written rationale defending a wrong
+premise) in one artifact. The premise was already false: `stripLaQualifier` is
+exported and a sibling test imports it. That file pins the `(F)`-prefix defect
+that published FAR 3.0 against a code-stated 1.5, and every assertion in it could
+have kept passing while the real function drifted.
+
+### Two mechanisms, both of the "looks checked" family
+
+**A function-valued mock is unchecked even against a tightened union.** Its return
+type is inferred, and an inferred object reaches the target by structural
+assignability, which performs no excess-property check. Proven with a four-case
+probe: a direct payload errors, `() => ({…})` is silent, an annotated
+`(): RoutePayload =>` errors again.
+
+**`Record<string, unknown>` override helpers compile to silent no-ops.**
+`denverZoning({ HEIGHT_STORIESX: null })` type-checked, quietly changed nothing,
+and left the base value asserted — so the test reads as pinning a variant while
+testing the default. Seven helpers had this.
+
+### `toEqual` is a wide, permanent hole
+
+`vitest`'s matchers are generically typed, so the EXPECTED literal is never
+checked against the actual's type: `toEqual({ tierZz, n, minPublishableN })`
+compiles. This is the most-used assertion in the repo — 58 paths — and unlike
+everything else here it is not fixable by tightening anything on our side. Worth
+stating plainly so nobody reads "1,872 of 1,922 reject" as "assertions are
+type-safe." They are not; the FIXTURES are.
+
+### What was refused
+
+~44 of the 50 remaining inert paths are the ArcGIS `attributes: Record<string,
+unknown>` boundary — upstream city field names (`SITUS_ADDRESS_LINE1`, `TAXKEY`,
+`PIN_NUM`) that no type in this repo enumerates. Writing one would assert a schema
+nobody measured: internally consistent, unverifiable, and precisely the shape
+rule 9 says only an outside measurement catches. Those close with a live field
+query per city. Backlog, not sweep.

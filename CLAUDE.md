@@ -303,6 +303,45 @@ three had been investigated"*, not the sentence itself. Where the exact wording
 genuinely matters, mark it with the supersede convention so a scanner can see the
 frame, and expect the guard to hold you to it.
 
+**22. A transport can silently transform its payload. Verify byte-identity at the
+DESTINATION; a clean send proves nothing.** Four instances this session, four
+different mechanisms, one signature — the payload was mangled in transit while
+both ends reported success:
+
+| transport | what it did |
+|---|---|
+| `JSON.stringify(r).slice(0, 4500)` | deleted every field after the first key (rule 19) |
+| `String.replace(anchor, block)` | `$$` in a replacement string escapes to one `$`, so two currency figures published as bare numbers |
+| unquoted shell expansion under zsh | no word-splitting, so a probe returned a plausible zero for every city |
+| `wc -l` on a CSV | counted newlines embedded in a 1,000-char field, inflating the row count |
+
+None was detectable from the sending side. The slice logged four successful
+agents; `replace` returned a well-formed string; the shell command exited 0;
+`wc -l` returned a number in the right units. **The destination is the only place
+the corruption exists**, so that is the only place worth checking.
+
+`$&`, `` $` `` and `$'` in a `String.replace` replacement are the same hazard and
+equally silent — prefer index splicing, or `replace(a, () => b)` where the
+function form disables all substitution. Then compare the written region to the
+source **by string equality, not by eye.** That verification is the default for
+any splice, not a response to having been caught once.
+
+**23. Absence within a scope is not absence. Establish the scope first.** Las
+Vegas's Title 19 — the zoning code, the obvious place to read — contains no
+impact fee, no drainage permit and no landscape rule. Reading it and stopping
+would have published "nearly exaction-free" as a positive finding. The
+requirements are real and live in Titles 4, 14 and 20: a $1,000/unit construction
+tax, a $2,551/ERU sewer occupancy fee, a traffic-signal fee, a turf prohibition,
+a citywide drainage permit.
+
+This is rule 5's slot test one level up. The slot test asks whether a document
+has a place for the value; this asks whether you are reading the right document
+at all, and it fails in the direction that flatters — a thorough read of the
+wrong scope produces a confident absence, not a gap. Before recording that a city
+imposes no X, state which titles or chapters were read and why those are the ones
+that would carry X. An absence is only an answer once someone has looked in the
+place it would be.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
