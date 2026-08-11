@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { getAustinParcelInfo } from './austin'
 import { mockArcgisFetch, featureSet, ARCGIS_ERROR_200 } from './__fixtures__'
+import type { GeoJsonFeatureCollection } from './__fixtures__'
 
 // Endpoint URL substrings the Austin provider hits (see austin.ts):
 //   PARCELS = .../EXTERNAL_tcad_parcel/... → 'EXTERNAL_tcad_parcel'
@@ -14,13 +15,19 @@ import { mockArcgisFetch, featureSet, ARCGIS_ERROR_200 } from './__fixtures__'
 const LAT = 30.2672
 const LNG = -97.7431
 
-const austinParcel = (over: Record<string, unknown> = {}) =>
-  featureSet({ SITUS: '123', PID_10: '0203140112', Shape__Area: 8712, ...over })
+// `Partial<typeof …>`, not `Record<string, unknown>`: an override must name a
+// field the fixture declares, so a misspelled key is a compile error rather
+// than a silent no-op that leaves the base value asserted.
+const AUSTIN_PARCEL = { SITUS: '123', PID_10: '0203140112', Shape__Area: 8712 }
+const austinParcel = (over: Partial<typeof AUSTIN_PARCEL> = {}) =>
+  featureSet({ ...AUSTIN_PARCEL, ...over })
 
 const austinZoning = (base = 'MF-4') =>
   featureSet({ BASE_ZONE: base, ZONE_NAME: 'Multifamily Residence', ZONING_ZTYPE: 'Base' })
 
-const mapboxV6 = { features: [{ properties: { name: '123 Congress Ave' } }] }
+// Mapbox reverse geocode — GeoJSON, and annotated so `propertiez`/`featurez`
+// is a compile error here rather than an unrouted mock at runtime.
+const mapboxV6: GeoJsonFeatureCollection = { features: [{ properties: { name: '123 Congress Ave' } }] }
 
 afterEach(() => {
   vi.restoreAllMocks()

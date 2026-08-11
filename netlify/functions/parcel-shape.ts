@@ -1,4 +1,4 @@
-import type { Handler, HandlerEvent } from '@netlify/functions'
+import type { JsonHandler } from './lib/handlerType'
 import { fetchParcelSnap, firstFeature } from './lib/arcgis'
 import { clientIp, rateLimited } from './lib/guard'
 import { quantizeCoord } from '../../src/lib/coords'
@@ -57,7 +57,7 @@ function ringsToGeometry(rings: number[][][]): GeoJSONGeometry | null {
   return { type: 'Polygon', coordinates: rings }
 }
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: JsonHandler = async (event) => {
   if (rateLimited(clientIp(event.headers ?? {}), RATE)) {
     return fail(429, 'Too many requests — please wait a moment and try again.')
   }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolveTimeline, buildingTier, measuredFor, measuredTierWithheldFor } from './timeline'
 import type { Feasibility } from './feasibility'
-import type { AnalysisInput } from '../../src/types/analysis'
+import type { AnalysisInput } from '../../../src/types/analysis'
 import { CITIES_WITH_MEASURED_PERMITS, hasMeasuredPermitTiming } from '../../../src/config/cities'
 // @ts-expect-error — plain .mjs, no types. Imported from the WRITER on purpose:
 // the artifact is checked against the same definition the extraction scripts
@@ -20,7 +20,15 @@ const project = (over: Partial<AnalysisInput> = {}): AnalysisInput => ({
   ...over,
 })
 
-const feas = (path: Feasibility['path']) => ({ path }) as Feasibility
+// A real Feasibility, not `{ path } as Feasibility`. The cast was what let the
+// nonexistent path 'by-right' sit at 19 call sites: `as` suppresses the shape
+// check, and nothing typechecked this file to catch the argument itself.
+// `overall` mirrors feasibility.ts's own path derivation, inverted.
+const feas = (path: Feasibility['path']): Feasibility => ({
+  overall: path === 'prohibited' ? 'PROHIBITED' : path === 'variance' ? 'NEEDS_RELIEF' : 'AS_OF_RIGHT',
+  checks: [],
+  path,
+})
 
 describe('buildingTier', () => {
   it('commercial and institutional are always apartment-tier', () => {
@@ -42,42 +50,42 @@ describe('resolveTimeline', () => {
   })
 
   it('Boston apartment-tier new build on a cleared lot = the lifecycle baseline (44)', () => {
-    const t = resolveTimeline('boston', project(), feas('by-right'), false)
+    const t = resolveTimeline('boston', project(), feas('as_of_right'), false)
     expect(t.months).toBe(44)
     expect(t.includesDemolition).toBe(false)
   })
 
   it('a teardown adds the per-city demolition phase (+3 in Boston)', () => {
-    const t = resolveTimeline('boston', project(), feas('by-right'), true)
+    const t = resolveTimeline('boston', project(), feas('as_of_right'), true)
     expect(t.months).toBe(47)
     expect(t.includesDemolition).toBe(true)
   })
 
   it('large teardowns add scaled months above 50k sf', () => {
     // (150,000 − 50,000) / 100,000 × 3 = 3 extra
-    const t = resolveTimeline('boston', project(), feas('by-right'), true, 150_000)
+    const t = resolveTimeline('boston', project(), feas('as_of_right'), true, 150_000)
     expect(t.months).toBe(50)
   })
 
   it('the large-teardown adder caps at 18 months', () => {
-    const t = resolveTimeline('boston', project(), feas('by-right'), true, 1_000_000)
+    const t = resolveTimeline('boston', project(), feas('as_of_right'), true, 1_000_000)
     expect(t.months).toBe(44 + 3 + 18)
   })
 
   it('demolition months are NOT added for addition/renovation projects', () => {
-    const t = resolveTimeline('boston', project({ projectType: 'addition', use: 'residential', units: 3 }), feas('by-right'), true)
+    const t = resolveTimeline('boston', project({ projectType: 'addition', use: 'residential', units: 3 }), feas('as_of_right'), true)
     // boston multi 28 × 0.65 = 18.2 → 18; hasExistingBuilding true but projectType ≠ new
     expect(t.months).toBe(18)
     expect(t.includesDemolition).toBe(false)
   })
 
   it('unknown city falls back to the generic lifecycle table', () => {
-    const t = resolveTimeline('atlantis', project(), feas('by-right'), false)
+    const t = resolveTimeline('atlantis', project(), feas('as_of_right'), false)
     expect(t.months).toBe(40) // fallback apartment tier
   })
 
   it('discretionary/variance time is NOT added here (analyze.ts owns it)', () => {
-    const byRight = resolveTimeline('boston', project(), feas('by-right'), false)
+    const byRight = resolveTimeline('boston', project(), feas('as_of_right'), false)
     const variance = resolveTimeline('boston', project(), feas('variance'), false)
     expect(variance.months).toBe(byRight.months)
     expect(variance.path).toBe('variance')
@@ -101,7 +109,7 @@ describe('measured permit timing', () => {
   }
 
   it('a city present in permitStats → measured is populated for a new build', () => {
-    const t = resolveTimeline('miami', project({ city: 'miami' }), feas('by-right'), false)
+    const t = resolveTimeline('miami', project({ city: 'miami' }), feas('as_of_right'), false)
     expectMeasuredShape(t.measured)
   })
 
@@ -113,7 +121,7 @@ describe('measured permit timing', () => {
   // not-yet from a never, so "ever issue" is retracted phrasing (2026-08-08), and
   // the median is undefined under either reading.
   it('SF resolves to no measurement — most of its filings carry no issue date', () => {
-    const t = resolveTimeline('sf', project({ city: 'sf' }), feas('by-right'), false)
+    const t = resolveTimeline('sf', project({ city: 'sf' }), feas('as_of_right'), false)
     expect(t.measured).toBeUndefined()
   })
 
@@ -133,7 +141,7 @@ describe('measured permit timing', () => {
   // (`vintage` is never shown). Asserted so neither the pair nor a bare median
   // can be reinstated from a stale script.
   it('Seattle is withdrawn — its p80 is unidentified at 74.71% observed', () => {
-    const t = resolveTimeline('seattle', project({ city: 'seattle' }), feas('by-right'), false)
+    const t = resolveTimeline('seattle', project({ city: 'seattle' }), feas('as_of_right'), false)
     expect(t.measured).toBeUndefined()
     // And it must not degrade into a "measured but withheld for this size" card —
     // Seattle's byTier went with the withdrawal (per-tier shares are only
@@ -159,17 +167,17 @@ describe('measured permit timing', () => {
   // observed the p50 is identified and the p80 is not, so it is specifically the
   // p80 that fails, which is what the test below asserts the absence of.
   it('Chicago is withdrawn — a backfill artifact halved its median', () => {
-    const t = resolveTimeline('chicago', project({ city: 'chicago' }), feas('by-right'), false)
+    const t = resolveTimeline('chicago', project({ city: 'chicago' }), feas('as_of_right'), false)
     expect(t.measured).toBeUndefined()
   })
 
   it('Austin (landed via austin.mjs) → measured is populated', () => {
-    const t = resolveTimeline('austin', project({ city: 'austin' }), feas('by-right'), false)
+    const t = resolveTimeline('austin', project({ city: 'austin' }), feas('as_of_right'), false)
     expectMeasuredShape(t.measured)
   })
 
   it('Los Angeles is withdrawn — only 54.6% of applications are observed, so its p80 is unidentified', () => {
-    const t = resolveTimeline('la', project({ city: 'la' }), feas('by-right'), false)
+    const t = resolveTimeline('la', project({ city: 'la' }), feas('as_of_right'), false)
     expect(t.measured).toBeUndefined()
   })
 
@@ -194,7 +202,7 @@ describe('measured permit timing', () => {
   // non-issued filings which has not been adopted here. Asserted so neither the
   // old figure nor the KM one can be reinstated from a stale script.
   it('NYC is withdrawn — its p80 is unidentified at 63.65% observed, and 8.3 was conditional on issuance', () => {
-    const t = resolveTimeline('nyc', project({ city: 'nyc' }), feas('by-right'), false)
+    const t = resolveTimeline('nyc', project({ city: 'nyc' }), feas('as_of_right'), false)
     expect(t.measured).toBeUndefined()
     // And it must not degrade into a "measured but withheld for this size" card —
     // that would claim NYC publishes timing by building size, which it never did.
@@ -203,7 +211,7 @@ describe('measured permit timing', () => {
 
   it('a city absent from permitStats → measured is undefined', () => {
     // 'atlantis' is not a real city and will never be in the artifact.
-    const t = resolveTimeline('atlantis', project({ city: 'atlantis' }), feas('by-right'), false)
+    const t = resolveTimeline('atlantis', project({ city: 'atlantis' }), feas('as_of_right'), false)
     expect(t.measured).toBeUndefined()
   })
 
@@ -211,7 +219,7 @@ describe('measured permit timing', () => {
     const t = resolveTimeline(
       'sf',
       project({ city: 'sf', projectType: 'addition', use: 'residential', units: 3 }),
-      feas('by-right'),
+      feas('as_of_right'),
       false,
     )
     expect(t.measured).toBeUndefined()
@@ -322,7 +330,7 @@ describe('measuredFor prefers the tier-specific figure over the city aggregate',
     const t = resolveTimeline(
       'denver',
       project({ city: 'denver', use: 'residential', units: 2 }),
-      feas('by-right'),
+      feas('as_of_right'),
       false,
     )
     expect(t.tier).toBe('multi')
@@ -340,7 +348,7 @@ describe('measuredFor prefers the tier-specific figure over the city aggregate',
     const t = resolveTimeline(
       'denver',
       project({ city: 'denver', use: 'residential', units: 1 }),
-      feas('by-right'),
+      feas('as_of_right'),
       false,
     )
     expect(t.measured).toBeDefined()
@@ -348,7 +356,7 @@ describe('measuredFor prefers the tier-specific figure over the city aggregate',
   })
 
   it('an unmeasured city gets no withheld record either — that would imply a measurement', () => {
-    const t = resolveTimeline('atlantis', project({ city: 'atlantis' }), feas('by-right'), false)
+    const t = resolveTimeline('atlantis', project({ city: 'atlantis' }), feas('as_of_right'), false)
     expect(t.measured).toBeUndefined()
     expect(t.measuredTierWithheld).toBeUndefined()
   })

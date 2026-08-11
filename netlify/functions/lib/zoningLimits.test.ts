@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { resolveZoningLimits } from './zoningLimits'
 
-const z = (districtCode: string) => ({ districtCode, maxFAR: null, maxHeightFt: null, allowedUses: null })
+// Return type annotated, not inferred: an inferred object is not checked
+// against resolveZoningLimits' parameter at any call site (only a FRESH literal
+// argument is excess-property checked), so without this a renamed zoning field
+// would compile everywhere in this file.
+type Zoning = Parameters<typeof resolveZoningLimits>[0]
+
+const z = (districtCode: string): Zoning => ({ districtCode, maxFAR: null, maxHeightFt: null, allowedUses: null })
 
 describe('resolveZoningLimits', () => {
   it('parses trailing height from a coded district like B-2-65', () => {
@@ -44,10 +50,10 @@ describe('resolveZoningLimits', () => {
 // the provider left them null, and only for the city they belong to. They never
 // override provider data and never leak into Boston's family heuristics.
 describe('resolveZoningLimits — per-city curated tables (WO-8.8)', () => {
-  const z = (districtCode: string, over: Partial<{ maxFAR: number | null; maxHeightFt: number | null }> = {}) => ({
+  const z = (districtCode: string, over: Partial<Zoning> = {}): Zoning => ({
     districtCode,
-    maxFAR: null as number | null,
-    maxHeightFt: null as number | null,
+    maxFAR: null,
+    maxHeightFt: null,
     allowedUses: null,
     ...over,
   })

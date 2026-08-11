@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { getMilwaukeeParcelInfo, selectParcel, ringAreaSqFt } from './milwaukee'
 import { mockArcgisFetch, ARCGIS_ERROR_200 } from './__fixtures__'
+import type { ArcgisFeature, RoutePayload } from './__fixtures__'
 import {
   milwaukeeRoutes,
   milwaukeeRoutesScott,
@@ -243,7 +244,11 @@ describe('getMilwaukeeParcelInfo', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         ...milwaukeeRoutes,
-        'parcels_mprop/MapServer/2': (url: string) =>
+        // The `: RoutePayload` is load-bearing. A route function's return type
+        // is otherwise INFERRED, and an inferred object reaches RouteValue by
+        // structural assignability — which does not excess-property check. The
+        // annotation is what puts these literals back under the compiler.
+        'parcels_mprop/MapServer/2': (url: string): RoutePayload =>
           url.includes('where=TAXKEY')
             ? { features: [] }
             : { features: [{ attributes: { TAXKEY: '1', HOUSE_NR_LO: 1, STREET: 'MAIN', STTYPE: 'ST', LOT_AREA: 0 } }] },
@@ -259,7 +264,7 @@ describe('getMilwaukeeParcelInfo', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         ...milwaukeeRoutes,
-        'parcels_mprop/MapServer/2': (url: string) =>
+        'parcels_mprop/MapServer/2': (url: string): RoutePayload =>
           url.includes('where=TAXKEY')
             ? {
                 features: [
@@ -490,7 +495,9 @@ describe('getMilwaukeeParcelInfo', () => {
 })
 
 describe('selectParcel', () => {
-  const row = (TAXKEY: string, PARCEL_TYPE: number | null) => ({ attributes: { TAXKEY, PARCEL_TYPE } })
+  const row = (TAXKEY: string, PARCEL_TYPE: number | null): ArcgisFeature => ({
+    attributes: { TAXKEY, PARCEL_TYPE },
+  })
 
   it('prefers a fee parcel over a condominium unit', () => {
     expect(selectParcel([row('9', 1), row('5', 0), row('1', 1)])?.TAXKEY).toBe('5')

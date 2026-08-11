@@ -1,4 +1,4 @@
-import type { Handler, HandlerEvent } from '@netlify/functions'
+import type { JsonHandler } from './lib/handlerType'
 import { logSearch } from './lib/searchLog'
 import { clientIp, originAllowed, rateLimited } from './lib/guard'
 
@@ -15,7 +15,7 @@ const RATE = { name: 'log-search', windowMs: 60_000, max: 30 } as const
 const MAX_ADDRESS_CHARS = 200
 const MAX_CITY_CHARS = 40
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: JsonHandler = async (event) => {
   // Silently drop (204) rather than 4xx on guard failures: this is a
   // fire-and-forget beacon, and an error response just invites probing.
   if (!originAllowed(event.headers) || rateLimited(clientIp(event.headers), RATE)) {

@@ -1,15 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import type { HandlerEvent } from '@netlify/functions'
 import { handler } from '../ask'
+import { invokeHandler } from './testing/invokeHandler'
 
-type Ev = Parameters<typeof handler>[0]
-type Ctx = Parameters<typeof handler>[1]
-
-const call = (init: Partial<Ev>) =>
-  handler(
-    { httpMethod: 'POST', headers: {}, body: '{}', ...init } as unknown as Ev,
-    {} as Ctx,
-    () => undefined,
-  ) as Promise<{ statusCode: number; body: string }>
+const call = (init: Partial<HandlerEvent> = {}) =>
+  invokeHandler(handler, { httpMethod: 'POST', body: '{}', ...init })
 
 describe('ask handler — request gating (no API call)', () => {
   const original = process.env.GEMINI_API_KEY

@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { getLaParcelInfo } from './la'
+import { getLaParcelInfo, stripLaQualifier as strip } from './la'
 
-// laLimits is not exported, so the parse is exercised through the module's own
-// regex, replicated here EXACTLY as written. If la.ts changes, this must too —
-// the point is to pin the prefix behaviour, which is where the defect was.
-const strip = (s: string) => s.replace(/^(?:[[(][A-Z]{1,4}[\])]|[QT])-?/i, '').trim()
+// 2026-08-10: this file used to re-declare la.ts's regex locally and assert
+// against the COPY — "replicated here EXACTLY as written. If la.ts changes,
+// this must too." Nothing enforced that, so every assertion below could have
+// gone on passing while stripLaQualifier drifted underneath it: the suite was
+// comparing the module to a duplicate of itself (CLAUDE.md rule 9). The
+// premise was also stale — la.ts exports the stripper, and
+// laHeightDistrict.test.ts already imported it. Now so does this file.
 
 describe('LA zone-string qualifier stripping', () => {
-  it.each([
+  it.each<[string, string]>([
     ['[Q]C2-1', 'C2-1'],
     ['(Q)C1-1', 'C1-1'],
     ['[T]R3-1', 'R3-1'],
@@ -17,7 +20,7 @@ describe('LA zone-string qualifier stripping', () => {
     ['(F)RE11-1', 'RE11-1'],
     ['(WC)COLLEGE-SN', 'COLLEGE-SN'],
   ])('%s → %s', (input, expected) => {
-    expect(strip(input as string)).toBe(expected)
+    expect(strip(input)).toBe(expected)
   })
 
   it('leaves an unqualified zone string untouched', () => {

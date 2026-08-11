@@ -13,27 +13,42 @@ import { resolveZoningLimits } from '../zoningLimits'
 const LAT = 39.7392
 const LNG = -104.9903
 
-const denverParcel = (over: Record<string, unknown> = {}) =>
-  featureSet({
-    SITUS_ADDRESS_LINE1: '1437  Bannock   St',
-    LAND_AREA: 9500,
-    SCHEDNUM: '0234512018000',
-    D_CLASS_CN: 'COMMERCIAL',
-    APPRAISED_IMP_VALUE: 450000,
-    COM_ORIG_YEAR_BUILT: 1958,
-    RES_ORIG_YEAR_BUILT: 0,
-    OWNER_NAME: 'PRIVATE OWNER LLC',
-    ...over,
-  })
+// The upstream ArcGIS field names cannot be checked against any type in this
+// repo — only a live field query settles those. What CAN be checked is that an
+// override names a field the fixture actually declares: `Record<string,
+// unknown>` accepted `denverZoning({ HEIGHT_STORIESX: null })`, which silently
+// leaves the base value in place, so the test asserts the unmodified fixture
+// while reading as though it pinned a variant.
+const DENVER_PARCEL = {
+  SITUS_ADDRESS_LINE1: '1437  Bannock   St',
+  LAND_AREA: 9500,
+  SCHEDNUM: '0234512018000',
+  D_CLASS_CN: 'COMMERCIAL',
+  APPRAISED_IMP_VALUE: 450000,
+  COM_ORIG_YEAR_BUILT: 1958,
+  RES_ORIG_YEAR_BUILT: 0,
+  OWNER_NAME: 'PRIVATE OWNER LLC',
+}
+const denverParcel = (over: Partial<typeof DENVER_PARCEL> = {}) =>
+  featureSet({ ...DENVER_PARCEL, ...over })
 
-const denverZoning = (over: Record<string, unknown> = {}) =>
-  featureSet({
-    ZONE_DISTRICT: 'C-MX-5',
-    ZONE_DESCRIPTION: 'Urban Center, Mixed Use',
-    OVERLAY_DISTRICT: null,
-    HEIGHT_STORIES: 5,
-    ...over,
-  })
+// Spelled out rather than inferred, because tests override HEIGHT_STORIES with
+// null and the inferred type of `5` is not nullable. An interface, not a cast:
+// it checks the base literal as well as every override.
+interface DenverZoningAttrs {
+  ZONE_DISTRICT: string
+  ZONE_DESCRIPTION: string
+  OVERLAY_DISTRICT: string | null
+  HEIGHT_STORIES: number | null
+}
+const DENVER_ZONING: DenverZoningAttrs = {
+  ZONE_DISTRICT: 'C-MX-5',
+  ZONE_DESCRIPTION: 'Urban Center, Mixed Use',
+  OVERLAY_DISTRICT: null,
+  HEIGHT_STORIES: 5,
+}
+const denverZoning = (over: Partial<DenverZoningAttrs> = {}) =>
+  featureSet({ ...DENVER_ZONING, ...over })
 
 afterEach(() => vi.restoreAllMocks())
 

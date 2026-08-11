@@ -21,7 +21,7 @@ const parcel = (o: Partial<ParcelInfo['zoning']> = {}): ParcelInfo =>
     lot: { sizeSqFt: 10000, lotType: null },
     overlays: { historicDistrict: null, floodZone: null },
     sources: {}, fetchedAt: '2026-08-05T00:00:00.000Z',
-  }) as ParcelInfo
+  })
 
 const spec = (gfaBasis: AnalysisInput['gfaBasis'], over: Partial<AnalysisInput> = {}): AnalysisInput => ({
   parcelId: 'p', city: 'boston', projectType: 'new', funding: 'private',

@@ -1,4 +1,4 @@
-import type { Handler, HandlerEvent } from '@netlify/functions'
+import type { JsonHandler } from './lib/handlerType'
 import { clientIp, originAllowed, rateLimited } from './lib/guard'
 
 // Tiny client-side error beacon. The SPA posts uncaught errors and unhandled
@@ -18,7 +18,7 @@ const MAX_URL_CHARS = 300
 
 const noContent = { statusCode: 204, headers: HEADERS, body: '' }
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: JsonHandler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: HEADERS, body: JSON.stringify({ error: 'Use POST.' }) }
   }

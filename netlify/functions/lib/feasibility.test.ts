@@ -10,8 +10,25 @@ const parcel = (over: Partial<ParcelInfo['zoning']> = {}, lotSize: number | null
   overlays: { historicDistrict: null, floodZone: null },
   sources: {}, fetchedAt: '2026-05-28T00:00:00Z',
 })
-const project = (over: Partial<AnalysisInput> = {}): AnalysisInput =>
-  ({ parcelId: 'p1', lat: 42.36, lng: -71.06, use: 'commercial', gfa: 15000, heightFt: 50, ...over })
+// city/projectType/funding are REQUIRED by AnalysisInput and were absent here —
+// the factory's return annotation was the only thing claiming otherwise, and
+// nothing typechecked this file. They are stated at the values the omission was
+// silently relying on: resolveZoningLimits defaults its `city` parameter to
+// 'boston' (zoningLimits.ts:62), which is what made the B-2-65 family
+// heuristics fire, and assessFeasibility's housing/historic branches test
+// `projectType === 'new'`.
+const project = (over: Partial<AnalysisInput> = {}): AnalysisInput => ({
+  parcelId: 'p1',
+  city: 'boston',
+  projectType: 'new',
+  funding: 'private',
+  lat: 42.36,
+  lng: -71.06,
+  use: 'commercial',
+  gfa: 15000,
+  heightFt: 50,
+  ...over,
+})
 
 describe('assessFeasibility', () => {
   it('is as-of-right when use allowed, FAR and height within limits', () => {

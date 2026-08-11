@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import type { HandlerEvent } from '@netlify/functions'
 import { handler } from '../parcel-shape'
+import { invokeHandler, invokeWithQuery } from './testing/invokeHandler'
 import { mockArcgisFetch, featureSetWithGeometry, ARCGIS_ERROR_200 } from './providers/__fixtures__'
 
 // The handler reuses fetchParcelSnap against each city's PARCELS endpoint. We
@@ -18,9 +18,6 @@ const RING: number[][][] = [
   ],
 ]
 
-const ev = (params: Record<string, string>): HandlerEvent =>
-  ({ queryStringParameters: params, headers: {} }) as unknown as HandlerEvent
-
 afterEach(() => vi.restoreAllMocks())
 
 describe('parcel-shape handler', () => {
@@ -30,12 +27,10 @@ describe('parcel-shape handler', () => {
         [BOSTON_PARCELS]: featureSetWithGeometry({ attributes: { pid: '0302604000' }, rings: RING }),
       }),
     )
-    const res = await handler(ev({ city: 'boston', lat: '42.3541', lng: '-71.0704' }), {} as never)
-    expect(res).toBeTruthy()
-    if (!res) return
+    const res = await invokeWithQuery(handler, { city: 'boston', lat: '42.3541', lng: '-71.0704' })
     expect(res.statusCode).toBe(200)
     expect(res.headers?.['Cache-Control']).toContain('s-maxage=86400')
-    const body = JSON.parse(res.body as string)
+    const body = JSON.parse(res.body)
     expect(body.type).toBe('Feature')
     expect(body.geometry.type).toBe('Polygon')
     expect(body.geometry.coordinates).toEqual(RING)
@@ -46,14 +41,12 @@ describe('parcel-shape handler', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({ [BOSTON_PARCELS]: { features: [] } }),
     )
-    const res = await handler(ev({ city: 'boston', lat: '42.3541', lng: '-71.0704' }), {} as never)
-    if (!res) throw new Error('no response')
+    const res = await invokeWithQuery(handler, { city: 'boston', lat: '42.3541', lng: '-71.0704' })
     expect(res.statusCode).toBe(404)
   })
 
   it('returns 404 for a city with no parcel-shape config (e.g. minneapolis)', async () => {
-    const res = await handler(ev({ city: 'minneapolis', lat: '44.9778', lng: '-93.2650' }), {} as never)
-    if (!res) throw new Error('no response')
+    const res = await invokeWithQuery(handler, { city: 'minneapolis', lat: '44.9778', lng: '-93.2650' })
     expect(res.statusCode).toBe(404)
   })
 
@@ -61,14 +54,12 @@ describe('parcel-shape handler', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({ [BOSTON_PARCELS]: ARCGIS_ERROR_200 }),
     )
-    const res = await handler(ev({ city: 'boston', lat: '42.3541', lng: '-71.0704' }), {} as never)
-    if (!res) throw new Error('no response')
+    const res = await invokeWithQuery(handler, { city: 'boston', lat: '42.3541', lng: '-71.0704' })
     expect(res.statusCode).toBe(502)
   })
 
   it('returns 400 when lat/lng are missing or non-numeric', async () => {
-    const res = await handler(ev({ city: 'boston' }), {} as never)
-    if (!res) throw new Error('no response')
+    const res = await invokeWithQuery(handler, { city: 'boston' })
     expect(res.statusCode).toBe(400)
   })
 
@@ -80,15 +71,18 @@ describe('parcel-shape handler', () => {
     )
     // Same IP, distinct namespace 'parcel-shape', cap 60/min. Drive past it.
     const headers = { 'x-nf-client-connection-ip': '203.0.113.42' }
-    const event = {
-      queryStringParameters: { city: 'boston', lat: '42.3541', lng: '-71.0704' },
-      headers,
-    } as unknown as HandlerEvent
-    let last
-    for (let i = 0; i < 62; i++) last = await handler(event, {} as never)
-    if (!last) throw new Error('no response')
+    // Built inline on every call rather than hoisted to a `const`: TypeScript
+    // only excess-property-checks a FRESH object literal, so a hoisted event
+    // would let `queryStringParamters` through against `Partial<HandlerEvent>`.
+    const call = () =>
+      invokeHandler(handler, {
+        queryStringParameters: { city: 'boston', lat: '42.3541', lng: '-71.0704' },
+        headers,
+      })
+    let last = await call()
+    for (let i = 1; i < 62; i++) last = await call()
     expect(last.statusCode).toBe(429)
-    const body = JSON.parse(last.body as string)
+    const body = JSON.parse(last.body)
     expect(typeof body.message).toBe('string')
   })
 })

@@ -62,7 +62,7 @@ function parcel(zoning: Partial<ParcelInfo['zoning']>, lotSqFt: number | null): 
     overlays: { historicDistrict: null, floodZone: null },
     sources: {},
     fetchedAt: '2026-08-04T00:00:00.000Z',
-  } as ParcelInfo
+  }
 }
 
 describe('envelope — floor-area allowance ("the greater of the ratio or the floor value")', () => {

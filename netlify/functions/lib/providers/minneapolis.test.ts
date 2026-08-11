@@ -14,19 +14,22 @@ import { mockArcgisFetch, featureSet, ARCGIS_ERROR_200 } from './__fixtures__'
 const LAT = 44.9778
 const LNG = -93.265
 
-const mplsParcel = (over: Record<string, unknown> = {}) =>
-  featureSet({
-    HOUSE_NO: '350',
-    STREET_NM: 'S  5TH  ST',
-    MUNIC_NM: 'MINNEAPOLIS',
-    ZIP_CD: '55415',
-    PARCEL_AREA: 7200,
-    PID: '2202924320045',
-    BUILD_YR: 1990,
-    BLDG_MV1: 1200000,
-    OWNER_NM: 'PRIVATE OWNER LLC',
-    ...over,
-  })
+// `Partial<typeof …>`, not `Record<string, unknown>`: an override must name a
+// field the fixture declares, so a misspelled key is a compile error rather
+// than a silent no-op that leaves the base value asserted.
+const MPLS_PARCEL = {
+  HOUSE_NO: '350',
+  STREET_NM: 'S  5TH  ST',
+  MUNIC_NM: 'MINNEAPOLIS',
+  ZIP_CD: '55415',
+  PARCEL_AREA: 7200,
+  PID: '2202924320045',
+  BUILD_YR: 1990,
+  BLDG_MV1: 1200000,
+  OWNER_NM: 'PRIVATE OWNER LLC',
+}
+const mplsParcel = (over: Partial<typeof MPLS_PARCEL> = {}) =>
+  featureSet({ ...MPLS_PARCEL, ...over })
 
 const mplsZoning = (code = 'CM4') => featureSet({ Land_Use_Code: code, Land_Use: 'Commercial Mixed' })
 const mplsForm = (abbrv = 'BFC6') => featureSet({ Abbrv: abbrv, Built_Form: 'Corridor 6' })

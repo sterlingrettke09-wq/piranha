@@ -1,4 +1,4 @@
-import type { Handler, HandlerEvent } from '@netlify/functions'
+import type { JsonHandler } from './lib/handlerType'
 import type { AnalysisError, AnalysisInput, AnalysisResult, Use, ProjectType, Funding } from '../../src/types/analysis'
 import { USES, PROJECT_TYPES, FUNDING_TYPES } from '../../src/types/analysis'
 import { cacheControlFor, getParcelInfo } from './lib/parcel'
@@ -74,7 +74,7 @@ const num = (v: string | undefined): number | undefined => {
   return Number.isFinite(n) ? n : undefined
 }
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: JsonHandler = async (event) => {
   if (rateLimited(clientIp(event.headers ?? {}), RATE)) {
     return fail('RATE_LIMITED', 'Too many requests — please wait a moment and try again.', 429)
   }

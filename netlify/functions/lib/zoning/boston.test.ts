@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { bostonBaseDistrict, resolveBostonFar } from './boston'
 import { getParcelInfo } from '../parcel'
 import { mockArcgisFetch, featureSet } from '../providers/__fixtures__'
+import type { RoutePayload } from '../providers/__fixtures__'
 import { resolveZoningLimits } from '../zoningLimits'
 
 // SOURCE for every figure below: Boston Zoning Code, ARTICLE 13 — TABLES,
@@ -151,30 +152,50 @@ describe('resolveBostonFar — Art. 13 Table B, FLOOR AREA RATIO maximum', () =>
 const LAT = 42.321685
 const LNG = -71.046567
 
-const parcelFixture = (over: Record<string, unknown> = {}) =>
-  featureSet({
-    PID: '1303448000',
-    ST_NUM: '150',
-    ST_NAME: 'Mount Vernon St',
-    LAND_SF: 752109,
-    LU_DESC: 'Commercial',
-    OWNER: 'PRIVATE OWNER LLC',
-    NUM_BLDGS: 1,
-    ...over,
-  })
+// `Partial<typeof …>`, not `Record<string, unknown>`: an override must name a
+// field the fixture declares, so a misspelled key is a compile error rather
+// than a silent no-op that leaves the base value asserted — which here would
+// mean a test claiming to pin a district's FAR while asserting B-1-55's.
+const BOSTON_PARCEL = {
+  PID: '1303448000',
+  ST_NUM: '150',
+  ST_NAME: 'Mount Vernon St',
+  LAND_SF: 752109,
+  LU_DESC: 'Commercial',
+  OWNER: 'PRIVATE OWNER LLC',
+  NUM_BLDGS: 1,
+}
+const parcelFixture = (over: Partial<typeof BOSTON_PARCEL> = {}) =>
+  featureSet({ ...BOSTON_PARCEL, ...over })
 
-const zoningFixture = (over: Record<string, unknown> = {}) =>
-  featureSet({
-    Name: 'B-1-55',
-    District: 'Harborpark: Dorchester Bay/Neponset River Waterfront',
-    Article: '42A',
-    HeightMax: null,
-    FARMax: null,
-    Use_: 'Commercial',
-    ...over,
-  })
+// Spelled out rather than inferred, because the base leaves the numeric limits
+// null and tests override them with numbers. An interface, not a cast: it
+// checks the base literal as well as every override.
+interface BostonZoningAttrs {
+  Name: string
+  District: string
+  Article: string
+  HeightMax: number | null
+  FARMax: number | null
+  Use_: string
+  /** Declared (as an absence) so an override can name it: parcel.ts reads
+   *  NumFloorsMax and accepts it only when `typeof === 'number' && > 0`, so
+   *  null here is the same input as the field being absent. */
+  NumFloorsMax: number | null
+}
+const BOSTON_ZONING: BostonZoningAttrs = {
+  Name: 'B-1-55',
+  District: 'Harborpark: Dorchester Bay/Neponset River Waterfront',
+  Article: '42A',
+  HeightMax: null,
+  FARMax: null,
+  Use_: 'Commercial',
+  NumFloorsMax: null,
+}
+const zoningFixture = (over: Partial<BostonZoningAttrs> = {}) =>
+  featureSet({ ...BOSTON_ZONING, ...over })
 
-const routes = (zoning: object, parcel: object = parcelFixture()) => ({
+const routes = (zoning: RoutePayload, parcel: RoutePayload = parcelFixture()) => ({
   Zoning_Subdistricts_Urban: zoning,
   Parcels_24_detailed: parcel,
   Historic_Districts_BLC: featureSet(),

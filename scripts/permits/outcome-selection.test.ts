@@ -172,7 +172,9 @@ describe('the exemption registry is an explanation, not a mute button', () => {
   it('rejects an exemption whose file no longer carries the predicate', () => {
     // A licence outliving the thing it licensed is how the next clone inherits
     // permission. Removing a predicate must force removing its exemption.
-    const clean = [{ file: 'ghost.mjs', source: 'const w = `AND applieddate IS NOT NULL`\n' }]
+    const clean: Parameters<typeof auditOutcomeSelection>[0] = [
+      { file: 'ghost.mjs', source: 'const w = `AND applieddate IS NOT NULL`\n' },
+    ]
     const audit = auditOutcomeSelection(clean, {
       'ghost.mjs': { basis: 'unreachable', reason: 'x'.repeat(300) + ' 2026-08-09' },
     })
@@ -181,7 +183,7 @@ describe('the exemption registry is an explanation, not a mute button', () => {
   })
 
   it('fails an unexplained new carrier — city 24 inheriting the clone', () => {
-    const city24 = [
+    const city24: Parameters<typeof auditOutcomeSelection>[0] = [
       { file: 'dallas.mjs', source: "const w = `AND ${ISSUED_DATE_FIELD} IS NOT NULL`\n" },
     ]
     const audit = auditOutcomeSelection(city24, {})

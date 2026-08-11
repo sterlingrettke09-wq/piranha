@@ -24,8 +24,5 @@
   "include": [
     "scripts",
     "netlify"
-  ],
-  "exclude": [
-    "**/*.test.ts"
   ]
 }

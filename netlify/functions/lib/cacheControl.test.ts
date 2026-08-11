@@ -24,7 +24,7 @@ function info(over: Partial<{ districtCode: string; address: string }> = {}): Pa
     existing: { landUse: null },
     sources: { zoning: 'z', parcels: 'p' },
     fetchedAt: new Date().toISOString(),
-  } as ParcelInfo
+  }
 }
 
 describe('cacheControlFor — degraded responses must not stick for a day', () => {

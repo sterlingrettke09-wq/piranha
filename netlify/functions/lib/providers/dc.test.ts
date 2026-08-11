@@ -13,17 +13,20 @@ import { mockArcgisFetch, featureSet, ARCGIS_ERROR_200 } from './__fixtures__'
 const LAT = 38.9072
 const LNG = -77.0369
 
-const dcParcel = (over: Record<string, unknown> = {}) =>
-  featureSet({
-    PREMISEADD: '1350 PENNSYLVANIA AVE NW WASHINGTON DC 20004',
-    SSL: '0295    0805',
-    LANDAREA: 12500,
-    USECODE: '012',
-    SALETYPE: 'Improved',
-    CLASSTYPE: '2 - Commercial',
-    OWNERNAME: 'PRIVATE HOLDINGS LLC',
-    ...over,
-  })
+// `Partial<typeof …>`, not `Record<string, unknown>`: an override must name a
+// field the fixture declares, so a misspelled key is a compile error rather
+// than a silent no-op that leaves the base value asserted.
+const DC_PARCEL = {
+  PREMISEADD: '1350 PENNSYLVANIA AVE NW WASHINGTON DC 20004',
+  SSL: '0295    0805',
+  LANDAREA: 12500,
+  USECODE: '012',
+  SALETYPE: 'Improved',
+  CLASSTYPE: '2 - Commercial',
+  OWNERNAME: 'PRIVATE HOLDINGS LLC',
+}
+const dcParcel = (over: Partial<typeof DC_PARCEL> = {}) =>
+  featureSet({ ...DC_PARCEL, ...over })
 
 const dcZoning = (code = 'MU-4A') => featureSet({ Zoning: code, Zone_District: 'Mixed-Use' })
 

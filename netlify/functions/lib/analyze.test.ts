@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { handler } from '../analyze'
+import { invokeWithQuery } from './testing/invokeHandler'
 
-const call = (qs: Record<string, string> = {}) =>
-  handler({ queryStringParameters: qs } as unknown as Parameters<typeof handler>[0])
+const call = (qs: Record<string, string> = {}) => invokeWithQuery(handler, qs)
 
 // A neutral Boston coordinate (South End) — away from civic hard-block sites
 // like City Hall / the State House so the mocked parcel drives the verdict.

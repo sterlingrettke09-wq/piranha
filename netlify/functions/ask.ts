@@ -1,4 +1,4 @@
-import type { Handler } from '@netlify/functions'
+import type { JsonHandler } from './lib/handlerType'
 import { clientIp, rateLimited } from './lib/guard'
 
 // Google Gemini (cheapest credible option). Set GEMINI_API_KEY in Netlify to
@@ -34,7 +34,7 @@ type GeminiResponse = {
   candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
 }
 
-export const handler: Handler = async (event) => {
+export const handler: JsonHandler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return json(405, { code: 'METHOD_NOT_ALLOWED', message: 'Use POST.' })
   }

@@ -1,4 +1,4 @@
-import type { Handler, HandlerEvent } from '@netlify/functions'
+import type { JsonHandler } from './lib/handlerType'
 import type { ParcelError } from '../../src/types/parcel'
 import { cacheControlFor, getParcelInfo } from './lib/parcel'
 import { clientIp, rateLimited } from './lib/guard'
@@ -16,7 +16,7 @@ const fail = (code: ParcelError['code'], message: string, status: number) => ({
   body: JSON.stringify({ code, message } satisfies ParcelError),
 })
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: JsonHandler = async (event) => {
   if (rateLimited(clientIp(event.headers ?? {}), RATE)) {
     return fail('RATE_LIMITED', 'Too many requests — please wait a moment and try again.', 429)
   }

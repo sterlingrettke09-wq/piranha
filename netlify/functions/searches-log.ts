@@ -1,5 +1,5 @@
+import type { JsonHandler } from './lib/handlerType'
 import { createHash, timingSafeEqual } from 'node:crypto'
-import type { Handler, HandlerEvent } from '@netlify/functions'
 import { readSearches, searchStorageStatus } from './lib/searchLog'
 import { clientIp, rateLimited } from './lib/guard'
 
@@ -20,7 +20,7 @@ function keyMatches(provided: string, expected: string): boolean {
 // against the ADMIN_KEY environment variable (set in Netlify, never in the bundle).
 // The key is accepted ONLY via the x-admin-key header — never as a query param,
 // which would leak it into CDN logs, browser history, and Referer headers.
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: JsonHandler = async (event) => {
   const expected = process.env.ADMIN_KEY
   if (!expected) {
     return {

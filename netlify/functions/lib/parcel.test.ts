@@ -10,11 +10,9 @@ import {
 } from '../../../src/config/cities'
 import { cityCostIndex } from '../../../src/config/estimates'
 import { isInBbox } from '../../../src/types/parcel'
+import { invokeWithQuery } from './testing/invokeHandler'
 
-const callHandler = (qs: Record<string, string> = {}) =>
-  handler({
-    queryStringParameters: qs,
-  } as unknown as Parameters<typeof handler>[0])
+const callHandler = (qs: Record<string, string> = {}) => invokeWithQuery(handler, qs)
 
 describe('parcel handler — input validation', () => {
   beforeEach(() => {

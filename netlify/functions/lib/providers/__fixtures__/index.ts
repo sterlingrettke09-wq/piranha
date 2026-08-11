@@ -19,10 +19,66 @@
 // Unmatched URLs throw, so a provider quietly calling an unexpected endpoint
 // fails the test instead of silently passing.
 
+/** One feature as an ArcGIS REST query returns it. `attributes` stays an open
+ *  record ON PURPOSE: the field names are the upstream city service's, they
+ *  differ per city, and no type in this repo enumerates them — inventing one
+ *  would assert a schema nobody measured. That openness is a real hole in the
+ *  guard (a mock can misspell TAXKEY and nothing objects), and it is the one
+ *  place only a live field query can close. */
+export interface ArcgisFeature {
+  attributes: Record<string, unknown>
+  /** ArcGIS geometry is a SPEC, not a per-city schema, so unlike `attributes`
+   *  it can be named: rings (polygon), paths (polyline), x/y (point). */
+  geometry?: {
+    rings?: number[][][]
+    paths?: number[][][]
+    x?: number
+    y?: number
+    spatialReference?: Record<string, unknown>
+  }
+}
+
+/** A successful ArcGIS query body. */
+export interface ArcgisFeatureSet {
+  features: ArcgisFeature[]
+  /** Echoed by some services; every provider here ignores them. */
+  fields?: Array<Record<string, unknown>>
+  geometryType?: string
+  spatialReference?: Record<string, unknown>
+  exceededTransferLimit?: boolean
+}
+
+/** A 200-with-error-JSON body. See ARCGIS_ERROR_200. */
+export interface ArcgisErrorBody {
+  error: { code: number; message: string; details?: readonly string[] }
+}
+
+/** Mapbox reverse-geocode bodies travel through this same router (providers
+ *  route 'api.mapbox.com' here), and Mapbox speaks GeoJSON: `properties`, not
+ *  ArcGIS's `attributes`. Both are listed explicitly rather than papered over
+ *  with `object` — a feature carrying NEITHER key is then still a type error. */
+export interface GeoJsonFeatureCollection {
+  type?: string
+  features: Array<{
+    type?: string
+    properties: Record<string, unknown>
+    geometry?: Record<string, unknown>
+  }>
+  attribution?: string
+}
+
+/** What a route may return as a JSON payload.
+ *
+ *  This was `object`, which accepts anything with a shape — so `{ featurez: [] }`
+ *  compiled, and every route payload in every provider test was unchecked at the
+ *  top level. Narrowing it is what makes a mistyped envelope key a compile
+ *  error rather than a mysterious 404 in one test. */
+export type RoutePayload = ArcgisFeatureSet | ArcgisErrorBody | GeoJsonFeatureCollection
+
 export type RouteValue =
-  | object
+  | RoutePayload
   | Response
-  | ((url: string) => object | Response | Promise<object | Response>)
+  | ((url: string) => RoutePayload | Response | Promise<RoutePayload | Response>)
 
 /**
  * The body ArcGIS REST services return with HTTP 200 when a query is

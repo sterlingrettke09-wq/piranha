@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeEnvelope } from './envelope'
-import type { ParcelInfo } from '../../src/types/parcel'
+import type { ParcelInfo } from '../../../src/types/parcel'
 
 // Minimal ParcelInfo factory — only the fields computeEnvelope reads matter.
 function info(over: {
@@ -22,13 +22,13 @@ function info(over: {
       maxFAR: over.maxFAR ?? null,
       maxHeightFt: over.maxHeightFt ?? null,
       allowedUses: over.allowedUses ?? null,
-      ...(over.farByUse ? { farByUse: over.farByUse } : {}),
+      farByUse: over.farByUse,
     },
     lot: { sizeSqFt: over.lotSqFt ?? null, lotType: null },
     overlays: { historicDistrict: null, floodZone: null },
     sources: {},
     fetchedAt: '2026-06-09T00:00:00Z',
-  } as ParcelInfo
+  }
 }
 
 describe('computeEnvelope — Boston family heuristics', () => {
@@ -152,38 +152,43 @@ describe('computeEnvelope — null propagation', () => {
 
 // ── storiesBasis: a stated story count is a fact; a derived one is an assumption ──
 describe('envelope — storiesBasis marks derived story counts', () => {
-  const base = {
-    address: 'x', parcelId: 'p', coordinates: [-97.7, 30.3] as [number, number],
+  // Annotated, not inferred: an un-annotated const is not excess-property
+  // checked, and it is spread into the call below — where a spread is not
+  // checked either. Without the annotation `base` accepts any misspelling and
+  // this whole storiesBasis suite goes inert. (`as [number, number]` is
+  // unnecessary once the annotation supplies the tuple context.)
+  const base: Omit<ParcelInfo, 'zoning'> = {
+    address: 'x', parcelId: 'p', coordinates: [-97.7, 30.3],
     lot: { sizeSqFt: 10000, lotType: null },
     overlays: { historicDistrict: null, floodZone: null },
     sources: {}, fetchedAt: '2026-08-04T00:00:00.000Z',
   }
-  const z = (o: Record<string, unknown>) => ({
+  const z = (o: Partial<ParcelInfo['zoning']>): ParcelInfo['zoning'] => ({
     districtCode: 'X', subdistrict: null, article: null,
     maxHeightFt: null, maxFAR: null, allowedUses: ['residential'], ...o,
   })
 
   it("marks 'stated' when the code supplies the story count", () => {
-    const env = computeEnvelope({ ...base, zoning: z({ maxStories: 80, maxHeightFt: 1120 }) } as never, 'miami')
+    const env = computeEnvelope({ ...base, zoning: z({ maxStories: 80, maxHeightFt: 1120 }) }, 'miami')
     expect(env.maxStories).toBe(80)
     expect(env.storiesBasis).toBe('stated')
   })
 
   it("marks 'derived' when we divided a published height by the convention", () => {
-    const env = computeEnvelope({ ...base, zoning: z({ maxHeightFt: 200 }) } as never, 'boston')
+    const env = computeEnvelope({ ...base, zoning: z({ maxHeightFt: 200 }) }, 'boston')
     expect(env.storiesBasis).toBe('derived')
     expect(env.maxStories).toBe(18) // 200 / 11
   })
 
   it('omits the basis entirely when there is no story count at all', () => {
-    const env = computeEnvelope({ ...base, zoning: z({}) } as never, 'boston')
+    const env = computeEnvelope({ ...base, zoning: z({}) }, 'boston')
     expect(env.maxStories).toBeNull()
     expect(env.storiesBasis).toBeUndefined()
   })
 
   it('a stated count is NEVER overridden by a derivable height', () => {
     // The Miami/Denver bug: both present, the code's figure must win.
-    const env = computeEnvelope({ ...base, zoning: z({ maxStories: 12, maxHeightFt: 144 }) } as never, 'denver')
+    const env = computeEnvelope({ ...base, zoning: z({ maxStories: 12, maxHeightFt: 144 }) }, 'denver')
     expect(env.maxStories).toBe(12) // not floor(144/11) = 13
   })
 })

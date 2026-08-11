@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 // netlify/functions/lib/feedCounts.ts and is asserted from the artifact side in
 // netlify/functions/lib/timeline.test.ts and relief.test.ts.
 import { assertFeedCounts, feedCounts, probeFeedTotal } from './feedCounts.mjs'
+import type { FeedCounts } from '../../netlify/functions/lib/feedCounts'
 
 // The row-count recorder every extraction script writes through.
 //
@@ -20,7 +21,12 @@ import { assertFeedCounts, feedCounts, probeFeedTotal } from './feedCounts.mjs'
 //      this repo keeps correcting (rule 5: a failed fetch must never quietly
 //      become a substantive answer).
 
-const valid = () => ({
+// Annotated with the READER's type. The module under test is plain .mjs behind
+// a @ts-expect-error, so `feedCounts` itself is `any` and nothing here would be
+// checked at all — this annotation is the only place the writer's fixture and
+// netlify/functions/lib/feedCounts.ts (which parses what it emits) are held to
+// the same field names. Inferred, a typo here agreed with nothing.
+const valid = (): FeedCounts => ({
   totals: [{ endpoint: 'data.example.gov/resource/abcd-1234', totalRows: 2_369_500 }],
   cohortRows: 18_270,
   basis: 'totalRows: whole resource. cohortRows: the window + filters.',

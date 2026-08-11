@@ -6,13 +6,32 @@ import type { Feasibility } from './feasibility'
 
 const RES = costPerSqFtByUse.residential // national $/sf, sourced
 
-const project: AnalysisInput = { parcelId: 'p1', lat: 42.36, lng: -71.06, use: 'residential', gfa: 10000 }
+// The base fixture carries a REAL city, because production always has one:
+// analyze.ts resolves `city` as `q.city ?? 'boston'`, so no request reaches
+// estimateCost without a slug. This fixture used to omit `city` entirely (the
+// type requires it; nothing typechecked this file), which made every
+// expectation below run at `cityCostIndex[undefined] ?? 1.0` — an index no
+// production request can produce. Boston's 1.14 is now carried explicitly in
+// the expectations rather than silently assumed away.
+const CITY = 'boston'
+const IDX = cityCostIndex[CITY]
+
+const project: AnalysisInput = {
+  parcelId: 'p1',
+  city: CITY,
+  projectType: 'new',
+  funding: 'private',
+  lat: 42.36,
+  lng: -71.06,
+  use: 'residential',
+  gfa: 10000,
+}
 const asOfRight: Feasibility = { overall: 'AS_OF_RIGHT', checks: [], path: 'as_of_right' }
 const variance: Feasibility = { overall: 'NEEDS_RELIEF', checks: [], path: 'variance' }
 
 describe('estimateCost', () => {
   it('computes hard cost as gfa x $/sf for the use', () => {
-    expect(estimateCost(project, asOfRight).costs.hard).toBe(10_000 * RES)
+    expect(estimateCost(project, asOfRight).costs.hard).toBe(Math.round(10_000 * RES * IDX))
   })
 
   it('scales hard cost by the city construction index', () => {
@@ -33,7 +52,7 @@ describe('estimateCost', () => {
     const low = estimateCost({ ...project, stories: 3 }, asOfRight).costs.hard
     const high = estimateCost({ ...project, stories: 15 }, asOfRight).costs.hard
     expect(high).toBeGreaterThan(low)
-    expect(high).toBe(Math.round(10000 * RES * heightCostFactor(15)))
+    expect(high).toBe(Math.round(10000 * RES * IDX * heightCostFactor(15)))
   })
 
   it('computes soft cost as a fraction of hard', () => {
@@ -89,7 +108,7 @@ describe('estimateCost', () => {
 describe('demolition rate (interpolated)', () => {
   const demoRate = (sf: number) => {
     const c = estimateCost(project, asOfRight, { demolitionSqFt: sf }).costs.demolition
-    return c / sf // city index 1.0 (no city on the project)
+    return c / sf / IDX // demolition is scaled by the city index too — divide it back out
   }
   it('small (≤5,000 sf) teardowns run $10/sf', () => {
     expect(demoRate(4_999)).toBeCloseTo(10, 2)
