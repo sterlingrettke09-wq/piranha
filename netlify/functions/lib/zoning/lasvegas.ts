@@ -95,9 +95,11 @@
 // FACT 3 — THE FORM-BASED CODE REGULATES IN STORIES AND STATES NO HEIGHT IN FEET
 // AT ALL. §19.09.050.E's "F. Building Form" table for each transect zone has one
 // height row, "Building Height — Stories", e.g. T6-UC "5 min. - 20 max." The only
-// feet in that table are FLOOR-TO-FLOOR MINIMA (ground floor 13 ft min., upper
-// floors 9 ft min.), which are minimum clear heights per floor, not a building
-// height and not a conversion factor. Multiplying 20 stories by 13/9 ft would be
+// feet in that table are FLOOR-TO-FLOOR (or floor-to-ceiling) MINIMA, and they
+// vary by zone — ground floor 13 ft min. in T6-UG, 14 ft min. in T4-M, 8 ft min.
+// in T3-N, with upper floors 9 ft min. in the first two and 8 ft min. in T3-N.
+// They are minimum clear heights per floor, not a building height and not a
+// conversion factor. Multiplying 20 stories by 13/9 ft would be
 // precisely the invented conversion rule 4 forbids and the round trip rule 12
 // forbids, so these zones carry `maxStories` with `maxHeightFt: null`, and the
 // module holds no ft-per-story number anywhere.
@@ -201,32 +203,30 @@
 // section HEADING as printed above the table it cites, not the roster's pointer.
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// COVERAGE, measured against the live layer 2026-08-09 by running THIS module's
+// COVERAGE, measured against the live layer by running THIS module's
 // `resolveLasVegas` over every ZONE value the City's zoning layer serves
 // (CLAUDE.md rule 11 — the exported entry point, not the table literal). The
-// numbers below are the run's output, and the run is what FOUND R-5: it was not
-// in this table until the sweep reported it unresolved over 32.9 acres.
+// numbers below are the run's output, re-run 2026-08-11; the layer's totals were
+// unchanged from the 2026-08-09 run. The sweep is what FOUND R-5: it was not in
+// this table until the run reported it unresolved over 32.9 acres.
 //
 //     distinct ZONE values ......... 92    over 207,834 polygons / 76,917.5 acres
-//     resolved to figures .......... 46    34,659.3 acres = 45.06%
+//     resolved to figures .......... 48    34,720.2 acres = 45.14%
 //     resolved as plan-governed .... 37    39,432.6 acres = 51.27%
-//     unresolved ................... 9      2,825.7 acres =  3.67%
+//     unresolved ................... 7      2,764.7 acres =  3.59%
 //
-// The unresolved nine are FACT 6's legacy classifications — R-MHP (302.1 ac),
+// ⚠️ The two transect zones T6-UGL (55.1 ac) and T4-M (5.8 ac) were in the
+// unresolved column until 2026-08-11 and are now resolved, which is what moved
+// 60.9 acres and took the unresolved count from nine to seven. Both had been
+// recorded as absences from §19.09.050.E and both records were wrong; the
+// retraction, with what each entry claimed and what the chapter actually states,
+// is at LAS_VEGAS_UNREADABLE_CODES below. It is written once, there, rather than
+// restated here.
+//
+// The unresolved seven are FACT 6's legacy classifications — R-MHP (302.1 ac),
 // P-R (171.1 ac), R-A (134.5 ac), R-5 (32.9 ac) and N-S (3.9 ac) — plus:
 //   · NO_ZONE (2,120.2 ac), the layer's own token for "no zoning assigned".
 //   · one polygon whose ZONE is literally null, 0.02 acres.
-//   · T6-UGL (55.1 ac), which is the sharpest case: it is a real transect zone —
-//     §19.17.080 Table 2 lists "T6-UG-L" with its own height-bonus ladder — but
-//     §19.09.050.E has NO standards body for it. The contents list runs E.004
-//     T6-UC, E.008 T6-UG, E.012 T5-M …, and there is no T6-UGL entry. The code
-//     is missing the section, so nothing can be read from it.
-//   · T4-M (5.8 ac) is the same shape one notch worse and is likewise
-//     unresolved: §19.09.050.E's contents list DOES carry "19.09.050.E.026 T4
-//     Maker Zone (T4-M)" and Table 1 (Transect Zones Overview) shows it in a
-//     summary column, but the chapter publishes no E.026 body. A summary column
-//     in a three-across overview table is exactly the shape of the DC MU-column
-//     off-by-one, so it is not read as a standard.
 //
 // U(…) IS RESOLVED TO U, and that is a code-supported normalisation rather than
 // a guess. The map carries U(DR), U(TND), U(PCD), U(RC), U(LI/R), U(PROS),
@@ -237,12 +237,32 @@
 // ("Undeveloped (Desert Rural Up To 2.49 du/ac)"), and a General Plan category is
 // not a zoning district. Pinned by a test.
 //
-// T3-N-O IS RESOLVED TO T3-N's FORM for the same kind of reason and by the
-// chapter's own words: §19.09.050.E.040 "B. Sub-Zone — T3-N-O (Open): The open
-// sub-zone provides the same building form as the T3-N Zone, with the following
-// exceptions: 1. The Side-by-Side Duplex building type is not allowed; and
-// 2. Additional use[s] …". The exceptions are to building TYPE and use, not to
-// building height, so the 2-story maximum carries. Also pinned by a test.
+// THE TWO SUB-ZONES ARE RESOLVED FROM THEIR PARENTS, and each one's EXCEPTION
+// LIST — not the shared wording — decides what carries. §19.09.050.E states a
+// sub-zone inside its parent's section, under "B. Sub-Zone(s)", in one sentence
+// with the same shape both times: "provides the same building form as the
+// <parent> Zone, with the following exceptions". The exceptions differ, and that
+// is the whole of the difference:
+//
+//   · T3-N-O (Open), §19.09.050.E.040 B — "1. The Side-by-Side Duplex building
+//     type is not allowed; and 2. Additional uses listed in Table I (Use Types)
+//     are allowed." Building TYPE and USE, nothing about the form, so T3-N's
+//     2-story maximum and 65% lot coverage carry unchanged. Handled as an alias
+//     in `parseLasVegasZone`.
+//   · T6-UG-L (Limited), §19.09.050.E.008 B — a single exception, and it is the
+//     height: "The minimum allowed building height is 1 story, and the maximum
+//     allowed building height is 14 stories." So T6-UG's 90% lot coverage carries
+//     and its 4 min. / 12 max. does NOT. Handled by `fbcSubZone`, which demands
+//     the story figures rather than letting them fall through from the parent.
+//
+// Both pinned by tests. Reading the shared sentence and stopping would have
+// published T6-UG-L at 4-12 stories against a code that says 1-14 — the same
+// wording, opposite consequences, which is why the alias path and the override
+// path are different constructs rather than one flag.
+//
+// A sub-zone is also, structurally, absent from §19.09.050.E's contents list:
+// the list runs E.004, E.008, E.012 … one entry per section, and a sub-zone has
+// no section of its own. Its absence there is a fact about the list.
 
 /** A height limb the code states as an ALTERNATIVE or a QUALIFICATION on the
  *  headline — a different program, a different location, or a discretionary
@@ -403,11 +423,55 @@ function fbcZone(opts: {
     maxStories: opts.maxStories,
     maxHeightFt: null,
     minStories: opts.minStories ?? null,
-    heightSource: `LVMC ${opts.section} F. Building Form ("Building Height — Stories — Primary Building: ${range}"); the Form-Based Code states no maximum in feet, and the only feet in that table are floor-to-floor MINIMA`,
+    heightSource: `LVMC ${opts.section} F. Building Form ("Building Height — Stories — Primary Building: ${range}"); the Form-Based Code states no maximum in feet, and the only feet in that table are per-floor MINIMA (the row is labelled "Floor-to-Floor" in some zones and "Floor-to-Ceiling" in others, and the figures differ by zone)`,
     maxLotCoverage: opts.lotCoverage,
     lotCoverageSource: `LVMC ${opts.section} F. Building Form, Footprint — Lot coverage`,
     farUnconstrained: true,
     heightAlternatives: opts.alternatives ?? null,
+  }
+}
+
+/** A §19.09.050.E "B. Sub-Zone" — a zone the chapter defines BY REFERENCE:
+ *  "provides the same building form as the <parent> Zone, with the following
+ *  exceptions". Its standards are therefore the parent's row with the stated
+ *  exceptions applied, and nothing else.
+ *
+ *  The story figures are REQUIRED parameters rather than optional overrides, and
+ *  that is the whole point of the constructor (rule 14). T6-UG-L's single stated
+ *  exception IS the height — 1 min. / 14 max. against the parent's 4 min. /
+ *  12 max. — so a sub-zone helper that let height fall through to the parent
+ *  would publish a ceiling two stories BELOW what the code allows and a minimum
+ *  three stories above it, from a construct that reads like inheritance.
+ *
+ *  A sub-zone whose exceptions do NOT touch the building form never comes
+ *  through here: T3-N-O aliases straight to T3-N in `parseLasVegasZone`, because
+ *  there is nothing to override. Which of the two a sub-zone is has to be read
+ *  off its own exception list; it cannot be inferred from the shared wording.
+ */
+function fbcSubZone(opts: {
+  name: string
+  /** The parent zone's row, so the sub-zone's lot coverage and its citation are
+   *  the parent's rather than a re-typed copy. */
+  parent: LasVegasLimits
+  /** The parent's code as the chapter spells it, for the citation. */
+  parentCode: string
+  /** The parent's section — a sub-zone is stated inside it, not given one of
+   *  its own, which is why it is absent from the chapter's contents list. */
+  section: string
+  minStories: number
+  maxStories: number
+  /** The exception verbatim, so the figures above can be checked against it. */
+  exception: string
+}): LasVegasLimits {
+  const range = `${opts.minStories} min. - ${opts.maxStories} max.`
+  return {
+    ...opts.parent,
+    name: opts.name,
+    minStories: opts.minStories,
+    maxStories: opts.maxStories,
+    maxHeightFt: null,
+    heightSource: `LVMC ${opts.section} B. Sub-Zones ("${opts.exception}") — ${range} stories; the Form-Based Code states no maximum in feet`,
+    source: `LVMC ${opts.section} B. Sub-Zones: a sub-zone that "provides the same building form as the ${opts.parentCode} Zone, with the following exceptions", whose stated exception is the height ("${opts.exception}"), so ${range} stories REPLACES the parent's story range and the rest of ${opts.parentCode}'s F. Building Form row carries — ${opts.section} F. Building Form, Footprint — Lot coverage ${opts.parent.maxLotCoverage}; no floor-area ratio anywhere in Title 19`,
   }
 }
 
@@ -437,6 +501,16 @@ const mixedUseCap = (section: string): LasVegasHeightAlternative => ({
 })
 
 // ── The table ────────────────────────────────────────────────────────────────
+
+/** Held as a const because T6-UG-L is defined as this row plus one exception,
+ *  and `fbcSubZone` takes the row itself rather than a re-typed copy of it. */
+const T6_UG = fbcZone({
+  name: 'T6-UG T6 Urban General Zone',
+  section: '19.09.050.E.008',
+  minStories: 4,
+  maxStories: 12,
+  lotCoverage: '90% max.',
+})
 
 const DISTRICTS: Record<string, LasVegasLimits> = {
   // ── Residential districts (LVMC 19.06) ──────────────────────────────────
@@ -655,12 +729,18 @@ const DISTRICTS: Record<string, LasVegasLimits> = {
     maxStories: 20,
     lotCoverage: '95% max.',
   }),
-  'T6-UG': fbcZone({
-    name: 'T6-UG T6 Urban General Zone',
+  'T6-UG': T6_UG,
+  // The layer spells it 'T6-UGL'; the chapter spells it 'T6-UG-L'. Keyed by the
+  // string the layer actually serves (it serves no 'T6-UG-L'), named by the
+  // string the code prints.
+  'T6-UGL': fbcSubZone({
+    name: 'T6-UG-L T6 Urban General Zone, Limited Sub-Zone',
+    parent: T6_UG,
+    parentCode: 'T6-UG',
     section: '19.09.050.E.008',
-    minStories: 4,
-    maxStories: 12,
-    lotCoverage: '90% max.',
+    minStories: 1,
+    maxStories: 14,
+    exception: 'The minimum allowed building height is 1 story, and the maximum allowed building height is 14 stories.',
   }),
   'T5-M': fbcZone({
     name: 'T5-M T5 Maker Zone',
@@ -698,6 +778,12 @@ const DISTRICTS: Record<string, LasVegasLimits> = {
     minStories: 2,
     maxStories: 5,
     lotCoverage: '85% max.',
+  }),
+  'T4-M': fbcZone({
+    name: 'T4-M T4 Maker Zone',
+    section: '19.09.050.E.026',
+    maxStories: 4,
+    lotCoverage: '80% max.',
   }),
   'T4-C': fbcZone({
     name: 'T4-C T4 Corridor Zone',
@@ -809,10 +895,46 @@ export const LAS_VEGAS_UNREADABLE_CODES: Readonly<Record<string, string>> = Obje
     'Not in the §19.00.100(B) roster and the string "P-R" appears nowhere in Title 19. §19.00.100(C) applies.',
   'N-S':
     'Not in the §19.00.100(B) roster and the string "N-S" appears nowhere in Title 19. §19.00.100(C) applies.',
-  'T6-UGL':
-    'A real transect zone — §19.17.080 Table 2 lists "T6-UG-L" with its own affordable-housing height-bonus ladder — but §19.09.050.E publishes no standards section for it. The contents list runs E.004 T6-UC, E.008 T6-UG, E.012 T5-M and so on, with no T6-UGL entry, so there is no table to read.',
-  'T4-M':
-    'Listed in the §19.09.050.E contents as "19.09.050.E.026 T4 Maker Zone (T4-M)" and shown as a summary column in Table 1 (Transect Zones Overview), but the chapter publishes no E.026 standards body. A column in a three-across overview table is exactly the shape of the DC MU-column off-by-one and is not read as a standard.',
+  // ⚠️ RETRACTED 2026-08-11 — T6-UGL and T4-M were both listed here and both
+  // entries were WRONG. They are now resolved in DISTRICTS above. What each
+  // entry claimed, and what the chapter says:
+  //
+  //   · T6-UGL was refused on the ground that the §19.09.050.E contents list has
+  //     no entry naming it. That observation is correct and it settles nothing —
+  //     a sub-zone is stated INSIDE its parent's section and so is never in the
+  //     contents list. §19.09.050.E.008 B ("Sub-Zones") names T6-UG-L and states
+  //     one exception to T6-UG's building form: "The minimum allowed building
+  //     height is 1 story, and the maximum allowed building height is 14
+  //     stories." The refusal was also self-contradicting: T3-N-O, the same
+  //     construction under §19.09.050.E.040 B, was already being resolved a few
+  //     lines away — a sibling case in this file disproved the rationale before
+  //     it was written (rule 15).
+  //   · T4-M was refused on the ground that §19.09.050.E.026 has no standards
+  //     body and that only an overview-table column mentions the zone. Both
+  //     halves are false. §19.09.050.E.026 is a full section — General Intent,
+  //     Sub-Zone ("None"), Lot Size, Building Types, Building Placement,
+  //     Building Form, Frontages, Encroachments, Parking, Street Trees, Open
+  //     Space — and its F. Building Form states 4 max. stories and 80% max. lot
+  //     coverage. It is present in BOTH renderings this module cites: the
+  //     section-level HTML (secid 2694) and the chapter's own PDF export
+  //     (tocid 001.008, p. 86-87). The stated reason for refusing it —
+  //     protecting against the DC MU-column off-by-one — was sound in general
+  //     and simply not what had happened here; a good reason for a wrong
+  //     conclusion is the hardest kind to overturn, which is rule 15's point.
+  //
+  // Note the shape both share, since it is the thing to watch for next time:
+  // each refusal was an ABSENCE recorded without the scope check rule 23 asks
+  // for. "Not in the contents list" and "no body at the section" are absences
+  // within an index; neither is an absence in the chapter. Re-read 2026-08-11
+  // from the publisher the City's own Zoning Code page links.
+  //
+  // ⚠️ NOT YET PROPAGATED (rule 17). `netlify/functions/lib/hurdles.ts` states
+  // the same retracted claim, in the note above LAS_VEGAS_FBC_TRANSECT_ZONES,
+  // as the reason both codes are in that set. Its CONCLUSION is right and its
+  // behaviour is unaffected — both are mapped transect zones, the set matches on
+  // `.normalized`, and the overlay row must render either way — but the stated
+  // reason is the retracted one, and hurdles.ts was outside this change's scope.
+  // The grep that finds it: "publishes no standards body".
   NO_ZONE:
     "The zoning layer's own token for a polygon with no zoning assigned. It is the dataset saying it has no answer, not the code saying there is no limit.",
 })

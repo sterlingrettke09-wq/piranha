@@ -195,7 +195,17 @@ describe('resolveLasVegas — the FAR absence is an ANSWER, and it is refused wh
     }
   })
 
+  // Rule 20: this loop would go green over an EMPTY object, and the set just
+  // shrank by two, so the membership is pinned rather than left to the loop.
+  // Adding or removing a gap code is a deliberate act that edits this list.
+  it('pins the exact set of codes recorded as not established by Title 19', () => {
+    expect(Object.keys(LAS_VEGAS_UNREADABLE_CODES).sort()).toEqual(
+      ['N-S', 'NO_ZONE', 'P-R', 'R-5', 'R-A', 'R-MHP'].sort(),
+    )
+  })
+
   it('REFUSES farUnconstrained for every code Title 19 does not establish', () => {
+    expect(Object.keys(LAS_VEGAS_UNREADABLE_CODES).length).toBeGreaterThan(0)
     for (const z of Object.keys(LAS_VEGAS_UNREADABLE_CODES)) {
       const l = resolveLasVegas(z)
       expect(l.name, z).toBeNull()
@@ -289,17 +299,78 @@ describe('parseLasVegasZone — the shapes the live layer actually serves', () =
     expect(resolveLasVegas('R-MH').maxHeightFt).toBe(35)
   })
 
-  // T6-UGL is real — §19.17.080 Table 2 gives "T6-UG-L" its own height-bonus
-  // ladder — but §19.09.050.E publishes no standards section for it, so there is
-  // nothing to read. It must not be folded into T6-UG.
-  it('T6-UGL is a gap and does not inherit T6-UG', () => {
-    expect(resolveLasVegas('T6-UGL').maxStories).toBeNull()
-    expect(resolveLasVegas('T6-UG').maxStories).toBe(12)
+  // ══════════════════════════════════════════════════════════════════════════
+  // THE TWO SUB-ZONES — one sentence, two different consequences
+  // ══════════════════════════════════════════════════════════════════════════
+  //
+  // §19.09.050.E.008 B (Sub-Zones) names T6-UG-L and states ONE exception to
+  // T6-UG's building form: "The minimum allowed building height is 1 story, and
+  // the maximum allowed building height is 14 stories." The exception IS the
+  // height, so — unlike T3-N-O above, whose exceptions are to building type and
+  // use — the parent's story range must NOT carry. Read 2026-08-11 from the
+  // publisher the City's Zoning Code page links (encodeplus, ch. 19.09), in both
+  // the section-level HTML and the chapter's PDF export.
+  //
+  // ⚠️ Supersedes an earlier assertion in this file that T6-UGL resolved to
+  // nothing. That test was defending a rationale — no entry for the zone in the
+  // §19.09.050.E contents list — which is true of every sub-zone, including the
+  // T3-N-O two tests up that this same file already resolved (rule 15).
+  it('T6-UGL takes T6-UG\'s form but its OWN story range, 1 min. / 14 max.', () => {
+    const l = resolveLasVegas('T6-UGL')
+    const parent = resolveLasVegas('T6-UG')
+    expect(l.minStories).toBe(1)
+    expect(l.maxStories).toBe(14)
+    // The exception is to height alone; lot coverage is the parent's row.
+    expect(l.maxLotCoverage).toBe(parent.maxLotCoverage)
+    expect(l.maxLotCoverage).toBe('90% max.')
+    // …and the parent is unchanged by the sub-zone existing.
+    expect(parent.minStories).toBe(4)
+    expect(parent.maxStories).toBe(12)
+    // The exact figures the code overrides must not survive anywhere in the row.
+    expect(l.maxStories).not.toBe(parent.maxStories)
+    expect(l.minStories).not.toBe(parent.minStories)
+    // Stories only. The Form-Based Code states no feet (FACT 3).
+    expect(l.maxHeightFt).toBeNull()
+    expect(l.heightSource).toContain('19.09.050.E.008')
+    expect(l.heightSource).toContain('14 stories')
+    expect(l.farUnconstrained).toBe(true)
   })
 
-  it('T4-M is a gap: the contents list it, the chapter publishes no standards body', () => {
-    expect(resolveLasVegas('T4-M').maxStories).toBeNull()
-    expect(LAS_VEGAS_UNREADABLE_CODES['T4-M']).toContain('E.026')
+  // §19.09.050.E.026 T4 Maker Zone (T4-M) is a full section — General Intent,
+  // Sub-Zone ("None"), Lot Size, Building Types, Building Placement, Building
+  // Form, Frontages, Encroachments, Parking, Street Trees, Open Space. Its
+  // F. Building Form states Building Height — Stories — Primary Building
+  // "4 max." (Accessory Building "3 max.") and Footprint — Lot coverage
+  // "80% max." Read 2026-08-11 from both the section-level HTML (secid 2694) and
+  // the chapter's PDF export (tocid 001.008, pp. 86-87), which agree.
+  //
+  // ⚠️ Supersedes an earlier assertion in this file that T4-M resolved to
+  // nothing because the chapter carried no standards body at E.026. It does.
+  it('T4-M publishes 4 max. stories and 80% lot coverage from §19.09.050.E.026', () => {
+    const l = resolveLasVegas('T4-M')
+    expect(l.name).toContain('T4 Maker')
+    expect(l.maxStories).toBe(4)
+    expect(l.maxLotCoverage).toBe('80% max.')
+    expect(l.heightSource).toContain('19.09.050.E.026')
+    expect(l.farUnconstrained).toBe(true)
+    // The zone states no MINIMUM story count — F. Building Form prints "4 max."
+    // alone, where T6-UG prints "4 min. - 12 max." A minimum must not be
+    // invented from the neighbouring zones that have one.
+    expect(l.minStories).toBeNull()
+    // No feet. E.026's only feet are floor-to-ceiling minima (14 ft / 9 ft), and
+    // 4 × 14 = 56 is exactly the number a round trip would publish (rule 12).
+    expect(l.maxHeightFt).toBeNull()
+    expect(JSON.stringify(l)).not.toContain('56')
+  })
+
+  // Neither is a gap any longer, and neither may drift back into the gap list
+  // without the DISTRICTS entry going with it.
+  it('T6-UGL and T4-M are no longer recorded as codes Title 19 does not establish', () => {
+    for (const z of ['T6-UGL', 'T4-M']) {
+      expect(Object.keys(LAS_VEGAS_UNREADABLE_CODES), z).not.toContain(z)
+      expect(resolveLasVegas(z).name, z).toBeTruthy()
+      expect(resolveLasVegas(z).source, z).not.toBe('')
+    }
   })
 
   it('normalises case and whitespace, and handles empty input', () => {
@@ -333,13 +404,13 @@ describe('usesForZone', () => {
   // approved plan; neither was read, and a wide use-by-district matrix read one
   // column off is the DC MU-column defect.
   it('says nothing about the transect zones or the plan-governed districts', () => {
-    for (const z of ['T6-UC', 'T5-M', 'T3-N', 'P-C', 'PD', 'T-C', 'T-D', 'C-V', 'R-PD7']) {
+    for (const z of ['T6-UC', 'T5-M', 'T4-M', 'T6-UGL', 'T3-N', 'P-C', 'PD', 'T-C', 'T-D', 'C-V', 'R-PD7']) {
       expect(usesForZone(z), z).toBeNull()
     }
   })
 
   it('says nothing about a code Title 19 does not establish', () => {
-    for (const z of ['R-A', 'R-MHP', 'P-R', 'N-S', 'T6-UGL', 'NO_ZONE', 'QQ-9']) {
+    for (const z of ['R-A', 'R-MHP', 'P-R', 'N-S', 'NO_ZONE', 'QQ-9']) {
       expect(usesForZone(z), z).toBeNull()
     }
   })
