@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { CinematicIntro } from '../components/CinematicIntro'
 import { Reveal } from '../components/Reveal'
 import { ArrowLink } from '../components/ArrowLink'
-import { CITIES, cityName } from '../config/cities'
+import { cityName } from '../config/cities'
+import { CITY_CLAIMS, coverageFacts, rangeSentence } from '../config/coverageClaim'
 import { listReports, removeReport, clearAll, type RecentReport } from '../lib/recentReports'
 import { VERDICT } from '../lib/verdictLabels'
 import { formatEstimate } from '../lib/format'
@@ -126,14 +127,17 @@ const STEPS = [
   { n: '03', title: 'See where you stand', body: 'What you can build, the approvals, the cost, the time.' },
 ]
 
-// Cities grouped by launch wave, each listed alphabetically.
-const CITY_GROUPS = [
-  { label: 'V1', slugs: ['boston', 'chicago', 'nyc', 'sf', 'seattle'] },
-  { label: 'V2', slugs: ['austin', 'denver', 'la', 'minneapolis', 'dc'] },
-]
+// The city list was two hand-written launch waves of five, frozen at the count
+// that existed when they were written — so this section showed fewer than half
+// the registry, under a heading asserting we were live in them. Derived now;
+// there is no second list, and the heading states wiring rather than delivery.
+const HOME_CITIES = CITY_CLAIMS
 
 const STATS = [
-  { figure: String(CITIES.length), label: 'Cities live, and counting' },
+  // "Cities live, and counting" claimed something the measurement contradicts
+  // for three of them. `wired` is what this number actually counts, and the
+  // rate each city delivers is one click away rather than asserted here.
+  { figure: String(coverageFacts().wired), label: 'Cities wired to their own public records' },
   { figure: '9', label: 'Kinds of red tape we surface, with more coming' },
   { figure: '100%', label: 'Built from public records' },
 ]
@@ -275,7 +279,7 @@ export default function Home() {
             <p className="mt-10 text-sm leading-relaxed text-piranha-bone/75">
               Which city asks the least?{' '}
               <Link to="/red-tape" className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone">
-                The Red Tape Index ranks all ten.
+                The Red Tape Index ranks the cities we can measure.
               </Link>
             </p>
           </Reveal>
@@ -287,36 +291,32 @@ export default function Home() {
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-gold">
-              Where we’re live
+              Where we’re wired
             </p>
             <h2 className="mt-4 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
               We’ll add more as we expand.
             </h2>
           </Reveal>
           <Reveal delay={120}>
-            <div className="mt-10 space-y-10">
-              {CITY_GROUPS.map((group) => (
-                <div key={group.label}>
-                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-piranha-gold/70">
-                    {group.label}
-                  </p>
-                  <div className="flex flex-wrap gap-x-9 gap-y-3">
-                    {group.slugs.map((slug) => {
-                      const c = CITIES.find((x) => x.slug === slug)
-                      if (!c) return null
-                      return (
-                        <Link
-                          key={slug}
-                          to={`/map?city=${slug}`}
-                          className="font-serif text-2xl tracking-tight text-piranha-bone/75 transition-colors hover:text-piranha-gold sm:text-3xl"
-                        >
-                          {c.name}
-                        </Link>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
+            <div className="mt-10 space-y-6">
+              <div className="flex flex-wrap gap-x-9 gap-y-3">
+                {HOME_CITIES.map((c) => (
+                  <Link
+                    key={c.slug}
+                    to={`/map?city=${c.slug}`}
+                    title={c.detail}
+                    className="font-serif text-2xl tracking-tight text-piranha-bone/75 transition-colors hover:text-piranha-gold sm:text-3xl"
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+              <p className="max-w-3xl text-sm leading-relaxed text-piranha-bone/60">
+                Wired is not the same as answering. {rangeSentence()}{' '}
+                <Link to="/cities" className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone">
+                  Every city’s measured rate is on the coverage page.
+                </Link>
+              </p>
             </div>
           </Reveal>
         </div>

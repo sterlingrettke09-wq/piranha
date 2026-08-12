@@ -2,7 +2,12 @@ import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
-import { CITIES } from '../config/cities'
+import {
+  citiesSentence,
+  coverageFacts,
+  rangeSentence,
+  silentSentence,
+} from '../config/coverageClaim'
 
 function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
@@ -73,11 +78,21 @@ export default function About() {
 
           <Section n="03" title="Data sources">
             <p>
-              Live today across {CITIES.length} cities (Boston, New York, Chicago, San Francisco, Seattle,
-              Washington, D.C., Austin, Los Angeles, Denver, and Minneapolis), each wired from that
+              Wired into {coverageFacts().wired} cities — {citiesSentence()} — each read from that
               city’s own public data: zoning districts, parcels, and FEMA flood-hazard zones,
               plus local historic districts where available.
-              Coverage depth varies by city, and we’re adding more rule types as we go.
+            </p>
+            <p>
+              Wired is not the same as answering, so we measured the difference rather than assert
+              it. {rangeSentence()} {silentSentence()} The rate for every city is on the{' '}
+              <Link className="text-piranha-burgundy underline" to="/cities">
+                coverage page
+              </Link>
+              , with the full sample behind it on the{' '}
+              <Link className="text-piranha-burgundy underline" to="/math">
+                methodology page
+              </Link>
+              . We’re adding cities and rule types as we go.
             </p>
           </Section>
 

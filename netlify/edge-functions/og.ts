@@ -5,6 +5,14 @@
 
 const BASE = 'The Piranha Project'
 
+// Slug → display name, mirroring src/config/cities.ts. An edge function runs in
+// Deno against the built site and cannot import the SPA's config, so this is a
+// transcription — and it had silently frozen at the original launch cohort,
+// less than half the registry, so a shared link to any city added since
+// rendered "Explore your city" to every crawler and preview card. A
+// well-formed fallback is why nobody saw it. netlify/og.test.ts pins this map
+// to the registry, so the next city added fails the suite instead of shipping a
+// generic card (rule 14: make the caught error an impossible state).
 const CITY: Record<string, string> = {
   boston: 'Boston',
   nyc: 'New York City',
@@ -16,9 +24,22 @@ const CITY: Record<string, string> = {
   la: 'Los Angeles',
   denver: 'Denver',
   minneapolis: 'Minneapolis',
+  philadelphia: 'Philadelphia',
+  miami: 'Miami',
+  sandiego: 'San Diego',
+  sanjose: 'San Jose',
+  nashville: 'Nashville',
+  raleigh: 'Raleigh',
+  milwaukee: 'Milwaukee',
+  columbus: 'Columbus',
+  charlotte: 'Charlotte',
+  atlanta: 'Atlanta',
+  dallas: 'Dallas',
+  lasvegas: 'Las Vegas',
+  phoenix: 'Phoenix',
 }
 
-function cityName(slug: string | null): string {
+export function cityName(slug: string | null): string {
   return CITY[slug ?? 'boston'] ?? 'your city'
 }
 
@@ -52,9 +73,9 @@ function metaFor(pathname: string, params: URLSearchParams): { title: string; de
   }
   if (pathname === '/about') return { title: `About · ${BASE}`, desc: 'Why the Piranha Project exists and how it reads each city’s public records.' }
   if (pathname === '/math') return { title: `Methodology · ${BASE}`, desc: 'Exactly how the verdict, cost, and timeline are calculated, with the tables we use.' }
-  if (pathname === '/red-tape') return { title: `The Red Tape Index · ${BASE}`, desc: 'Chicago permits a new building in about a month; San Francisco takes about a year. Ten cities ranked by the real cost of permission — months, fees, and the boards that almost always say yes (Boston, 93%). Computed from public data.' }
+  if (pathname === '/red-tape') return { title: `The Red Tape Index · ${BASE}`, desc: 'Chicago permits a new building in about a month; San Francisco takes about a year. US cities ranked by the real cost of permission — months, fees, and the boards that almost always say yes (Boston, 93%). Computed from public data.' }
   if (pathname === '/ask') return { title: `Ask · ${BASE}`, desc: 'Questions about building, zoning, and the red tape, answered in plain English.' }
-  if (pathname === '/cities') return { title: `Cities · ${BASE}`, desc: 'The cities we cover, each read from its own public zoning and parcel records.' }
+  if (pathname === '/cities') return { title: `Cities · ${BASE}`, desc: 'The cities we cover, each read from its own public zoning and parcel records — with the measured share of sampled parcels whose zoning we could actually resolve.' }
   if (pathname === '/request-city') return { title: `Request a city · ${BASE}`, desc: 'Tell us where you want to build and we’ll try to add it to our database.' }
   if (pathname === '/privacy') return { title: `Privacy · ${BASE}`, desc: 'What we collect and where it goes, in plain English: searches, request-city emails, and the services we use.' }
   if (pathname === '/terms') return { title: `Terms · ${BASE}`, desc: 'The plain-English terms of use: estimates not advice, verify with the city, no warranty, acceptable use.' }

@@ -1,7 +1,13 @@
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { AskAssistant } from '../components/AskAssistant'
-import { CITIES } from '../config/cities'
+import {
+  citiesSentence,
+  coverageFacts,
+  rangeSentence,
+  silentSentence,
+  WITHHELD_SENTENCE,
+} from '../config/coverageClaim'
 
 interface QA {
   q: string
@@ -46,7 +52,22 @@ const FAQ: QA[] = [
   },
   {
     q: 'Which cities are covered?',
-    a: `${CITIES.length} cities: Boston, New York City, Chicago, San Francisco, Seattle, Washington, D.C., Austin, Los Angeles, Denver, and Minneapolis, with more as we grow.`,
+    // Derived end to end. This answer used to interpolate the city count and
+    // then enumerate a hand-written list frozen at an earlier, smaller roster —
+    // a derived number disagreeing with a typed list inside one sentence — and
+    // it called all of them covered when the sample says several resolve
+    // nothing. `silentSentence()` is empty when no city is silent, so the
+    // clause disappears rather than going stale.
+    a: [
+      `${coverageFacts().wired} cities: ${citiesSentence()}.`,
+      'Coverage is not uniform, and we measured it rather than claim it.',
+      rangeSentence(),
+      silentSentence(),
+      WITHHELD_SENTENCE,
+      'Every city’s measured rate is on the coverage page.',
+    ]
+      .filter(Boolean)
+      .join(' '),
   },
   {
     q: 'Is the assistant always right?',

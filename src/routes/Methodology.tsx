@@ -18,6 +18,7 @@ import {
   ENVELOPE_SAMPLE_SOURCE,
   type EnvelopeSample,
 } from '../config/envelopeSample'
+import { CITY_CLAIMS } from '../config/coverageClaim'
 import {
   costPerSqFtByUse,
   cityCostIndex,
@@ -84,6 +85,18 @@ function SampleCell({ sample, dim }: { sample: EnvelopeSample; dim: string }) {
     </span>
   )
 }
+
+// A real cell, used as the legend's worked example so the legend cannot show a
+// number that belongs to no city. Whichever city sits in the middle of the
+// measured range — a mid-range cell shows the format without reading as either
+// a boast or a complaint.
+const LEGEND_EXAMPLE = (() => {
+  const measured = CITY_CLAIMS.filter((c) => c.sample.kind === 'measured').sort((a, b) =>
+    a.sample.kind === 'measured' && b.sample.kind === 'measured' ? a.sample.share - b.sample.share : 0,
+  )
+  const c = measured[Math.floor(measured.length / 2)] ?? CITY_CLAIMS[0]
+  return { name: c.name, label: c.rateLabel }
+})()
 
 function CoverageMatrix() {
   const cities = [...CITIES].sort((a, b) => a.name.localeCompare(b.name))
@@ -161,8 +174,13 @@ function CoverageMatrix() {
           {' — covered, with a measured tier withheld below the publishable sample floor (Denver’s 2–4 unit tier).'}
         </li>
         <li>
-          <span className="tabular-nums text-piranha-charcoal/70">82% · n=23</span>
-          {' — the zoning-envelope column is a measured rate, not a yes: the share of sampled parcels ' +
+          {/* The legend used to print a hand-typed `82% · n=23`, which is no
+              city's cell — an illustrative number sitting in a table of
+              measured ones, and indistinguishable from one six months on. It
+              now renders a REAL cell and names whose it is. */}
+          <span className="tabular-nums text-piranha-charcoal/70">{LEGEND_EXAMPLE.label}</span>
+          {` — ${LEGEND_EXAMPLE.name}’s cell. `}
+          {'The zoning-envelope column is a measured rate, not a yes: the share of sampled parcels ' +
             'in that city that were developable, reached an answer, and had an envelope resolve — either from a ' +
             'published FAR and height, or from a code that affirmatively imposes none. '}
           <span className="tabular-nums text-piranha-charcoal/70">n</span>

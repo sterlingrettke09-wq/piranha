@@ -2,7 +2,13 @@ import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
-import { CITIES } from '../config/cities'
+import {
+  CITY_CLAIMS,
+  coverageFacts,
+  rangeSentence,
+  silentSentence,
+  WITHHELD_SENTENCE,
+} from '../config/coverageClaim'
 
 // On-brand gradient hero behind each photo — also the fallback if the photo
 // (public/cities/<slug>.jpg) is missing or fails to load.
@@ -14,19 +20,47 @@ const HEROES = [
   'from-[#4a1726] via-[#2a1518] to-piranha-charcoal',
 ]
 
+// The badge used to read "Live" on all 23 cards, with an emerald dot on every
+// one. It was the same claim 23 times, and for three cities it was false.
+// It now carries that city's measured rate — the number itself, not a bucket —
+// so a reader deciding whether to try their address gets the thing they need
+// instead of a promise. The dot only distinguishes the one state that differs
+// in kind: a city where nothing resolved at all.
+function RateBadge({ label, answering }: { label: string; answering: boolean }) {
+  return (
+    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-black/35 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-piranha-bone backdrop-blur-sm">
+      <span className={`h-1.5 w-1.5 rounded-full ${answering ? 'bg-emerald-300' : 'bg-amber-300'}`} />
+      <span className="tabular-nums normal-case tracking-normal">{label}</span>
+    </span>
+  )
+}
+
 export default function Cities() {
+  const facts = coverageFacts()
+  const silent = silentSentence()
   return (
     <PageContainer>
-      <PageHeading eyebrow="Coverage" title={`${CITIES.length} cities, live.`}>
+      <PageHeading eyebrow="Coverage" title={`${facts.wired} cities, measured.`}>
         Pick any property in a covered city and we’ll tell you what you can build, what
-        approvals you’d need, what it would cost, and how long it would take.
+        approvals you’d need, what it would cost, and how long it would take — wherever the city’s
+        own zoning data answers us. {rangeSentence()} Every card carries that city’s rate.
       </PageHeading>
 
+      <Reveal>
+        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-piranha-charcoal/65">
+          The figure on each card is the share of sampled parcels in that city whose zoning envelope
+          resolved, and <span className="tabular-nums">n</span> is how many parcels the share is
+          over. {WITHHELD_SENTENCE}
+          {silent ? ` ${silent}` : ''}
+        </p>
+      </Reveal>
+
       <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {CITIES.map((c, i) => (
+        {CITY_CLAIMS.map((c, i) => (
           <Reveal key={c.slug} delay={(i % 3) * 70}>
             <Link
               to={`/map?city=${c.slug}`}
+              title={c.detail}
               className="group relative block h-56 overflow-hidden rounded-2xl shadow-[0_18px_50px_-24px_rgba(26,26,26,0.55)]"
             >
               {/* Gradient base (fallback). */}
@@ -45,9 +79,7 @@ export default function Cities() {
               {/* Darkening scrim so the text stays legible over any photo. */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
               <div className="relative flex h-full flex-col justify-between p-6">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-black/30 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-piranha-bone backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Live
-                </span>
+                <RateBadge label={c.rateLabel} answering={c.verdict === 'answering'} />
                 <div>
                   <h2 className="font-serif text-3xl leading-none tracking-tight text-piranha-bone drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
                     {c.stateLabel}

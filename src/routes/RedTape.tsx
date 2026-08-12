@@ -79,7 +79,7 @@ function StatChips({ city }: { city: RankedCity }) {
 
 export default function RedTape() {
   const ranked = computeRedTapeIndex()
-  // Live cities the index cannot rank, because no city-specific lifecycle
+  // Wired cities the index cannot rank, because no city-specific lifecycle
   // duration has been established for them. Naming them under the table is what
   // keeps their omission a disclosed gap instead of an implied verdict — a city
   // missing from a red-tape ranking otherwise reads as one that did not rate.
@@ -286,7 +286,7 @@ export default function RedTape() {
                 <span className="font-semibold text-piranha-bone/80">
                   Not ranked: {unranked.map((s) => getCity(s).name).join(', ')}.
                 </span>{' '}
-                {unranked.length === 1 ? 'This city is' : 'These cities are'} live for parcel
+                {unranked.length === 1 ? 'This city is' : 'These cities are'} wired for parcel
                 analysis, but no city-specific development timeline has been established for{' '}
                 {unranked.length === 1 ? 'it' : 'them'} yet — and that duration is most of this
                 score. Ranking {unranked.length === 1 ? 'it' : 'them'} on a national average would

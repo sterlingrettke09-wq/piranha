@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
-import { CITIES } from '../config/cities'
+import { coverageFacts } from '../config/coverageClaim'
 
 // Encode a flat object as application/x-www-form-urlencoded for Netlify Forms.
 function encode(data: Record<string, string>) {
@@ -46,8 +46,8 @@ export default function RequestCity() {
   return (
     <PageContainer>
       <PageHeading eyebrow="Coverage" title="Request a city.">
-        We are live in {CITIES.length} cities and looking to add more. Tell us where you want to
-        build and we will try to add it to our database.
+        We are wired into {coverageFacts().wired} cities’ own public records and looking to add
+        more. Tell us where you want to build and we will try to add it to our database.
       </PageHeading>
 
       <Reveal className="mt-12 max-w-xl">
