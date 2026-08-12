@@ -41,17 +41,17 @@ export default function Cities() {
   return (
     <PageContainer>
       <PageHeading eyebrow="Coverage" title={`${facts.wired} cities, measured.`}>
-        Pick any property in a covered city and we’ll tell you what you can build, what
-        approvals you’d need, what it would cost, and how long it would take — wherever the city’s
-        own zoning data answers us. {rangeSentence()} Every card carries that city’s rate.
+        Pick any property. What you can build, the approvals, the cost, the timeline.
       </PageHeading>
 
       <Reveal>
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-piranha-charcoal/65">
-          The figure on each card is the share of sampled parcels in that city whose zoning envelope
-          resolved, and <span className="tabular-nums">n</span> is how many parcels the share is
-          over. {WITHHELD_SENTENCE}
-          {silent ? ` ${silent}` : ''}
+          {rangeSentence()} {WITHHELD_SENTENCE}
+          {silent ? ` ${silent}` : ''}{' '}
+          <Link className="underline underline-offset-2 hover:text-piranha-burgundy" to="/math">
+            How this is measured
+          </Link>
+          .
         </p>
       </Reveal>
 

@@ -160,10 +160,11 @@ export function rangeSentence(claims: CityClaim[] = CITY_CLAIMS): string {
   if (f.minPct === null || f.maxPct === null)
     return 'No city has been sampled yet, so there is no measured rate to report.'
   const spread =
-    f.minPct === f.maxPct
-      ? `was ${f.minPct}% in every city`
-      : `runs from ${f.minPct}% to ${f.maxPct}% depending on the city`
-  return `On a live sample of each city’s own parcels, the share for which we could actually resolve a zoning envelope ${spread}.`
+    f.minPct === f.maxPct ? `${f.minPct}% in every city` : `${f.minPct}% to ${f.maxPct}%`
+  // Voice: the number and what it is over. No sentence about how we obtained it
+  // — that belongs on /math, one click away, not in front of someone trying to
+  // find out what they can build.
+  return `Envelope resolved on ${spread} of sampled parcels.`
 }
 
 /**
@@ -177,8 +178,8 @@ export function silentSentence(claims: CityClaim[] = CITY_CLAIMS): string {
   if (silent.length === 0) return ''
   const names = silent.map((c) => c.name)
   const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-  const verb = names.length === 1 ? 'is' : 'are'
-  return `${list} ${verb} wired and not yet answering: no sampled parcel there resolved one.`
+  const verb = names.length === 1 ? 'resolved' : 'resolved'
+  return `No sampled parcel ${verb} in ${list}.`
 }
 
 /**
@@ -187,4 +188,4 @@ export function silentSentence(claims: CityClaim[] = CITY_CLAIMS): string {
  * here so the two cannot drift.
  */
 export const WITHHELD_SENTENCE =
-  'Where it does not resolve we say so rather than assume a limit, so a low rate means “expect to be told we don’t know,” not “expect a wrong answer.”'
+  'Unresolved parcels return “not known”, never an assumed limit.'

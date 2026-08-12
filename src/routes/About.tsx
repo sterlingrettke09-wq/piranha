@@ -83,8 +83,7 @@ export default function About() {
               plus local historic districts where available.
             </p>
             <p>
-              Wired is not the same as answering, so we measured the difference rather than assert
-              it. {rangeSentence()} {silentSentence()} The rate for every city is on the{' '}
+              {rangeSentence()} {silentSentence()} Per-city rates are on the{' '}
               <Link className="text-piranha-burgundy underline" to="/cities">
                 coverage page
               </Link>

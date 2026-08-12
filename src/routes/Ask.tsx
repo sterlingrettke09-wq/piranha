@@ -17,7 +17,7 @@ interface QA {
 const FAQ: QA[] = [
   {
     q: 'What does this tool do?',
-    a: 'Pick any property and we tell you four things: whether you can build what you have in mind, what approvals you’d need, roughly what it would cost, and how long it would take to get permitted.',
+    a: 'Whether you can build what you have in mind, the approvals it needs, what it costs, and how long the permit takes.',
   },
   {
     q: 'What do the results mean?',
@@ -36,15 +36,15 @@ const FAQ: QA[] = [
   },
   {
     q: 'Where do the numbers come from?',
-    a: 'Public city and government data. Each city’s official zoning and property maps, plus federal flood maps and local historic-district records. We link to our sources on every result.',
+    a: 'Public city and government data. Each city’s official zoning and property maps, plus federal flood maps and local historic-district records. Sources are linked on every result.',
   },
   {
     q: 'How accurate are the cost estimates?',
-    a: 'They’re ballpark figures, not quotes. We use standard construction costs per square foot, typical soft costs, and the city’s published permit fees. Treat them as a starting point. We show every assumption so you can check our math.',
+    a: 'Estimates, not quotes. Built from construction cost per square foot, soft costs, and the city’s published permit fees. Every assumption is listed on the result.',
   },
   {
     q: 'Why does it sometimes say it can’t tell?',
-    a: 'Because the public data doesn’t always include the number we need. A park, for example, has no height limit on file. Rather than make one up, we flag it for you.',
+    a: 'The public record does not always carry the number. A park has no height limit on file. That parcel returns “not known”, never an assumed one.',
   },
   {
     q: 'Can I share or change an analysis?',
@@ -60,11 +60,10 @@ const FAQ: QA[] = [
     // clause disappears rather than going stale.
     a: [
       `${coverageFacts().wired} cities: ${citiesSentence()}.`,
-      'Coverage is not uniform, and we measured it rather than claim it.',
       rangeSentence(),
       silentSentence(),
       WITHHELD_SENTENCE,
-      'Every city’s measured rate is on the coverage page.',
+      'Per-city rates are on the coverage page.',
     ]
       .filter(Boolean)
       .join(' '),

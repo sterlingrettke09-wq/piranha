@@ -285,7 +285,7 @@ export default function BostonResult() {
                   </p>
                   <h2 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-piranha-charcoal">
                     {state.data.developableKind === 'no_coverage'
-                      ? 'We don’t have zoning for this parcel.'
+                      ? 'No zoning on file for this parcel.'
                       : 'You can’t build here.'}
                   </h2>
                   <p className="mt-4 leading-relaxed text-piranha-charcoal/75">
@@ -293,8 +293,8 @@ export default function BostonResult() {
                   </p>
                   <p className="mt-3 text-sm text-piranha-charcoal/55">
                     {state.data.developableKind === 'no_coverage'
-                      ? 'Try a parcel inside one of our covered cities to run a full analysis.'
-                      : 'We’ve skipped the cost and timeline estimate — they don’t apply to a parcel like this. Pick a private lot to run a full analysis.'}
+                      ? 'Try a parcel inside a covered city.'
+                      : 'Cost and timeline do not apply to this parcel. Pick a private lot for a full analysis.'}
                   </p>
                   <Link
                     to={`/map?city=${state.data.project.city}`}

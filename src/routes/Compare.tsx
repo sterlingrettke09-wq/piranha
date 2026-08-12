@@ -141,7 +141,7 @@ export default function Compare() {
         ) : (
           <span
             className="tabular-nums text-piranha-charcoal/70"
-            title="Estimated. We publish no measured filing-to-issuance figure for this city — for some the data has no application date, for others a figure was measured and withdrawn. Either way this is a lifecycle estimate, not a measurement, and it is not comparable to a city showing a measured figure."
+            title="Estimated, not measured. No filing-to-issuance figure is published for this city: either the data carries no application date, or a figure was measured and withdrawn. Not comparable to a city showing a measured figure."
           >
             {d.timeline.months} mo<span className="ml-1 align-super text-[0.65em]">est</span>
           </span>

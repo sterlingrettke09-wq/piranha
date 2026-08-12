@@ -117,7 +117,7 @@ const FEATURES = [
   {
     n: '03',
     title: 'How long it takes',
-    body: 'Months to a permit on the path your project actually lands on.',
+    body: 'Months to a permit, on the path this project lands on.',
   },
 ]
 
@@ -138,7 +138,7 @@ const STATS = [
   // for three of them. `wired` is what this number actually counts, and the
   // rate each city delivers is one click away rather than asserted here.
   { figure: String(coverageFacts().wired), label: 'Cities wired to their own public records' },
-  { figure: '9', label: 'Kinds of red tape we surface, with more coming' },
+  { figure: '9', label: 'Kinds of red tape tracked' },
   { figure: '100%', label: 'Built from public records' },
 ]
 
@@ -312,9 +312,9 @@ export default function Home() {
                 ))}
               </div>
               <p className="max-w-3xl text-sm leading-relaxed text-piranha-bone/60">
-                Wired is not the same as answering. {rangeSentence()}{' '}
+                {rangeSentence()}{' '}
                 <Link to="/cities" className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone">
-                  Every city’s measured rate is on the coverage page.
+                  Per-city rates
                 </Link>
               </p>
             </div>
