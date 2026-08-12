@@ -1,3 +1,8 @@
+/** Overlay reads whose failure a consumer must be able to tell apart from an
+ *  empty answer. Closed on purpose: a typo is a compile error, and adding a
+ *  member is the moment to decide what the consuming code should do with a gap. */
+export type UnresolvedOverlay = 'historic' | 'feeArea' | 'coastal' | 'flood'
+
 export interface ParcelInfo {
   address: string
   parcelId: string
@@ -100,6 +105,46 @@ export interface ParcelInfo {
     /** Affordable-housing/linkage fee market area (Denver High/Typical, Seattle
      *  Low/Medium/High/Downtown) — lets the fee be parcel-exact, not a midpoint. */
     feeArea?: string
+    /** Overlay layers whose fetch FAILED on this request.
+     *
+     *  ⚠️ READ THIS BEFORE TURNING AN OVERLAY'S ABSENCE INTO A CLAIM. Every
+     *  field above is an `X | null` that collapses two facts: the layer
+     *  answered and nothing covers this parcel (an ANSWER), or the layer did
+     *  not answer (a GAP). `requiredUpstream.ts` splits that state for REQUIRED
+     *  reads by refusing; this splits it for OPTIONAL ones by recording the
+     *  gap, so a consumer that publishes an absence — a stated "no requirement
+     *  applies", a dollar figure that depends on which area a parcel is in —
+     *  can decline to publish rather than manufacture the negative branch out
+     *  of a timeout.
+     *
+     *  Measured 2026-08-12 at the analyze handler, one layer faulted per run:
+     *    · Denver EHA down  → commercial fee billed at the Typical rate;
+     *      impact $921,000 → $614,000 inside a total, no note (CLAUDE.md r. 4)
+     *    · Miami HISTORIC down → "No tenant relocation or replacement-housing
+     *      requirement" published as a finding, and a note asserting the parcel
+     *      is not in a designated historic district (CLAUDE.md r. 5)
+     *    · Boston HISTORIC down, Back Bay teardown → the historic design-review
+     *      row and the abutter-appeal row both vanished, and the VERDICT went
+     *      NEEDS_RELIEF (55 mo) → AS_OF_RIGHT (51 mo). A timeout upgraded a
+     *      parcel's legal standing.
+     *    · LA COASTAL down, Abbot Kinney → the Coastal Development Permit row
+     *      vanished and 57 mo → 48 mo, the permit's whole serial 9 months.
+     *
+     *  ⚠️ WHICH KEYS A PROVIDER SETS IS DECIDED BY WHAT CONSUMES THE FIELD, NOT
+     *  BY WHICH LAYERS IT HAPPENS TO FETCH. Absence from this list is NOT a
+     *  promise that every layer answered — only that no layer whose failure is
+     *  known to change a published claim did. Three keys are now marked by every
+     *  provider that reads the layer, because `hurdles.ts` reads all three
+     *  city-agnostically and drops a requirement on a null: `historic`,
+     *  `flood`, and `coastal` (the two CA providers). `feeArea` stays
+     *  provider-specific because only two cities have one.
+     *
+     *  `providers/failedFetchClaims.test.ts` pins which providers set which
+     *  keys and drives each through the real entry point, so this cannot quietly
+     *  become empty. A consumer that starts publishing an absence from a field
+     *  no provider marks must add the mark in the provider first — the test will
+     *  not tell you, because it can only check the pairs it knows about. */
+    unresolved?: readonly UnresolvedOverlay[]
   }
   /** What currently stands on the parcel, where the city's data carries it.
    *  Every field is optional — the UI shows only what's present. */
