@@ -5378,3 +5378,244 @@ saying "the Coastal Zone layer did not respond" is a fact about one request, and
 at the 24-hour CDN TTL a thirty-second outage would have told every visitor for a
 day that a check could not be performed, on a layer that recovered immediately —
 the Chicago cache-poisoning incident of 2026-06-10, one field over.
+
+## 2026-08-12 — The front door: a bbox that substituted, and eight cities publishing their neighbours
+
+Two defects in the address-search path, found by a 230-round-trip measurement of
+the search → parcel loop (`scratchpad/frontdoor/REPORT.md`). They look like one
+defect and are not: one is a geocoder that answers a different question than the
+one asked, the other is a parcel layer answering for land the tool does not
+cover. Fixing either alone leaves the other publishing.
+
+### Defect 1 — Mapbox's `bbox` SUBSTITUTES rather than filters
+
+`SearchBar` scoped the Search Box widget to the searched city's bounding box, in
+the belief that this restricted results to that city. It does not restrict them.
+Given an address outside the box, the API returns **a different address inside
+it**, with nothing in the response marking the swap. Measured, same query with
+and without the parameter:
+
+| query | with bbox | without bbox |
+|---|---|---|
+| `3600 S Las Vegas Blvd` (the Bellagio, unincorporated Paradise) | 36.169232,-115.140758 — 6 km north, downtown | 36.112548,-115.175987 — the Bellagio |
+| `25 Dorrance St, Providence RI` in Boston | 25 Dorrance Street, **Charlestown MA** | 25 Dorrance Street, Providence RI |
+| `202 C St, San Diego CA` in LA | 202 Avenue C, **Redondo Beach** | 202 C Street, San Diego |
+
+The Bellagio row published **AS_OF_RIGHT, T6-UC, 225,750 sf, $100.8M** — a full
+costed report for a parcel six kilometres from the address that was typed. Its
+address line read "Selected location", because the parcel it landed on carries
+no address, so **nothing on screen contradicted the query.** The Bellagio's true
+coordinate is refused correctly on three isolated probes; the tool never saw it.
+
+No jurisdiction gate can catch this one: the substituted point is legitimately
+inside the City of Las Vegas. The fix is to stop asking the geocoder a question
+whose answer is a rectangle. `proximity` alone does the ranking, and for in-city
+queries the top hit is byte-identical with and without the bbox (Boston City
+Hall, 200 N Spring St LA, 2000 S Las Vegas Blvd) — the change costs nothing on
+the path users actually take, and the suggestion list now contains what was
+typed. Scoping moved downstream, where a real boundary exists.
+
+### Defect 2 — eight cities served their neighbours' parcels
+
+A city's parcel layer is usually county-wide while its zoning layer stops at the
+city line, so a click next door returns a real address, a real lot area and
+`districtCode: 'Unknown'`. That render was believed sufficient. Driving
+`getParcelInfo` at real neighbour addresses (isolated re-probes, stable):
+
+| city | published for | verdict |
+|---|---|---|
+| la | West Hollywood, Beverly Hills, Culver City, Santa Monica | $98.5M, $18.0M |
+| charlotte | Matthews, Mint Hill, Pineville | $25.3M |
+| miami | Coral Gables, Hialeah, West Miami | $17.3M |
+| chicago | Oak Park, Cicero | 115,510 / 327,433 sf |
+| austin | West Lake Hills, Rollingwood, Sunset Valley | — |
+| sandiego | Coronado, National City, La Mesa | — |
+| raleigh | Cary, Garner, Wake Forest | — |
+| nashville | Belle Meade, Berry Hill (satellite cities) | `districtCode: 'Satellite City'` |
+
+Four cities (dallas, columbus, lasvegas, phoenix) already had gates, hand-written
+into their own providers — which is why eight others did not. `lib/jurisdiction.ts`
+is now one registry that must cover exactly `LIVE_CITIES`: each city is a
+verified boundary layer or a stated reason it has none.
+
+**A city with no boundary layer is not given one by inference.** Eleven entries
+are `kind: 'none'`, each naming what was enumerated and what refuses today
+(NO_PARCEL from a city-scoped parcel layer, or the bbox). Approximating a
+boundary from the bbox would be defect 1 again, one layer down.
+
+### What the cross-tab caught that the neighbour list could not
+
+Each new gate was cross-tabulated against its own city's zoning layer over 40
+random in-bbox parcel points — the Dallas method — because "the gate refuses the
+three towns I already knew about" tests the cases already in hand. Two gates were
+wrong and would have shipped:
+
+- **Austin.** `JURISDICTION_TYPE = 'FULL'` is the obvious gate and refuses land
+  Austin zones: four sampled points sit in `LTD` (limited-purpose) polygons where
+  the city's own zoning layer returns RR, LA, PUD, LA. The gate accepts FULL or
+  LTD, and not the ETJ rings.
+- **Raleigh.** The layer named "Corporate Limits" disagreed with Raleigh's zoning
+  at **9 of 40** points — Raleigh zones inside its ETJ. `Planning Jurisdictions`
+  matches. The same shape appeared in Charlotte, where the county's
+  `Jurisdictions` layer disagreed 9 times (8 of them `name: 'Mecklenburg'`, where
+  Charlotte's UDO applies); `SphereofInfluence` is the layer that matches, and its
+  one remaining disagreement is a point the county's own boundary layer places
+  outside Mecklenburg entirely, where Charlotte's zoning layer overreaches.
+
+Neither error was reachable by reading the layer names, and neither would have
+failed a test written from the neighbour list.
+
+### A gate that would have published a false claim, caught by an existing test
+
+Nashville has no city limits to read — the consolidated county IS the boundary —
+so its gate is in-band: Metro's zoning layer labels satellite-city polygons
+`ZONE_DESC = 'Satellite City'`. Written with the same polarity as every other
+gate (no rows ⇒ outside), it refused with *"you are in a satellite city"* for any
+Metro point with no zoning polygon — a river, a right-of-way. That is rule 5
+**inside the gate**: an absence rendered as an answer. `upstreamSplit.test.ts`
+found it by emptying that layer, which it already did for a different reason.
+
+`emptyMeans: 'outside' | 'inside'` is now a required field on every gate, so the
+question a boundary layer's shape answers has to be answered explicitly, and the
+quantifier over a non-empty result follows from it rather than being chosen.
+
+### Defect 3 — the geocode hop had one render for four states
+
+`SearchBar` wired only `onRetrieve`. Zero results, a rejected fetch, an HTTP 500
+and a request that never settled were **pixel-identical** — to each other and to
+a search that had not happened: no dropdown, `aria-expanded=false`, no message,
+not even "we couldn't find that address". The 500 additionally threw an unhandled
+promise rejection. Downstream the distinction already held correctly; the gap was
+entirely at the hop.
+
+Verified by perturbation in the running app (patching `fetch` before the search
+bundle loads — `search-js-core` captures `globalThis.fetch` at module load, so a
+later patch intercepts nothing). Five distinct renders now, where there was one.
+The library's floating rejection is suppressed **by instance identity** — only an
+error this component already surfaced — so an unrelated rejection elsewhere on
+the page is still reported; checked both ways.
+
+### Why the instruments are pinned to each other
+
+`upstreamSplit.test.ts` held a hand-written list of four gated cities. A set
+stated twice drifts, and this is what that drift cost: while that list said four,
+eight cities were publishing their neighbours' land and nothing in the suite
+could see it. The list is now DERIVED from the per-city `gate-open` declarations
+and reconciled against `GATED_CITIES`, so a registry gate no provider issues — or
+a provider that stops issuing one — goes red instead of covering one city fewer.
+
+The probe fixture reads each gate's `insideSample` from the registry rather than
+copying its magic value, and `jurisdiction.test.ts` asserts every sample
+satisfies its own gate's predicate: a changed predicate cannot leave a stale
+literal behind, silently making every gated provider refuse every mocked request.
+
+### One transient, re-probed before it was recorded
+
+The final sweep showed Nashville publishing both satellite-city addresses again,
+with `parcel.jurisdiction_unread` at exactly 6004 ms — the gate's fetch timeout,
+i.e. the gate degrading open as designed. In isolation it refused **8 of 8** at
+84–236 ms, and 20 back-to-back runs gave 20 correct refusals, zero unread gates,
+median 199 ms. The sweep had just walked twenty-eight upstreams in sequence; the
+failure was the weather (rule 10). The one thing worth checking rather than
+waving away was self-inflicted: Nashville's in-band gate issues a SECOND query to
+the same layer the required zoning read uses, and that load test is what says the
+extra query costs nothing measurable.
+
+Two more instrument failures worth recording, both mine, both caught by
+reconciling against a known-good result before believing the aggregate (rule 16).
+The first cross-tab reported Miami and Charlotte with **zero** rows in all four
+cells — n=40 counted, nothing tabulated — because the zoning field names were
+guessed (`ZONE`, `ZONING`) and every query returned `error 400`. The second
+inserted seven gate declarations into the wrong cases, because the insertion
+looked for a multi-line `optional: [` and Chicago's is a single line: Seattle,
+Denver and Atlanta acquired gates for layers they never query. Both were loud
+rather than plausible, which is the only reason they were cheap.
+
+## 2026-08-12 — The front door, and a before-number that measured the harness
+
+The address-search path had never been exercised at volume. A round-trip
+measurement — take a parcel's own address from the city's layer, geocode it, ask
+whether the coordinate returns to that parcel — found the parcel layer is the
+source, Mapbox is the instrument, and disagreement is measurable rather than
+inferred.
+
+### The two defects were not one defect
+
+**Cross-jurisdiction.** The Mapbox bbox SUBSTITUTES rather than filters: searching
+"3600 S Las Vegas Blvd" — the Bellagio, outside city limits and correctly refused
+at its true coordinate — returned a point 6 km north and published AS_OF_RIGHT,
+T6-UC, 225,750 sf, $100.8M with the address line reading "Selected location".
+Probing all 23 cities found **eight** publishing a neighbour's parcel, not the
+three the first pass reported.
+
+**Within-city.** A jurisdiction gate stops none of that second class, because the
+point IS in the city. A US Census cross-check found that in 17 of 27 wrong cases
+the two geocoders agree within 50 m — the PARCEL LAYER'S OWN ADDRESS is attached
+to the wrong geometry. DC's `5739 BLAINE ST NE` returns two parcels 2 km apart.
+
+Scoping them as one fix would have shipped a gate, closed the visible half, and
+left 17% of within-city searches landing on the wrong parcel while looking solved.
+
+### The Las Vegas result was the harness — eighth instance
+
+The first run reported Las Vegas at 0 of 13 and a mechanism to go with it: small
+lots, geocode error, points landing in blank-address common-area parcels. The
+mechanism was plausible, specific, and wrong.
+
+The harness fed Mapbox each parcel's STORED address string. Las Vegas is the only
+one of 23 cities that zero-pads its house numbers, and Mapbox resolves
+`002750 FAISS DR` as a distinct address from `2750 Faiss Dr`. Asking the same 25
+parcels the way a person would, changing nothing else: **0/13 -> 12/13.**
+
+**So the before-number and the after-number are not measuring the same thing.**
+The 34-of-200 baseline was inflated by a defect in the instrument, at least for
+Las Vegas, and any comparison across the two runs carries that. The honest
+statement is that 21-of-230 is the measured rate under a correct harness and the
+old 34 is not its predecessor.
+
+Worth noting what caught it: the brief said to verify the reading before building
+on it. A fix built on the reported mechanism would have added a blank-address
+branch nobody needed and left the real cause — a query form no user types —
+untouched and unmeasured.
+
+### The gates disagreed with their own cities, and only one check saw it
+
+Two of twelve gates were wrong and would have shipped:
+
+ · Austin's obvious `JURISDICTION_TYPE = 'FULL'` REFUSES land Austin zones —
+   4 sampled points sit in `LTD` polygons carrying real districts.
+ · Raleigh's "Corporate Limits" layer disagreed with Raleigh's own zoning at
+   **9 of 40** points, because NC cities zone their extraterritorial
+   jurisdiction. Charlotte's county layer, the same, 9 times.
+
+Neither was catchable from the neighbour list, which only tests cases already in
+hand — it confirms the gate refuses Highland Park, which was never in doubt. What
+found them was cross-tabulating each gate against its own city's ZONING layer over
+40 random in-bbox points. **The gate and the zoning are two sources that must
+agree, and disagreement is measurable** — rule 13's joint dependency pointed at a
+boundary rather than a field.
+
+A third gate had inverted polarity: Nashville's is in-band (Metro labels satellite
+cities in `ZONE_DESC`), so written with the standard polarity it refused with
+"you are in a satellite city" for any Metro point with no zoning polygon. An
+EXISTING test caught that one — the third defect tests have caught here, against
+at least four they have defended.
+
+### Comparing Mapbox with itself
+
+Austin, Chicago and San Jose always reverse-geocode their displayed address, SF
+per-parcel. Comparing the user's typed text against those compares Mapbox with
+Mapbox (rule 11). Live, Chicago answers a search for `201 E Randolph St` with a
+panel reading `11 N Michigan Avenue` — and that reads as CONFIRMATION. The address
+and its provenance are now one value (`addressBasis`, required), so the two cannot
+disagree.
+
+### The decision, and why it was not a threshold
+
+A null parcel address is an UNKNOWN, not a mismatch. Treating a data absence as
+contradictory data would have refused every blank-address record and broken a
+city's search to look rigorous. Warn, never refuse: the errors are asymmetric — a
+false warning costs a glance, a false refusal costs the answer to someone who
+typed a correct address, invisibly. Normalisation rules were written and
+unit-tested BEFORE any measurement, explicitly not tuned against the sample, which
+is what makes the resulting rate a measurement rather than a fit.
