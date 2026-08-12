@@ -13,18 +13,39 @@ import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import { resolveMiami, miamiUsesForZone } from '../zoning/miami'
+import { recordAddress } from '../address'
 
 // Countywide parcel layer (native SR 2236 — Florida East, US survey feet).
 const PARCELS = 'https://gisweb.miamidade.gov/arcgis/rest/services/MD_LandInformation/MapServer/26'
 const FL_EAST_FT = 2236
 const CITY = 'https://gis.miami.gov/gis/rest/services/Zoning'
 // Miami 21 Primary Zoning — covers the CITY of Miami only (zero features in
-// Miami Beach, Hialeah, etc.), which is what gates us to the city proper.
+// Miami Beach, Hialeah, etc.).
+//
+// ⚠️ THAT EMPTINESS IS NOT A JURISDICTION GATE, and a claim here said it was
+// until 2026-08-12. An empty zoning answer renders as a GAP, and a gap still
+// publishes: Coral Gables, Hialeah and West Miami addresses inside MIAMI_BBOX
+// all returned ok:true with a real lot area, which is all the cost engine needs
+// — $17.3M for a Coral Gables parcel. The gate is the boundary polygon below.
 const ZONING = `${CITY}/ZoningMiami21/MapServer/5`
 const HISTORIC = `${CITY}/HEP/MapServer/4`
 // Archaeological Conservation Areas are a genuine Miami permitting trigger.
 const ARCHAEOLOGICAL = `${CITY}/HEP/MapServer/3`
+
+// ── THE JURISDICTION GATE ─────────────────────────────────────────────────
+// Miami-Dade's parcel layer is county-wide and answers for every municipality in
+// it. This is what refuses those points, measured at the real entry point
+// 2026-08-12 — see the note on ZONING above for what used to be relied on
+// instead, and what it published.
+//
+// The layer, the match and the refusal wording live in ../jurisdiction.ts,
+// which carries one entry for every live city and records how each was
+// established. It degrades OPEN on a failed fetch and reads the EXACT point,
+// never a buffered snap.
+const MIAMI_GATE = cityLimitsGate('miami')!
+
 
 const posInt = (v: unknown): number | null => {
   const n = Number(v)
@@ -37,12 +58,11 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
   // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
   // the contract at the top of ../requiredUpstream.ts.
   //
-  // ⚠️ THE ZONING READ IS LOAD-BEARING TWICE OVER HERE. The parcel layer is
-  // Miami-Dade COUNTY-wide while ZoningMiami21 covers the City of Miami only —
-  // "zero features in Miami Beach, Hialeah, etc., which is what gates us to the
-  // city proper" (header). So an empty zoning answer IS this provider's
-  // jurisdiction gate, and a failed zoning fetch used to be indistinguishable
-  // from it: a timeout published Miami Beach's answer for a downtown Miami lot.
+  // ⚠️ A FAILED ZONING FETCH AND AN EMPTY ONE ARE DIFFERENT FACTS, and they were
+  // once the same value here: a timeout published Miami Beach's answer for a
+  // downtown Miami lot. The zoning read is REQUIRED for that reason alone —
+  // NOT, as a claim here previously had it, because its emptiness gates the
+  // city. It does not; the boundary polygon does (see MIAMI_GATE above).
   const [parcelR, zoningR, optional] = await Promise.all([
     // Geometry in Florida East feet so lot size can be derived when the assessor
     // record is a condo "REFERENCE FOLIO" placeholder (see below).
@@ -89,12 +109,17 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
       { deadline, maxAttempts: 2, attemptCapMs: 4000 },
     ),
     Promise.allSettled([
+      fetchCityLimits(MIAMI_GATE, lat, lng),
       fetchFeatures(HISTORIC, lat, lng, ['HD_NAME']),
       fetchFeatures(ARCHAEOLOGICAL, lat, lng, ['AZ_NAME']),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
   ])
-  const [histR, archR, floodR] = optional
+  const [gateR, histR, archR, floodR] = optional
+
+  // Runs BEFORE the parcel is read and BEFORE the state split below.
+  const outside = outsideCity('miami', gateR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
   if (!parcelR.ok || !zoningR.ok) {
@@ -167,7 +192,7 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
   const addr = parcel.TRUE_SITE_ADDR != null ? String(parcel.TRUE_SITE_ADDR).replace(/\s+/g, ' ').trim() : ''
 
   const info: ParcelInfo = {
-    address: addr || 'Selected location',
+    ...recordAddress(addr),
     parcelId: String(parcel.FOLIO ?? ''),
     coordinates: [lng, lat],
     zoning: {
@@ -190,7 +215,7 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
     existing,
     // Miami-Dade assesses at market value; reference folios carry no value.
     assessedValue: isReferenceFolio ? null : posInt(parcel.TOTAL_VAL_CUR),
-    sources: { parcels: PARCELS, zoning: ZONING, historic: HISTORIC, archaeological: ARCHAEOLOGICAL, flood: ENDPOINTS.flood },
+    sources: { parcels: PARCELS, zoning: ZONING, ...cityLimitsSource('miami'), historic: HISTORIC, archaeological: ARCHAEOLOGICAL, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }
 

@@ -14,6 +14,7 @@ import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { lngLatToUtm15 } from '../geo'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { recordAddress } from '../address'
 
 const PARCELS = 'https://gis.hennepin.us/arcgis/rest/services/HennepinData/LAND_PROPERTY/MapServer/1'
 const ZONING =
@@ -142,7 +143,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   const rawAddress = [houseNo, streetNm].filter(Boolean).join(' ')
   // Hennepin uses placeholder strings (e.g. "ADDRESS PENDING") on some civic /
   // unaddressed parcels — don't surface those as a real address.
-  const address = !rawAddress || /pending|unknown|^0\b/i.test(rawAddress) ? 'Selected location' : rawAddress
+  const addressed = recordAddress(/pending|unknown|^0\b/i.test(rawAddress) ? '' : rawAddress)
   const area = Number(parcel.PARCEL_AREA)
   const code = zoning?.Land_Use_Code ? String(zoning.Land_Use_Code) : null
   const mplsFar = resolveMinneapolisFar(formAbbrv, code)
@@ -192,7 +193,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   const existing = ownerPublic ? { ...(existingBase ?? {}), ownerPublic: true } : existingBase
 
   const info: ParcelInfo = {
-    address,
+    ...addressed,
     parcelId: String(parcel.PID ?? ''),
     coordinates: [lng, lat],
     zoning: {

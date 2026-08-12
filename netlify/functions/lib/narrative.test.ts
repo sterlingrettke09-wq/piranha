@@ -11,6 +11,7 @@ import type { CostEstimate } from './cost'
 // Feasibility fixture below.
 const parcel: ParcelInfo = {
   address: '1 Test St',
+  addressBasis: 'record',
   parcelId: 'p1',
   coordinates: [-71.06, 42.36],
   zoning: {

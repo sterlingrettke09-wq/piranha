@@ -7,6 +7,7 @@ import { CITIES_WITH_SPECIFIC_HURDLES } from '../../../src/config/cities'
 function parcel(over: Partial<ParcelInfo>): ParcelInfo {
   return {
     address: '1 Test St',
+    addressBasis: 'record',
     parcelId: '1',
     coordinates: [-71.07, 42.358],
     zoning: { districtCode: 'H-2-65', subdistrict: null, article: null, maxHeightFt: 65, maxFAR: 2, allowedUses: ['residential'] },

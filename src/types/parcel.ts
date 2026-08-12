@@ -5,6 +5,20 @@ export type UnresolvedOverlay = 'historic' | 'feeArea' | 'coastal' | 'flood'
 
 export interface ParcelInfo {
   address: string
+  /** Where `address` came from. REQUIRED, and set only by the two helpers in
+   *  `netlify/functions/lib/address.ts`, which emit it together with the string.
+   *
+   *  'record'  — the parcel record's own address field(s).
+   *  'geocode' — a reverse geocode of the queried point; the record had none.
+   *  'none'    — neither; `address` is the "Selected location" placeholder.
+   *
+   *  ⚠️ ONLY 'record' MAY BE COMPARED WITH THE ADDRESS THE USER SEARCHED.
+   *  Checking a forward geocode of the user's text against a reverse geocode of
+   *  the point it produced compares Mapbox with Mapbox, and a self-consistent
+   *  geocoder agrees with itself exactly when it is wrong (CLAUDE.md rule 11).
+   *  `src/lib/addressMatch.ts` reads this field for that reason and reports
+   *  'unverifiable' rather than silently passing. */
+  addressBasis: 'record' | 'geocode' | 'none'
   parcelId: string
   /** GeoJSON-style [lng, lat]. Matches Mapbox + ArcGIS conventions. */
   coordinates: [number, number]

@@ -6,7 +6,9 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import { CHICAGO_BASE_FAR } from '../zoning/chicago'
+import { geocodedAddress } from '../address'
 
 const ZONING =
   'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/15'
@@ -14,6 +16,19 @@ const PARCELS =
   'https://gis.cookcountyil.gov/traditional/rest/services/parcelHistorical/MapServer/2025'
 const HISTORIC =
   'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/6' // Historic Districts (NAME).
+
+// ── THE JURISDICTION GATE ─────────────────────────────────────────────────
+// The parcel layer is the COOK COUNTY fabric; the zoning layer is the CITY's.
+// Measured 2026-08-12 at the real entry point: Oak Park and Cicero addresses
+// inside CHICAGO_BBOX both returned ok:true with a real lot area (115,510 and
+// 327,433 sq ft) and `districtCode: 'Unknown'`.
+//
+// The layer, the match and the refusal wording live in ../jurisdiction.ts,
+// which carries one entry for every live city and records how each was
+// established. It degrades OPEN on a failed fetch and reads the EXACT point,
+// never a buffered snap.
+const CHICAGO_GATE = cityLimitsGate('chicago')!
+
 
 // Cook County assessor class → existing use (1xx vacant, 2xx residential,
 // 3xx apartments, 4xx institutional, 5xx+ commercial/industrial).
@@ -84,12 +99,17 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
       attemptCapMs: 4000,
     }),
     Promise.allSettled([
+      fetchCityLimits(CHICAGO_GATE, lat, lng),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
       reverseGeocode(lat, lng),
       fetchFeatures(HISTORIC, lat, lng, ['NAME']),
     ]),
   ])
-  const [floodR, addrR, histR] = optional
+  const [gateR, floodR, addrR, histR] = optional
+
+  // Runs BEFORE the parcel is read and BEFORE the state split below.
+  const outside = outsideCity('chicago', gateR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT. "The service did not answer" is an error and the only legal
   // handling is to refuse. "The service answered and found nothing" survives past
@@ -108,12 +128,12 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
   // thing: no polygon covers this point.
   const zoning = firstAttrs(zoningR.value)
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
-  const address = addrR.status === 'fulfilled' && addrR.value ? addrR.value : 'Selected location'
+  const addressed = geocodedAddress(addrR.status === 'fulfilled' ? addrR.value : null)
   const zone = zoning?.ZONE_CLASS ? String(zoning.ZONE_CLASS) : null
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
 
   const info: ParcelInfo = {
-    address,
+    ...addressed,
     parcelId: String(pf.attributes.PIN10 ?? ''),
     coordinates: [lng, lat],
     zoning: {
@@ -141,7 +161,7 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
       }),
     },
     existing: { landUse: chicagoExistingUse(pf.attributes.AssessorBLDGclass) },
-    sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood, historic: HISTORIC },
+    sources: { zoning: ZONING, parcels: PARCELS, ...cityLimitsSource('chicago'), flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),
   }
 

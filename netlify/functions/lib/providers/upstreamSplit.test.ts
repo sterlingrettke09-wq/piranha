@@ -93,6 +93,7 @@
 //      either direction without an edit somebody reads.
 import { describe, it, expect, afterEach, beforeAll, afterAll, vi } from 'vitest'
 import { getParcelInfo, LIVE_CITIES } from '../parcel'
+import { GATED_CITIES } from '../jurisdiction'
 import { handler as analyzeHandler } from '../../analyze'
 import { invokeHandler } from '../testing/invokeHandler'
 import { probe, publishProbe, synth, type Injection, type ProbeOptions, type PublishRun } from './__fixtures__/upstreamProbe'
@@ -261,7 +262,13 @@ const CASES: Case[] = [
     onZoningFail: 'refuse',
     onZoningEmpty: 'unknown',
     alsoRequired: [{ label: 'parcel', substr: 'parcelHistorical' }],
-    optional: [historic('Zoning_update/MapServer/6'), geocodedAddress(), flood()],
+    optional: [
+      {
+        label: 'jurisdiction gate',
+        substr: 'operational/MapServer/119',
+        publishes: 'gate-open',
+        why: 'the Oak Park / Cicero gate: an empty answer is OUT_OF_BBOX, a failed one deliberately opens (see ../jurisdiction.ts)',
+      },historic('Zoning_update/MapServer/6'), geocodedAddress(), flood()],
   },
   {
     city: 'sf',
@@ -320,6 +327,12 @@ const CASES: Case[] = [
     alsoRequired: [{ label: 'parcel', substr: 'EXTERNAL_tcad_parcel' }],
     optional: [
       {
+        label: 'jurisdiction gate',
+        substr: 'BOUNDARIES_jurisdictions',
+        publishes: 'gate-open',
+        why: 'the West Lake Hills / Rollingwood gate: an empty answer is OUT_OF_BBOX, a failed one deliberately opens (see ../jurisdiction.ts)',
+      },
+      {
         label: 'subchapter F',
         substr: 'PLANNINGCADASTRE_residential_design_standards',
         publishes: 'disclosed-gap',
@@ -346,7 +359,13 @@ const CASES: Case[] = [
     onZoningFail: 'refuse',
     onZoningEmpty: 'unknown',
     alsoRequired: [{ label: 'parcel', substr: 'LACounty_Parcel' }],
-    optional: [historic('NavigateLA/MapServer/75'), coastal(), flood()],
+    optional: [
+      {
+        label: 'jurisdiction gate',
+        substr: 'NavigateLA/MapServer/410',
+        publishes: 'gate-open',
+        why: 'the West Hollywood / Beverly Hills gate: an empty answer is OUT_OF_BBOX, a failed one deliberately opens (see ../jurisdiction.ts)',
+      },historic('NavigateLA/MapServer/75'), coastal(), flood()],
   },
   {
     city: 'denver',
@@ -416,6 +435,12 @@ const CASES: Case[] = [
     // (CLAUDE.md rule 13) — each is faulted with the other masked, or the
     // sibling's answer resolves the field and the probe measures nothing.
     optional: [
+      {
+        label: 'jurisdiction gate',
+        substr: 'BaseLayers/MapServer/9',
+        publishes: 'gate-open',
+        why: 'the Coral Gables / Hialeah gate: an empty answer is OUT_OF_BBOX, a failed one deliberately opens (see ../jurisdiction.ts)',
+      },
       historic('HEP/MapServer/4', { label: 'historic district', mask: ['HEP/MapServer/3'] }),
       historic('HEP/MapServer/3', { label: 'archaeological zone', mask: ['HEP/MapServer/4'] }),
       flood(),
@@ -435,6 +460,12 @@ const CASES: Case[] = [
       { label: 'city land', substr: 'Regulatory/MapServer/3' },
     ],
     optional: [
+      {
+        label: 'jurisdiction gate',
+        substr: 'DoIT_Public/MapServer/7',
+        publishes: 'gate-open',
+        why: 'the Coronado / National City gate: an empty answer is OUT_OF_BBOX, a failed one deliberately opens (see ../jurisdiction.ts)',
+      },
       historic('Historic_Preservation_Resources'),
       {
         label: 'coastal height overlay',
@@ -496,7 +527,7 @@ const CASES: Case[] = [
         substr: 'Zoning/MapServer/14',
         publishes: 'fallback',
         secondSource: "the parcel layer's denormalised `Zoning` column",
-        why: 'the authoritative zoning layer; a failure falls back to the parcel layer’s copy of the same fact rather than publishing Unknown',
+        why: 'the authoritative zoning layer; a failure falls back to the parcel layer’s copy of the same fact rather than publishing Unknown. It is ALSO Nashville’s jurisdiction gate (Metro labels satellite-city polygons in ZONE_DESC), and a failed or empty read opens that gate rather than closing it — see `emptyMeans` in ../jurisdiction.ts',
       },
       historic('ZoningOverlayDistricts/MapServer/0'),
       flood(),
@@ -511,6 +542,12 @@ const CASES: Case[] = [
     onZoningEmpty: 'unknown',
     alsoRequired: [{ label: 'parcel', substr: 'Property/Property/MapServer/0' }],
     optional: [
+      {
+        label: 'jurisdiction gate',
+        substr: 'Planning/Jurisdictions/MapServer/1',
+        publishes: 'gate-open',
+        why: 'the Cary / Garner gate, on PLANNING jurisdiction rather than corporate limits because Raleigh zones its ETJ: an empty answer is OUT_OF_BBOX, a failed one deliberately opens',
+      },
       historic('Planning/Overlays/MapServer/7', { label: 'historic -HOD-G', mask: ['Planning/Overlays/MapServer/8'] }),
       historic('Planning/Overlays/MapServer/8', { label: 'historic -HOD-S', mask: ['Planning/Overlays/MapServer/7'] }),
       {
@@ -616,7 +653,13 @@ const CASES: Case[] = [
     onZoningFail: 'refuse',
     onZoningEmpty: 'unknown',
     alsoRequired: [{ label: 'parcel', substr: 'Accela/Accela/MapServer/16' }],
-    optional: [historic('Accela/Accela/MapServer/12'), flood()],
+    optional: [
+      {
+        label: 'jurisdiction gate',
+        substr: 'SphereofInfluence',
+        publishes: 'gate-open',
+        why: 'the Matthews / Mint Hill gate, on the county\'s Sphere of Influence because Charlotte zones its ETJ: an empty answer is OUT_OF_BBOX, a failed one deliberately opens',
+      },historic('Accela/Accela/MapServer/12'), flood()],
   },
   {
     city: 'atlanta',
@@ -747,13 +790,27 @@ const CASES: Case[] = [
 ]
 
 /** The jurisdiction gates, which answer independently of zoning and must keep
- *  producing their own copy — the Dallas / Highland Park path. */
-const GATES = [
-  { city: 'dallas', substr: 'CityLimits' },
-  { city: 'columbus', substr: 'MapServer/21' },
-  { city: 'lasvegas', substr: 'Jurisdictions' },
-  { city: 'phoenix', substr: 'CityBoundary' },
-] as const
+ *  producing their own copy — the Dallas / Highland Park path.
+ *
+ *  DERIVED from the `gate-open` declarations above rather than hand-listed, and
+ *  then reconciled against `GATED_CITIES` in ../jurisdiction.ts by the test
+ *  below. Hand-listing it was one more place the set of gated cities could be
+ *  stated, and this file's whole argument is that a set stated twice drifts:
+ *  when this table held four cities, eight others were publishing their
+ *  neighbours' land and nothing here could see it. */
+const GATES = CASES.flatMap((c) =>
+  (c.optional ?? [])
+    .filter((l) => l.publishes === 'gate-open')
+    .map((l) => ({ city: c.city, substr: l.substr })),
+)
+
+/** Nashville is gated and is NOT in `GATES`, because its gate is not a separate
+ *  read: Metro's own zoning layer labels satellite-city polygons, so the gate
+ *  and the required zoning read are the same request and the perturbations
+ *  below (empty the gate, fault the gate) are already the zoning perturbations.
+ *  Named here rather than filtered silently — an unexplained exclusion is how a
+ *  city drops out of a coverage set. */
+const GATE_IN_BAND = ['nashville']
 
 /** One shared harness with hardBlockInputs.test.ts — see
  *  ./__fixtures__/upstreamProbe.ts for why it lives in one place. */
@@ -1061,6 +1118,16 @@ describe('what every OPTIONAL layer’s failure publishes', () => {
   it('keeps the gate declarations and the GATES table saying the same thing', () => {
     const fromOptional = LAYERS.filter((l) => l.layer.publishes === 'gate-open').map((l) => `${l.c.city}.${l.layer.substr}`)
     expect(fromOptional.sort()).toEqual(GATES.map((g) => `${g.city}.${g.substr}`).sort())
+  })
+
+  // Rule 20, and the specific way this file could have gone quietly green: the
+  // registry could gain a gate that no provider actually issues, or a provider
+  // could stop issuing one, and every perturbation here would still pass while
+  // covering one city fewer. The two sets are pinned to each other.
+  it('covers exactly the cities ../jurisdiction.ts says are gated', () => {
+    const perturbed = [...new Set([...GATES.map((g) => g.city), ...GATE_IN_BAND])].sort()
+    expect(perturbed).toEqual([...GATED_CITIES].sort())
+    expect(perturbed.length).toBeGreaterThan(0)
   })
 
   it('states why for every declared layer', () => {

@@ -7,6 +7,7 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelR
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { recordAddress } from '../address'
 
 const BASE = 'https://maps2.dcgis.dc.gov/dcgis/rest/services'
 const PARCELS = `${BASE}/DCGIS_DATA/Property_and_Land/MapServer/40`
@@ -266,7 +267,7 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
   const existing = ownerPublic ? { ...(existingBase ?? {}), ownerPublic: true } : existingBase
 
   const info: ParcelInfo = {
-    address: address || 'Selected location',
+    ...recordAddress(address),
     parcelId: String(parcel.SSL ?? ''),
     coordinates: [lng, lat],
     zoning: {

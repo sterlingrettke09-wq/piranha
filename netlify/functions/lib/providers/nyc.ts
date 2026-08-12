@@ -6,6 +6,7 @@ import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { recordAddress } from '../address'
 
 const MAPPLUTO =
   'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0'
@@ -114,7 +115,7 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
     ownerType === 'C' || ownerType === 'O' || isGovernmentOwner(lot.OwnerName != null ? String(lot.OwnerName) : null)
 
   const info: ParcelInfo = {
-    address: lot.Address ? String(lot.Address) : 'Unknown address',
+    ...recordAddress(lot.Address),
     parcelId: String(lot.BBL ?? ''),
     coordinates: [lng, lat],
     zoning: {

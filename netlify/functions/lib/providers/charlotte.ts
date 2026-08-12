@@ -71,6 +71,7 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelR
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import {
   resolveCharlotte,
   usesForZone,
@@ -79,6 +80,7 @@ import {
   CHARLOTTE_OVERLAY_NAMES,
   type CharlotteLimits,
 } from '../zoning/charlotte'
+import { recordAddress } from '../address'
 
 // "Parcel XAPO" — parcel geometry with the county CAMA/assessor record joined.
 // Layer index read from the service's own layer list, not guessed.
@@ -90,6 +92,23 @@ const ZONING = 'https://gis.charlottenc.gov/arcgis/rest/services/PLN/Zoning/MapS
 // (measured 2026-08-08) — these are the UDO Sec. 14.2 HDO districts, where a
 // Certificate of Appropriateness is required, not National Register listings.
 const HISTORIC = 'https://gis.charlottenc.gov/arcgis/rest/services/Accela/Accela/MapServer/12'
+
+// ── THE JURISDICTION GATE ─────────────────────────────────────────────────
+// The parcel layer is Mecklenburg County's; the zoning layer is the CITY's.
+// Measured at the real entry point 2026-08-12: Matthews, Mint Hill and Pineville
+// addresses inside CHARLOTTE_BBOX all returned ok:true with real lot areas and
+// `districtCode: 'Unknown'` — a $25.3M costed report for a Matthews NC parcel.
+//
+// ⚠️ The gate is the county's Sphere of Influence layer, NOT its Jurisdictions
+// layer: Charlotte zones inside its ETJ. See ../jurisdiction.ts. It is also the
+// only gate on a host this provider does not otherwise read.
+//
+// The layer, the match and the refusal wording live in ../jurisdiction.ts,
+// which carries one entry for every live city and records how each was
+// established. It degrades OPEN on a failed fetch and reads the EXACT point,
+// never a buffered snap.
+const CHARLOTTE_GATE = cityLimitsGate('charlotte')!
+
 
 const SQ_FT_PER_ACRE = 43560
 
@@ -361,11 +380,16 @@ export async function getCharlotteParcelInfo(lat: number, lng: number): Promise<
       attemptCapMs: 4000,
     }),
     Promise.allSettled([
+      fetchCityLimits(CHARLOTTE_GATE, lat, lng),
       fetchFeatures(HISTORIC, lat, lng, ['DistrictName', 'DistrictType']),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
   ])
-  const [historicR, floodR] = optional
+  const [gateR, historicR, floodR] = optional
+
+  // Runs BEFORE the parcel is read and BEFORE the state split below.
+  const outside = outsideCity('charlotte', gateR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT. A service that did not answer is an error and the only legal
   // handling is to refuse. A service that ANSWERED and found nothing is a
@@ -464,6 +488,7 @@ export async function getCharlotteParcelInfo(lat: number, lng: number): Promise<
   const sources: Record<string, string> = {
     parcels: PARCELS,
     zoning: ZONING,
+    ...cityLimitsSource('charlotte'),
     historic: HISTORIC,
     flood: ENDPOINTS.flood,
   }
@@ -474,7 +499,7 @@ export async function getCharlotteParcelInfo(lat: number, lng: number): Promise<
   if (petitionLink) sources.zoningPetition = petitionLink
 
   const info: ParcelInfo = {
-    address: buildAddress(parcel) || 'Selected location',
+    ...recordAddress(buildAddress(parcel)),
     parcelId: str(parcel.pid),
     coordinates: [lng, lat],
     zoning: {

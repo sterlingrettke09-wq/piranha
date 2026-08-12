@@ -13,7 +13,7 @@ import type { ParcelInfo } from '../../../src/types/parcel'
 
 const parcel = (o: Partial<ParcelInfo['zoning']> = {}): ParcelInfo =>
   ({
-    address: 'x', parcelId: 'p', coordinates: [-71.06, 42.36],
+    address: 'x', addressBasis: 'record', parcelId: 'p', coordinates: [-71.06, 42.36],
     zoning: {
       districtCode: 'R-1', subdistrict: null, article: null,
       maxHeightFt: 60, maxFAR: 2, allowedUses: ['residential'], ...o,

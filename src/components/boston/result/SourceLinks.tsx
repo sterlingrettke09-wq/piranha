@@ -5,6 +5,12 @@ const LABELS: Record<string, string> = {
   parcels: 'Parcels',
   historic: 'Historic districts',
   flood: 'FEMA flood',
+  // The jurisdiction gate's own layer. Published by all twelve gated cities
+  // under this one key (`CITY_LIMITS_SOURCE_KEY` in
+  // netlify/functions/lib/jurisdiction.ts): a gate that can REFUSE a parcel is
+  // making a claim about which city the parcel is in, and every other claim in
+  // this list carries its source.
+  cityLimits: 'City limits',
 }
 
 export function SourceLinks({ sources }: { sources: Record<string, string> }) {

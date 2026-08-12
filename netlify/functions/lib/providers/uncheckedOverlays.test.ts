@@ -264,6 +264,7 @@ describe('an optional overlay read whose failure would remove a requirement', ()
 
 const parcel = (overlays: Partial<ParcelInfo['overlays']> = {}): ParcelInfo => ({
   address: '1 Test St',
+  addressBasis: 'record',
   parcelId: 'T1',
   coordinates: [-71.06, 42.36],
   zoning: { districtCode: 'B-2-65', subdistrict: null, article: null, maxHeightFt: 65, maxFAR: 2, allowedUses: ['residential'] },

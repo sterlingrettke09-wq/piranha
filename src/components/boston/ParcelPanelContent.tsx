@@ -5,6 +5,7 @@ import type { AnalysisInput } from '../../types/analysis'
 import { assessDevelopability } from '../../lib/developability'
 import { buildDefaultSpec } from '../../lib/defaultSpec'
 import { encodeJsonB64 } from '../../lib/b64'
+import { addressCheckNote, checkAddress } from '../../lib/addressMatch'
 
 // Build the /result URL the "Instant report" CTA points at, using the same
 // param names BostonResult.parseInput reads, plus auto=1 so the report shows
@@ -30,7 +31,16 @@ function instantReportUrl(spec: AnalysisInput): string {
 type Props =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; data: ParcelInfo; city: string; cmp?: string | null }
+  | {
+      status: 'loaded'
+      data: ParcelInfo
+      city: string
+      cmp?: string | null
+      /** The address the geocoder returned for the search that produced this
+       *  point. Undefined for a map click — and undefined means "nothing was
+       *  claimed", not "the address agrees" (see src/lib/addressMatch.ts). */
+      searchedAddress?: string
+    }
   | { status: 'error'; error: ParcelError; onRetry: () => void }
 
 // Labels the FAR that drove the headline floor area, so the number reads as
@@ -175,6 +185,9 @@ export function ParcelPanelContent(props: Props) {
   // Default spec for the instant-report CTA — null when the parcel offers no
   // size basis, in which case we keep the old single "Start full analysis" CTA.
   const instantSpec = blocked ? null : buildDefaultSpec(data, props.city)
+  // Did the parcel we are about to describe belong to the address that was
+  // searched? Null when nothing was searched, and null when it agrees.
+  const addressNote = addressCheckNote(checkAddress(props.searchedAddress, data, props.city))
 
   return (
     // On mobile this is a flex column so the trailing CTA can pin to the bottom
@@ -191,6 +204,26 @@ export function ParcelPanelContent(props: Props) {
         </h2>
         {data.parcelId && (
           <p className="mt-1.5 text-xs text-piranha-charcoal/50">ID {data.parcelId}</p>
+        )}
+        {/* Directly under the address, because that is the claim it qualifies —
+            and above every number on the panel, because if this is the wrong
+            parcel then none of them is about the searched address. 34 of 200
+            measured round trips landed on a different parcel and every one
+            published a lot area and a cost. It WARNS rather than refuses: a
+            geocoder and an assessor disagree about spelling constantly, so a
+            refusal on a false mismatch would cost a correct answer, while a
+            false warning costs a glance. See src/lib/addressMatch.ts. */}
+        {addressNote && (
+          <p
+            role="status"
+            className={`mt-3 rounded-lg border px-3 py-2 text-xs leading-snug ${
+              addressNote.tone === 'warn'
+                ? 'border-amber-600/40 bg-amber-50/80 text-piranha-charcoal/85'
+                : 'border-piranha-charcoal/15 bg-piranha-charcoal/[0.03] text-piranha-charcoal/65'
+            }`}
+          >
+            {addressNote.text}
+          </p>
         )}
       </header>
 

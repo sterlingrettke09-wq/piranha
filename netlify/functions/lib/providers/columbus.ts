@@ -93,7 +93,9 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type Feature
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import { resolveColumbus, usesForZone, COLUMBUS_TITLE33_NAMES } from '../zoning/columbus'
+import { recordAddress } from '../address'
 
 const SERVICE = 'https://maps2.columbus.gov/arcgis/rest/services/Applications/Zoning/MapServer'
 // Franklin County Auditor parcel fabric republished by the City. County-wide.
@@ -105,8 +107,11 @@ const PARCELS = `${SERVICE}/5`
 // overlapping polygon (LARLD/H-60 against this layer's LC2/H-35). /20 returned
 // exactly one polygon at all 56 points.
 const ZONING = `${SERVICE}/20`
-// Single polygon, CITY_NAME = 'COLUMBUS'. The jurisdiction gate.
-const CITY_BOUNDARY = `${SERVICE}/21`
+// Single polygon, CITY_NAME = 'COLUMBUS'. The jurisdiction gate — its URL, its
+// match and its refusal wording live in ../jurisdiction.ts, one entry per live
+// city, because this gate existed in four providers and was missing from eight
+// that were measured publishing their neighbours' land.
+const COLUMBUS_GATE = cityLimitsGate('columbus')!
 // Layer ids read from the service's own layer index 2026-08-08, not guessed
 // (CLAUDE.md rule 8): 14 Historic & Design Review Areas, 15 Commercial
 // Overlays, 16 Planning Overlays, 21 Corporate Boundary.
@@ -331,7 +336,7 @@ export async function getColumbusParcelInfo(lat: number, lng: number): Promise<P
       { deadline, maxAttempts: 2, attemptCapMs: 4000 },
     ),
     Promise.allSettled([
-      fetchFeatures(CITY_BOUNDARY, lat, lng, ['CITY_NAME']),
+      fetchCityLimits(COLUMBUS_GATE, lat, lng),
       fetchFeatures(HISTORIC_AND_DESIGN, lat, lng, ['TYPE', 'REVIEW_BODY', 'DISTRICT_NAME', 'PROPERTY_NAME']),
       fetchFeatures(PLANNING_OVERLAYS, lat, lng, ['OVERLAY_NAME']),
       fetchFeatures(COMMERCIAL_OVERLAYS, lat, lng, ['OVRLY_NAME']),
@@ -346,16 +351,8 @@ export async function getColumbusParcelInfo(lat: number, lng: number): Promise<P
   // The gate degrades OPEN on a fetch failure — refusing a real Columbus
   // address because an optional layer timed out would be worse than the thing
   // it prevents — and the zoning miss then surfaces as a gap on its own.
-  if (cityR.status === 'fulfilled' && (cityR.value.features?.length ?? 0) === 0) {
-    console.log({ event: 'parcel.outside_city', city: 'columbus', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'OUT_OF_BBOX',
-      message:
-        'That point is in Franklin County but outside the City of Columbus, whose zoning is the only zoning this tool has for the area.',
-      status: 400,
-    }
-  }
+  const outside = outsideCity('columbus', cityR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT, and it sits AFTER the gate on purpose. The city-boundary
   // layer answers independently of the zoning layer, so when it says the point
@@ -433,6 +430,7 @@ export async function getColumbusParcelInfo(lat: number, lng: number): Promise<P
   const sources: Record<string, string> = {
     parcels: PARCELS,
     zoning: ZONING,
+    ...cityLimitsSource('columbus'),
     historic: HISTORIC_AND_DESIGN,
     flood: ENDPOINTS.flood,
   }
@@ -443,7 +441,7 @@ export async function getColumbusParcelInfo(lat: number, lng: number): Promise<P
   if (webLink) sources.zoningOrdinance = webLink
 
   const info: ParcelInfo = {
-    address: parcel.SITEADDRESS ? String(parcel.SITEADDRESS).replace(/\s+/g, ' ').trim() : 'Selected location',
+    ...recordAddress(parcel.SITEADDRESS),
     parcelId: String(parcel.PARCELID ?? ''),
     coordinates: [lng, lat],
     zoning: {

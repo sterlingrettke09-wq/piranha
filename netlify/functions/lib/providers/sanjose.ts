@@ -20,6 +20,7 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelRe
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { geocodedAddress } from '../address'
 
 const PLN = 'https://geo.sanjoseca.gov/server/rest/services/PLN/PLN_Geocortex_Public_PRD/MapServer'
 const PARCELS = `${PLN}/49`
@@ -225,7 +226,7 @@ export async function getSanJoseParcelInfo(lat: number, lng: number): Promise<Pa
 
   const info: ParcelInfo = {
     // No address in the parcel layer at all — Mapbox is the only source.
-    address: geocoded ?? 'Selected location',
+    ...geocodedAddress(geocoded),
     parcelId: String(parcel.APN ?? parcel.PARCELID ?? ''),
     coordinates: [lng, lat],
     zoning: {

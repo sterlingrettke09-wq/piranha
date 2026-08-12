@@ -8,6 +8,7 @@ import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveDenver, DENVER_FT_PER_STORY } from '../zoning/denver'
+import { recordAddress } from '../address'
 
 const PARCELS = 'https://denvergov.org/maps/data/Zoning/MapServer/0'
 const ZONING = 'https://denvergov.org/maps/data/Zoning/MapServer/1'
@@ -221,7 +222,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const existing = ownerPublic ? { ...(existingBase ?? {}), ownerPublic: true } : existingBase
 
   const info: ParcelInfo = {
-    address: address || 'Selected location',
+    ...recordAddress(address),
     parcelId: String(parcel.SCHEDNUM ?? ''),
     coordinates: [lng, lat],
     zoning: {

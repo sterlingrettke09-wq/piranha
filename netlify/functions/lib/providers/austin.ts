@@ -26,6 +26,8 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelR
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
+import { geocodedAddress } from '../address'
 
 const PARCELS =
   'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/EXTERNAL_tcad_parcel/FeatureServer/0'
@@ -40,6 +42,22 @@ const ZONING =
 // canonically named, so prefer it.)
 const SUBCHAPTER_F =
   'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/PLANNINGCADASTRE_residential_design_standards/FeatureServer/0'
+
+// ── THE JURISDICTION GATE ─────────────────────────────────────────────────
+// The parcel layer is TCAD's (Travis County); the zoning layer is the CITY's.
+// Measured 2026-08-12 at the real entry point: West Lake Hills, Rollingwood and
+// Sunset Valley addresses inside AUSTIN_BBOX all returned ok:true with a real lot
+// area and `districtCode: 'Unknown'`.
+//
+// ⚠️ The gate accepts FULL **and LTD** jurisdiction, which is a measurement:
+// Austin zones inside its limited-purpose annexations. See ../jurisdiction.ts.
+//
+// The layer, the match and the refusal wording live in ../jurisdiction.ts,
+// which carries one entry for every live city and records how each was
+// established. It degrades OPEN on a failed fetch and reads the EXACT point,
+// never a buffered snap.
+const AUSTIN_GATE = cityLimitsGate('austin')!
+
 
 // Max height + FAR by base zone. Verified value-by-value 2026-08-05 against the
 // PRIMARY source: Austin Land Development Code § 25-2-492 (SITE DEVELOPMENT
@@ -255,12 +273,17 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
       { deadline, maxAttempts: 2, attemptCapMs: 4000 },
     ),
     Promise.allSettled([
+      fetchCityLimits(AUSTIN_GATE, lat, lng),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
       reverseGeocode(lat, lng),
       fetchFeatures(SUBCHAPTER_F, lat, lng, ['ZONING_OVERLAY_NAME']),
     ]),
   ])
-  const [floodR, geocodeR, subFR] = optional
+  const [gateR, floodR, geocodeR, subFR] = optional
+
+  // Runs BEFORE the parcel is read and BEFORE the state split below.
+  const outside = outsideCity('austin', gateR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
   if (!parcelR.ok || !zoningR.ok) {
@@ -280,7 +303,7 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
 
   // The mirror's SITUS field holds only a house number (no street), so derive a
   // proper street address by reverse-geocoding the click point.
-  const address = (geocodeR.status === 'fulfilled' ? geocodeR.value : null) ?? 'Selected location'
+  const addressed = geocodedAddress(geocodeR.status === 'fulfilled' ? geocodeR.value : null)
   const areaSqFt = Number(parcel.Shape__Area) // already in square feet
   const base = parcel != null && zoning?.BASE_ZONE ? String(zoning.BASE_ZONE) : null
   const lim = austinLimits(base)
@@ -295,7 +318,7 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
   const sf = subFOk ? austinSfLimits(base, insideSubchapterF) : null
 
   const info: ParcelInfo = {
-    address,
+    ...addressed,
     parcelId: String(parcel.PID_10 ?? ''),
     coordinates: [lng, lat],
     zoning: {
@@ -331,7 +354,7 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
       ...unresolvedOverlays({ flood: readFailed(floodR) }),
     },
-    sources: { parcels: PARCELS, zoning: ZONING, flood: ENDPOINTS.flood },
+    sources: { parcels: PARCELS, zoning: ZONING, ...cityLimitsSource('austin'), flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }
 

@@ -30,12 +30,19 @@
 //      not port. Four of the twelve matter here and are fetched in parallel.
 //
 // Jurisdiction note: the parcel service is Wake County property republished by
-// the City, so it also covers Cary, Apex, Garner and the rest of the county
-// (PLANNING_JURISDICTION distinguishes them; 'RA' is Raleigh). The zoning layer
-// does NOT — it stops at the city limits. A click outside Raleigh therefore
-// returns a parcel with no zoning, which surfaces as districtCode 'Unknown'
-// with null limits. That is the correct render — a gap, not a fabricated
-// answer — and it is pinned by a test so it cannot quietly become one.
+// the City, so it also covers Cary, Apex, Garner and the rest of the county. The
+// zoning layer does NOT — it stops at Raleigh's planning jurisdiction. A click
+// outside it returns a parcel with no zoning, which surfaces as districtCode
+// 'Unknown' with null limits.
+//
+// ⚠️ THAT RENDER IS NOT SUFFICIENT, and a claim here called it correct until
+// 2026-08-12. It is correct about the ZONING and it still publishes: the row
+// carries a real address and a real lot area, and a lot area is all the cost
+// engine needs. Cary, Garner and Wake Forest addresses inside RALEIGH_BBOX all
+// returned ok:true, at 798,621 / 309,715 / 87,267 sq ft. An out-of-jurisdiction
+// point is now REFUSED by the boundary gate below; the 'Unknown' render remains
+// for in-jurisdiction land the zoning layer does not cover, and is still pinned
+// by a test so it cannot quietly become a fabricated answer.
 //
 // ⚠️ THAT IS THE **EMPTY-ANSWER** CASE ONLY. A zoning fetch that FAILS is a
 // different state and refuses with UPSTREAM_ERROR; the two used to produce the
@@ -46,6 +53,7 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelR
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import {
   parseRaleighZone,
   resolveRaleigh,
@@ -53,6 +61,7 @@ import {
   RALEIGH_DISTRICT_NAMES,
   RALEIGH_FRONTAGE_NAMES,
 } from '../zoning/raleigh'
+import { recordAddress } from '../address'
 
 // Wake County property, republished by the City. Polygon layer.
 const PARCELS = 'https://maps.raleighnc.gov/arcgis/rest/services/Property/Property/MapServer/0'
@@ -67,6 +76,21 @@ const OVERLAYS_BASE = 'https://maps.raleighnc.gov/arcgis/rest/services/Planning/
 // All four share one schema: OVERLAY / OLAY_DECODE / OLAY_NAME / ZONE_CASE.
 // The other eight (airport, metro park, three watershed, two highway corridor,
 // residential parking) are not fetched.
+
+// ── THE JURISDICTION GATE ─────────────────────────────────────────────────
+// The Wake County parcel fabric answers for Cary, Apex, Garner and the rest of
+// the county; see the jurisdiction note in the header for what was relied on
+// before this gate existed and what it published.
+//
+// ⚠️ The gate is Planning Jurisdictions, NOT Corporate Limits — Raleigh zones
+// inside its ETJ, and the corporate-limits layer under-covers it by 9 of 40
+// sampled points. See ../jurisdiction.ts.
+//
+// The layer, the match and the refusal wording live in ../jurisdiction.ts,
+// which carries one entry for every live city and records how each was
+// established. It degrades OPEN on a failed fetch and reads the EXACT point,
+// never a buffered snap.
+const RALEIGH_GATE = cityLimitsGate('raleigh')!
 const OVERLAY_HISTORIC_GENERAL = `${OVERLAYS_BASE}/7`
 const OVERLAY_HISTORIC_STREETSIDE = `${OVERLAYS_BASE}/8`
 const OVERLAY_NCOD = `${OVERLAYS_BASE}/9`
@@ -196,6 +220,7 @@ export async function getRaleighParcelInfo(lat: number, lng: number): Promise<Pa
       { deadline, maxAttempts: 2, attemptCapMs: 4000 },
     ),
     Promise.allSettled([
+      fetchCityLimits(RALEIGH_GATE, lat, lng),
       fetchFeatures(OVERLAY_HISTORIC_GENERAL, lat, lng, OVERLAY_FIELDS),
       fetchFeatures(OVERLAY_HISTORIC_STREETSIDE, lat, lng, OVERLAY_FIELDS),
       fetchFeatures(OVERLAY_NCOD, lat, lng, OVERLAY_FIELDS),
@@ -203,7 +228,11 @@ export async function getRaleighParcelInfo(lat: number, lng: number): Promise<Pa
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
   ])
-  const [hodGR, hodSR, ncodR, todR, floodR] = optional
+  const [gateR, hodGR, hodSR, ncodR, todR, floodR] = optional
+
+  // Runs BEFORE the parcel is read and BEFORE the state split below.
+  const outside = outsideCity('raleigh', gateR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT. A service that did not answer is an error and the only legal
   // handling is to refuse. A service that ANSWERED and found nothing is a
@@ -304,6 +333,7 @@ export async function getRaleighParcelInfo(lat: number, lng: number): Promise<Pa
   const sources: Record<string, string> = {
     parcels: PARCELS,
     zoning: ZONING,
+    ...cityLimitsSource('raleigh'),
     historic: OVERLAY_HISTORIC_GENERAL,
     flood: ENDPOINTS.flood,
   }
@@ -314,7 +344,7 @@ export async function getRaleighParcelInfo(lat: number, lng: number): Promise<Pa
   if (condLink) sources.zoningConditions = condLink
 
   const info: ParcelInfo = {
-    address: parcel.SITE_ADDRESS ? String(parcel.SITE_ADDRESS).replace(/\s+/g, ' ').trim() : 'Selected location',
+    ...recordAddress(parcel.SITE_ADDRESS),
     parcelId: String(parcel.PIN_NUM ?? ''),
     coordinates: [lng, lat],
     zoning: {

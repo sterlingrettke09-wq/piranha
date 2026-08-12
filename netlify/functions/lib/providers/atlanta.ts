@@ -55,6 +55,7 @@ import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { atlantaSmallLotFar, parseAtlantaZone, resolveAtlanta, usesForZone } from '../zoning/atlanta'
+import { recordAddress } from '../address'
 
 // "Tax Parcels 2025" — Fulton and DeKalb county parcels as republished by the
 // City of Atlanta Department of City Planning.
@@ -381,7 +382,7 @@ export async function getAtlantaParcelInfo(lat: number, lng: number): Promise<Pa
   if (zoneDesc && /^https?:\/\//i.test(zoneDesc)) sources.zoningCode = zoneDesc
 
   const info: ParcelInfo = {
-    address: clean(parcel.SITEADDRESS) ?? 'Selected location',
+    ...recordAddress(clean(parcel.SITEADDRESS)),
     parcelId: cleanId(parcel.PARCELID) ?? '',
     coordinates: [lng, lat],
     zoning: {

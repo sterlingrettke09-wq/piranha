@@ -27,6 +27,7 @@ import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { parseMaxHeightFt, parseMaxFAR, phlFarUnconstrained } from '../zoning/philadelphia'
+import { recordAddress } from '../address'
 
 // Pennsylvania State Plane South (EPSG:2272), units = US survey feet. Parcel
 // geometry is requested in this SR so a shoelace area is already in square feet.
@@ -237,7 +238,7 @@ export async function getPhiladelphiaParcelInfo(lat: number, lng: number): Promi
       : undefined
 
   const info: ParcelInfo = {
-    address: cleanAddress(parcel.addr_std) ?? 'Selected location',
+    ...recordAddress(cleanAddress(parcel.addr_std)),
     parcelId: pin,
     coordinates: [lng, lat],
     zoning: {

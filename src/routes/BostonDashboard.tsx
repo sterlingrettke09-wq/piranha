@@ -16,6 +16,12 @@ interface Selection {
   lat: number
   lng: number
   city: string
+  /** The address the GEOCODER returned for the search that produced this point,
+   *  when a search produced it. Absent for a map click, the example-parcel
+   *  button and any other non-search selection — and absent is NOT "agreed":
+   *  `checkAddress` renders it as `not-searched` and says nothing, because
+   *  there is no user expectation to contradict. */
+  searchedAddress?: string
 }
 
 export default function BostonDashboard() {
@@ -42,7 +48,8 @@ export default function BostonDashboard() {
   // Quantize at the source: every downstream URL (parcel fetch, wizard link,
   // result link, compare encoding) inherits cache-friendly coordinates.
   const handleSelect = useCallback(
-    (lat: number, lng: number) => setSelected({ lat: quantizeCoord(lat), lng: quantizeCoord(lng), city }),
+    (lat: number, lng: number, searchedAddress?: string) =>
+      setSelected({ lat: quantizeCoord(lat), lng: quantizeCoord(lng), city, searchedAddress }),
     [city],
   )
 
@@ -268,7 +275,12 @@ export default function BostonDashboard() {
           <span aria-hidden className="h-1.5 w-10 rounded-full bg-piranha-charcoal/25" />
         </button>
         <div className="min-h-0 flex-1">
-          <ParcelPanel selected={activeSelection} city={city} cmp={cmp} />
+          <ParcelPanel
+            selected={activeSelection}
+            city={city}
+            cmp={cmp}
+            searchedAddress={activeSelection?.searchedAddress}
+          />
         </div>
       </div>
     </div>

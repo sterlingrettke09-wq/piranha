@@ -4,7 +4,7 @@ import type { ParcelInfo } from '../../../src/types/parcel'
 import type { AnalysisInput } from '../../../src/types/analysis'
 
 const parcel = (over: Partial<ParcelInfo['zoning']> = {}, lotSize: number | null = 10000): ParcelInfo => ({
-  address: '1 Test St', parcelId: 'p1', coordinates: [-71.06, 42.36],
+  address: '1 Test St', addressBasis: 'record', parcelId: 'p1', coordinates: [-71.06, 42.36],
   zoning: { districtCode: 'B-2-65', subdistrict: null, article: null, maxHeightFt: null, maxFAR: null, allowedUses: null, ...over },
   lot: { sizeSqFt: lotSize, lotType: null },
   overlays: { historicDistrict: null, floodZone: null },

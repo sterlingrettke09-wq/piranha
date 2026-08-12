@@ -140,12 +140,14 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelR
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import {
   LAS_VEGAS_UNREADABLE_CODES,
   parseLasVegasZone,
   resolveLasVegas,
   usesForZone,
 } from '../zoning/lasvegas'
+import { recordAddress } from '../address'
 
 const CLV = 'https://mapdata.lasvegasnevada.gov/clvgis/rest/services'
 // Layer ids read from the service's own directory 2026-08-09, not guessed
@@ -163,8 +165,11 @@ const ZONING = `${CLV}/DevelopmentServices/Zoning/MapServer/0`
 // ' ' (unincorporated Clark County — the Strip and most of the valley). Because
 // the layer holds OTHER jurisdictions too, presence is not the signal here the
 // way it is in Dallas and Phoenix: the NAME must be compared.
-const JURISDICTIONS = `${CLV}/AdministrativeBoundaries/Jurisdictions/MapServer/0`
-const CITY_OF_LAS_VEGAS = 'City of Las Vegas'
+// The URL, the NAME comparison and the refusal wording live in
+// ../jurisdiction.ts, one entry per live city — this gate existed in four
+// providers and was missing from eight that were measured publishing their
+// neighbours' land.
+const LAS_VEGAS_GATE = cityLimitsGate('lasvegas')!
 
 const posInt = (v: unknown): number | null => {
   const n = Number(v)
@@ -385,7 +390,7 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
       // Exact point, never a snap: a buffered retry on a boundary layer reaches
       // 30 m across the line and hands the neighbouring city's land a Las Vegas
       // answer — the defect phoenix.ts records against its own zoning fetch.
-      fetchFeatures(JURISDICTIONS, lat, lng, ['NAME']),
+      fetchCityLimits(LAS_VEGAS_GATE, lat, lng),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
   ])
@@ -402,19 +407,8 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
   // surfaces as a zoning gap without it. Note that "fulfilled with zero
   // features" is a real answer and closes the gate, while a rejection does not —
   // a failed fetch must never become a substantive answer in either direction.
-  if (jurisR.status === 'fulfilled') {
-    const names = (jurisR.value.features ?? []).map((f) => String(f.attributes?.NAME ?? '').trim())
-    if (!names.includes(CITY_OF_LAS_VEGAS)) {
-      console.log({ event: 'parcel.outside_city', city: 'lasvegas', durationMs: Date.now() - t0 })
-      return {
-        ok: false,
-        code: 'OUT_OF_BBOX',
-        message:
-          'That point is in the Las Vegas valley but outside the City of Las Vegas — North Las Vegas, Henderson and unincorporated Clark County (including the Strip) write their own zoning, and City of Las Vegas zoning is the only zoning this tool has here.',
-        status: 400,
-      }
-    }
-  }
+  const outside = outsideCity('lasvegas', jurisR, t0)
+  if (outside) return outside
 
 
   // THE STATE SPLIT, and it sits AFTER the gate on purpose. The jurisdictions
@@ -508,7 +502,9 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
   const sources: Record<string, string> = {
     parcels: PARCELS,
     zoning: ZONING,
-    jurisdictions: JURISDICTIONS,
+    // Was published here as `jurisdictions` with the same URL — renamed to the
+    // one key every gate now publishes under (see jurisdiction.ts).
+    ...cityLimitsSource('lasvegas'),
     flood: ENDPOINTS.flood,
     // The publisher the City's own Zoning Code page links for Title 19.
     zoningCode: 'https://online.encodeplus.com/regs/lasvegas-nv/doc-viewer.aspx',
@@ -517,7 +513,7 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
   const article = [buildArticle(code), entitlementNote(zoning)].filter(Boolean).join(' · ') || null
 
   const info: ParcelInfo = {
-    address: siteAddress(parcel) ?? 'Selected location',
+    ...recordAddress(siteAddress(parcel)),
     parcelId: clean(parcel.PARCEL) ?? '',
     coordinates: [lng, lat],
     zoning: {

@@ -80,7 +80,9 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelR
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import { narrowestFarSubCap, resolveDallas, usesForZone } from '../zoning/dallas'
+import { recordAddress } from '../address'
 
 // "Tax Parcels" — the five counties' appraisal-district parcels as republished
 // by the City of Dallas.
@@ -110,7 +112,12 @@ const SUP = `${ZONING_BASE}/4`
 // verbatim that it is the "city limits of the City of Dallas, Texas". Presence
 // of a feature at the point IS the answer; no attribute comparison is needed and
 // none is made, so a renamed value cannot silently open the gate.
-const CITY_LIMITS = 'https://gis.dallascityhall.com/arcgis/rest/services/Basemap/CityLimits/MapServer/0'
+//
+// The URL, the match and the refusal wording now live in ../jurisdiction.ts so
+// that every city has to declare one or declare that it has none. Nothing about
+// Dallas's behaviour changed in the move; providers/dallas.test.ts pins the
+// Highland Park wording.
+const DALLAS_GATE = cityLimitsGate('dallas')!
 
 // The publisher's own chapter node for the article this city's limits come from.
 // Deliberately NOT written as a comment citation — see the header of
@@ -435,8 +442,9 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
     Promise.allSettled([
       // Exact point, never a snap: a buffered retry on a boundary layer would pull
       // the city limits 30 m across the line and open the gate for the enclave it
-      // exists to close.
-      fetchFeatures(CITY_LIMITS, lat, lng, ['CITY']),
+      // exists to close. `fetchCityLimits` is `fetchFeatures` for exactly that
+      // reason — it has no snap variant to reach for.
+      fetchCityLimits(DALLAS_GATE, lat, lng),
       fetchFeatures(PD_SUBDISTRICTS, lat, lng, ['LONG_ZONE_DIST', 'PD_NUM', 'SUBDIST1', 'SUBDIST2', 'COMMON_NAME']),
       fetchFeatures(HISTORIC, lat, lng, ['H_OVERLAY', 'NAME', 'ORD_NUM']),
       fetchFeatures(SUP, lat, lng, ['SUP_NUM', 'SPECIFICUSE', 'STATUS', 'EXPIRES']),
@@ -452,20 +460,14 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
   // Highland Park, University Park, Richardson, Garland, Irving and twenty-eight
   // other places (33 distinct CITY values, measured).
   //
-  // It degrades OPEN on a fetch failure, matching columbus.ts: refusing a real
-  // Dallas address because an optional layer timed out is a worse failure than
-  // the one this prevents, and a genuine out-of-city point still surfaces as a
-  // zoning gap on its own.
-  if (cityR.status === 'fulfilled' && (cityR.value.features?.length ?? 0) === 0) {
-    console.log({ event: 'parcel.outside_city', city: 'dallas', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'OUT_OF_BBOX',
-      message:
-        'That point is inside the Dallas area but outside the City of Dallas — Highland Park and University Park are separate cities. Dallas zoning is the only zoning this tool has here.',
-      status: 400,
-    }
-  }
+  // The layer, the match and the wording now live in ../jurisdiction.ts, which
+  // holds one entry for every live city — because this gate existed in four
+  // providers and was MISSING from eight others that were measured publishing
+  // their neighbours' land. It degrades OPEN on a fetch failure (see rule 3
+  // there): refusing a real Dallas address because an optional layer timed out
+  // is a worse failure than the one this prevents.
+  const outside = outsideCity('dallas', cityR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT, and it sits AFTER the gate on purpose. The boundary layer
   // answers independently of the zoning layer, so when it says the point is
@@ -542,7 +544,7 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
   const sources: Record<string, string> = {
     parcels: PARCELS,
     zoning: ZONING,
-    cityLimits: CITY_LIMITS,
+    ...cityLimitsSource('dallas'),
     pdSubdistricts: PD_SUBDISTRICTS,
     historic: HISTORIC,
     sup: SUP,
@@ -556,7 +558,7 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
   if (dcad && /^https?:\/\//i.test(dcad)) sources.appraisalDistrict = dcad
 
   const info: ParcelInfo = {
-    address: buildAddress(parcel) ?? 'Selected location',
+    ...recordAddress(buildAddress(parcel)),
     parcelId: parcelAccount(parcel.ACCT) ?? '',
     coordinates: [lng, lat],
     zoning: {

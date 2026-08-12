@@ -123,7 +123,9 @@ import {
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import { resolvePhoenix, usesForZone, type PhoenixLimits } from '../zoning/phoenix'
+import { recordAddress } from '../address'
 
 // Layer ids read from each service's own layer index 2026-08-09, not guessed
 // (CLAUDE.md rule 8).
@@ -146,7 +148,10 @@ const HISTORIC = `${BASE}/HistoricProperties/MapServer/0`
  *  cannot silently open the gate. Deliberately NOT `CityLimit/MapServer`, which
  *  is a 13-layer cartographic service of outlines, masks and label-only
  *  variants rather than a boundary polygon to query. */
-const CITY_BOUNDARY = `${BASE}/CityBoundary/MapServer/0`
+// The URL, the match and the refusal wording live in ../jurisdiction.ts, one
+// entry per live city — this gate existed in four providers and was missing
+// from eight that were measured publishing their neighbours' land.
+const PHOENIX_GATE = cityLimitsGate('phoenix')!
 
 /** ArcGIS keys this column with the parentheses in the name. */
 const SHAPE_AREA = 'SHAPE.STArea()'
@@ -436,7 +441,7 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
       // Exact point, never a snap — for the same reason the zoning fetch above is
       // exact. A buffered retry on a boundary layer reaches 30 m across the line
       // and re-opens the gate for the Scottsdale parcel that motivated it.
-      fetchFeatures(CITY_BOUNDARY, lat, lng, ['NAME'], false, undefined, capped(GATE_TIMEOUT_MS)),
+      fetchCityLimits(PHOENIX_GATE, lat, lng, capped(GATE_TIMEOUT_MS)),
       fetchFeatures(ZONING_OVERLAYS, lat, lng, ['NAME', 'REGULATORY'], false, undefined, capped(OPTIONAL_TIMEOUT_MS)),
       fetchFeatures(HISTORIC, lat, lng, ['NAME', 'TYPE', 'STATUS'], false, undefined, capped(OPTIONAL_TIMEOUT_MS)),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE'], false, undefined, capped(OPTIONAL_TIMEOUT_MS)),
@@ -460,18 +465,10 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
   // zoning layer, so a zero-feature result is a COMPLETE answer about the point
   // and the more useful one to return. Refusing with "we couldn't reach the
   // service" because zoning happened to time out on the same request would
-  // discard a fact we actually have. columbus.ts, dallas.ts and lasvegas.ts
-  // order their gates the same way, and upstreamSplit.test.ts pins all four.
-  if (cityR.status === 'fulfilled' && (cityR.value.features?.length ?? 0) === 0) {
-    console.log({ event: 'parcel.outside_city', city: 'phoenix', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'OUT_OF_BBOX',
-      message:
-        'That point is in Maricopa County but outside the City of Phoenix — Scottsdale, Tempe, Mesa and Glendale write their own zoning, and Phoenix zoning is the only zoning this tool has here.',
-      status: 400,
-    }
-  }
+  // discard a fact we actually have. Every gated provider orders it the same
+  // way, and upstreamSplit.test.ts pins all twelve.
+  const outside = outsideCity('phoenix', cityR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT. "The service did not answer" is an error, and the only
   // legal handling of it is to refuse: no default district, no fall-through to a
@@ -623,7 +620,10 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
     parcels: PARCELS,
     parcelDetail: PARCELS_SUPPLEMENT,
     zoning: ZONING,
-    cityBoundary: CITY_BOUNDARY,
+    // Was published here as `cityBoundary` with the same URL. Renamed, not
+    // added: twelve gates publishing under one key is the point, and three
+    // spellings for one claim read as three different things.
+    ...cityLimitsSource('phoenix'),
     overlays: ZONING_OVERLAYS,
     historic: HISTORIC,
     flood: ENDPOINTS.flood,
@@ -635,7 +635,7 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
   if (assessorLink && /^https?:\/\//i.test(assessorLink)) sources.assessor = assessorLink
 
   const info: ParcelInfo = {
-    address: streetAddress(parcel) ?? 'Selected location',
+    ...recordAddress(streetAddress(parcel)),
     parcelId: clean(parcel.APN) ?? '',
     coordinates: [lng, lat],
     zoning: {

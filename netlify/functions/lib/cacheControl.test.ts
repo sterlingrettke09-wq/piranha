@@ -11,6 +11,7 @@ function info(
 ): ParcelInfo {
   return {
     address: over.address ?? '123 Main St',
+    addressBasis: over.address === 'Selected location' ? 'none' : 'record',
     parcelId: 'p1',
     coordinates: [-87.6, 41.9],
     zoning: {

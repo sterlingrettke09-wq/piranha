@@ -584,9 +584,14 @@ describe('getLasVegasParcelInfo', () => {
     // Nothing may reach the Clark County services — the county's parcel fabric
     // and its lookalike historic overlay are both deliberately unused.
     expect(seen.some((u) => u.includes('clarkcountynv.gov'))).toBe(false)
+    // `cityLimits` is the jurisdiction gate's own layer. It was published here
+    // under a Las-Vegas-only name until every gated city was moved onto the one
+    // key (`CITY_LIMITS_SOURCE_KEY`, ../jurisdiction.ts); the URL did not
+    // change. Kept as a LITERAL rather than that constant on purpose — a pinned
+    // inventory that imports the name it is pinning cannot see a rename.
     expect(Object.keys(res.info.sources).sort()).toEqual([
+      'cityLimits',
       'flood',
-      'jurisdictions',
       'parcels',
       'zoning',
       'zoningCode',

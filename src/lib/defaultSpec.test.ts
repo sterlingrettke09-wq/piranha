@@ -5,6 +5,7 @@ import type { ParcelInfo } from '../types/parcel'
 function parcel(over: Partial<ParcelInfo> = {}): ParcelInfo {
   return {
     address: '1 Main St',
+    addressBasis: 'record',
     parcelId: 'PID-1',
     coordinates: [-71.05, 42.36], // [lng, lat]
     zoning: {
@@ -243,7 +244,7 @@ describe('buildDefaultSpec — the envelope bounds the default program', () => {
 // and an unlabelled guess reaching cost/units/fees is the defect.
 describe('buildDefaultSpec — gfaBasis labels the assumption', () => {
   const base = {
-    address: 'x', parcelId: 'p', coordinates: [-97.7, 30.3] as [number, number],
+    address: 'x', addressBasis: 'record' as const, parcelId: 'p', coordinates: [-97.7, 30.3] as [number, number],
     zoning: { districtCode: 'R-1', subdistrict: null, article: null, maxHeightFt: 40, maxFAR: null, allowedUses: ['residential'] },
     lot: { sizeSqFt: 10000, lotType: null },
     overlays: { historicDistrict: null, floodZone: null },

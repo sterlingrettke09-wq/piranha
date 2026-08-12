@@ -105,6 +105,7 @@ describe('SF-4B — the code states 2 stories, not 30 feet', () => {
     const env = computeEnvelope(
       {
         address: 'test',
+        addressBasis: 'record',
         parcelId: 'test',
         coordinates: [LNG, LAT],
         zoning: z,
@@ -152,6 +153,7 @@ describe('R&D — the 0.25 FAR is geographically conditioned, not district-wide'
     const env = computeEnvelope(
       {
         address: 'test',
+        addressBasis: 'record',
         parcelId: 'test',
         coordinates: [LNG, LAT],
         zoning: z,

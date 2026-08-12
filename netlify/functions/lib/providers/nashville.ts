@@ -14,12 +14,34 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '.
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
+import { recordAddress } from '../address'
 
 const PARCELS = 'https://maps.nashville.gov/arcgis/rest/services/Cadastral/Parcels/MapServer/0'
 const ZL = 'https://maps.nashville.gov/arcgis/rest/services/Zoning_Landuse'
 const ZONING = `${ZL}/Zoning/MapServer/14`
 // One layer covers all 19 overlay types (historic, conservation, UDO, etc.).
 const OVERLAYS = `${ZL}/ZoningOverlayDistricts/MapServer/0`
+
+// ── THE JURISDICTION GATE ─────────────────────────────────────────────────
+// ⚠️ NASHVILLE HAS NO "CITY LIMITS" TO READ, and the header above is why: the
+// consolidated city-county means Metro's boundary IS Davidson County. What the
+// header does not say is that seven SATELLITE CITIES sit inside that county and
+// kept their own zoning. Measured at the real entry point 2026-08-12: Belle
+// Meade and Berry Hill addresses returned ok:true with real lot areas and
+// `districtCode: 'Satellite City'` — the label went straight through to the
+// report as if it were a zoning district.
+//
+// The gate is therefore IN-BAND: Metro's own zoning layer labels those polygons
+// `ZONE_DESC = 'Satellite City'`, so the refusal reads Metro's vocabulary rather
+// than inferring a boundary. It is queried separately from the required zoning
+// read on purpose — that read is conditionally required (it falls back to the
+// parcel row's denormalised `Zoning`), and a gate must not inherit a fallback.
+//
+// The layer, the match and the wording live in ../jurisdiction.ts, which records
+// that maps.nashville.gov was enumerated for a boundary polygon first and
+// publishes none.
+const NASHVILLE_GATE = cityLimitsGate('nashville')!
 
 const SQ_FT_PER_ACRE = 43560
 
@@ -84,11 +106,16 @@ export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<
       attemptCapMs: 4000,
     }),
     Promise.allSettled([
+      fetchCityLimits(NASHVILLE_GATE, lat, lng),
       fetchFeatures(OVERLAYS, lat, lng, ['ZONE_DESC', 'NAME']),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
   ])
-  const [overlayR, floodR] = optional
+  const [gateR, overlayR, floodR] = optional
+
+  // Runs BEFORE the parcel is read and before either refusal below.
+  const outside = outsideCity('nashville', gateR, t0)
+  if (outside) return outside
 
   if (!parcelR.ok) {
     return upstreamUnavailable('nashville', 'Nashville', [parcelR], t0)
@@ -151,7 +178,7 @@ export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<
   const existing = ownerPublic ? { ...existingBase, ownerPublic: true } : luDesc ? existingBase : undefined
 
   const info: ParcelInfo = {
-    address: parcel.PropAddr ? String(parcel.PropAddr).replace(/\s+/g, ' ').trim() : 'Selected location',
+    ...recordAddress(parcel.PropAddr),
     parcelId: String(parcel.APN ?? ''),
     coordinates: [lng, lat],
     zoning: {
@@ -184,7 +211,13 @@ export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<
     // Tennessee assesses at a statutory ratio of market value (25% residential,
     // 40% commercial), so the appraised total is a usable reference.
     assessedValue: posInt(parcel.TotlAppr),
-    sources: { parcels: PARCELS, zoning: ZONING, overlays: OVERLAYS, flood: ENDPOINTS.flood },
+    // ⚠️ `cityLimits` here is the SAME URL as `zoning`, and that is correct
+    // rather than a copy-paste: Nashville's gate is in-band (Metro labels the
+    // satellite cities inside its own zoning layer, `ZONE_DESC = 'Satellite
+    // City'` — see jurisdiction.ts). The duplicate is what an honest source
+    // list looks like when one layer answers two questions; sourcing the gate
+    // to some other layer to avoid the repetition would cite the wrong one.
+    sources: { parcels: PARCELS, zoning: ZONING, ...cityLimitsSource('nashville'), overlays: OVERLAYS, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }
 

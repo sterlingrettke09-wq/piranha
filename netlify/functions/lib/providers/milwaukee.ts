@@ -51,6 +51,7 @@ import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveMilwaukee, usesForZone, MILWAUKEE_DISTRICT_NAMES } from '../zoning/milwaukee'
+import { recordAddress } from '../address'
 
 // MPROP_full (layer 2), not MPROP_lite (layer 1). Both are the same 159,963
 // features over the same geometry, but only _full carries `C_A_EXM_*` — the
@@ -525,7 +526,7 @@ export async function getMilwaukeeParcelInfo(lat: number, lng: number): Promise<
   const historicDistrict = overlayNames(hist, 'NAME')[0] ?? null
 
   const info: ParcelInfo = {
-    address: composeAddress(parcel),
+    ...recordAddress(composeAddress(parcel)),
     parcelId: String(parcel.TAXKEY ?? ''),
     coordinates: [lng, lat],
     zoning: {

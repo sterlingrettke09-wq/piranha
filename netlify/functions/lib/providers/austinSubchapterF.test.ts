@@ -47,6 +47,7 @@ describe('Austin two-branch Subchapter F resolution', () => {
 function parcel(zoning: Partial<ParcelInfo['zoning']>, lotSqFt: number | null): ParcelInfo {
   return {
     address: 'test',
+    addressBasis: 'record',
     parcelId: 'test',
     coordinates: [-97.73, 30.307],
     zoning: {

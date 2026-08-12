@@ -7,6 +7,7 @@ import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveSfFar } from '../zoning/sf'
+import { geocodedAddress, recordAddress } from '../address'
 
 const BASE = 'https://sfplanninggis.org/arcgiswa/rest/services/PlanningData/MapServer'
 const ZONING = `${BASE}/3`
@@ -139,14 +140,18 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const streetRaw = a.street != null ? String(a.street).trim() : ''
   const street = /^unknown$/i.test(streetRaw) ? '' : streetRaw
   const stType = a.st_type != null ? String(a.st_type).trim() : ''
-  let address = [stNum, street, stType].filter(Boolean).join(' ')
-  if (!street) address = (await reverseGeocode(lat, lng)) ?? 'Selected location'
+  // The record's own street when it has one; a reverse geocode ONLY as the
+  // fallback — and the two are not interchangeable downstream, which is what the
+  // basis records (see lib/address.ts).
+  const addressed = street
+    ? recordAddress([stNum, street, stType].filter(Boolean).join(' '))
+    : geocodedAddress(await reverseGeocode(lat, lng))
 
   const zone = zoning?.zoning ? String(zoning.zoning) : null
   const far = resolveSfFar(zone)
 
   const info: ParcelInfo = {
-    address,
+    ...addressed,
     parcelId: String(a.blklot ?? ''),
     coordinates: [lng, lat],
     zoning: {

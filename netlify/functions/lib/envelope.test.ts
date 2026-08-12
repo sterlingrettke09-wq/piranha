@@ -13,6 +13,7 @@ function info(over: {
 }): ParcelInfo {
   return {
     address: '1 Test St',
+    addressBasis: 'record',
     parcelId: 'T1',
     coordinates: [-71.06, 42.36],
     zoning: {
@@ -158,7 +159,7 @@ describe('envelope — storiesBasis marks derived story counts', () => {
   // this whole storiesBasis suite goes inert. (`as [number, number]` is
   // unnecessary once the annotation supplies the tuple context.)
   const base: Omit<ParcelInfo, 'zoning'> = {
-    address: 'x', parcelId: 'p', coordinates: [-97.7, 30.3],
+    address: 'x', addressBasis: 'record', parcelId: 'p', coordinates: [-97.7, 30.3],
     lot: { sizeSqFt: 10000, lotType: null },
     overlays: { historicDistrict: null, floodZone: null },
     sources: {}, fetchedAt: '2026-08-04T00:00:00.000Z',

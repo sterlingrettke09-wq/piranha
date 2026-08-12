@@ -6,6 +6,7 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelR
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveSeattle } from '../zoning/seattle'
+import { recordAddress } from '../address'
 
 const ORG = 'https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services'
 const ZONING = `${ORG}/Current_Land_Use_Zoning_Detail_2/FeatureServer/0`
@@ -109,12 +110,12 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
 
   // Trim FIRST, then fall back — a whitespace-only ADDRESS is truthy but renders
   // a blank headline, so guard on the trimmed value.
-  const address = String(parcel.ADDRESS ?? '').replace(/\s+/g, ' ').trim() || 'Selected location'
+  const addressed = recordAddress(parcel.ADDRESS)
   const sqft = Number(parcel.SQFTLOT)
   const zone = zoning?.ZONING ? String(zoning.ZONING) : null
 
   const info: ParcelInfo = {
-    address,
+    ...addressed,
     parcelId: String(parcel.PIN ?? ''),
     coordinates: [lng, lat],
     zoning: {

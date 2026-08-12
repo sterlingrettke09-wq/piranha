@@ -15,6 +15,8 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelRe
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
+import { recordAddress } from '../address'
 
 const PARCELS = 'https://geo.sandag.org/server/rest/services/Hosted/Parcels/FeatureServer/0'
 // California State Plane Zone 6 (EPSG:2230), US survey feet — the parcel layer's
@@ -23,6 +25,21 @@ const CA_ZONE6_FT = 2230
 const DSD = 'https://webmaps.sandiego.gov/arcgis/rest/services/DSD'
 const ZONING = `${DSD}/Zoning_Base/MapServer/0`
 const HISTORIC = 'https://webmaps.sandiego.gov/arcgis/rest/services/Planning/Historic_Preservation_Resources/MapServer/2'
+
+// ── THE JURISDICTION GATE ─────────────────────────────────────────────────
+// The parcel layer is SANDAG's REGIONAL fabric; the zoning layer is the City's.
+// An empty zoning answer is a true fact about the point and is not sufficient to
+// refuse on, because a fact rendered as a gap still publishes a costed report:
+// measured at the real entry point 2026-08-12, Coronado, National City and La
+// Mesa addresses inside SAN_DIEGO_BBOX all returned ok:true with a real lot area
+// and 'Unknown'.
+//
+// The layer, the match and the refusal wording live in ../jurisdiction.ts,
+// which carries one entry for every live city and records how each was
+// established. It degrades OPEN on a failed fetch and reads the EXACT point,
+// never a buffered snap.
+const SAN_DIEGO_GATE = cityLimitsGate('sandiego')!
+
 // Proposition D coastal height limit overlay (CHLOZ) — a real 30 ft cap.
 const COASTAL_HEIGHT = `${DSD}/Zoning_Overlay/MapServer/1`
 // City-owned real property — the only public ownership signal available.
@@ -89,7 +106,10 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
   // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
   // the contract at the top of ../requiredUpstream.ts. The parcel layer is
   // SANDAG's (regional) and the zoning layer is the City's, so an EMPTY zoning
-  // answer is a real out-of-city fact — only a failed FETCH refuses.
+  // answer is a real out-of-city fact — only a failed FETCH refuses here.
+  // ⚠️ It is the boundary polygon (SAN_DIEGO_GATE) that refuses an out-of-city
+  // point, not this emptiness; a comment here once implied the latter was
+  // enough, and it published three neighbouring cities.
   const [parcelR, zoningR, cityLandR, optional] = await Promise.all([
     // maxAttempts 2: fetchParcelSnap already retries its exact query internally.
     readRequired(
@@ -133,13 +153,18 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
       { deadline, maxAttempts: 2, attemptCapMs: 4000 },
     ),
     Promise.allSettled([
+      fetchCityLimits(SAN_DIEGO_GATE, lat, lng),
       fetchFeatures(HISTORIC, lat, lng, ['NAME', 'TYPE']),
       fetchParcelSnap(COASTAL_HEIGHT, lat, lng, ['ZONENAME']),
       fetchFeatures(COASTAL_ZONE, lat, lng, ['FID']),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
   ])
-  const [histR, chlozR, coastalR, floodR] = optional
+  const [gateR, histR, chlozR, coastalR, floodR] = optional
+
+  // Runs BEFORE the parcel is read and BEFORE the state split below.
+  const outside = outsideCity('sandiego', gateR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
   if (!parcelR.ok || !zoningR.ok || !cityLandR.ok) {
@@ -219,7 +244,7 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
       : undefined
 
   const info: ParcelInfo = {
-    address: address || 'Selected location',
+    ...recordAddress(address),
     parcelId: String(parcel.apn ?? ''),
     coordinates: [lng, lat],
     zoning: {
@@ -247,7 +272,7 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
     existing,
     // California assesses at Prop-13 acquisition value, which drifts far from
     // market — deliberately omitted rather than shown as a land-cost proxy.
-    sources: { parcels: PARCELS, zoning: ZONING, historic: HISTORIC, coastalHeight: COASTAL_HEIGHT, cityLand: CITY_LAND, coastalZone: COASTAL_ZONE, flood: ENDPOINTS.flood },
+    sources: { parcels: PARCELS, zoning: ZONING, ...cityLimitsSource('sandiego'), historic: HISTORIC, coastalHeight: COASTAL_HEIGHT, cityLand: CITY_LAND, coastalZone: COASTAL_ZONE, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }
 

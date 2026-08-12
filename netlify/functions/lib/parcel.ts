@@ -55,6 +55,7 @@ import { getLasVegasParcelInfo } from './providers/lasvegas'
 import { getPhoenixParcelInfo } from './providers/phoenix'
 import { computeEnvelope } from './envelope'
 import { resolveBostonFar } from './zoning/boston'
+import { recordAddress } from './address'
 
 export type { ParcelResult }
 
@@ -86,7 +87,10 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
 
   const stNum = parcel.ST_NUM != null ? String(parcel.ST_NUM).trim() : ''
   const stName = parcel.ST_NAME != null ? String(parcel.ST_NAME).trim() : ''
-  const address = [stNum, stName].filter(Boolean).join(' ') || 'Unknown address'
+  // Was 'Unknown address' here and 'Selected location' in every other city, for
+  // the same state. One placeholder now, which also puts an address-less Boston
+  // parcel on the same short cache TTL as everyone else's (`cacheControlFor`).
+  const addressed = recordAddress([stNum, stName].filter(Boolean).join(' '))
   const landSf = Number(parcel.LAND_SF)
 
   const posInt = (v: unknown): number | null => {
@@ -114,7 +118,7 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
   }
 
   const info: ParcelInfo = {
-    address,
+    ...addressed,
     parcelId: String(parcel.PID ?? ''),
     coordinates: [lng, lat],
     zoning: {
@@ -257,11 +261,21 @@ export async function getParcelInfo(city: string, lat: number, lng: number): Pro
       status: 400,
     }
   }
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !isInBbox(cfg.bbox, lat, lng)) {
+  // Two different facts, and they used to share one sentence: "lat/lng missing,
+  // invalid, or outside {city}." A malformed coordinate is a caller bug; a valid
+  // coordinate outside the box is an ANSWER about a place, and it is now the
+  // common one — removing the bbox from the address search (SearchBar.tsx) stops
+  // Mapbox substituting a nearby address for one outside the city, so a search
+  // for a genuinely out-of-area address arrives here at its TRUE coordinate and
+  // this string is what the user reads.
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { ok: false, code: 'OUT_OF_BBOX', message: 'lat/lng missing or invalid.', status: 400 }
+  }
+  if (!isInBbox(cfg.bbox, lat, lng)) {
     return {
       ok: false,
       code: 'OUT_OF_BBOX',
-      message: `lat/lng missing, invalid, or outside ${cfg.label}.`,
+      message: `That location is outside ${cfg.label}. This tool covers ${cfg.label} only — pick another city from the menu, or search an address inside ${cfg.label}.`,
       status: 400,
     }
   }

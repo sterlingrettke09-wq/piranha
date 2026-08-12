@@ -21,6 +21,8 @@
 // name, a mapped land-use code — pass it through `inject` rather than teaching
 // this function about a city.
 
+import { JURISDICTIONS, type CityLimitsGate } from '../../jurisdiction'
+
 /** Attribute overrides for the synthesized feature, keyed by URL substring. */
 export interface Injection {
   /** Substring identifying the layer whose features get these attributes. */
@@ -60,6 +62,23 @@ const matches = (url: string, pat: string | readonly string[] | undefined): bool
 
 const RINGS = [[[0, 0], [100, 0], [100, 100], [0, 100], [0, 0]]]
 
+/**
+ * The jurisdiction gate this request IS, if any.
+ *
+ * Matched on the URL **and** on the exact `outFields` list, not the URL alone —
+ * because Nashville's gate reads the SAME layer as its required zoning read (its
+ * gate is in-band: Metro labels satellite-city polygons in `ZONE_DESC`). Keying
+ * on the URL alone let the gate's sample value land on the zoning read too, and
+ * the district the control run published stopped being the placeholder. The
+ * field list is what distinguishes the two requests.
+ */
+const gateForRequest = (url: string, outFields: string): CityLimitsGate | undefined => {
+  for (const j of Object.values(JURISDICTIONS)) {
+    if (j.kind === 'layer' && url.startsWith(j.url) && outFields === j.fields.join(',')) return j
+  }
+  return undefined
+}
+
 export function synth(url: string, inject: readonly Injection[] = []): unknown {
   if (url.includes('api.mapbox.com')) {
     return { type: 'FeatureCollection', features: [{ properties: { name: '1 Probe St' } }] }
@@ -69,9 +88,19 @@ export function synth(url: string, inject: readonly Injection[] = []): unknown {
   for (const f of (u.searchParams.get('outFields') ?? '').split(',').filter(Boolean)) {
     // Philadelphia refuses a parcel whose `status` is not 1.
     if (f === 'status') attrs[f] = 1
-    // Las Vegas's gate compares the jurisdiction NAME against a literal.
-    else if (f === 'NAME' && url.includes('Jurisdictions')) attrs[f] = 'City of Las Vegas'
     else attrs[f] = 'X1'
+  }
+  // A jurisdiction gate that compares a VALUE ('City of Las Vegas', 'RALEIGH',
+  // JURISDICTION_TYPE 'FULL'…) rejects the placeholder above, so an unpatched
+  // synth would make every value-comparing gate answer OUT_OF_BBOX on every
+  // mocked request — and the failure would look like the providers rather than
+  // like the fixture. The value is READ FROM THE GATE ITSELF (`insideSample` in
+  // ../../jurisdiction.ts, asserted there to satisfy the gate's own predicate)
+  // rather than copied here, so a changed predicate cannot leave a stale literal
+  // behind. Presence-only gates need nothing: a synthesised feature is a feature.
+  const gate = gateForRequest(url, u.searchParams.get('outFields') ?? '')
+  if (gate?.insideSample) {
+    for (const [k, v] of Object.entries(gate.insideSample)) if (k in attrs) attrs[k] = v
   }
   // Caller-supplied values win over the generic 'X1', and are applied only to
   // fields the layer was actually asked for — so an injection naming a field
@@ -106,12 +135,20 @@ export interface RunResult {
   unresolved: readonly string[]
   historicDistrict: string | null
   feeArea: string | undefined
+  /** The address the provider published, and WHERE IT CAME FROM. The pair is
+   *  what `addressBasis.test.ts` pins: a record address can be compared with the
+   *  address a user searched, a reverse-geocoded one cannot, and they render
+   *  identically on the panel. */
+  address: string | null
+  addressBasis: string | null
 }
 
 type Dispatcher = (city: string, lat: number, lng: number) => Promise<
   | {
       ok: true
       info: {
+        address: string
+        addressBasis: string
         zoning: { districtCode: string }
         overlays: { historicDistrict: string | null; feeArea?: string; unresolved?: readonly string[] }
         existing?: { landUse?: string | null; ownerPublic?: boolean }
@@ -168,6 +205,8 @@ export async function probe(
     unresolved: res.ok ? (res.info.overlays.unresolved ?? []) : [],
     historicDistrict: res.ok ? res.info.overlays.historicDistrict : null,
     feeArea: res.ok ? res.info.overlays.feeArea : undefined,
+    address: res.ok ? res.info.address : null,
+    addressBasis: res.ok ? res.info.addressBasis : null,
   }
 }
 

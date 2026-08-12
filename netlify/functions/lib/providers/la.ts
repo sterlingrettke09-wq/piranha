@@ -9,6 +9,8 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
+import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
+import { recordAddress } from '../address'
 
 const PARCELS =
   'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0'
@@ -17,6 +19,20 @@ const HPOZ = 'https://maps.lacity.org/arcgis/rest/services/Mapping/NavigateLA/Ma
 // CA Coastal Commission statewide Coastal Zone polygon — inside it, a Coastal
 // Development Permit is required (Venice, San Pedro, Pacific Palisades…).
 const COASTAL = 'https://services9.arcgis.com/wwVnNW92ZHUIr0V0/arcgis/rest/services/Coastal_Zone_Polygon/FeatureServer/0'
+
+// ── THE JURISDICTION GATE ─────────────────────────────────────────────────
+// The parcel layer is LA COUNTY's; the zoning layer is the CITY's. Measured
+// 2026-08-12 at the real entry point: West Hollywood, Beverly Hills, Culver City
+// and Santa Monica addresses inside LA_BBOX all returned ok:true with a real lot
+// area and `districtCode: 'Unknown'` — $98.5M and $18.0M costed reports for land
+// this tool does not cover. A zoning gap did not stop it; only a refusal does.
+//
+// The layer, the match and the refusal wording live in ../jurisdiction.ts,
+// which carries one entry for every live city and records how each was
+// established. It degrades OPEN on a failed fetch and reads the EXACT point,
+// never a buffered snap.
+const LA_GATE = cityLimitsGate('la')!
+
 
 // In LA, FAR + height are set by the Height District — the token after the base
 // zone in ZONE_CMPLT (e.g. "C2-1" → district 1; "[Q]R4-2" → 2; "R1-1XL" → 1XL).
@@ -198,12 +214,19 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
       { deadline, maxAttempts: 2, attemptCapMs: 4000 },
     ),
     Promise.allSettled([
+      fetchCityLimits(LA_GATE, lat, lng),
       fetchFeatures(HPOZ, lat, lng, ['NAME']),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
       fetchFeatures(COASTAL, lat, lng, ['FID']),
     ]),
   ])
-  const [hpozR, floodR, coastalR] = optional
+  const [gateR, hpozR, floodR, coastalR] = optional
+
+  // Runs BEFORE the parcel is read and BEFORE the state split below, so nothing
+  // about an out-of-city parcel can reach the response and a boundary answer is
+  // not traded away because zoning happened to time out.
+  const outside = outsideCity('la', gateR, t0)
+  if (outside) return outside
 
   // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
   // LA's parcel layer is the COUNTY's and the zoning layer is the CITY's, so an
@@ -228,7 +251,7 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
   const inCoastalZone = coastalR.status === 'fulfilled' && (coastalR.value.features?.length ?? 0) > 0
 
   const rawAddr = parcel.SitusFullAddress ? String(parcel.SitusFullAddress).replace(/\s+/g, ' ').trim() : ''
-  const address = rawAddr.split(/\s+LOS ANGELES\s+CA/i)[0].trim() || 'Selected location'
+  const addressed = recordAddress(rawAddr.split(/\s+LOS ANGELES\s+CA/i)[0])
   // Geometry is in EPSG:2229 (US survey feet); shoelace gives square feet directly.
   const lotSqFt = polygonAreaSqFt(feature?.geometry?.rings, 1)
   const code = zoning?.ZONE_CMPLT ? String(zoning.ZONE_CMPLT) : null
@@ -240,7 +263,7 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
       : null
 
   const info: ParcelInfo = {
-    address,
+    ...addressed,
     parcelId: String(parcel.APN ?? ''),
     coordinates: [lng, lat],
     zoning: {
@@ -274,7 +297,7 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
       }),
     },
     existing: useDesc ? { landUse: useDesc } : undefined,
-    sources: { parcels: PARCELS, zoning: ZONING, historic: HPOZ, flood: ENDPOINTS.flood },
+    sources: { parcels: PARCELS, zoning: ZONING, ...cityLimitsSource('la'), historic: HPOZ, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),
   }
 
