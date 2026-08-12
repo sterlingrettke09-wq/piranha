@@ -5619,3 +5619,46 @@ false warning costs a glance, a false refusal costs the answer to someone who
 typed a correct address, invisibly. Normalisation rules were written and
 unit-tested BEFORE any measurement, explicitly not tuned against the sample, which
 is what makes the resulting rate a measurement rather than a fit.
+
+## 2026-08-12 — A harness that verified an unnamed subset, and why rule 21 keeps losing
+
+### The isolation worktree ran without environment variables all session
+
+Every commit this week was verified by applying its patch to a detached worktree
+and running the suite there. That harness linked `node_modules` and nothing else,
+so the worktree had no `.env`.
+
+It surfaced only when the address-provenance work landed: austin, chicago and
+sanjose reverse-geocode their displayed address, so without a token they publish
+`addressBasis: 'none'` instead of `'geocode'`, and six tests failed on an
+environment difference rather than a defect.
+
+**Record this as a property of the harness, not a bug that was fixed.** Nothing
+before today depended on an environment variable, so every prior isolation check
+was green — but each was verifying a SUBSET of behaviour that neither the harness
+nor its author could name. A green isolation run meant "this builds and passes
+under whatever conditions the worktree happens to provide," and nobody had
+enumerated those conditions. That it never mattered is luck, not design.
+
+The general form: **a verification environment differs from the real one in ways
+that are invisible until something depends on them.** The fix is not only to link
+`.env` — it is to know what the harness provides and what it silently withholds,
+because the answer determines what a pass means.
+
+### Rule 21 is the most-violated rule here, and the violator is always the author of the retraction
+
+Four instances in one day, each caught by the guard the correction existed to
+satisfy: a ledger entry about stale ledger figures quoting the superseded tuple;
+a `cities.ts` note about stale notes restating the retracted sentence; and twice
+more today in retraction comments written while fixing the coverage claim.
+
+The pattern is specific enough to name a cause. **Quoting feels like precision.**
+Reproducing the false sentence reads as scrupulous — showing the work rather than
+paraphrasing away the evidence — and that instinct is correct nearly everywhere.
+It fails here because the artifact being edited is also the corpus someone will
+scan, so a verbatim quote is indistinguishable from a live claim to any reader
+who meets the sentence before the frame around it.
+
+Precision about a retracted claim means being exact about WHAT IT ASSERTED, not
+exact in its words. The rule now says so, because four repetitions by four
+different authors is a design problem rather than four lapses.

@@ -303,6 +303,15 @@ three had been investigated"*, not the sentence itself. Where the exact wording
 genuinely matters, mark it with the supersede convention so a scanner can see the
 frame, and expect the guard to hold you to it.
 
+**This is now the most frequently violated rule here, and the violator is always
+the person writing the retraction** — four instances in one day, each caught by
+the very guard the correction existed to satisfy. That points at the cause:
+**quoting feels like precision.** Reproducing the false sentence reads as
+scrupulous — you are showing your work, not paraphrasing away the evidence — and
+that instinct is right everywhere except here, where the artifact you are editing
+is also the corpus someone will scan. Precision about a retracted claim means
+being exact about WHAT IT ASSERTED, not exact in its words.
+
 **22. A transport can silently transform its payload. Verify byte-identity at the
 DESTINATION; a clean send proves nothing.** Four instances this session, four
 different mechanisms, one signature — the payload was mangled in transit while
