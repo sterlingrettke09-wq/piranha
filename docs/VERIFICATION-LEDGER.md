@@ -4894,3 +4894,120 @@ unknown>` boundary — upstream city field names (`SITUS_ADDRESS_LINE1`, `TAXKEY
 nobody measured: internally consistent, unverifiable, and precisely the shape
 rule 9 says only an outside measurement catches. Those close with a live field
 query per city. Backlog, not sweep.
+
+## 2026-08-11 — A failed fetch published as a geographic claim, and a rate that was the weather
+
+575 real parcels, 25 per city, sampled from each city's own layer rather than
+hand-picked, pushed through the composition `analyze.ts` performs. **Zero
+exceptions.** Not on a null lot, a 207-million-sq-ft park, a 2 sq ft sliver or 84
+`Unknown` district codes. No NaN, no division by zero, no zero-cost or zero-month
+timeline on a non-prohibited verdict.
+
+Every defect it found produced a plausible output instead.
+
+### The defect: a transport failure rendered as a fact about the world
+
+`providers/phoenix.ts` put the zoning read in the same `Promise.allSettled` as
+the cosmetic layers and collapsed it with
+`zoningR.status === 'fulfilled' ? firstAttrs(…) : null` — two facts, one `null`.
+That produced `districtCode: 'Unknown'`, which `assessDevelopability` turns into
+`no_coverage`, which tells the user the parcel *may sit in a neighbouring city or
+unincorporated area we do not cover*, and `analyze.ts` then zeroes cost, timeline
+and hurdles behind it.
+
+The parcel was fully covered. Next click, full report. **A failed fetch had become
+a geographic assertion** — rule 5 at the transport layer, and worse than a wrong
+sentence about a real rule, because the claim is about the world rather than the
+code.
+
+### The root cause was a budget mismatch, not latency
+
+Zoning had a flat 6,000 ms budget with **zero retries**. The parcel snap it must
+agree with had 8,000 ms **and** an internal retry. Under load the parcel resolves
+and the zoning does not, which produces "a real parcel in an unknown district"
+**by construction** rather than by chance.
+
+That is a greppable shape and it generalises: **wherever two calls must agree,
+their budgets must agree.** A pair with mismatched timeouts does not fail
+together, it fails into a state where one half is trusted and the other is
+missing — and a missing half is exactly what a careless ternary turns into a
+substantive answer.
+
+Latency had a separate structural cause. `fetchParcelSnap`'s 8,000 ms plus a
+serial 6,000 ms assessor hop made **14 seconds arithmetically reachable** past
+Netlify's 10 s kill, and three *cosmetic* layers were awaited with the same weight
+as required ones — a 6 s hang on FEMA cost six seconds for a field the UI omits.
+Now bounded to 9.2 s with **no query changed**, verified by a same-moment A/B
+against the pre-change provider: 26 of 26 byte-identical `ParcelInfo`.
+
+### Rule 10 applied to a measurement that SUCCEEDED
+
+The smoke run measured a 19% failure rate and an 8,710 ms p90. Re-probed before
+the fix: **81 of 81 isolated calls resolved, median 277 ms.** Every layer fast,
+32 simultaneous queries showing no degradation.
+
+The rate was **the service's health on one day**, not a property of the code. The
+defect is permanent; its frequency was weather.
+
+Rule 10 says re-probe before recording a FAILURE. This is the same rule pointing
+the other way, and it is the harder half: **nobody re-checks a number that
+explained something.** The 19% was about to be written here as a standing rate,
+and it would have been wrong in a way no later reader could catch — a plausible
+figure, sourced to a real measurement, describing a condition that had passed.
+
+It also removed the option of a before/after, since the failure could not be
+reproduced by waiting. The substitute was **perturbation** (rule 2): fault the
+zoning URL and compare. Three injections, three clean results — and the one that
+matters is the 200-with-an-error-body, because that is the shape that looks like
+a valid empty answer rather than a failure.
+
+### The instrument had been discarding its own evidence
+
+`null-inventory.ts` retried up to 3× on `districtCode: 'Unknown'`, returned the
+first clean result, and **counted nothing**. At a 19% per-call rate, three tries
+resolve cleanly on ~99% of runs. Its `stability()` check could not see it either:
+it keyed on `parcelId`/`lot.sizeSqFt`, and a Phoenix failure returns the RIGHT
+parcel with an unknown district — stable on the axis being sampled.
+
+So the one artifact used to judge fitness reported 23 clean cities while one of
+them failed one request in five. The retry was the only place a failure was ever
+observed and the observation was thrown away — the same shape as the feed row
+counts, where the instrument held the answer and did not record it.
+
+### Three things the fix did that are worth copying
+
+**The failure is a value, not a rejection.** `readRequired` never rejects, because
+a rejected promise is precisely what the `allSettled` idiom turns into `null` in
+one careless ternary. The union has no `.value` on the failure arm, so the
+compiler forces the decision (rule 14).
+
+**Both arms are pinned.** A transport failure refuses AND an empty zoning answer
+still yields `Unknown`. Pinning only the failure arm would let a fix that refuses
+on every empty result pass — and that would break the out-of-city gate, turning a
+correct "not in this city" into an error.
+
+**The copy rejected its own first draft.** It read *"it does not mean the site is
+outside our coverage…"* — a denial that restates the false claim. The guard built
+for rule 21 caught it. Third instance in two days of a correction tripping the
+guard that motivated it.
+
+### Two decisions recorded rather than taken
+
+**The city-boundary gate still degrades OPEN** — a failed boundary read lets a
+point through rather than refusing. Same rule-5 shape one level down, and it is
+what Dallas's Highland Park refusal depends on, so it needs its own pass rather
+than a reflex.
+
+**Philadelphia's `MIN_CREDIBLE_LOT_SQFT` cannot be ported**, which was the
+obvious fix for a 2 sq ft Las Vegas lot publishing `AS_OF_RIGHT` and $482,996.
+That constant rejects an OPA *placeholder* — condo unit accounts (`888*`) report
+0 or 1 sq ft because the land belongs to the building — and 100 was chosen to sit
+below the smallest genuine rowhouse lot. It is a data-quirk filter, not a
+developability threshold, and its rationale is false everywhere else. Las Vegas's
+2 sq ft is real geometry, correctly read.
+
+The decision taken instead: **disclose, do not refuse.** The answer is
+arithmetically right and a threshold would need a defence nobody can give, so the
+lot size is surfaced where the user sees it before the cost. The tool answers what
+was asked and makes the absurdity visible rather than deciding where absurdity
+begins.

@@ -29,8 +29,10 @@ export const handler: JsonHandler = async (event) => {
   if (!r.ok) return fail(r.code, r.message, r.status)
   return {
     statusCode: 200,
-    // Degraded answers (zoning or geocode upstream failed) cache briefly so a
-    // transient outage can't poison the CDN for a day. See cacheControlFor.
+    // Partial answers (no zoning polygon here, or the geocode fell back) cache
+    // briefly so nothing thin poisons the CDN for a day. A failed REQUIRED read
+    // no longer reaches this line at all — it returns above, uncached. See
+    // cacheControlFor and lib/requiredUpstream.ts.
     headers: { ...JSON_HEADERS, 'Cache-Control': cacheControlFor(r.info) },
     body: JSON.stringify(r.info),
   }

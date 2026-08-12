@@ -197,13 +197,24 @@ const CITIES: Record<string, CityConfig> = {
 export const LIVE_CITIES = Object.keys(CITIES)
 
 // ---- Degraded-response cache control ----
-// Providers fetch zoning/geocode via Promise.allSettled and degrade gracefully:
-// a failed zoning lookup becomes districtCode 'Unknown', a failed geocode
-// becomes address 'Selected location'. That's the right call for ONE response —
-// but freezing it into the CDN for 24h turned a transient GIS outage into a
-// day of "Unknown district" for everyone who clicked that block (observed live
-// in Chicago, 2026-06-10). Degraded answers cache for 5 minutes instead, so
+// Freezing a partial answer into the CDN for 24h turned a transient GIS outage
+// into a day of "Unknown district" for everyone who clicked that block (observed
+// live in Chicago, 2026-06-10). Partial answers cache for 5 minutes instead, so
 // the next visitor retries upstream while healthy answers keep the long TTL.
+//
+// ⚠️ WHAT REACHES HERE CHANGED. This used to be the whole mitigation for a
+// failed zoning fetch, because that failure degraded to `districtCode:
+// 'Unknown'` and a short TTL was the best that could be done with it. Required
+// reads now refuse instead (lib/requiredUpstream.ts), and a refusal never
+// becomes a `ParcelInfo`, so it cannot be cached at any TTL — netlify/functions/
+// parcel.ts sends error responses with no Cache-Control header at all.
+//
+// The 'Unknown' branch below is therefore no longer about outages. It now covers
+// the genuine no-coverage answer (a county parcel outside the city's zoning) and
+// the geocode fallback, which is still a degraded field: `reverseGeocode`
+// returns null on failure and the address becomes 'Selected location'. The short
+// TTL is kept for both — a real no-coverage answer is stable, so nothing is lost
+// by re-asking, and the geocode case genuinely wants the retry.
 export const CACHE_OK = 'public, s-maxage=86400, stale-while-revalidate=604800'
 export const CACHE_DEGRADED = 'public, s-maxage=300'
 

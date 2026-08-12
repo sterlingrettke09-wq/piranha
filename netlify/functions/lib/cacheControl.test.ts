@@ -33,7 +33,12 @@ describe('cacheControlFor — degraded responses must not stick for a day', () =
     expect(CACHE_OK).toMatch(/s-maxage=86400/)
   })
 
-  it("zoning lookup failed (districtCode 'Unknown') → 5-minute TTL", () => {
+  // The title used to attribute this branch to a FAILED zoning lookup. That
+  // route no longer exists: a failed required read refuses with UPSTREAM_ERROR
+  // and never becomes a ParcelInfo, so nothing reaching cacheControlFor can be
+  // an outage. `Unknown` here means the zoning service answered and no polygon
+  // covers the point — a real answer, given a short TTL because it is thin.
+  it("no zoning polygon at the point (districtCode 'Unknown') → 5-minute TTL", () => {
     expect(cacheControlFor(info({ districtCode: 'Unknown' }))).toBe(CACHE_DEGRADED)
     expect(CACHE_DEGRADED).toMatch(/s-maxage=300/)
     expect(CACHE_DEGRADED).not.toMatch(/stale-while-revalidate/)
