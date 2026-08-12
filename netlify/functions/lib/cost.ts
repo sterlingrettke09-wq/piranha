@@ -1,6 +1,7 @@
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
-import { impactFee, MIXED_RESIDENTIAL_SHARE, constructionTax, CONSTRUCTION_TAX_MIN_VALUE } from '../../../src/config/estimates'
+import type { ParcelInfo } from '../../../src/types/parcel'
+import { impactFee, feeAreaRead, MIXED_RESIDENTIAL_SHARE, constructionTax, CONSTRUCTION_TAX_MIN_VALUE } from '../../../src/config/estimates'
 import {
   costPerSqFtByUse,
   cityCostIndex,
@@ -26,8 +27,12 @@ export interface CostOpts {
   /** Sq ft of existing building to demolish first. When > 0, a demolition cost
    *  is added — otherwise the quote silently ignores tearing down what's there. */
   demolitionSqFt?: number | null
-  /** Affordable-housing fee market area (Denver/Seattle) → parcel-exact fee. */
-  feeArea?: string
+  /** The parcel's overlays, NOT a bare fee-area string. Passing the overlays
+   *  means the fee-area lookup arrives with its resolution state attached
+   *  (`feeAreaRead`): a string alone cannot say whether "no area" means the
+   *  layer answered or the layer failed, and Denver billed a $307,000-lighter
+   *  total off exactly that ambiguity. */
+  overlays?: ParcelInfo['overlays']
 }
 
 export function estimateCost(
@@ -63,7 +68,13 @@ export function estimateCost(
   if (feasibility.path === 'variance') permit += VARIANCE_FILING_FEE
   // Affordable-housing / linkage fee. Baked into the total only when we can verify
   // the trigger (use + size); otherwise surfaced as an informational note.
-  const fee = impactFee(project.city, project.use, project.gfa, project.units ?? null, opts.feeArea)
+  const fee = impactFee(
+    project.city,
+    project.use,
+    project.gfa,
+    project.units ?? null,
+    opts.overlays ? feeAreaRead(opts.overlays) : undefined,
+  )
   // Mixed-use projects trigger COMMERCIAL-class fees (linkage etc.), which
   // shouldn't bill the residential floors — apply them to the nonresidential
   // share of GFA only.
@@ -80,7 +91,16 @@ export function estimateCost(
     tax && taxableValue > taxMin ? Math.round(taxableValue * tax.pct) : 0
   const impact = linkage + constructionTaxAmt
   const notes: string[] = []
-  if (fee && !fee.applied) notes.push(`${fee.label}: roughly $${fee.perSqFt}/sq ft — not included in the total above.`)
+  // A fee whose RATE could not be resolved prints its label alone. Printing
+  // "roughly $6.14/sq ft" beside a label that says the rate is unknown would
+  // re-publish the guess the label just withdrew (CLAUDE.md rule 21).
+  if (fee && !fee.applied) {
+    notes.push(
+      fee.perSqFt == null
+        ? `${fee.label} — not included in the total above.`
+        : `${fee.label}: roughly $${fee.perSqFt}/sq ft — not included in the total above.`,
+    )
+  }
   if (constructionTaxAmt > 0 && tax) notes.push(`Includes the ${tax.label}.`)
   const impactNote = notes.length > 0 ? notes.join(' ') : undefined
   const total = hard + soft + permit + demolition + impact

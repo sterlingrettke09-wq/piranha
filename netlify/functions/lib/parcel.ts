@@ -30,6 +30,7 @@ import { ENDPOINTS, FIELDS } from '../_endpoints'
 import { mapZoningUse } from './zoningUse'
 import { isGovernmentOwner } from '../../../src/lib/developability'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from './arcgis'
+import { readFailed, unresolvedOverlays } from './unresolvedOverlays'
 import { getNycParcelInfo } from './providers/nyc'
 import { getChicagoParcelInfo } from './providers/chicago'
 import { getSfParcelInfo } from './providers/sf'
@@ -147,6 +148,16 @@ async function getBostonParcelInfo(lat: number, lng: number): Promise<ParcelResu
     overlays: {
       historicDistrict: historic?.HIST_NAME ? String(historic.HIST_NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // Measured 2026-08-12 at the analyze handler, only this layer faulted, on
+      // 26 Exeter St (B-3-65, in the Back Bay Architectural District, restaurant
+      // standing): the historic design-review row and the abutter-appeal row
+      // both disappeared and the verdict went NEEDS_RELIEF 55 mo → AS_OF_RIGHT
+      // 51 mo. See `lib/unresolvedOverlays.ts` for why the emptiness test is
+      // half the condition.
+      ...unresolvedOverlays({
+        historic: !historic?.HIST_NAME && readFailed(historicR),
+        flood: !flood?.FLD_ZONE && readFailed(floodR),
+      }),
     },
     existing,
     // MA assesses at ~full market value, so this is a usable reference (not a
@@ -220,7 +231,17 @@ export const CACHE_DEGRADED = 'public, s-maxage=300'
 
 export function cacheControlFor(info: ParcelInfo): string {
   const degraded =
-    info.zoning.districtCode === 'Unknown' || info.address === 'Selected location'
+    info.zoning.districtCode === 'Unknown' ||
+    info.address === 'Selected location' ||
+    // An unresolved overlay is exactly the state this branch was built for, and
+    // it is the one that now reaches here most often. A response carrying "the
+    // Coastal Zone layer did not respond" is a fact about ONE REQUEST, not about
+    // the parcel — freezing it into the CDN for 24 hours would turn a
+    // thirty-second outage into a day of reports telling every visitor a check
+    // could not be performed, on a layer that came back immediately. Five
+    // minutes, and the next visitor re-asks upstream. (Nothing is lost if the
+    // outage persists: the next response says the same thing.)
+    (info.overlays.unresolved?.length ?? 0) > 0
   return degraded ? CACHE_DEGRADED : CACHE_OK
 }
 

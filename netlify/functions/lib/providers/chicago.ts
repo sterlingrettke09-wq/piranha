@@ -3,6 +3,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { CHICAGO_BASE_FAR } from '../zoning/chicago'
@@ -130,6 +131,14 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
     overlays: {
       historicDistrict: hist?.NAME ? String(hist.NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({
+        historic: !hist?.NAME && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing: { landUse: chicagoExistingUse(pf.attributes.AssessorBLDGclass) },
     sources: { zoning: ZONING, parcels: PARCELS, flood: ENDPOINTS.flood, historic: HISTORIC },

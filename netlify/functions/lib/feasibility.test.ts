@@ -187,6 +187,70 @@ describe('assessFeasibility', () => {
     const r = assessFeasibility(p, project({ use: 'residential', gfa: 5000, units: 4, projectType: 'addition', heightFt: 40 }))
     expect(r.checks.find((c) => c.dimension === 'historic')).toBeUndefined()
   })
+
+  // ── A failed historic read must not read as "not in a district" ────────────
+  //
+  // The check above is the ONLY thing that raises a teardown to NEEDS_RELIEF on
+  // historic grounds, and it tests `historicDistrict` as a boolean. Measured
+  // 2026-08-12 through the live analyze handler with only Boston's historic
+  // layer faulted, on 26 Exeter St in the Back Bay Architectural District: the
+  // control ran NEEDS_RELIEF and the faulted run ran AS_OF_RIGHT. A transport
+  // failure upgraded the parcel's legal standing.
+  const teardownInGap = (over: Partial<ParcelInfo['overlays']> = {}): ParcelInfo => ({
+    ...parcel(),
+    overlays: { historicDistrict: null, floodZone: null, unresolved: ['historic'], ...over },
+    existing: { landUse: 'Single-family residential', yearBuilt: 1899 },
+  })
+  const teardown = project({ use: 'residential', gfa: 5000, units: 4, projectType: 'new', heightFt: 40 })
+
+  it('will not publish AS_OF_RIGHT for a teardown whose historic status could not be read', () => {
+    // Non-vacuous both ways: the same parcel with the layer ANSWERING (no mark)
+    // keeps its as-of-right verdict, so this is the failed read doing the work
+    // and not the teardown.
+    const answered = assessFeasibility(
+      { ...teardownInGap(), overlays: { historicDistrict: null, floodZone: null } },
+      teardown,
+    )
+    expect(answered.overall).toBe('AS_OF_RIGHT')
+    expect(answered.checks.find((c) => c.dimension === 'historic')).toBeUndefined()
+
+    const gap = assessFeasibility(teardownInGap(), teardown)
+    expect(gap.overall).toBe('INDETERMINATE')
+    const h = gap.checks.find((c) => c.dimension === 'historic')!
+    // INDETERMINATE, never NEEDS_RELIEF: a timeout may not manufacture a legal
+    // claim in either direction (CLAUDE.md rule 1).
+    expect(h.status).toBe('INDETERMINATE')
+    expect(h.note).toMatch(/did not respond/)
+  })
+
+  it('does not fire on a vacant lot, where no demolition is at stake', () => {
+    const vacant: ParcelInfo = {
+      ...parcel(),
+      overlays: { historicDistrict: null, floodZone: null, unresolved: ['historic'] },
+    }
+    const r = assessFeasibility(vacant, teardown)
+    expect(r.checks.find((c) => c.dimension === 'historic')).toBeUndefined()
+    expect(r.overall).toBe('AS_OF_RIGHT')
+  })
+
+  it('does not soften a verdict that other dimensions already decided', () => {
+    // The downgrade is scoped to AS_OF_RIGHT. A parcel barred on its own
+    // evidence stays barred — an unchecked overlay is not a route to a milder
+    // verdict.
+    const r = assessFeasibility(
+      { ...teardownInGap(), zoning: { ...parcel().zoning, allowedUses: ['residential'] } },
+      project({ use: 'commercial', gfa: 5000, projectType: 'new', heightFt: 40 }),
+    )
+    expect(r.overall).toBe('PROHIBITED')
+  })
+
+  it('keeps the POSITIVE finding when a district name arrived anyway', () => {
+    // A resolved district is an answer whatever else failed — otherwise the fix
+    // would trade a false clearance for a weaker one.
+    const r = assessFeasibility(teardownInGap({ historicDistrict: 'Historic Beacon Hill District' }), teardown)
+    expect(r.checks.find((c) => c.dimension === 'historic')?.status).toBe('NEEDS_RELIEF')
+    expect(r.overall).toBe('NEEDS_RELIEF')
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

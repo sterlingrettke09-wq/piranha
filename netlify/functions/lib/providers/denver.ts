@@ -4,6 +4,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveDenver, DENVER_FT_PER_STORY } from '../zoning/denver'
@@ -182,6 +183,15 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const eha = ehaR.status === 'fulfilled' ? firstAttrs(ehaR.value) : null
   const feeArea = eha?.MarketArea ? String(eha.MarketArea).trim() : undefined
+  // The EHA read is OPTIONAL — a market-area outage should not refuse a Denver
+  // parcel whose zoning, envelope and timeline all resolved, and residential
+  // parcels never consult it. But its absence is priced: `estimates.ts` charged
+  // the Typical rate whenever `feeArea` was undefined, so a timeout removed
+  // $307,000 from a published total (measured 2026-08-12, 100,000 sf D-C at
+  // Union Station: $921,000 → $614,000). Mark the GAP so the fee can be left
+  // unpriced and disclosed instead of guessed — CLAUDE.md rule 5's corollary,
+  // handled by recording the failure rather than by refusing the response.
+  const feeAreaUnresolved = ehaR.status !== 'fulfilled'
 
   const address = parcel.SITUS_ADDRESS_LINE1 ? String(parcel.SITUS_ADDRESS_LINE1).replace(/\s+/g, ' ').trim() : 'Selected location'
   const land = Number(parcel.LAND_AREA)
@@ -234,6 +244,14 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       historicDistrict: hist?.DIST_NAME ? String(hist.DIST_NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
       feeArea,
+      // Three marks, one call — the fee-area gap above plus the two overlays
+      // whose null makes a hurdle (and its months) disappear rather than a
+      // dollar figure move. See `lib/unresolvedOverlays.ts`.
+      ...unresolvedOverlays({
+        feeArea: feeAreaUnresolved,
+        historic: !hist?.DIST_NAME && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     sources: { parcels: PARCELS, zoning: ZONING, historic: HISTORIC, flood: ENDPOINTS.flood },

@@ -231,6 +231,34 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
       allowed: district,
       note: `This parcel sits in the ${district}. Tearing down the existing building needs the historic commission’s sign-off — a discretionary approval that is often refused for contributing structures. Expect this to be the project’s hardest gate.`,
     })
+  } else if (
+    project.projectType === 'new' &&
+    hasExistingBuilding &&
+    parcel.overlays.unresolved?.includes('historic')
+  ) {
+    // ⚠️ THE CHECK ABOVE IS THE ONLY THING THAT RAISES A TEARDOWN TO
+    // NEEDS_RELIEF ON HISTORIC GROUNDS, and `district` is `string | null` where
+    // the null means EITHER "the layer answered and this parcel is not
+    // designated" OR "the layer did not answer". Read as a boolean, a timeout
+    // took the check away entirely: measured 2026-08-12 at the analyze handler
+    // with only Boston's historic layer faulted, 26 Exeter St (Back Bay
+    // Architectural District, restaurant standing) went NEEDS_RELIEF → **
+    // AS_OF_RIGHT**. A transport failure upgraded the parcel's legal standing,
+    // and `overall` is the single most-read output on the page.
+    //
+    // INDETERMINATE is the honest status and it is also the structurally
+    // correct one: `decisive` below excludes it, so this cannot manufacture a
+    // worse verdict than the evidence supports — it appears in the checklist
+    // and leaves `overall` to the dimensions that did resolve. Asserting
+    // NEEDS_RELIEF instead would be the mirror-image defect, a legal claim made
+    // out of a timeout (CLAUDE.md rules 1 and 5).
+    checks.push({
+      dimension: 'historic',
+      status: 'INDETERMINATE',
+      proposed: 'demolish + rebuild',
+      allowed: 'not established',
+      note: 'The city’s historic-designation service did not respond while this report was generated, so we could not check whether this parcel is in a designated historic district. That matters here specifically because a building is standing: inside a district, demolishing it needs the historic commission’s discretionary sign-off, which is routinely refused for contributing structures and is usually the hardest gate a teardown faces. The verdict above is drawn from the checks that did resolve and does not include this one.',
+    })
   }
 
   // Overall reflects the worst DECISIVE check. A single indeterminate dimension
@@ -251,6 +279,33 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   // Modest heights below the confidence bound keep their verdict.
   const heightUnknown = checks.some((c) => c.dimension === 'height' && c.status === 'INDETERMINATE')
   if (overall === 'AS_OF_RIGHT' && heightUnknown && effHeight != null && effHeight > UNKNOWN_HEIGHT_CONFIDENCE_FT) {
+    overall = 'INDETERMINATE'
+  }
+  // Same move, same reason, different unknown: a teardown whose historic
+  // designation could not be looked up must not publish AS_OF_RIGHT.
+  //
+  // The check pushed above is INDETERMINATE and therefore not decisive, which is
+  // right — it cannot manufacture a NEEDS_RELIEF the evidence does not support.
+  // But leaving `overall` alone is not neutral either. Measured 2026-08-12 at
+  // the analyze handler with only Boston's historic layer faulted, on 26 Exeter
+  // St (Back Bay Architectural District, restaurant standing): the control ran
+  // NEEDS_RELIEF and the faulted run ran **AS_OF_RIGHT**. A transport failure
+  // upgraded the parcel's legal standing, on the loudest line of the page.
+  //
+  // "As-of-right" is a positive claim that every gate is clear, and on a
+  // teardown the historic check is the ONE gate that would have said otherwise
+  // — it is the only thing in this function that raises a teardown to
+  // NEEDS_RELIEF on historic grounds. With it unresolved there is no honest
+  // caveat, the same bind the fail-closed FAR block below describes: either the
+  // parcel is as-of-right or it isn't. INDETERMINATE says what is true.
+  //
+  // Scoped so it cannot become a blanket refusal: only a teardown ('new' on a
+  // parcel with a building), only when the read actually FAILED (an empty answer
+  // from the layer resolves the question and leaves the verdict alone), and only
+  // when the verdict would otherwise be AS_OF_RIGHT — a NEEDS_RELIEF or
+  // PROHIBITED from another dimension already stands on its own evidence.
+  const historicUnchecked = checks.some((c) => c.dimension === 'historic' && c.status === 'INDETERMINATE')
+  if (overall === 'AS_OF_RIGHT' && historicUnchecked) {
     overall = 'INDETERMINATE'
   }
 

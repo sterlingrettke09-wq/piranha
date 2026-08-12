@@ -23,6 +23,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
@@ -319,8 +320,16 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
       lotType: null,
     },
     overlays: {
+      // ⚠️ NOT MARKED `unresolved: ['historic']` ON ANY RUN, and that is not an
+      // oversight to copy: this provider queries NO historic layer at all, so
+      // there is no read here that can fail. Austin's (H)/(HD) designations are
+      // a real gap in this provider — `HISTORIC_BODY.austin` in `hurdles.ts`
+      // describes a review that can never fire — but a gap in coverage is a
+      // different defect from a fetch failure publishing an absence, and
+      // marking it here would report a transport failure that did not happen.
       historicDistrict: null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      ...unresolvedOverlays({ flood: readFailed(floodR) }),
     },
     sources: { parcels: PARCELS, zoning: ZONING, flood: ENDPOINTS.flood },
     fetchedAt: new Date().toISOString(),

@@ -9,6 +9,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
@@ -112,6 +113,21 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
   const arch = archR.status === 'fulfilled' ? firstAttrs(archR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 
+  // `historicDistrict` is fed by TWO optional layers, so a null here is only an
+  // ANSWER when BOTH answered — the joint-dependency shape of CLAUDE.md rule 13.
+  // Miami is the one city that reads the field NEGATIVELY (hurdles.ts publishes
+  // "No tenant relocation or replacement-housing requirement" and a note stating
+  // the parcel is not in a designated district), so an unmarked null there is a
+  // stated ABSENCE manufactured from a timeout — measured 2026-08-12 at the
+  // analyze handler, HISTORIC faulted, both rows published unchanged.
+  const historicName = hist?.HD_NAME
+    ? String(hist.HD_NAME).trim()
+    : arch?.AZ_NAME
+      ? `${String(arch.AZ_NAME).trim()} (archaeological conservation area)`
+      : null
+  const historicUnresolved =
+    historicName == null && (histR.status !== 'fulfilled' || archR.status !== 'fulfilled')
+
   // ⚠️ Condo "REFERENCE FOLIO" parents: clicking a condo tower returns the land
   // record with TRUE_OWNER1 "REFERENCE ONLY", LOT_SIZE 0, YEAR_BUILT 0 and
   // UNIT_COUNT 0 — the real data lives on the per-unit folios. Without this
@@ -167,12 +183,9 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
     },
     lot: { sizeSqFt: lotSqFt, lotType: null },
     overlays: {
-      historicDistrict: hist?.HD_NAME
-        ? String(hist.HD_NAME).trim()
-        : arch?.AZ_NAME
-          ? `${String(arch.AZ_NAME).trim()} (archaeological conservation area)`
-          : null,
+      historicDistrict: historicName,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      ...unresolvedOverlays({ historic: historicUnresolved, flood: readFailed(floodR) }),
     },
     existing,
     // Miami-Dade assesses at market value; reference folios carry no value.

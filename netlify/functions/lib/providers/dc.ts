@@ -4,6 +4,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
@@ -289,6 +290,14 @@ export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelR
     overlays: {
       historicDistrict: hist?.HistDistrict_NAME ? String(hist.HistDistrict_NAME) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({
+        historic: !hist?.HistDistrict_NAME && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     sources: { parcels: PARCELS, zoning: ZONING, historic: HISTORIC, flood: ENDPOINTS.flood },

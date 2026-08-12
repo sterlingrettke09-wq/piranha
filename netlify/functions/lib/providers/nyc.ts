@@ -4,6 +4,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 
 const MAPPLUTO =
@@ -132,6 +133,11 @@ export async function getNycParcelInfo(lat: number, lng: number): Promise<Parcel
     overlays: {
       historicDistrict: histR.status === 'fulfilled' ? lpcDistrictName(histR.value.features) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({ historic: readFailed(histR), flood: readFailed(floodR) }),
     },
     existing: {
       landUse: NYC_LAND_USE[String(lot.LandUse ?? '').padStart(2, '0')] ?? null,

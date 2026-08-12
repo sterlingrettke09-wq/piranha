@@ -90,6 +90,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type FeatureSet, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveColumbus, usesForZone, COLUMBUS_TITLE33_NAMES } from '../zoning/columbus'
@@ -473,6 +474,14 @@ export async function getColumbusParcelInfo(lat: number, lng: number): Promise<P
     overlays: {
       historicDistrict,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({
+        historic: historicDistrict == null && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     // Ohio appraises real property at market value and taxes 35% of it

@@ -77,6 +77,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { narrowestFarSubCap, resolveDallas, usesForZone } from '../zoning/dallas'
@@ -601,6 +602,14 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
     overlays: {
       historicDistrict,
       floodZone: clean(flood?.FLD_ZONE),
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({
+        historic: historicDistrict == null && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     ...(existing ? { existing } : {}),
     sources,

@@ -6,6 +6,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
@@ -259,6 +260,18 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
       coastalZone: inCoastalZone || undefined,
       historicDistrict: hpoz?.NAME ? `${String(hpoz.NAME)} HPOZ` : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // ⚠️ `coastalZone` IS THE EXPENSIVE ONE. The Coastal Development Permit is
+      // `serial: true, addsMonths: 9`, and serial hurdles add IN FULL, so a
+      // failed read does not shade the timeline — it removes nine months of it.
+      // Measured 2026-08-12 at the analyze handler with only this layer faulted,
+      // 1126 Abbot Kinney Blvd (C2-1-O-CA, live `coastalZone: true`): the permit
+      // row vanished and the estimate went 57 mo → 48 mo, with nothing in the
+      // response saying a check had been skipped. See `lib/unresolvedOverlays.ts`.
+      ...unresolvedOverlays({
+        coastal: !inCoastalZone && readFailed(coastalR),
+        historic: !hpoz?.NAME && readFailed(hpozR),
+        flood: readFailed(floodR),
+      }),
     },
     existing: useDesc ? { landUse: useDesc } : undefined,
     sources: { parcels: PARCELS, zoning: ZONING, historic: HPOZ, flood: ENDPOINTS.flood },

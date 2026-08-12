@@ -6,7 +6,9 @@ import type { ParcelInfo } from '../../../src/types/parcel'
 // transient gisapps.chicago.gov failure produced districtCode 'Unknown',
 // and the 24h CDN TTL froze that degraded answer for every visitor.
 
-function info(over: Partial<{ districtCode: string; address: string }> = {}): ParcelInfo {
+function info(
+  over: Partial<{ districtCode: string; address: string; unresolved: ParcelInfo['overlays']['unresolved'] }> = {},
+): ParcelInfo {
   return {
     address: over.address ?? '123 Main St',
     parcelId: 'p1',
@@ -20,7 +22,7 @@ function info(over: Partial<{ districtCode: string; address: string }> = {}): Pa
       allowedUses: null,
     },
     lot: { sizeSqFt: 3000, lotType: null },
-    overlays: { historicDistrict: null, floodZone: null },
+    overlays: { historicDistrict: null, floodZone: null, ...(over.unresolved ? { unresolved: over.unresolved } : {}) },
     existing: { landUse: null },
     sources: { zoning: 'z', parcels: 'p' },
     fetchedAt: new Date().toISOString(),
@@ -46,6 +48,22 @@ describe('cacheControlFor — degraded responses must not stick for a day', () =
 
   it("geocoder failed (address 'Selected location') → 5-minute TTL", () => {
     expect(cacheControlFor(info({ address: 'Selected location' }))).toBe(CACHE_DEGRADED)
+  })
+
+  // Same incident, one field over. A response saying "the Coastal Zone layer did
+  // not respond" is a fact about ONE REQUEST; at the long TTL a thirty-second
+  // outage would tell every visitor for a day that a check could not be
+  // performed, on a layer that recovered immediately.
+  it('an unresolved overlay read → 5-minute TTL', () => {
+    expect(cacheControlFor(info({ unresolved: ['coastal'] }))).toBe(CACHE_DEGRADED)
+    expect(cacheControlFor(info({ unresolved: ['historic', 'flood'] }))).toBe(CACHE_DEGRADED)
+  })
+
+  it('an empty overlay ANSWER is not degraded', () => {
+    // The whole distinction: no marks means every layer answered, and "nothing
+    // covers this parcel" is a finding worth caching for a day.
+    expect(cacheControlFor(info())).toBe(CACHE_OK)
+    expect(cacheControlFor(info({ unresolved: [] }))).toBe(CACHE_OK)
   })
 
   it('a real district named like the fallback is NOT degraded (sanity)', () => {

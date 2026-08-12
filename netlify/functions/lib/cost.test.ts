@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { estimateCost } from './cost'
 import { costPerSqFtByUse, cityCostIndex, heightCostFactor, MIXED_RESIDENTIAL_SHARE } from '../../../src/config/estimates'
 import type { AnalysisInput } from '../../../src/types/analysis'
+import type { ParcelInfo } from '../../../src/types/parcel'
 import type { Feasibility } from './feasibility'
 
 const RES = costPerSqFtByUse.residential // national $/sf, sourced
@@ -126,8 +127,16 @@ describe('demolition rate (interpolated)', () => {
 })
 
 describe('impact fees per city', () => {
-  const at = (over: Partial<AnalysisInput>, opts?: { feeArea?: string }) =>
-    estimateCost({ ...project, ...over }, asOfRight, opts ?? {})
+  // Fee area is passed the way production passes it — as OVERLAYS, so the
+  // resolution state travels with the value. `feeArea: 'High'` and "the layer
+  // failed" used to be the same argument here.
+  const overlays = (o: Partial<ParcelInfo['overlays']> = {}): ParcelInfo['overlays'] => ({
+    historicDistrict: null,
+    floodZone: null,
+    ...o,
+  })
+  const at = (over: Partial<AnalysisInput>, feeOverlays?: Partial<ParcelInfo['overlays']>) =>
+    estimateCost({ ...project, ...over }, asOfRight, feeOverlays ? { overlays: overlays(feeOverlays) } : {})
 
   it('Boston: commercial ≥50k sf pays linkage; smaller and residential do not', () => {
     expect(at({ city: 'boston', use: 'commercial', gfa: 50_000 }).costs.impact).toBe(
@@ -191,5 +200,77 @@ describe('impact fees per city', () => {
     const chi = at({ city: 'chicago', use: 'residential', gfa: 20_000 })
     expect(chi.costs.impact).toBe(0)
     expect(chi.impactNote).toBeUndefined()
+  })
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // A FAILED FEE-AREA LOOKUP IS NOT AN AREA (CLAUDE.md rules 4 and 5).
+  //
+  // Measured 2026-08-12 at the analyze handler with only Denver's EHA layer
+  // faulted, 100,000 sf commercial on a D-C parcel at Union Station whose live
+  // market area is "High": impact $921,000 → $614,000, total $45,638,500 →
+  // $45,331,500, `applied: true`, no note. The understatement was not the whole
+  // problem — nothing in the response said a lookup had failed.
+  //
+  // These cases pin all THREE states, so the fix cannot pass by making
+  // everything unpriced: a resolved area is still billed to the cent.
+  describe('a fee-area layer that did not answer', () => {
+    const DEN = { city: 'denver', use: 'commercial' as const, gfa: 100_000 }
+
+    it('Denver: an unresolved EHA read leaves the fee UNPRICED and disclosed, not billed at Typical', () => {
+      const high = at(DEN, { feeArea: 'High' })
+      const typical = at(DEN, { feeArea: 'Typical' })
+      const failed = at(DEN, { unresolved: ['feeArea'] })
+
+      // The measured control values, to the dollar.
+      expect(high.costs.impact).toBe(921_000)
+      expect(typical.costs.impact).toBe(614_000)
+
+      // The defect, stated as the assertion that would have failed: a failed
+      // read must NOT produce the Typical charge.
+      expect(failed.costs.impact).not.toBe(typical.costs.impact)
+      expect(failed.costs.impact).toBe(0)
+      expect(failed.costs.total).toBe(typical.costs.total - 614_000)
+
+      // …and the gap is disclosed, naming both rates, with NO "roughly $X/sq ft"
+      // beside it — that figure would re-publish the guess the label withdraws.
+      expect(failed.impactNote).toMatch(/didn’t answer/)
+      expect(failed.impactNote).toMatch(/\$6\.14/)
+      expect(failed.impactNote).toMatch(/\$9\.21/)
+      expect(failed.impactNote).not.toMatch(/roughly \$/)
+      expect(failed.impactNote).not.toMatch(/\(Typical market\)/)
+    })
+
+    it('Denver: an EHA read that ANSWERED with no area still bills Typical, and says so', () => {
+      // Distinct values on the live layer are exactly {High, Typical} and both
+      // polygons cover the city (probed 2026-08-12), so this is the
+      // outside-the-mapped-areas case, not a failure. The dollars are
+      // unchanged; only the label stops attributing "Typical" to the layer.
+      const none = at(DEN, {})
+      expect(none.costs.impact).toBe(614_000)
+      expect(none.impactNote).toBeUndefined() // applied → in the total, no note
+    })
+
+    it('Seattle: an unresolved MHA read publishes the rate SPREAD, not the Medium midpoint', () => {
+      // Measured on a Capitol Hill parcel: control resolved "High Areas" and
+      // published "roughly $45/sq ft"; with the layer faulted the same line
+      // said "$28/sq ft". Out of the total either way — the claim is the defect.
+      const highArea = at({ city: 'seattle', use: 'residential', gfa: 20_000 }, { feeArea: 'High Areas' })
+      const failed = at({ city: 'seattle', use: 'residential', gfa: 20_000 }, { unresolved: ['feeArea'] })
+      expect(highArea.impactNote).toMatch(/roughly \$45\/sq ft/)
+      expect(failed.costs.impact).toBe(0) // still out of the total
+      expect(failed.impactNote).not.toMatch(/roughly \$28\/sq ft/)
+      expect(failed.impactNote).toMatch(/didn’t answer/)
+      expect(failed.impactNote).toMatch(/\$10\.78–\$50\.46/)
+    })
+
+    it('a city whose fee ignores fee area is unmoved by an unresolved lookup', () => {
+      // Non-empty control on the other side of the change: marking `feeArea`
+      // unresolved must not become a general "charge nothing" switch.
+      const a = at({ city: 'boston', use: 'commercial', gfa: 60_000 })
+      const b = at({ city: 'boston', use: 'commercial', gfa: 60_000 }, { unresolved: ['feeArea'] })
+      expect(a.costs.impact).toBe(Math.round(23.09 * 60_000))
+      expect(b.costs.impact).toBe(a.costs.impact)
+      expect(b.costs.total).toBe(a.costs.total)
+    })
   })
 })

@@ -120,6 +120,7 @@ import {
   warnIfMissing,
   type ParcelResult,
 } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolvePhoenix, usesForZone, type PhoenixLimits } from '../zoning/phoenix'
@@ -663,6 +664,14 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
     overlays: {
       historicDistrict,
       floodZone: clean(flood?.FLD_ZONE),
+      // `historicDistrict` has TWO sources — the named register listing on the
+      // optional HISTORIC layer, and the HP/HP-L suffix on the REQUIRED zoning
+      // read — so a failed HISTORIC read is only a gap when the suffix did not
+      // answer it either (CLAUDE.md rule 13). See `lib/unresolvedOverlays.ts`.
+      ...unresolvedOverlays({
+        historic: historicDistrict == null && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     // The Assessor's Full Cash Value. Labelled on `existing.assessedValueBasis`

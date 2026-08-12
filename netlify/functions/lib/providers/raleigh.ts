@@ -43,6 +43,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import {
@@ -340,6 +341,14 @@ export async function getRaleighParcelInfo(lat: number, lng: number): Promise<Pa
     overlays: {
       historicDistrict,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // `historicDistrict` is fed by BOTH historic overlay layers (-HOD-G and
+      // -HOD-S), so a null is an answer only when both answered — either one
+      // failing while the field is empty is a gap (CLAUDE.md rule 13). See
+      // `lib/unresolvedOverlays.ts`.
+      ...unresolvedOverlays({
+        historic: historicDistrict == null && (readFailed(hodGR) || readFailed(hodSR)),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     // North Carolina requires counties to appraise real property at fair market

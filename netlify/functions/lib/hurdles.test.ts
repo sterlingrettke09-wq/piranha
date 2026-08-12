@@ -1693,6 +1693,118 @@ describe('assessHurdles — Miami', () => {
     const hs = mia({}, { overlays: { historicDistrict: 'Morningside Historic District', floodZone: null } })
     expect(byLabel(hs, /Historic district design review/)?.note).toMatch(/Historic and Environmental Preservation Board/)
   })
+
+  // ── S3: a failed HISTORIC read must not publish an ABSENCE ────────────────
+  // Miami is the only city that reads `historicDistrict` inversely, and it does
+  // so twice on a teardown: the "No tenant relocation or replacement-housing
+  // requirement" row, and a note stating the parcel is not in a designated
+  // district. Both are findings ABOUT THE PARCEL, and `historicDistrict: null`
+  // used to mean either "the layer answered and it isn't" or "the layer didn't
+  // answer". Measured 2026-08-12 at the analyze handler on a 2-unit rental
+  // teardown in Coral Way, only the HISTORIC layer faulted: control and faulted
+  // runs published the same two rows. That identity is the defect.
+  const teardownParcel = (o: Partial<ParcelInfo['overlays']> = {}): Partial<ParcelInfo> => ({
+    existing: { landUse: 'Apartment', units: 8 },
+    overlays: { historicDistrict: null, floodZone: null, ...o },
+  })
+
+  it('withholds the no-relocation ABSENCE when the historic layer did not answer', () => {
+    const answered = mia({ projectType: 'new', units: 40 }, teardownParcel())
+    const unresolved = mia({ projectType: 'new', units: 40 }, teardownParcel({ unresolved: ['historic'] }))
+
+    // Non-vacuous: the finding is still published on the run that measured it.
+    expect(byLabel(answered, /No tenant relocation/)?.status).toBe('info')
+    // …and withheld on the run that did not.
+    expect(byLabel(unresolved, /No tenant relocation/)).toBeFalsy()
+  })
+
+  it('does not state the parcel is outside a historic district on an unresolved read', () => {
+    const unresolved = mia({ projectType: 'new', units: 40 }, teardownParcel({ unresolved: ['historic'] }))
+    // The archaeological row's note asserted "This parcel is not in a
+    // designated historic district" — the same claim in prose.
+    expect(byLabel(unresolved, /Archaeological zone/)).toBeFalsy()
+    expect(unresolved.some((h) => /not in a designated historic district/i.test(h.note))).toBe(false)
+
+    // Replaced by a row that says what is actually known: nothing, and what
+    // turns on it. Silence would be worse — a demolition path with no historic
+    // row reads as clear (CLAUDE.md rule 5: a gap must not render as an answer).
+    //
+    // TWO rows land here, not one, and they are different claims — exactly as
+    // their positive counterparts both land on a designated Miami parcel. The
+    // generic historic block covers DESIGN REVIEW in every city; this one is
+    // Miami's demolition deferral. The labels were made distinct when the
+    // generic row was added, so a reader is not shown the same sentence twice.
+    const gap = byLabel(unresolved, /Historic demolition delay could not be checked/)
+    expect(gap?.status).toBe('unchecked')
+    expect(gap?.note).toMatch(/did not respond/)
+    expect(gap?.note).toMatch(/45 calendar days/) // the arm that applies regardless
+    expect(gap?.addsMonths).toBeUndefined() // no invented duration for an unknown
+
+    const review = byLabel(unresolved, /Historic designation could not be checked/)
+    expect(review?.status).toBe('unchecked')
+    expect(review?.addsMonths).toBeUndefined() // months are named, never added
+    expect(review?.excludedMonths).toBeGreaterThan(0)
+  })
+
+  it('an unresolved mark does not suppress the POSITIVE branch', () => {
+    // A district name that arrived is still an answer, whatever else failed —
+    // otherwise the fix would trade a false absence for a false clearance.
+    const inDistrict = mia(
+      { projectType: 'new', units: 40 },
+      teardownParcel({ historicDistrict: 'Morningside Historic District', unresolved: ['historic'] }),
+    )
+    expect(byLabel(inDistrict, /Historic demolition delay/)?.status).toBe('likely')
+    expect(byLabel(inDistrict, /Historic designation could not be checked/)).toBeFalsy()
+  })
+})
+
+// A LAYER THAT DID NOT ANSWER MUST NOT PRODUCE A STATED ABSENCE — swept across
+// every city, not just the one where it was found.
+//
+// The Miami rows above are the instance; this is the class. Any city that turns
+// `historicDistrict: null` into prose asserting the parcel is NOT designated
+// will fail here the moment it is added, without anyone remembering this file
+// exists. It cannot pass by finding nothing: the control half asserts that the
+// phrasing IS produced when the layer answered, so a regex that stopped matching
+// (or a city that stopped emitting the row) goes red rather than green
+// (CLAUDE.md rule 20).
+describe('no city publishes an absence from an unresolved overlay read', () => {
+  // Prose that asserts the parcel is not historically designated. Assembled
+  // from the notes actually shipped today, not invented.
+  const ASSERTS_NOT_HISTORIC = /not in a designated historic district|outside a designated historic district/i
+
+  const teardown: Partial<AnalysisInput> = { projectType: 'new', use: 'residential', units: 40 }
+  const withExisting = (o: Partial<ParcelInfo['overlays']>): Partial<ParcelInfo> => ({
+    existing: { landUse: 'Apartment', units: 8 },
+    overlays: { historicDistrict: null, floodZone: null, ...o },
+  })
+
+  const CITIES = [...CITIES_WITH_SPECIFIC_HURDLES]
+
+  it('the sweep covers a non-empty set of cities', () => {
+    expect(CITIES.length).toBeGreaterThan(5)
+  })
+
+  it('at least one city DOES state the absence when the layer answered', () => {
+    const hits = CITIES.filter((city) =>
+      assessHurdles(city, parcel(withExisting({})), project({ city, ...teardown })).some((h) =>
+        ASSERTS_NOT_HISTORIC.test(h.note),
+      ),
+    )
+    // Miami today. If this list empties, the regex has gone stale and every
+    // assertion below is passing over nothing.
+    expect(hits).toEqual(['miami'])
+  })
+
+  it.each([...CITIES_WITH_SPECIFIC_HURDLES])('%s: states no such absence when historic is unresolved', (city) => {
+    const hs = assessHurdles(
+      city,
+      parcel(withExisting({ unresolved: ['historic'] })),
+      project({ city, ...teardown }),
+    )
+    const offending = hs.filter((h) => ASSERTS_NOT_HISTORIC.test(h.note)).map((h) => h.label)
+    expect(offending).toEqual([])
+  })
 })
 
 // Rules 1 and 2 again, for this batch. Same shape as the Austin/DC/Denver block

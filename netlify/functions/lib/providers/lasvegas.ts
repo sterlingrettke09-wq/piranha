@@ -137,6 +137,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import {
@@ -548,6 +549,12 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
     overlays: {
       historicDistrict,
       floodZone: clean(flood?.FLD_ZONE),
+      // ⚠️ `historic` is NEVER marked here, and unlike Austin's that is settled
+      // rather than pending: no layer on the City's GIS publishes the HD-O
+      // boundary (see the refusal recorded above `historicDistrict`), so this
+      // provider issues no historic request and there is no read that can fail.
+      // A mark would report a transport failure that never occurred.
+      ...unresolvedOverlays({ flood: readFailed(floodR) }),
     },
     existing,
     assessedValue: assessedTotal,

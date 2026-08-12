@@ -3,12 +3,13 @@
 // them here means the published tables can never drift from what the engine
 // actually computes. All figures are labeled estimates, meant to be tuned.
 import type { ProjectType, Use } from '../types/analysis'
+import type { ParcelInfo } from '../types/parcel'
 
 // BUMP THIS whenever any constant in this file (or the cost/timeline logic
 // that consumes it) changes. It's appended to /api/analyze URLs as a cache
 // key, so tuned numbers propagate immediately instead of serving stale cached
 // verdicts for up to 24h (+7d stale-while-revalidate).
-export const ESTIMATES_VERSION = 8
+export const ESTIMATES_VERSION = 9
 
 // Human-readable vintage of the cost tables, surfaced on the result page so the
 // data provenance can't silently drift from the figures above.
@@ -662,10 +663,41 @@ export const reliefAddMonthsFallback = 6
 //   • SF Planning Citywide Development Impact Fee Register (eff. 1/1/2026,
 //     Table 413.5A): new-construction office ≥50k gsf $85.90, <50k $77.30,
 //     lab $47.35. VERIFIED exact.
-export interface ImpactFee {
-  perSqFt: number
-  applied: boolean
-  label: string
+/** A fee that lands in the total carries a rate; one that cannot be priced
+ *  carries `applied: false` and MAY carry `perSqFt: null` — the "unpriced,
+ *  disclosed" shape (CLAUDE.md rule 4). Written as a union so `applied: true`
+ *  with an unknown rate is not representable: a caller reaching for
+ *  `fee.perSqFt` to bill it has already had to narrow on `applied`. */
+export type ImpactFee =
+  | { applied: true; perSqFt: number; label: string }
+  | { applied: false; perSqFt: number | null; label: string }
+
+/** What a per-parcel fee-area lookup returned. THREE states, because two of
+ *  them used to be one value and that is the whole defect:
+ *
+ *    · `area`        — the layer answered and named an area for this parcel
+ *    · `none`        — the layer answered and no area covers this parcel
+ *    · `unavailable` — the layer did not answer. NOT a finding about the
+ *                      parcel, so nothing derived from it may be published as
+ *                      one: no rate, and no area name in a label.
+ *
+ *  Measured 2026-08-12 at the analyze handler with only Denver's EHA layer
+ *  faulted: `undefined` fell through to the Typical rate and billed
+ *  $614,000 where the parcel's own area billed $921,000 — $307,000 removed
+ *  from a published total by a timeout, with nothing in the output saying a
+ *  lookup had failed. Seattle's MHA layer, same run: the published rate went
+ *  from $45/sf to $28/sf for a parcel measured in "High Areas". */
+export type FeeAreaRead =
+  | { kind: 'area'; area: string }
+  | { kind: 'none' }
+  | { kind: 'unavailable' }
+
+/** Build the fee-area read from a parcel's overlays. ONE construction site, so
+ *  a caller cannot pass a fee area while dropping the fact that the lookup for
+ *  it failed. */
+export function feeAreaRead(overlays: ParcelInfo['overlays']): FeeAreaRead {
+  if (overlays.unresolved?.includes('feeArea')) return { kind: 'unavailable' }
+  return overlays.feeArea ? { kind: 'area', area: overlays.feeArea } : { kind: 'none' }
 }
 
 // Some cities levy a development tax as a PERCENTAGE OF CONSTRUCTION COST rather
@@ -687,7 +719,16 @@ export function constructionTax(city: string, use: Use): ConstructionTax | null 
 }
 /** Construction value over which a city's construction tax applies (USD). */
 export const CONSTRUCTION_TAX_MIN_VALUE: Record<string, number> = { philadelphia: 15000 }
-export function impactFee(city: string, use: Use, gfa: number, units: number | null, feeArea?: string): ImpactFee | null {
+export function impactFee(
+  city: string,
+  use: Use,
+  gfa: number,
+  units: number | null,
+  /** Defaults to `none` — "the layer answered and no area covers this parcel".
+   *  A caller that HAS a parcel must pass `feeAreaRead(parcel.overlays)` so a
+   *  failed lookup cannot arrive here disguised as an empty answer. */
+  feeArea: FeeAreaRead = { kind: 'none' },
+): ImpactFee | null {
   const commercial = use === 'commercial' || use === 'mixed' || use === 'institutional'
   switch (city) {
     case 'boston':
@@ -719,8 +760,44 @@ export function impactFee(city: string, use: Use, gfa: number, units: number | n
         return units >= 10 ? null : { perSqFt: 5.12, applied: true, label: 'Denver affordable-housing fee' }
       }
       if (!commercial) return null
-      const rate = feeArea === 'High' ? 9.21 : 6.14
-      return { perSqFt: rate, applied: true, label: `Denver affordable-housing fee (${feeArea ?? 'Typical'} market)` }
+      // ⚠️ THE MARKET AREA IS A MEASUREMENT, AND A FAILED MEASUREMENT IS NOT
+      // "Typical". This line read `feeArea === 'High' ? 9.21 : 6.14` with the
+      // label `(${feeArea ?? 'Typical'} market)`, so a Denver EHA outage billed
+      // the Typical rate on a High-area parcel — measured 2026-08-12 at the
+      // analyze handler on a 100,000 sf D-C parcel at Union Station: impact
+      // $921,000 → $614,000 and total $45,638,500 → $45,331,500, `applied:
+      // true`, no note. An unresolvable rate is unpriced and DISCLOSED, exactly
+      // as the unit-count tier above already is (CLAUDE.md rules 4 and 5).
+      //
+      // The fix cannot be a `?? 'Typical'` here or anywhere downstream: at this
+      // layer the two causes of a missing area are indistinguishable, which is
+      // why `FeeAreaRead` carries the distinction from the provider.
+      if (feeArea.kind === 'unavailable') {
+        return {
+          perSqFt: null,
+          applied: false,
+          label:
+            'Denver affordable-housing fee — the city’s EHA market-area layer didn’t answer, so we can’t tell which rate applies here (Typical $6.14/sq ft, High $9.21/sq ft)',
+        }
+      }
+      // Distinct values on the live EHA layer are exactly {High, Typical}
+      // (queried 2026-08-12), and both polygons cover the city: five in-city
+      // probes each returned one, two out-of-city probes returned none. So
+      // `none` is "the point is outside the mapped market areas", not "High" —
+      // it keeps the Typical rate it has always had, but the label no longer
+      // claims the layer said so.
+      if (feeArea.kind === 'none') {
+        return {
+          perSqFt: 6.14,
+          applied: true,
+          label: 'Denver affordable-housing fee (Typical rate; no EHA market area mapped at this point)',
+        }
+      }
+      return {
+        perSqFt: feeArea.area === 'High' ? 9.21 : 6.14,
+        applied: true,
+        label: `Denver affordable-housing fee (${feeArea.area} market)`,
+      }
     }
     // Nashville: no mandatory per-sq-ft affordable-housing fee. Tennessee law
     // constrains mandatory inclusionary zoning, and Metro relies on voluntary
@@ -763,11 +840,35 @@ export function impactFee(city: string, use: Use, gfa: number, units: number | n
         'High Areas': { r: 45, c: 19 },
         'Downtown / South Lake Union Areas': { r: 32, c: 22 },
       }
-      const a = (feeArea && SEA[feeArea]) || { r: 28, c: 15 }
+      // Milder than Denver — `applied: false` keeps every branch out of the
+      // total — but the RATE is still a per-parcel claim. Measured 2026-08-12
+      // with only the MHA layer faulted, on a Capitol Hill parcel the control
+      // run resolved to "High Areas": the published line went from "roughly
+      // $45/sq ft" to "roughly $28/sq ft", a 38% drop manufactured by a
+      // timeout. The dollars are informational, but $28 is not less of an
+      // assertion for being outside the total, so an unresolved lookup prints
+      // the published spread instead of a point.
+      if (feeArea.kind === 'unavailable') {
+        return {
+          perSqFt: null,
+          applied: false,
+          label:
+            // The spread is the PUBLISHED one across areas and M/M1/M2 suffixes
+            // (SDCI MHA rate table, eff. 3/1/2026 — the same source the
+            // midpoints below come from), not the spread of our midpoints:
+            // quoting our own four numbers would understate what is unknown.
+            'Seattle MHA — the city’s MHA fee-area layer didn’t answer, so the per-area rate is unknown here (published range: residential $10.78–$50.46/sq ft, commercial $7.87–$32.66/sq ft)',
+        }
+      }
+      // `none` — the layer answered and this parcel is in no MHA fee area —
+      // keeps the Medium-tier midpoint it has always used. That default is a
+      // separate (pre-existing) question about what to show a parcel outside
+      // the MHA geography; it is not a failed read, and is left as found.
+      const a = (feeArea.kind === 'area' && SEA[feeArea.area]) || { r: 28, c: 15 }
       return {
         perSqFt: use === 'residential' ? a.r : a.c,
         applied: false,
-        label: `Seattle MHA${feeArea ? ` (${feeArea})` : ''} — applies in MHA zones, or build affordable units instead`,
+        label: `Seattle MHA${feeArea.kind === 'area' ? ` (${feeArea.area})` : ''} — applies in MHA zones, or build affordable units instead`,
       }
     }
     case 'sf': {

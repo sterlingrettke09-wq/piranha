@@ -3,6 +3,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveSeattle } from '../zoning/seattle'
 
@@ -139,6 +140,21 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
       historicDistrict: histR.status === 'fulfilled' ? seattleHistoricName(histR.value.features) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
       feeArea: mhaR.status === 'fulfilled' ? (firstAttrs(mhaR.value)?.FEE_AREA ? String(firstAttrs(mhaR.value)!.FEE_AREA).trim() : undefined) : undefined,
+      // A failed MHA read is not "no fee area": the rate published for this
+      // parcel differs by area ($10.78–$50.46/sq ft residential across the
+      // published table), and defaulting silently to the Medium midpoint moved
+      // a measured "High Areas" parcel from $45/sq ft to $28/sq ft. Out of the
+      // total either way, so the mark exists to stop the LABEL asserting a rate
+      // nothing measured — not to change any dollar in `costs`.
+      //
+      // The other two marks are the opposite shape: their null does not move a
+      // number, it removes a hurdle and the months it carries. See
+      // `lib/unresolvedOverlays.ts`.
+      ...unresolvedOverlays({
+        feeArea: readFailed(mhaR),
+        historic: readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing: {
       landUse: parcel.PRES_USE_DESC ? String(parcel.PRES_USE_DESC).trim() : null,

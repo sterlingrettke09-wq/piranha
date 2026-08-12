@@ -479,7 +479,7 @@ async function runOne(city: string, latRaw: number, lngRaw: number): Promise<Run
           ? exu * avgUnitGrossSqFt
           : null
       : null
-  const estimate = estimateCost(project, feasibility, { demolitionSqFt, feeArea: parcel.overlays.feeArea })
+  const estimate = estimateCost(project, feasibility, { demolitionSqFt, overlays: parcel.overlays })
   const timelineInfo = resolveTimeline(city, project, feasibility, hasExistingBuilding, demolitionSqFt)
   const timeline = { months: timelineInfo.months, path: timelineInfo.path, tier: timelineInfo.tier }
 

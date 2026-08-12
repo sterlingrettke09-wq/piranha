@@ -660,6 +660,36 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
   // A teardown: new construction on a parcel that already carries a building.
   const teardown = project.projectType === 'new' && existing.hasBuilding
 
+  // ⚠️ THE THREE BLOCKS BELOW EACH TEST AN OVERLAY FIELD AS A BOOLEAN, AND EACH
+  // FIELD HAS A THIRD STATE. `historicDistrict`, `coastalZone` and `floodZone`
+  // are `X | null`, and the null collapses "the layer answered and nothing
+  // covers this parcel" with "the layer did not answer". Read as a boolean, the
+  // second one silently REMOVES a requirement — the hurdle does not appear and
+  // the months it carries leave the timeline with it.
+  //
+  // Measured 2026-08-12 at the analyze handler, one layer faulted per run:
+  //   · LA, 1126 Abbot Kinney Blvd — the Coastal Development Permit row vanished
+  //     and the estimate went 57 → 48 months. The permit is `serial: true`, so
+  //     its 9 months add IN FULL and leave in full.
+  //   · Boston, 26 Exeter St (Back Bay Architectural District, teardown) — the
+  //     design-review row AND the abutter-appeal row vanished, and the verdict
+  //     went NEEDS_RELIEF 55 mo → AS_OF_RIGHT 51 mo. A timeout improved a
+  //     parcel's legal standing.
+  //
+  // DISCLOSED, NOT REFUSED, and the reasoning is availability against a claim we
+  // can decline to make. Refusing the parcel would deny address, zoning,
+  // envelope, cost and timeline over one overlay that most parcels are outside
+  // — a tool that 502s because it could not confirm a parcel is NOT historic is
+  // worse than one that says so. So the analysis proceeds and the gap gets a row
+  // of its own, with the months it would carry named but NOT added: an
+  // `excludedMonths` figure marks the estimate as a floor without inventing time
+  // for a rule that probably does not apply (CLAUDE.md rules 1, 5 and 7).
+  //
+  // `status: 'unchecked'` keeps these rows out of the approval COUNT. Counting
+  // them would make a failed lookup read as more approvals than a healthy run —
+  // the same defect pointing the other way.
+  const unresolved = new Set(parcel.overlays.unresolved ?? [])
+
   // Historic district — design review (applies in every city we cover).
   if (parcel.overlays.historicDistrict) {
     hurdles.push({
@@ -668,6 +698,18 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       status: 'required',
       note: `This parcel is in the ${parcel.overlays.historicDistrict}. ${HISTORIC_BODY[city] ?? 'Exterior changes and new construction require design approval from the local historic-district commission before permits issue.'}`,
       addsMonths: HISTORIC_MONTHS[city] ?? 3,
+    })
+  } else if (unresolved.has('historic')) {
+    const months = HISTORIC_MONTHS[city] ?? 3
+    hurdles.push({
+      category: 'historic',
+      label: 'Historic designation could not be checked',
+      status: 'unchecked',
+      excludedMonths: months,
+      note:
+        `The city’s historic-designation service did not respond while this report was generated, so we could not establish whether this parcel is in a designated historic district or on a designated landmark — treat this as unresolved, not as clear. ` +
+        `If it is designated: ${HISTORIC_BODY[city] ?? 'exterior changes and new construction require design approval from the local historic-district commission before permits issue.'} ` +
+        `That review is not in the timeline or the approvals count on this page — allow roughly ${months} more ${months === 1 ? 'month' : 'months'} if it turns out to apply, and confirm the designation on the city’s own historic map before relying on either figure.`,
     })
   }
 
@@ -682,6 +724,19 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       note: 'This parcel is in the California Coastal Zone. A Coastal Development Permit (city, and appealable to the Coastal Commission) is required, with its own review — this adds significant time and uncertainty.',
       addsMonths: 9,
     })
+  } else if (unresolved.has('coastal')) {
+    hurdles.push({
+      category: 'environmental',
+      label: 'Coastal Zone status could not be checked',
+      status: 'unchecked',
+      // The permit's 9 months are SERIAL — they add on top of the entitlement
+      // rather than overlapping it — so this is the largest single figure any
+      // unchecked row here withholds.
+      excludedMonths: 9,
+      note:
+        'The California Coastal Zone boundary layer did not respond while this report was generated, so we could not establish whether this parcel is inside the Coastal Zone. Most of the city is outside it, but if this parcel is inside, a Coastal Development Permit is required (issued by the city, and appealable to the California Coastal Commission) with its own review that runs in addition to the entitlement — roughly 9 months that the timeline on this page does not include. ' +
+        'Check the Coastal Commission’s own maps before relying on the schedule here.',
+    })
   }
 
   // FEMA flood zone.
@@ -692,6 +747,16 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       label: `FEMA flood zone ${fz}`,
       status: 'likely',
       note: 'Flood-resistant construction (and possibly elevation or floodproofing) will be required, raising cost.',
+    })
+  } else if (unresolved.has('flood')) {
+    // No `excludedMonths`: the flood hurdle carries no months, so a failed FEMA
+    // read leaves the timeline correct and only the COST unstated. Marking the
+    // timeline here would overstate what is unknown.
+    hurdles.push({
+      category: 'flood',
+      label: 'FEMA flood zone could not be checked',
+      status: 'unchecked',
+      note: 'FEMA’s National Flood Hazard Layer did not respond while this report was generated, so we could not establish whether this parcel is in a Special Flood Hazard Area. If it is, flood-resistant construction — and possibly elevation or floodproofing — will be required, which raises cost above the estimate on this page. Look the address up on FEMA’s Flood Map Service Center before pricing the work.',
     })
   }
 
@@ -1763,12 +1828,35 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       // six-month historic delay was 'likely'. The 45-day archaeological arm
       // does reach any ground-disturbing work, so it keeps a row of its own
       // rather than disappearing with the district test.
+      // ⚠️ THE NEGATIVE BRANCHES BELOW NEED THE LAYER TO HAVE ANSWERED. Miami
+      // is the only city that reads `historicDistrict` inversely — the `else`
+      // note states the parcel is NOT in a designated district, and the
+      // tenant-relocation row is a stated ABSENCE — so on a failed HISTORIC
+      // read a timeout would publish both as findings (measured 2026-08-12 at
+      // the analyze handler: control and HISTORIC-faulted runs were identical,
+      // which is the defect). DISCLOSED, not refused: the layer is optional in
+      // all 23 providers and feeds only informational rows, so a 502 for the
+      // whole parcel would trade a much larger availability loss for a claim we
+      // can simply decline to make (CLAUDE.md rule 5).
+      const historicKnown = !parcel.overlays.unresolved?.includes('historic')
       if (parcel.overlays.historicDistrict) {
         hurdles.push({
           category: 'demolition',
           label: 'Historic demolition delay',
           status: 'likely',
           note: 'This parcel is in a designated historic district, so demolishing or relocating a CONTRIBUTING structure or landscape feature here can be delayed while alternatives are explored: the HEPB may approve the demolition but defer the effective date of that approval by up to six months (City of Miami Code § 23-6.2(b)(4)b.4). Ground-disturbing work touching an archaeological site, zone or conservation area can be deferred up to 45 calendar days on the same mechanism. Both are stated CEILINGS, not scheduled durations, so no fixed delay is added to the timeline here. Confirm whether the existing building is contributing — a non-contributing building in the district is not reached by the six-month arm.',
+        })
+      } else if (!historicKnown) {
+        hurdles.push({
+          category: 'demolition',
+          // Distinct from the generic "Historic designation could not be
+          // checked" row above, which fires in every city and covers DESIGN
+          // REVIEW. Both render on the same failed read, exactly as their
+          // positive counterparts both render on a designated Miami parcel;
+          // this one is about what happens to the DEMOLITION.
+          label: 'Historic demolition delay could not be checked',
+          status: 'unchecked',
+          note: 'The city’s historic-designation service did not respond while this report was generated, so we do not know whether this parcel is in a designated historic district or archaeological zone — treat the demolition path as unresolved rather than clear. Two things turn on it. If the parcel IS in a designated district or site, demolishing or relocating a CONTRIBUTING structure can have its approval deferred by up to six months (City of Miami Code § 23-6.2(b)(4)b.4). Separately, and regardless of any district: a certificate to dig is required for ground-disturbing activity within a designated archaeological site, zone or conservation area, and that approval can be deferred up to 45 calendar days (§ 23-6.2(a)). Check the city’s historic and archaeological maps directly before pricing demolition.',
         })
       } else {
         hurdles.push({
@@ -1784,7 +1872,7 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
       // district. The trigger says "outside a designated historic district" in
       // as many words; inside one, demolition runs the certificate-of-
       // appropriateness process above and the absence is not the whole story.
-      if (existing.rentalMultifamily && !parcel.overlays.historicDistrict) {
+      if (existing.rentalMultifamily && !parcel.overlays.historicDistrict && historicKnown) {
         hurdles.push({
           category: 'demolition',
           label: 'No tenant relocation or replacement-housing requirement',

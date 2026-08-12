@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import type { ParcelInfo, ParcelError } from '../../types/parcel'
+import type { ParcelInfo, ParcelError, UnresolvedOverlay } from '../../types/parcel'
 import type { AnalysisInput } from '../../types/analysis'
 import { assessDevelopability } from '../../lib/developability'
 import { buildDefaultSpec } from '../../lib/defaultSpec'
@@ -76,6 +76,15 @@ function Pill({ children, tone = 'burgundy' }: { children: ReactNode; tone?: 'bu
   )
 }
 
+// The overlay reads whose failure a null cannot distinguish from a genuine
+// miss. Keyed by `UnresolvedOverlay`, so a new member is a compile error here.
+const UNRESOLVED_LABEL: Record<UnresolvedOverlay, string> = {
+  historic: 'historic districts',
+  flood: 'the FEMA flood zone',
+  coastal: 'the coastal zone',
+  feeArea: 'the fee area',
+}
+
 export function ParcelPanelContent(props: Props) {
   if (props.status === 'idle') {
     return (
@@ -149,7 +158,17 @@ export function ParcelPanelContent(props: Props) {
       data.existing.buildingAreaSqFt ||
       data.existing.units)
   const env = data.envelope
-  const dev = assessDevelopability({ districtCode: data.zoning.districtCode, landUse: data.existing?.landUse ?? null })
+  // ⚠️ `ownerPublic` MUST be passed. It was omitted here while `analyze.ts`
+  // passed it, so the two callers of the same gate disagreed: the map panel
+  // showed a government-owned parcel as developable and offered the instant-
+  // report CTA, and only the analysis that CTA started said "government-owned".
+  // The block is not optional per caller — every input the server carries has to
+  // reach it. See netlify/functions/lib/providers/hardBlockInputs.test.ts.
+  const dev = assessDevelopability({
+    districtCode: data.zoning.districtCode,
+    landUse: data.existing?.landUse ?? null,
+    ownerPublic: data.existing?.ownerPublic ?? false,
+  })
   const blocked = !dev.developable
   const hasEnvelope =
     !blocked && !!env && (env.maxFloorAreaSqFt != null || env.maxHeightFt != null || env.maxUnits != null)
@@ -339,8 +358,22 @@ export function ParcelPanelContent(props: Props) {
               <Pill tone="gold">Historic: {data.overlays.historicDistrict}</Pill>
             )}
             {data.overlays.floodZone && <Pill tone="charcoal">Flood {data.overlays.floodZone}</Pill>}
-            {!data.overlays.historicDistrict && !data.overlays.floodZone && (
-              <p className="text-sm text-piranha-charcoal/55">None apply</p>
+            {/* "None apply" is a stated ABSENCE and may only be said when the
+                reads actually answered. A failed overlay fetch leaves the field
+                null exactly as a genuine miss does — the same conflation that
+                flipped a Boston teardown from NEEDS_RELIEF to AS_OF_RIGHT and
+                that had Miami publishing a no-requirement finding from a
+                timeout. `unresolved` is the only thing separating them. */}
+            {!data.overlays.historicDistrict &&
+              !data.overlays.floodZone &&
+              !data.overlays.unresolved?.length && (
+                <p className="text-sm text-piranha-charcoal/55">None apply</p>
+              )}
+            {!!data.overlays.unresolved?.length && (
+              <p className="text-sm text-piranha-charcoal/55">
+                Couldn’t check {data.overlays.unresolved.map((u) => UNRESOLVED_LABEL[u]).join(' or ')} —
+                a data outage, not a finding that none apply.
+              </p>
             )}
           </div>
         </section>

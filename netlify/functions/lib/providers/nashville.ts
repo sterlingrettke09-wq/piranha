@@ -11,6 +11,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
@@ -170,6 +171,14 @@ export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<
       // the same layer also carries unrelated types (Adult Entertainment, UZO).
       historicDistrict: describe(historicOverlay),
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // The overlay layer carries the historic types among several unrelated
+      // ones, so its failure is the historic read failing. Left as a bare null
+      // the historic hurdle and its months silently disappear — see
+      // `lib/unresolvedOverlays.ts`.
+      ...unresolvedOverlays({
+        historic: describe(historicOverlay) == null && readFailed(overlayR),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     // Tennessee assesses at a statutory ratio of market value (25% residential,

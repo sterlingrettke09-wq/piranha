@@ -7,6 +7,7 @@ import { decodeJsonB64 } from '../lib/b64'
 import { VERDICT } from '../lib/verdictLabels'
 import { formatEstimate } from '../lib/format'
 import { hasCitySpecificHurdles, hasMeasuredPermitTiming } from '../config/cities'
+import { summarizeUnchecked } from '../lib/uncheckedHurdles'
 
 function decode<T>(s: string | null): T | null {
   if (!s) return null
@@ -103,6 +104,22 @@ export default function Compare() {
       label: 'Timeline',
       render: (d) => {
         if (d.timeline.months <= 0) return <span className="tabular-nums">N/A</span>
+        // A check that could not be performed is a THIRD kind of caveat on this
+        // cell, and the one that moves the number most: LA's Coastal
+        // Development Permit is serial, so a failed coastal read took 9 months
+        // out of a 57-month estimate with nothing on the page saying so. It
+        // wins the cell because it is the larger and more specific claim — the
+        // measured/estimated distinction still holds but is the smaller error.
+        const excluded = summarizeUnchecked(d.hurdles).excludedMonths
+        if (excluded > 0)
+          return (
+            <span
+              className="tabular-nums text-piranha-charcoal/70"
+              title={`At least this long. A city data service did not respond while this report was generated, so an approval we could not check may add up to ${excluded} more months. It is NOT included in this figure — the requirement may not apply here, and assuming it does would invent time. The full report names the check.`}
+            >
+              {d.timeline.months} mo<span className="ml-1 align-super text-[0.65em]">unchecked</span>
+            </span>
+          )
         return hasMeasuredPermitTiming(d.project.city) ? (
           <span className="tabular-nums">{d.timeline.months} mo</span>
         ) : (
@@ -121,18 +138,40 @@ export default function Compare() {
       // encoded, the count is a FLOOR and the difference is our coverage, not
       // the city's rules — so the number is marked rather than left to be read
       // as complete.
+      // ⚠️ SECOND REASON THE COUNT CAN BE A FLOOR, and it is per-REQUEST rather
+      // than per-city: an `unchecked` row means a city overlay layer did not
+      // answer on this run, so a requirement may exist that nothing here could
+      // see. Those rows are excluded from the number — counting them would make
+      // an outage read as MORE approvals than a healthy run — and marked
+      // 'unchecked' rather than 'partial', because the two are not the same
+      // claim. 'partial' says our coverage of this city is incomplete and will
+      // say so tomorrow too; 'unchecked' says a service was down for this
+      // report and a reload may resolve it.
       label: 'Approvals to clear',
-      render: (d) =>
-        hasCitySpecificHurdles(d.project.city) ? (
-          <span className="tabular-nums">{d.hurdles.length}</span>
+      render: (d) => {
+        const s = summarizeUnchecked(d.hurdles)
+        const unchecked = s.unchecked.length
+        const n = s.counted.length
+        if (unchecked > 0)
+          return (
+            <span
+              className="tabular-nums text-piranha-charcoal/70"
+              title={`At least this many. ${unchecked} ${unchecked === 1 ? 'check' : 'checks'} could not be performed for this parcel — a city data service did not respond while the report was generated, so a requirement may apply that is not counted here. The full report lists which. Reloading may resolve it.`}
+            >
+              {n}+<span className="ml-1 align-super text-[0.65em]">unchecked</span>
+            </span>
+          )
+        return hasCitySpecificHurdles(d.project.city) ? (
+          <span className="tabular-nums">{n}</span>
         ) : (
           <span
             className="tabular-nums text-piranha-charcoal/70"
             title="At least this many. City-specific requirements (inclusionary housing, large-project review) are not yet encoded for this city, so this is a floor — not a complete list."
           >
-            {d.hurdles.length}+<span className="ml-1 align-super text-[0.65em]">partial</span>
+            {n}+<span className="ml-1 align-super text-[0.65em]">partial</span>
           </span>
-        ),
+        )
+      },
     },
     {
       label: 'Most you can build',

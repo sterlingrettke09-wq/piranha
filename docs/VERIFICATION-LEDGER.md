@@ -5011,3 +5011,370 @@ arithmetically right and a threshold would need a defence nobody can give, so th
 lot size is surfaced where the user sees it before the cost. The tool answers what
 was asked and makes the absurdity visible rather than deciding where absurdity
 begins.
+
+## 2026-08-11 — A default that did not fit, and a verdict about our own placeholder
+
+Found by the 575-parcel live smoke run, by a check that fires on every answered
+parcel rather than on anything that looked wrong: `GFA_OVER_ENVELOPE`, four hits.
+
+`buildDefaultSpec` bounded its proposed floor area into a `[1000, 200000]` band
+with `Math.max` / `Math.min`. On a parcel whose by-right envelope is smaller than
+1,000 sq ft, `Math.max` **raised the proposal through the envelope it had just
+been derived from** — and everything downstream then graded that proposal against
+the code and reported the excess as the city's restriction.
+
+| city | district | lot | envelope | proposed | published before |
+|---|---|--:|--:|--:|---|
+| atlanta | RG-2 | 870 | 303 | 1,000 | PROHIBITED |
+| atlanta | C-1 | 1,030 | 717 | 1,000 | PROHIBITED |
+| boston | 2F-5000 | 775 | 388 | 1,000 | PROHIBITED |
+| chicago | RS-3 | 1,062 | 956 | 1,000 | NEEDS_RELIEF · $514,780 · 22 months |
+
+Chicago is the one that matters. Nothing on that report is flagged, hedged or
+withheld: a relief path, a construction cost and a schedule, all describing a
+building this parcel's own envelope forbids, all published because the tool's
+minimum program was 4.6% larger than the envelope. The three PROHIBITED rows are
+the same defect wearing a safer face — the parcel is not prohibited, the default
+spec is.
+
+### Rule 18, exactly
+
+Every one of these produced output. A number in the right units, a verdict from
+the normal vocabulary, a timeline in a plausible band — nothing about the report
+invites suspicion, and the four were sitting inside the same run whose null rows
+got interrogated. This is why the smoke script's suspicion checks run
+unconditionally: the comparison `gfa > maxFloorAreaSqFt` is trivial and nobody
+would ever have thought to make it while reading a report that looked fine.
+
+### The fix: the floor becomes a precondition
+
+The envelope is the constraint, so it bounds the proposal. Two changes, both
+inside `src/lib/defaultSpec.ts`, and **no new constant** — `GFA_MIN` keeps its
+value and changes role:
+
+- Where an envelope resolved, it is passed to `quantizeGfa` as a ceiling and wins
+  over the band. This also closes a second, narrower path: rounding to the
+  nearest 500 can cross an envelope that sits just under a multiple of 500 (an
+  envelope of 1,480 takes 0.85 → 1,258 → 1,500), with the floor playing no part.
+  A fix aimed only at the floor would have left that live, and it is invisible in
+  the sample — 0 of 110 envelope-basis parcels hit it.
+- Where the envelope cannot hold even `GFA_MIN`, **no spec is offered at all**.
+  The panel falls back to its existing "Start full analysis" CTA and the user
+  states the size, so the verdict is about their number. Shrinking the default to
+  fit was the alternative and was rejected: at 303 sq ft the unit count is
+  `Math.max(1, …)` inventing a dwelling that does not fit, and the $/sf model is
+  outside anything it was built for. Two fabrications stacked to avoid one
+  refusal.
+
+### What the floor was protecting, checked rather than assumed
+
+The `assumed-far-1.0` / `assumed-unconstrained` path has **no envelope to clamp
+against**, and it is the majority path in several cities. It is deliberately
+untouched: `lot × 1.0` is a labelled placeholder, and capping it by lot area
+would convert an assumption into a limit the code never stated (rule 4). The
+ceiling argument is `null` on that branch for exactly that reason. Measured: all
+15 control parcels — five with small-but-sufficient envelopes, five with no
+envelope, three on the ceiling, two ordinary — returned identical verdict, cost
+and timeline before and after.
+
+### The ceiling is a different question, and it stays
+
+Stated because "fix both clamps" was the obvious move and the data says they are
+not the same defect. Of the 149 parcels sitting on the 200,000 ceiling, **zero
+proposed more floor area than their envelope allowed**; on the 31 with a resolved
+envelope, the envelope exceeded 200,000 in every case. The ceiling only ever
+proposes LESS than the code permits — the opposite direction from the floor — so
+it cannot produce a verdict the code forbids. Removing it is not obviously better
+either: NYC's sampled R4 parcel carries a 12.25M sq ft envelope, and an uncapped
+default would publish a ~10M sq ft, ~8,000-unit program nobody asked for.
+
+What the ceiling *does* do is choose the program on a large lot, and on four
+sampled parcels that program came in under the existing housing and scored
+PROHIBITED on no-net-loss. That verdict is true of the program proposed. It is
+recorded here as an open question about defaults on large lots, not fixed under
+cover of this one.
+
+### Verified at the real entry point
+
+`scripts/verify-clamp.ts` runs `getParcelInfo` → `buildDefaultSpec` → the actual
+`netlify/functions/analyze.ts` handler with the query string the parcel panel
+builds — the verdict, cost and timeline it prints are the ones the API returns,
+not a re-implementation (rule 11). Each parcel is probed twice in isolation and a
+row that disagrees with itself is marked rather than reported (rule 10); none
+did. Before: 4 rows over their envelope, 15 controls. After: 4 declines, 15
+controls unchanged to the dollar and the month.
+
+One thing the harness had to do to measure the system rather than itself: pass a
+distinct `x-forwarded-for` per call. The handler's 20-per-minute per-IP limit is
+correct production behaviour for one visitor, and the first run returned
+`RATE_LIMITED` for every row after the twentieth — a clean-looking table of
+non-answers.
+
+The invariant is now a swept test, not a comment (rule 14): every envelope from
+1 to 6,000 sq ft is built and asserted `gfa <= envelope`, with both outcome
+counts pinned — 999 declines, 5,001 proposals — so a sweep that quietly stopped
+covering anything goes red instead of green (rule 20).
+
+### One more instrument that could not tell two states apart
+
+`scripts/null-inventory.ts` mapped a null spec onto `GAP — verdict withheld`,
+which reads as "no FAR resolvable" — our data missing something. A decline is the
+opposite: the parcel resolved fine and we chose not to propose. It now prints as
+its own outcome, and the four summary buckets are asserted to partition the rows
+so a future basis cannot vanish from the headline while the table still lists it.
+
+## 2026-08-12 — Two optional layers whose failure was published as a finding
+
+The required reads refuse now (`upstreamSplit.test.ts`, and the entry above it).
+The OPTIONAL ones kept the old idiom — `status === 'fulfilled' ? … : null` —
+which is harmless where an overlay's absence renders as nothing, and is the same
+defect one field over where its absence renders as a **claim**. Two did. Both
+were found by a sweep of the class, not by a failing test, and neither was
+visible to any instrument in the repo: on both sides of the boundary the code was
+internally consistent (rule 9).
+
+### The measurement, at the real entry point
+
+`scripts/verify-failed-fetch-claims.ts` drives the actual
+`netlify/functions/analyze.ts` handler against live upstreams with exactly one
+layer faulted per run — `globalThis.fetch` throws for URLs containing one
+substring and is otherwise untouched — so the diff against the control run is the
+layer and not the harness (rule 11). Two isolated probes per row; none disagreed
+with itself (rule 10). Every control row is byte-identical before and after.
+
+| row | before | after |
+|---|---|---|
+| Denver D-C, Union Station, 100,000 sq ft commercial, control | impact $921,000 · total $45,638,500 | unchanged |
+| …only the EHA market-area layer faulted | impact **$614,000** · total $45,331,500 · no note | impact $0 · total $44,717,500 · **note naming both rates** |
+| Denver I-MX-5 RiNo (a Typical-area parcel), EHA faulted | impact $614,000 — right by luck | impact $0 · same note |
+| Miami T4-L Coral Way, 2-unit rental teardown, control | two rows incl. the no-relocation absence | unchanged |
+| …only the HISTORIC layer faulted | **identical to the control** | one row: designation could not be checked |
+| Seattle Capitol Hill, control | MHA line "roughly $45/sq ft" | unchanged |
+| …only the MHA layer faulted | MHA line "roughly $28/sq ft" | the published spread, and why |
+
+### S2 — Denver: a transport failure moved $307,000 out of a total
+
+`estimates.ts` chose the commercial affordable-housing rate by testing the market
+area for `'High'` and taking the Typical rate otherwise, then labelled the fee
+with the area name or the word Typical when none had arrived. So an EHA outage
+billed the Typical rate on a High-area parcel, `applied: true`, silently, and the
+label asserted a market area that nothing had measured — rule 4 (an invented
+number) and rule 7 (and it tells the reader which way it resolved) in one line.
+
+**The fix could not live in `estimates.ts`.** There, a missing area has two
+causes — the layer answered and the parcel is not High, or the layer did not
+answer — and they are indistinguishable at that layer. The state is split in the
+provider (`overlays.unresolved`) and carried to the fee as a three-state
+`FeeAreaRead`. Rule 5, one level down.
+
+**DISCLOSE, not refuse.** The honest output for an unresolvable rate is
+"unpriced, disclosed" (rule 4), which is exactly what the same `switch` case
+already does when the unit count is unknown. Refusing the whole parcel was
+rejected: the EHA read feeds one fee on commercial projects only, residential
+Denver parcels never consult it, and `requiredUpstream.ts`'s own contract makes a
+read required when *a caller would otherwise publish its absence as a fact* — the
+gap is now publishable as a gap, so it is not required. The cost of the choice is
+stated rather than hidden: the total is $614,000 lighter and says so, instead of
+being $307,000 lighter and silent.
+
+Measured while fixing, because the empty case had to be classified too: distinct
+values on the live EHA layer are exactly {High, Typical}, both polygons cover the
+city (five in-city probes each returned one; two out-of-city probes returned
+none). So "answered, nothing here" keeps the Typical rate it has always had, and
+only the label stops attributing that word to the layer.
+
+### S3 — Miami: an ABSENCE published from a timeout
+
+`hurdles.ts` emits *"No tenant relocation or replacement-housing requirement"* on
+a rental teardown, framed as the opposite of the rule in most cities we cover —
+and the neighbouring row's note stated the parcel was not in a designated
+historic district. Both are findings about the parcel derived from
+`historicDistrict` being null, and Miami is the only city that reads that field
+inversely. With the HISTORIC layer faulted, the response was **identical to the
+control**. An absence is the strongest claim shape in this repo and it was being
+manufactured from a network error.
+
+Two details the fix turned on. First, Miami's `historicDistrict` is fed by TWO
+layers — the historic district and the archaeological zone — so a null is an
+answer only when both answered; marking the gap on either failure alone would be
+wrong in the direction that flatters (rule 13). Second, deleting the rows was not
+an option: a demolition path with no historic row reads as clear. The unknown
+gets a row of its own that says what turns on it, and the 45-day archaeological
+arm — which does not depend on any district — is stated there rather than lost.
+
+**DISCLOSE, not refuse**, and here the case is stronger: the historic layer is
+optional in all 23 providers and feeds informational rows everywhere else, so a
+502 for the whole parcel would trade a large availability loss for a claim we can
+simply decline to make.
+
+### S5 — Seattle was milder than S2, and not harmless
+
+`applied: false` keeps every MHA branch out of the total, and the label already
+omitted the area name when it had none, so the sweep's reading was right about
+the total. The **rate** was still a per-parcel claim: on a parcel the control run
+resolved to "High Areas", faulting the layer moved the published line from
+"roughly $45/sq ft" to "roughly $28/sq ft" — a 38% drop with nothing marking it.
+A number is not less of an assertion for sitting outside the total. It now prints
+the published spread across areas, taken from the source the midpoints come from
+rather than from the spread of our own four numbers, which would understate what
+is unknown. The parcels that are genuinely in no MHA fee area are untouched —
+that default is a separate, pre-existing question and is left as found.
+
+### Structure, not a comment (rules 14 and 20)
+
+`overlays.unresolved` is a closed union, so a typo is a compile error, and
+`ImpactFee` is a union in which an applied fee cannot carry an unknown rate — a
+caller reaching for the number to bill it has already had to narrow on `applied`.
+`CostOpts` takes the parcel's overlays rather than a bare fee-area string, so the
+lookup cannot arrive with its resolution state dropped; that change alone made
+the compiler point at every call site.
+
+Three guards, each written so it cannot pass by finding nothing:
+`providers/failedFetchClaims.test.ts` pins the provider↔field pairs by exact
+membership, asserts `hits > 0` on every perturbation (a renamed upstream URL
+turns a probe into a no-op that passes by testing nothing), and asserts BOTH
+directions — the healthy run must NOT mark the layer, so "mark everything" is not
+a way to pass. `cost.test.ts` pins all three fee-area states, so a fix that made
+everything unpriced would fail. And a sweep over every city with specific hurdles
+asserts that no city states the parcel is outside a historic district when the
+read is unresolved, with a control asserting that Miami still states it when the
+read succeeded — if that control list ever empties, the regex has gone stale and
+the sweep is passing over nothing.
+
+### What is still open, and deliberately not closed here
+
+The sweep's S1 (a failed optional read erasing the government-owner hard block in
+Philadelphia and San Diego) and S4 (a failed overlay silently removing required
+hurdles and months) are untouched. S1 in particular needs a product decision
+about whether an assessor-join outage should refuse a whole parcel, and that is
+not a decision a fix should make on the way past.
+
+> **Superseded in part, same day.** S4 was closed by the entry below —
+> "A timeout that made a parcel more buildable". S1 is still open as written.
+
+## 2026-08-12 — A timeout that made a parcel more buildable
+
+The entry above fixed the optional reads whose failure published a false
+**claim**. This is the other half of the same class, and it is the half that is
+harder to see, because the failure publishes **nothing**: `hurdles.ts` tests
+three overlay fields as booleans — `historicDistrict`, `coastalZone`,
+`floodZone` — and on a null the hurdle they trigger simply does not appear. The
+months it carries leave the timeline with it. There is no wrong sentence to find
+in the output; there is a right sentence missing, and a report missing a
+requirement is indistinguishable from a report for a parcel that has none
+(rule 18, at its sharpest).
+
+### The measurement
+
+`scripts/verify-unchecked-overlays.ts` drives the actual
+`netlify/functions/analyze.ts` handler against live upstreams with exactly one
+layer faulted per run, each row run twice in isolation (rule 10; no row
+disagreed with itself), with a distinct `x-forwarded-for` per call so the
+handler's 20/min limit does not turn the table into `RATE_LIMITED` non-answers.
+
+| row | verdict | months | hurdles |
+|---|---|--:|--:|
+| LA · 1126 Abbot Kinney Blvd (C2-1-O-CA, live `coastalZone: true`) — control | AS_OF_RIGHT | 57 | 3 |
+| LA · same parcel, COASTAL faulted | AS_OF_RIGHT | **48** | **2** |
+| Boston · 26 Exeter St (Back Bay Architectural District, restaurant standing) — control | NEEDS_RELIEF | 55 | 6 |
+| Boston · same parcel, HISTORIC faulted | **AS_OF_RIGHT** | **51** | **4** |
+
+The LA row loses the Coastal Development Permit and exactly its nine months: the
+permit is `serial: true`, so unlike the nested entitlement hurdles its months add
+in full — and leave in full. The Boston row is worse than a lost row. A transport
+failure moved the parcel from "needs city permission" to "you can likely build
+this", because `feasibility.ts` is the only place that raises a teardown to
+NEEDS_RELIEF on historic grounds and it read the same `X | null` as a boolean.
+**A timeout upgraded the parcel's legal standing, on the loudest line of the
+page.**
+
+### DISCLOSE, not refuse — and why that is not the soft option
+
+Making these layers required would be 23 cities × 2 layers of new refusal surface
+for fields that are frequently and legitimately absent: most parcels are not
+historic and not coastal. A tool that 502s because it could not confirm a parcel
+is **not** historic is worse than one that says so. So the analysis proceeds and
+the gap gets a row of its own — `status: 'unchecked'`, a fourth status that is
+deliberately not on the required/likely/info severity ramp, because it is a claim
+about the REPORT rather than about the parcel.
+
+Two decisions inside that, both of which could have gone the flattering way:
+
+**The months are named, never added.** An `unchecked` row carries
+`excludedMonths`, which nothing sums into `timeline.months`. Adding them would
+manufacture time for a requirement that probably does not apply (rule 1);
+dropping them would leave a bare number with no indication of which way it is
+wrong, which is rule 7's failure. So the figure renders as a floor — "48+ mos ·
+at least — up to 9 more if the unchecked approvals apply" — and the flood row,
+whose hurdle carries no months, deliberately carries none and leaves the
+timeline unmarked. Over-marking misdescribes what is unknown just as surely.
+
+**An unchecked row is not an approval, so it is not counted as one.** Both
+surfaces that publish a hurdle count would otherwise have made an outage read as
+*more* approvals than a healthy run — the original defect with its sign flipped.
+`src/lib/uncheckedHurdles.ts` holds that rule once for `KeyMetrics` and
+`Compare`, rather than as two inline filters that can disagree about what a
+parcel needs (rule 9's boundary problem, between two files that look
+independent). Verified rendered, not merely returned: the result page shows
+`2+ · at least — 1 check unavailable` and a "Not checked" row carrying the note,
+`Compare` shows `48 mo`/`2+` with an `unchecked` marker, and the healthy run
+renders byte-for-byte what it did before.
+
+**The verdict.** `assessFeasibility` now pushes an INDETERMINATE historic check
+on a teardown whose designation could not be read, and downgrades an otherwise
+AS_OF_RIGHT verdict to INDETERMINATE — the same move, for the same reason, as
+the existing rule for a tall proposal with no published height limit. It is
+INDETERMINATE and never NEEDS_RELIEF: a timeout may not manufacture a legal claim
+in either direction. Scoped so it cannot become a blanket refusal — teardowns
+only, failed read only (an empty answer resolves the question and leaves the
+verdict alone), and only where the verdict would otherwise be as-of-right.
+
+### Scope, and the two cities that mark nothing
+
+`historic` and `flood` are now marked by every provider that reads those layers
+(22 of 23 for historic; all 23 for flood), and `coastal` by both CA providers —
+because unlike `feeArea`, these three consumers are city-agnostic. Two cities
+mark no historic gap and both are recorded as answers rather than omissions:
+**Las Vegas** issues no historic request at all, because no City layer publishes
+the HD-O boundary (a documented refusal), and **Austin** issues none either —
+which is a real coverage gap, since `HISTORIC_BODY.austin` describes a
+Certificate of Appropriateness that can never fire. That gap is named here and
+left as a gap. Marking it would report a transport failure that did not happen,
+on every Austin parcel.
+
+Still open from the same sweep: S1 (a failed optional read erasing the
+government-owner hard block in Philadelphia and San Diego), and the city-specific
+overlay layers in Dallas, Raleigh, Milwaukee, Columbus and Phoenix, whose failure
+removes city-specific hurdles by the same mechanism but through per-city fields
+rather than the three shared ones.
+
+### Structure, not a comment (rules 14 and 20)
+
+`UnresolvedOverlay` is a closed union, so a typo is a compile error.
+`lib/unresolvedOverlays.ts` is the single construction site for the mark, so
+`grep unresolvedOverlays netlify/functions/lib/providers` is a complete inventory
+of who marks what, and the emptiness half of the condition (`field == null &&
+readFailed(r)`) is written down once instead of 23 times — both halves matter,
+in opposite directions: without the first, a provider whose field is fed by two
+layers reports a gap while holding a good answer from the sibling (rule 13);
+without the second, every parcel in the city is marked and the disclosure becomes
+wallpaper. `HurdleStatus` gaining a member made the UI's status record stop
+compiling until the new state was given a rendering.
+
+`providers/uncheckedOverlays.test.ts` (127 cases) cannot pass by finding nothing:
+`CASES` is pinned to `LIVE_CITIES` by exact membership in both directions; every
+perturbation asserts `hits > 0`, which is what pins the layer URLs — a renamed
+upstream turns a probe into a no-op that passes by testing nothing (rule 11);
+every case asserts both directions, so "mark everything always" cannot pass; and
+the two cities with no historic read are asserted to acquire no historic mark
+under an unrelated failure, with their reasons required as data. Both directions
+of the instrument were checked by reintroducing the defect: reverting one
+provider's mark turns it red, and mistyping one layer substring turns it red
+rather than silently green.
+
+One further consequence, caught while wiring this up rather than by a test: an
+unresolved overlay now marks the response DEGRADED for `cacheControlFor`. A row
+saying "the Coastal Zone layer did not respond" is a fact about one request, and
+at the 24-hour CDN TTL a thirty-second outage would have told every visitor for a
+day that a check could not be performed, on a layer that recovered immediately —
+the Chicago cache-poisoning incident of 2026-06-10, one field over.

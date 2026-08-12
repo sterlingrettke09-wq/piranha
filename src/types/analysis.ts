@@ -40,7 +40,26 @@ export interface FeasibilityCheck {
   note: string | null
 }
 
-export type HurdleStatus = 'required' | 'likely' | 'info'
+/** `required` / `likely` / `info` are claims ABOUT THE PARCEL, of decreasing
+ *  force. `unchecked` is not on that scale at all: it says a check we normally
+ *  perform could not be performed on this request, so the rows below it are
+ *  known-incomplete.
+ *
+ *  It exists because the alternative was silence. An optional overlay read
+ *  returns `X | null`, and on the null the hurdle it would have produced simply
+ *  did not appear — measured 2026-08-12 at the analyze handler with one layer
+ *  faulted per run: LA's Coastal Development Permit row vanished and the
+ *  estimate went 57 → 48 months (the permit's whole serial 9), and a Back Bay
+ *  teardown went NEEDS_RELIEF 55 mo → AS_OF_RIGHT 51 mo when Boston's historic
+ *  layer timed out. Both read exactly like a parcel that is genuinely clear.
+ *
+ *  ⚠️ AN `unchecked` ROW IS NOT AN APPROVAL, so it must not be counted as one.
+ *  `KeyMetrics` and `Compare` both publish a hurdle COUNT, and folding these
+ *  rows into it would make a city with a failed lookup appear to demand MORE
+ *  approvals than the same city on a healthy run — a false claim in the
+ *  opposite direction from the one being fixed. They mark the count as a floor
+ *  instead. */
+export type HurdleStatus = 'required' | 'likely' | 'info' | 'unchecked'
 
 // A non-zoning regulatory hurdle — historic review, affordability mandates,
 // environmental review, fees, private governance, etc.
@@ -65,6 +84,21 @@ export interface Hurdle {
   serial?: boolean
   /** Estimated months this hurdle adds to approval, if any. */
   addsMonths?: number
+  /** Months this hurdle WOULD add if it turns out to apply — carried only on
+   *  `status: 'unchecked'` rows, and deliberately NOT summed into the timeline.
+   *
+   *  The distinction is the point. `addsMonths` is time we are asserting the
+   *  project will take; this is time we are declining to assert, because the
+   *  layer that decides whether the requirement applies did not answer. Adding
+   *  it would manufacture months for a rule that probably does not apply (most
+   *  parcels are not historic and not coastal) — CLAUDE.md rule 1. Dropping it
+   *  entirely would leave the reader with a bare number and no idea in which
+   *  direction it is wrong, which is rule 7's failure.
+   *
+   *  So it does exactly one job: it lets the UI mark the timeline as a FLOOR,
+   *  and lets the note name the size of what is missing. A row with no months
+   *  attached (flood) correctly leaves the timeline unmarked. */
+  excludedMonths?: number
   /** TRUE when this hurdle fires on a SIZE threshold (floor area or unit count).
    *  If the size itself was assumed because no FAR resolved, a 'required'
    *  status here would be a regulatory claim built on a placeholder — so those

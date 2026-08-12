@@ -16,6 +16,16 @@ const STATUS: Record<HurdleStatus, { label: string; dot: string; chip: string }>
     dot: 'bg-piranha-charcoal/30',
     chip: 'bg-piranha-charcoal/5 text-piranha-charcoal/60',
   },
+  // Not a claim about the parcel — a claim about this report. The chip has to
+  // read as "we didn't check", not as a fourth severity between Likely and
+  // Heads-up, because the row's whole job is to stop a missing requirement
+  // reading as an absent one. Slate rather than the amber/rose severity ramp,
+  // and an outline so it does not sit on the same visual scale.
+  unchecked: {
+    label: 'Not checked',
+    dot: 'bg-sky-600',
+    chip: 'bg-sky-600/10 text-sky-800 ring-1 ring-inset ring-sky-600/25',
+  },
 }
 
 export function HurdlesSection({ hurdles }: { hurdles: Hurdle[] }) {

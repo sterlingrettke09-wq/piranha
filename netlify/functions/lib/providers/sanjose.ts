@@ -17,6 +17,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
@@ -266,6 +267,14 @@ export async function getSanJoseParcelInfo(lat: number, lng: number): Promise<Pa
     overlays: {
       historicDistrict: hist?.NAME ? String(hist.NAME).trim() : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({
+        historic: !hist?.NAME && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     // Deliberately omitted: Santa Clara County's assessor attributes aren't
     // publicly reachable, so year built / units / building area / owner are
