@@ -7,12 +7,16 @@ interface Props {
   costs: AnalysisResult['costs']
   timeline: AnalysisResult['timeline']
   hurdles: AnalysisResult['hurdles']
+  /** The parcel's own area. Rendered ABOVE the estimates, always — see the
+   *  comment on the lot row below for why it is unconditional. */
+  lotSqFt: AnalysisResult['parcel']['lotSqFt']
   /** When the verdict couldn't be determined, the timeline is conditional. */
   indeterminate?: boolean
 }
 
-/** Three headline figures, editorial register — the first thing the eye lands on. */
-export function KeyMetrics({ costs, timeline, hurdles, indeterminate }: Props) {
+/** Three headline figures, editorial register — the first thing the eye lands on,
+ *  under the lot the whole estimate stands on. */
+export function KeyMetrics({ costs, timeline, hurdles, lotSqFt, indeterminate }: Props) {
   // An `unchecked` row is a disclosure, not an approval. `summarizeUnchecked`
   // holds that rule for both surfaces that publish a count — see the module for
   // why it is not two inline filters.
@@ -28,6 +32,7 @@ export function KeyMetrics({ costs, timeline, hurdles, indeterminate }: Props) {
   const costValue = useCountUp(costs.total)
   const monthsValue = useCountUp(hasMonths ? timeline.months : 0)
   const hurdleValue = useCountUp(counted.length)
+  const lotValue = useCountUp(lotSqFt ?? 0)
 
   const hurdleLabel =
     unchecked.length > 0
@@ -65,22 +70,53 @@ export function KeyMetrics({ costs, timeline, hurdles, indeterminate }: Props) {
   ]
 
   return (
-    <div className="grid gap-px overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-piranha-charcoal/10 sm:grid-cols-3">
-      {metrics.map((m) => (
-        <div key={m.label} className="bg-piranha-bone px-6 py-7">
-          <p className="font-serif text-5xl leading-none tracking-tight text-piranha-charcoal tabular-nums">
-            {m.figure}
-            {/* The "+" sits on the figure itself, because the label under it is
-                the first thing skipped. A floor that only reads as a floor in
-                small caps is a floor nobody sees. */}
-            {m.floor && <span className="text-piranha-charcoal/45">+</span>}
-            {m.suffix && <span className="text-2xl text-piranha-charcoal/45">{m.suffix}</span>}
-          </p>
-          <p className="mt-3 text-xs uppercase tracking-[0.14em] text-piranha-charcoal/55">
-            {m.label}
-          </p>
-        </div>
-      ))}
+    <div className="grid gap-px overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-piranha-charcoal/10">
+      {/* THE LOT COMES FIRST, ALWAYS — and with NO threshold attached.
+          A 2 sq ft Las Vegas sliver published AS_OF_RIGHT and $482,996: real
+          geometry, the right field, correct arithmetic, and an answer no reader
+          would have asked for had they seen the lot. The fix is disclosure, not
+          refusal — a cutoff would have to say where absurdity begins, and
+          nothing here can defend a number for that.
+          So there is no `lotSqFt < N` anywhere in this file: no tone change, no
+          note, no suppression. The lot is simply rendered at the top of the band
+          the estimates live in, at the same weight, so it is read BEFORE the cost
+          on every parcel rather than only on the ones we thought to flag.
+          Full-width rather than a fourth tile so a seven-figure lot area has
+          somewhere to go. */}
+      <div className="bg-piranha-bone px-6 py-7">
+        <p className="font-serif text-5xl leading-none tracking-tight text-piranha-charcoal tabular-nums">
+          {lotSqFt != null ? (
+            <>
+              {Math.round(lotValue).toLocaleString()}
+              <span className="text-2xl text-piranha-charcoal/45"> sq ft</span>
+            </>
+          ) : (
+            // Same wording as the report's "The site" section, and it is a GAP
+            // (no area reached us), never a claim that the parcel has none.
+            <span className="text-3xl">Not on file</span>
+          )}
+        </p>
+        <p className="mt-3 text-xs uppercase tracking-[0.14em] text-piranha-charcoal/55">
+          Lot size, from the public record
+        </p>
+      </div>
+      <div className="grid gap-px bg-piranha-charcoal/10 sm:grid-cols-3">
+        {metrics.map((m) => (
+          <div key={m.label} className="bg-piranha-bone px-6 py-7">
+            <p className="font-serif text-5xl leading-none tracking-tight text-piranha-charcoal tabular-nums">
+              {m.figure}
+              {/* The "+" sits on the figure itself, because the label under it is
+                  the first thing skipped. A floor that only reads as a floor in
+                  small caps is a floor nobody sees. */}
+              {m.floor && <span className="text-piranha-charcoal/45">+</span>}
+              {m.suffix && <span className="text-2xl text-piranha-charcoal/45">{m.suffix}</span>}
+            </p>
+            <p className="mt-3 text-xs uppercase tracking-[0.14em] text-piranha-charcoal/55">
+              {m.label}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

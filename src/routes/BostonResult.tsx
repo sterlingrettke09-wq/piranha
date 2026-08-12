@@ -256,8 +256,16 @@ export default function BostonResult() {
             <h1 className="mt-4 font-serif text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.05] tracking-tight text-piranha-charcoal">
               {state.data.parcel.address}
             </h1>
+            {/* The lot area rides the identity line, so it is on screen before
+                the verdict and long before the cost — on every branch, including
+                the blocked / no-coverage one where KeyMetrics never mounts. It
+                is unconditional: no size test decides whether a reader gets to
+                see the size of the thing being priced. */}
             <p className="mt-3 text-sm text-piranha-charcoal/55">
-              Parcel {state.data.parcel.parcelId} · District {state.data.parcel.districtCode}
+              Parcel {state.data.parcel.parcelId} · District {state.data.parcel.districtCode} ·{' '}
+              {state.data.parcel.lotSqFt != null
+                ? `${state.data.parcel.lotSqFt.toLocaleString()} sq ft lot`
+                : 'lot size not on file'}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Pill>{PROJECT_TYPE_LABEL[state.data.project.projectType]}</Pill>
@@ -379,6 +387,7 @@ export default function BostonResult() {
                   costs={state.data.costs}
                   timeline={state.data.timeline}
                   hurdles={state.data.hurdles}
+                  lotSqFt={state.data.parcel.lotSqFt}
                   indeterminate={state.data.feasibility.overall === 'INDETERMINATE'}
                 />
               </Reveal>

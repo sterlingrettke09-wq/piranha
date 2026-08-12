@@ -81,6 +81,22 @@ export default function Compare() {
         </span>
       ),
     },
+    {
+      // Before the cost, unconditionally. The result page surfaces the lot area
+      // above its estimates for a reason (a 2 sq ft Las Vegas sliver publishing
+      // AS_OF_RIGHT and $482,996 off correct geometry and correct arithmetic),
+      // and a disclosure that holds on one surface and not the other is the same
+      // defect with a smaller audience — this table publishes the cost too.
+      // No threshold: every parcel shows its lot, so the reader decides.
+      label: 'Lot size',
+      render: (d) =>
+        d.parcel.lotSqFt != null ? (
+          <span className="tabular-nums">{d.parcel.lotSqFt.toLocaleString()} sq ft</span>
+        ) : (
+          // A gap, not a claim the parcel has no area.
+          <span className="text-piranha-charcoal/45">not on file</span>
+        ),
+    },
     { label: 'Construction cost', render: (d) => <span className="tabular-nums">{usd(d.costs.total)}</span> },
     {
       // Some cities carry a measured filing→issuance permit leg from their own
