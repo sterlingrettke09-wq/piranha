@@ -484,13 +484,20 @@ async function main() {
     const farBasis = env?.farBasis ?? 'null'
     const gfaBasis = spec?.gfaBasis ?? 'no-spec'
 
+    // `no-spec` is its own outcome, NOT a gap. Rule 5, applied to this
+    // instrument's own output: a parcel that resolved an envelope too small to
+    // hold the smallest default program (or gave no size basis at all) declined
+    // to produce a spec deliberately — that is an answer about the parcel, and
+    // it must not print as "no FAR resolvable", which is a hole in our data.
     const outcome =
       gfaBasis === 'envelope' ? 'RESOLVED'
       : gfaBasis === 'assumed-unconstrained' ? 'UNCONSTRAINED (an answer)'
+      : gfaBasis === 'no-spec' ? 'NO DEFAULT SPEC (an answer)'
       : 'GAP — verdict withheld'
     const note =
       gfaBasis === 'envelope' ? `FAR ${r.info.zoning.maxFAR ?? '(per-use)'} from published data`
       : gfaBasis === 'assumed-unconstrained' ? 'code affirmatively imposes no FAR; lot area is a placeholder'
+      : gfaBasis === 'no-spec' ? `envelope ${env?.maxFloorAreaSqFt ?? 'null'} sq ft — too small for a default program, or no size basis; the panel offers the wizard instead`
       : 'no FAR resolvable; cost/timeline still estimated and disclosed'
 
     rows.push({
@@ -504,7 +511,17 @@ async function main() {
   const resolved = rows.filter((r) => r.gfaBasis === 'envelope').length
   const unc = rows.filter((r) => r.gfaBasis === 'assumed-unconstrained').length
   const gaps = rows.filter((r) => r.gfaBasis === 'assumed-far-1.0').length
+  const noSpec = rows.filter((r) => r.gfaBasis === 'no-spec').length
   const failed = rows.filter((r) => r.outcome === 'PROBE FAILED').length
+  // These four buckets are published as this document's headline, so they must
+  // PARTITION the rows: a city landing outside all of them would vanish from the
+  // summary while the table still listed it, which is the shape of a count that
+  // reads clean because it stopped seeing something (rule 20).
+  if (resolved + unc + gaps + noSpec + failed !== rows.length) {
+    throw new Error(
+      `null-inventory: ${rows.length} rows but ${resolved + unc + gaps + noSpec + failed} counted — a gfaBasis the summary does not bucket`,
+    )
+  }
 
   const md = `# Null inventory — what the tool actually knows
 
@@ -534,7 +551,7 @@ See [why that column exists](#why-there-is-a-live-sample-column) — it is not d
 |---|---|---|---|---|---|
 ${rows.map((r) => `| ${r.city} | \`${r.district}\` | ${reliabilityCell(r.rel)} | **${r.outcome}** | ${r.verdict} | ${r.note} |`).join('\n')}
 
-**${resolved} resolved from published data · ${unc} unconstrained (an answer) · ${gaps} gaps · ${failed} probe failures.**
+**${resolved} resolved from published data · ${unc} unconstrained (an answer) · ${gaps} gaps · ${noSpec} no default spec · ${failed} probe failures.**
 
 ${reliabilitySummary(rows)}
 
@@ -687,7 +704,7 @@ most expensive kind of wrong — it buys research nobody needed.
 
   if (process.argv.includes('--write')) {
     writeFileSync('docs/NULL-INVENTORY.md', md)
-    console.log(`wrote docs/NULL-INVENTORY.md — ${resolved} resolved · ${unc} unconstrained · ${gaps} gaps · ${failed} failed`)
+    console.log(`wrote docs/NULL-INVENTORY.md — ${resolved} resolved · ${unc} unconstrained · ${gaps} gaps · ${noSpec} no-spec · ${failed} failed`)
   } else {
     console.log(md)
   }

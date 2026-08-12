@@ -107,7 +107,9 @@ describe('buildDefaultSpec', () => {
     expect(commercial.units).toBeUndefined()
   })
 
-  it('clamps: gfa floors at 1000 and caps at 200000', () => {
+  it('floors at 1000 where NO envelope bounds it, and caps at 200000', () => {
+    // No envelope resolved → nothing to clamp against, so the floor still
+    // applies exactly as before. This is the path most parcels take.
     const tiny = buildDefaultSpec(parcel({ lot: { sizeSqFt: 200, lotType: null } }), 'boston')!
     expect(tiny.gfa).toBe(1000)
 
@@ -133,6 +135,104 @@ describe('buildDefaultSpec', () => {
     expect(spec.gfa).toBe(1000) // clamped
     // floor(1000/1300) = 0 → max(1, 0) = 1
     expect(spec.units).toBe(1)
+  })
+})
+
+// ---- The proposal may never exceed the envelope it was derived from ----
+// Found live, not by reading code: four parcels in the 575-parcel smoke sample
+// proposed 1,000 sf against envelopes of 303 / 717 / 388 / 956 sf, and the
+// overage was published as the CITY's restriction — three PROHIBITED and one
+// NEEDS_RELIEF carrying $514,780 and 22 months.
+//
+// These assertions are about a relationship (proposal ≤ envelope), not about a
+// number, which is what makes them hard to defeat by accident: rounding, the
+// 0.85 factor and both band ends can all change without touching the invariant,
+// and any change that breaks it goes red (rule 14 — a structure, not a comment).
+describe('buildDefaultSpec — the envelope bounds the default program', () => {
+  const withEnvelope = (maxFloorAreaSqFt: number | null, lotSqFt = 5000) =>
+    parcel({
+      lot: { sizeSqFt: lotSqFt, lotType: null },
+      envelope: {
+        maxFloorAreaSqFt,
+        maxHeightFt: 35,
+        maxStories: 3,
+        maxUnits: null,
+        allowedUses: ['residential'],
+        farBasis: 'district',
+      },
+    })
+
+  // The exact four parcels, by their measured envelopes.
+  it.each([
+    ['atlanta RG-2', 303, 870],
+    ['atlanta C-1', 717, 1030],
+    ['boston 2F-5000', 388, 775],
+    ['chicago RS-3', 956, 1062],
+  ])('%s: an envelope of %i sf yields no instant report at all', (_label, env, lot) => {
+    expect(buildDefaultSpec(withEnvelope(env, lot), 'boston')).toBeNull()
+  })
+
+  it('proposes at the envelope when the envelope is exactly the minimum program', () => {
+    const spec = buildDefaultSpec(withEnvelope(1000), 'boston')!
+    expect(spec.gfa).toBe(1000)
+  })
+
+  it('rounding alone cannot cross the envelope', () => {
+    // 1,480 × 0.85 = 1,258 → nearest 500 = 1,500, which is over the envelope
+    // with the floor playing no part. A fix that only moved the floor would
+    // still publish 1,500 here.
+    const spec = buildDefaultSpec(withEnvelope(1480), 'boston')!
+    expect(spec.gfa).toBeLessThanOrEqual(1480)
+  })
+
+  it('never proposes more floor area than the envelope allows — swept, not sampled', () => {
+    // Rule 20: a sweep that silently stopped matching would pass by finding
+    // nothing, so both halves of the outcome are pinned by count.
+    let declined = 0
+    let proposed = 0
+    for (let env = 1; env <= 6000; env++) {
+      const spec = buildDefaultSpec(withEnvelope(env), 'boston')
+      if (spec === null) {
+        declined++
+        continue
+      }
+      proposed++
+      expect(spec.gfa).toBeLessThanOrEqual(env)
+      expect(spec.gfa).toBeGreaterThan(0) // analyze.ts rejects gfa <= 0 as BAD_INPUT
+    }
+    // Declines are exactly the envelopes below GFA_MIN — 1…999.
+    expect(declined).toBe(999)
+    expect(proposed).toBe(5001)
+  })
+
+  it('a lot area is not a ceiling — the no-envelope path is untouched', () => {
+    // Rule 5: `assumed-far-1.0` / `assumed-unconstrained` mean no floor-area
+    // limit resolved, so there is nothing to bound the proposal against and the
+    // band applies as it always did. Capping by lot area here would turn a
+    // labelled assumption into a limit the code never stated.
+    const noFar = buildDefaultSpec(parcel({ lot: { sizeSqFt: 200, lotType: null } }), 'boston')!
+    expect(noFar.gfa).toBe(1000)
+    expect(noFar.gfa).toBeGreaterThan(200)
+    expect(noFar.gfaBasis).toBe('assumed-far-1.0')
+
+    const unconstrained = buildDefaultSpec(
+      parcel({
+        lot: { sizeSqFt: 200, lotType: null },
+        envelope: {
+          maxFloorAreaSqFt: null, maxHeightFt: 40, maxStories: 3, maxUnits: null,
+          allowedUses: ['residential'], farBasis: 'unconstrained',
+        },
+      }),
+      'denver',
+    )!
+    expect(unconstrained.gfa).toBe(1000)
+    expect(unconstrained.gfaBasis).toBe('assumed-unconstrained')
+  })
+
+  it('the ceiling still binds, and still sits under the envelope', () => {
+    const spec = buildDefaultSpec(withEnvelope(5_000_000, 5_000_000), 'nyc')!
+    expect(spec.gfa).toBe(200000)
+    expect(spec.gfa).toBeLessThan(5_000_000)
   })
 })
 
