@@ -141,6 +141,56 @@ describe('analyze handler', () => {
       expect(res.statusCode).toBe(502)
       expect(JSON.parse(res.body).code).toBe('UPSTREAM_ERROR')
     })
+    // The end of the Phoenix chain, asserted where the user actually meets it.
+    // A rejected zoning fetch used to become `districtCode: 'Unknown'` →
+    // `developable: false, kind: 'no_coverage'`, and analyze.ts then zeroed
+    // costs, timeline and hurdles — a 200 carrying a zeroed report and a
+    // coverage claim, built entirely out of a timeout. It must be a 502
+    // carrying NO report at all.
+    it('a Phoenix zoning outage yields a 502 with no report in the body', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url)
+        if (u.includes('/Zoning/MapServer/0')) throw new Error('zoning down')
+        if (u.includes('COUNTY_PARCELS/MapServer/3'))
+          return new Response(
+            JSON.stringify({
+              features: [
+                {
+                  attributes: {
+                    APN: '110-11-022',
+                    STREET_NUM: '805',
+                    STREET_NAME: 'AMELIA',
+                    'SHAPE.STArea()': 7025,
+                  },
+                },
+              ],
+            }),
+          )
+        if (u.includes('CityBoundary'))
+          return new Response(JSON.stringify({ features: [{ attributes: { NAME: 'City of Phoenix' } }] }))
+        return new Response(JSON.stringify({ features: [] }))
+      })
+      const res = await call({
+        city: 'phoenix',
+        lat: '33.4934',
+        lng: '-112.0844',
+        use: 'residential',
+        gfa: '15000',
+      })
+      expect(res.statusCode).toBe(502)
+      const body = JSON.parse(res.body)
+      expect(body.code).toBe('UPSTREAM_ERROR')
+      // No zeroed report can be built from an error: the AnalysisError shape
+      // carries a code and a message and nothing else.
+      expect(Object.keys(body).sort()).toEqual(['code', 'message'])
+      expect(body.costs).toBeUndefined()
+      expect(body.timeline).toBeUndefined()
+      expect(body.hurdles).toBeUndefined()
+      expect(body.feasibility).toBeUndefined()
+      // And the message must not carry the claim this state replaces.
+      expect(body.message).not.toMatch(/neighboring city|unincorporated|coverage/i)
+    })
+
     it('returns 404 when no parcel at the point', async () => {
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
         if (String(url).includes('Zoning')) return new Response(JSON.stringify({ features: [{ attributes: { Name: 'B-2-65' } }] }))

@@ -5,6 +5,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveDenver, DENVER_FT_PER_STORY } from '../zoning/denver'
 
 const PARCELS = 'https://denvergov.org/maps/data/Zoning/MapServer/0'
@@ -110,36 +111,73 @@ function usesForZone(code: string | null): string[] | null {
 
 export async function getDenverParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, histR, floodR, ehaR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, [
-      'SITUS_ADDRESS_LINE1',
-      'LAND_AREA',
-      'SCHEDNUM',
-      'D_CLASS_CN',
-      'APPRAISED_IMP_VALUE',
-      'COM_ORIG_YEAR_BUILT',
-      'RES_ORIG_YEAR_BUILT',
-      'OWNER_NAME',
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    // maxAttempts 2, not 3: fetchParcelSnap already retries its exact query
+    // internally, so three outer attempts would be up to six queries.
+    readRequired(
+      'parcel',
+      (t) =>
+        fetchParcelSnap(
+          PARCELS,
+          lat,
+          lng,
+          [
+            'SITUS_ADDRESS_LINE1',
+            'LAND_AREA',
+            'SCHEDNUM',
+            'D_CLASS_CN',
+            'APPRAISED_IMP_VALUE',
+            'COM_ORIG_YEAR_BUILT',
+            'RES_ORIG_YEAR_BUILT',
+            'OWNER_NAME',
+          ],
+          false,
+          undefined,
+          30,
+          t,
+        ),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) =>
+        fetchParcelSnap(
+          ZONING,
+          lat,
+          lng,
+          ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES'],
+          false,
+          undefined,
+          30,
+          t,
+        ),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['DIST_NAME']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+      fetchFeatures(EHA, lat, lng, ['MarketArea']),
     ]),
-    fetchParcelSnap(ZONING, lat, lng, ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES']),
-    fetchFeatures(HISTORIC, lat, lng, ['DIST_NAME']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
-    fetchFeatures(EHA, lat, lng, ['MarketArea']),
   ])
+  const [histR, floodR, ehaR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'denver', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('denver', 'Denver', [parcelR, zoningR], t0)
   }
 
   const parcel = firstAttrs(parcelR.value)
   warnIfMissing(parcel, ['SCHEDNUM', 'LAND_AREA'], 'denver')
-  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['ZONE_DISTRICT', 'HEIGHT_STORIES'], 'denver')
+  warnIfMissing(firstAttrs(zoningR.value), ['ZONE_DISTRICT', 'HEIGHT_STORIES'], 'denver')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const eha = ehaR.status === 'fulfilled' ? firstAttrs(ehaR.value) : null

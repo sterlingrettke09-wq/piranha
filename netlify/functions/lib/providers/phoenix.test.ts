@@ -567,4 +567,120 @@ describe('getPhoenixParcelInfo', () => {
     expect(res.code).toBe('NO_PARCEL')
     expect(res.status).toBe(404)
   })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // THE ZONING STATE SPLIT
+  //
+  // "The service did not answer" and "the service answered and no polygon
+  // covers this point" are different facts and used to render identically, as
+  // `districtCode: 'Unknown'`. Downstream that is `assessDevelopability` →
+  // `developable: false, kind: 'no_coverage'` → *"It may sit in a neighboring
+  // city or unincorporated area that isn't in the zoning data we cover yet"*,
+  // with cost, timeline and hurdles zeroed. Measured live 2026-08-11: 7 of 20
+  // answered Phoenix parcels in one batch, 0 of 81 isolated calls hours later.
+  //
+  // These four tests pin BOTH arms. Pinning only the failure arm would let a
+  // fix that refuses on every empty result pass — and that would break the
+  // Scottsdale gate, which depends on an empty zoning answer meaning something.
+  // ════════════════════════════════════════════════════════════════════════
+
+  it('a zoning TRANSPORT failure refuses; it never becomes a coverage claim', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({
+        ...phoenixRoutes,
+        'Zoning/MapServer/0': () => {
+          throw new Error('zoning service down')
+        },
+      }),
+    )
+    const res = await getPhoenixParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.code).toBe('UPSTREAM_ERROR')
+    expect(res.status).toBe(502)
+    // The copy is part of the fix. It must say the service failed and the answer
+    // is unknown — and it must not NAME the claim it replaces, even to deny it
+    // (rule 21). This assertion rejected the first draft of the message, which
+    // read "it does not mean the site is outside our coverage".
+    expect(res.message).toMatch(/couldn’t reach/i)
+    expect(res.message).toContain('zoning')
+    expect(res.message).toMatch(/don’t know|no reading/i)
+    expect(res.message).not.toMatch(/neighboring city|unincorporated|coverage|unzoned|undevelopable/i)
+    // And nothing answer-shaped escapes: no district, no lot, no valuation.
+    const serialized = JSON.stringify(res)
+    expect(serialized).not.toContain('Unknown')
+    expect(serialized).not.toContain('7025')
+  })
+
+  it('a 200-with-error-JSON zoning body refuses too', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({ ...phoenixRoutes, 'Zoning/MapServer/0': ARCGIS_ERROR_200 }),
+    )
+    const res = await getPhoenixParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.code).toBe('UPSTREAM_ERROR')
+  })
+
+  // The OTHER arm, and the reason the refusal cannot simply be "empty means
+  // error". An empty zoning answer inside the city limits is a real gap, and
+  // out-of-city it is what the Scottsdale gate reads.
+  it('an EMPTY zoning answer is still an answer: Unknown, not a refusal', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({ ...phoenixRoutes, 'Zoning/MapServer/0': { features: [] } }),
+    )
+    const res = await getPhoenixParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.districtCode).toBe('Unknown')
+    expect(res.info.zoning.maxHeightFt).toBeNull()
+    // A gap, never the known-absence flag.
+    expect(res.info.zoning.farUnconstrained).toBeUndefined()
+  })
+
+  // The retry is bounded and real, not decorative. Pinned by COUNT so it cannot
+  // silently become zero retries (green because nothing failed) or an unbounded
+  // loop. Two zoning queries, then the third succeeds.
+  it('retries a transient zoning failure and resolves, without a second parcel query', async () => {
+    let zoningCalls = 0
+    let parcelCalls = 0
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({
+        ...phoenixRoutes,
+        'COUNTY_PARCELS/MapServer/3': () => {
+          parcelCalls++
+          return phoenixRoutes['COUNTY_PARCELS/MapServer/3']
+        },
+        'Zoning/MapServer/0': () => {
+          zoningCalls++
+          if (zoningCalls < 3) throw new Error('transient reset')
+          return phoenixRoutes['Zoning/MapServer/0']
+        },
+      }),
+    )
+    const res = await getPhoenixParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.districtCode).toBe('R1-6')
+    expect(zoningCalls).toBe(3)
+    // A healthy required read must not be retried — the retry is per-read, not
+    // per-request.
+    expect(parcelCalls).toBe(1)
+  })
+
+  it('gives up after a bounded number of zoning attempts rather than looping', async () => {
+    let zoningCalls = 0
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({
+        ...phoenixRoutes,
+        'Zoning/MapServer/0': () => {
+          zoningCalls++
+          throw new Error('zoning service down')
+        },
+      }),
+    )
+    const res = await getPhoenixParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(false)
+    expect(zoningCalls).toBe(3)
+  })
 })

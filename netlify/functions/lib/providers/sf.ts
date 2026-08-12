@@ -4,6 +4,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveSfFar } from '../zoning/sf'
 
 const BASE = 'https://sfplanninggis.org/arcgiswa/rest/services/PlanningData/MapServer'
@@ -45,18 +46,45 @@ function usesForGen(gen: string | null): string[] | null {
 
 export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [zoningR, parcelR, floodR, histR, landR, heightR] = await Promise.allSettled([
-    fetchParcelSnap(ZONING, lat, lng, ['zoning', 'gen', 'districtname']),
-    fetchParcelSnap(PARCELS, lat, lng, ['blklot', 'from_st', 'street', 'st_type'], true, CA_ZONE3_FT),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
-    fetchFeatures(HISTORIC, lat, lng, ['name_1']),
-    fetchFeatures(LANDUSE, lat, lng, ['landuse_landuse', 'landuse_resunits']),
-    fetchParcelSnap(HEIGHT, lat, lng, ['gen_hght']),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  const [parcelR, zoningR, heightR, optional] = await Promise.all([
+    // maxAttempts 2, not 3: fetchParcelSnap already retries its exact query
+    // internally, so three outer attempts would be up to six queries.
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, ['blklot', 'from_st', 'street', 'st_type'], true, CA_ZONE3_FT, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) => fetchParcelSnap(ZONING, lat, lng, ['zoning', 'gen', 'districtname'], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    // ⚠️ THE HEIGHT DISTRICT IS A SEPARATE MAPPED LAYER, AND IT IS REQUIRED.
+    // `gen_hght` is the only source of SF's maxHeightFt; when this fetch failed
+    // the field went null, which feasibility.ts renders as "No district height
+    // limit is available in public data" — false about a parcel SF does map.
+    // Measured by perturbation 2026-08-11: control h=65, layer-fail h=null.
+    readRequired('height district', (t) => fetchParcelSnap(HEIGHT, lat, lng, ['gen_hght'], false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    Promise.allSettled([
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+      fetchFeatures(HISTORIC, lat, lng, ['name_1']),
+      fetchFeatures(LANDUSE, lat, lng, ['landuse_landuse', 'landuse_resunits']),
+    ]),
   ])
+  const [floodR, histR, landR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'sf', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT. A service that did not answer is an error and the only
+  // legal handling is to refuse; a service that answered and found nothing is a
+  // different fact and survives past this line.
+  if (!parcelR.ok || !zoningR.ok || !heightR.ok) {
+    return upstreamUnavailable('sf', 'San Francisco', [parcelR, zoningR, heightR], t0)
   }
 
   const pf = firstFeature(parcelR.value)
@@ -65,11 +93,12 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const land = landR.status === 'fulfilled' ? firstAttrs(landR.value) : null
-  const height = heightR.status === 'fulfilled' ? firstAttrs(heightR.value) : null
+  const height = firstAttrs(heightR.value)
   // gen_hght encodes non-numeric height districts as repdigit sentinels, NOT as
   // a single 9999 "no limit" value. Distinct-value query against layer 5 on
   // 2026-08-05 returned exactly nine, each with a self-describing `height`

@@ -316,7 +316,14 @@ describe('getColumbusParcelInfo', () => {
     expect(res.code).toBe('NO_PARCEL')
   })
 
-  it('a zoning-layer failure leaves a gap, never a substantive answer', async () => {
+  // ⚠️ THIS TEST USED TO ASSERT THE DEFECT. It read the districtCode as
+  // 'Unknown' and called that "a gap", with a rationale citing CLAUDE.md rule 5
+  // — but 'Unknown' is exactly what assessDevelopability turns into
+  // `no_coverage`, a geographic claim about the parcel, with cost, timeline and
+  // hurdles zeroed by analyze.ts. A green test with a well-written reason is the
+  // hardest kind to overturn (rule 15); this is the corrected assertion. The
+  // EMPTY-answer case above is unchanged, because that one really is a gap.
+  it('a zoning-layer failure REFUSES rather than publishing a district', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         ...columbusRoutes,
@@ -326,16 +333,12 @@ describe('getColumbusParcelInfo', () => {
       }),
     )
     const res = await getColumbusParcelInfo(LAT, LNG)
-    expect(res.ok).toBe(true)
-    if (!res.ok) return
-    expect(res.info.zoning.districtCode).toBe('Unknown')
-    expect(res.info.zoning.maxHeightFt).toBeNull()
-    expect(res.info.zoning.maxFAR).toBeNull()
-    expect(res.info.zoning.farUnconstrained).toBeUndefined()
-    expect(res.info.zoning.maxStories).toBeUndefined()
-    expect(res.info.zoning.allowedUses).toBeNull()
-    // The parcel facts still stand.
-    expect(res.info.lot.sizeSqFt).toBe(4320)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.code).toBe('UPSTREAM_ERROR')
+    expect(res.status).toBe(502)
+    expect(res.message).toMatch(/Columbus/)
+    expect(res.message).not.toMatch(/coverage|neighbou?ring|unincorporated/i)
   })
 
   it('government ownership is flagged as a boolean and the name is discarded', async () => {

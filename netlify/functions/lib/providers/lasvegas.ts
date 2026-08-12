@@ -138,6 +138,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import {
   LAS_VEGAS_UNREADABLE_CODES,
   parseLasVegasZone,
@@ -336,8 +337,15 @@ function entitlementNote(z: Record<string, unknown> | null): string | null {
 
 export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, jurisR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, [
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts. maxAttempts 2, not 3:
+  // fetchParcelSnap already retries its exact query internally, so three outer
+  // attempts would be up to six queries.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, [
       'PARCEL',
       'STRNO',
       'STRFRAC',
@@ -354,8 +362,12 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
       'LANDVAL1',
       'IMPVAL',
       'ASSDYR',
-    ]),
-    fetchParcelSnap(ZONING, lat, lng, [
+    ], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) => fetchParcelSnap(ZONING, lat, lng, [
       'ZONE',
       'DESCRIPTION',
       'PARCEL',
@@ -365,23 +377,19 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
       'ROIZONE',
       'USE_1',
       'VAR_1',
+    ], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      // Exact point, never a snap: a buffered retry on a boundary layer reaches
+      // 30 m across the line and hands the neighbouring city's land a Las Vegas
+      // answer — the defect phoenix.ts records against its own zoning fetch.
+      fetchFeatures(JURISDICTIONS, lat, lng, ['NAME']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
-    // Exact point, never a snap: a buffered retry on a boundary layer reaches
-    // 30 m across the line and hands the neighbouring city's land a Las Vegas
-    // answer — the defect phoenix.ts records against its own zoning fetch.
-    fetchFeatures(JURISDICTIONS, lat, lng, ['NAME']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
+  const [jurisR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'lasvegas', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'UPSTREAM_ERROR',
-      message: 'A required upstream dataset is unavailable. Try again shortly.',
-      status: 502,
-    }
-  }
 
   // ── Jurisdiction gate ────────────────────────────────────────────────────
   // Run BEFORE the parcel is read, so nothing about an out-of-city parcel can
@@ -407,13 +415,26 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
     }
   }
 
+
+  // THE STATE SPLIT, and it sits AFTER the gate on purpose. The jurisdictions
+  // layer answers independently of the zoning layer, so when it says the point is
+  // outside the city that is a complete answer and the more useful one — no
+  // reason to trade it for "we couldn't reach the service" just because zoning
+  // also timed out. Past this line, "the service did not answer" refuses and
+  // "the service answered and found nothing" becomes the `Unknown` the
+  // no-coverage copy is written for.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('lasvegas', 'Las Vegas', [parcelR, zoningR], t0)
+  }
+
   const parcel = firstAttrs(parcelR.value)
   warnIfMissing(parcel, ['PARCEL', 'SHAPE_Area', 'STRNO', 'LOTSQFT', 'CAPACITY'], 'lasvegas')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   warnIfMissing(zoning, ['ZONE'], 'lasvegas')
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 

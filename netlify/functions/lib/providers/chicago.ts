@@ -4,6 +4,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { CHICAGO_BASE_FAR } from '../zoning/chicago'
 
 const ZONING =
@@ -60,20 +61,40 @@ function usesForZone(zone: string | null): string[] | null {
 
 export async function getChicagoParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  // No per-call timeout overrides: the snap helpers enforce a shared 8s
-  // budget (exact + retry + buffered) so a slow Chicago layer can't push the
-  // function past Netlify's 10s ceiling, which the old 9s overrides did.
-  const [zoningR, parcelR, floodR, addrR, histR] = await Promise.allSettled([
-    fetchParcelSnap(ZONING, lat, lng, ['ZONE_CLASS']),
-    fetchParcelSnap(PARCELS, lat, lng, ['PIN10', 'AssessorBLDGclass'], true),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
-    reverseGeocode(lat, lng),
-    fetchFeatures(HISTORIC, lat, lng, ['NAME']),
+  // No per-call timeout overrides: the snap helpers enforce a shared budget
+  // (exact + retry + buffered) so a slow Chicago layer can't push the function
+  // past Netlify's 10s ceiling, which the old 9s overrides did. The required
+  // reads now share ONE deadline across the request as well.
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled, so
+  // the two categories look different in the source. Read the contract at the
+  // top of ../requiredUpstream.ts before moving a fetch between them.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    // maxAttempts 2, not 3: fetchParcelSnap already retries its exact query
+    // internally, so three outer attempts would be up to six queries.
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, ['PIN10', 'AssessorBLDGclass'], true, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired('zoning', (t) => fetchParcelSnap(ZONING, lat, lng, ['ZONE_CLASS'], false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    Promise.allSettled([
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+      reverseGeocode(lat, lng),
+      fetchFeatures(HISTORIC, lat, lng, ['NAME']),
+    ]),
   ])
+  const [floodR, addrR, histR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'chicago', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT. "The service did not answer" is an error and the only legal
+  // handling is to refuse. "The service answered and found nothing" survives past
+  // this line as the `Unknown` the no-coverage copy is for.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('chicago', 'Chicago', [parcelR, zoningR], t0)
   }
 
   const pf = firstFeature(parcelR.value)
@@ -82,7 +103,9 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED, so a null here means one
+  // thing: no polygon covers this point.
+  const zoning = firstAttrs(zoningR.value)
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const address = addrR.status === 'fulfilled' && addrR.value ? addrR.value : 'Selected location'
   const zone = zoning?.ZONE_CLASS ? String(zoning.ZONE_CLASS) : null

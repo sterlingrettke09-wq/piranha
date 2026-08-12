@@ -18,6 +18,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
 const PLN = 'https://geo.sanjoseca.gov/server/rest/services/PLN/PLN_Geocortex_Public_PRD/MapServer'
 const PARCELS = `${PLN}/49`
@@ -161,19 +162,48 @@ export async function getSanJoseParcelInfo(lat: number, lng: number): Promise<Pa
   const t0 = Date.now()
   // reverseGeocode runs inside the fan-out so its latency overlaps the upstream
   // fetches rather than adding to them (same reasoning as the Austin provider).
-  const [parcelR, zoningR, heightR, histR, gpR, floodR, geocodeR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, ['APN', 'PARCELID', 'LOTNUM'], true, CA_ZONE3_FT),
-    fetchParcelSnap(ZONING, lat, lng, ['ZONING', 'ZONINGABBREV', 'PDUSE', 'PDDENSITY']),
-    fetchFeatures(HEIGHT, lat, lng, ['HEIGHTLIMIT', 'DESCRIPTION']),
-    fetchFeatures(HISTORIC, lat, lng, ['NAME', 'AREATYPE']),
-    fetchFeatures(GENERAL_PLAN, lat, lng, ['GPDESIGNATION']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
-    reverseGeocode(lat, lng),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  //
+  // ⚠️ THE HEIGHT LAYER IS ALSO REQUIRED. San Jose maps height in a SEPARATE
+  // layer from the base district, and it is the only height this provider
+  // publishes (maxFAR is deliberately null here — see the note below). With the
+  // height layer in the optional group a transport failure turned a mapped
+  // "65 feet" into `maxHeightFt: null`, which feasibility.ts renders as "No
+  // district height limit is available in public data" — false about a parcel
+  // the city does map. Measured by perturbation 2026-08-11: control h=65,
+  // height-layer-fail h=null, everything else unchanged.
+  const [parcelR, zoningR, heightR, optional] = await Promise.all([
+    // maxAttempts 2: fetchParcelSnap already retries its exact query internally.
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, ['APN', 'PARCELID', 'LOTNUM'], true, CA_ZONE3_FT, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) =>
+        fetchParcelSnap(ZONING, lat, lng, ['ZONING', 'ZONINGABBREV', 'PDUSE', 'PDDENSITY'], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'height district',
+      (t) => fetchFeatures(HEIGHT, lat, lng, ['HEIGHTLIMIT', 'DESCRIPTION'], false, undefined, t),
+      { deadline, maxAttempts: 3, attemptCapMs: 3000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['NAME', 'AREATYPE']),
+      fetchFeatures(GENERAL_PLAN, lat, lng, ['GPDESIGNATION']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+      reverseGeocode(lat, lng),
+    ]),
   ])
+  const [histR, gpR, floodR, geocodeR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'sanjose', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  if (!parcelR.ok || !zoningR.ok || !heightR.ok) {
+    return upstreamUnavailable('sanjose', 'San Jose', [parcelR, zoningR, heightR], t0)
   }
   const parcelFeat = firstFeature(parcelR.value)
   const parcel = parcelFeat?.attributes ?? null
@@ -181,8 +211,9 @@ export async function getSanJoseParcelInfo(lat: number, lng: number): Promise<Pa
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
-  const height = heightR.status === 'fulfilled' ? firstAttrs(heightR.value) : null
+  // Reached only when the zoning and height services ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
+  const height = firstAttrs(heightR.value)
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const gp = gpR.status === 'fulfilled' ? firstAttrs(gpR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null

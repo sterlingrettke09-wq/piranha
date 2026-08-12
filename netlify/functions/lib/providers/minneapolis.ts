@@ -12,6 +12,7 @@ import { resolveMinneapolisFar } from '../zoning/minneapolis'
 import { fetchFeatures, fetchFeaturesXYSnap, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { lngLatToUtm15 } from '../geo'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
 const PARCELS = 'https://gis.hennepin.us/arcgis/rest/services/HennepinData/LAND_PROPERTY/MapServer/1'
 const ZONING =
@@ -51,18 +52,56 @@ function usesForZone(code: string | null): string[] | null {
 export async function getMinneapolisParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
   const { x, y } = lngLatToUtm15(lng, lat)
-  const [parcelR, zoningR, formR, histR, floodR, parkR] = await Promise.allSettled([
-    fetchFeaturesXYSnap(PARCELS, x, y, 26915, ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID', 'BUILD_YR', 'BLDG_MV1', 'OWNER_NM']),
-    fetchParcelSnap(ZONING, lat, lng, ['Land_Use_Code', 'Land_Use']),
-    fetchFeatures(BUILT_FORM, lat, lng, ['Abbrv', 'Built_Form']),
-    fetchFeatures(HISTORIC, lat, lng, ['DISTRICT']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
-    fetchFeatures(PARKS, lat, lng, ['PARK_NAME1']),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  //
+  // ⚠️ THE BUILT-FORM OVERLAY IS ALSO REQUIRED, and that is CLAUDE.md rule 13
+  // rather than caution. Minneapolis separates USE from FORM: the primary zoning
+  // layer gives the district column and the built-form overlay gives the row, and
+  // BOTH the height (MPLS_BUILT_FORM_FT) and the FAR (resolveMinneapolisFar) need
+  // the pair. With the overlay in the optional group a transport failure turned
+  // BFC4's 56 ft into `maxHeightFt: null`, which feasibility.ts renders as "No
+  // district height limit is available in public data" — a statement about the
+  // published data that the published data contradicts. Measured by perturbation
+  // 2026-08-11: control h=56, overlay-fail h=null, nothing else changed.
+  const [parcelR, zoningR, formR, optional] = await Promise.all([
+    readRequired(
+      'parcel',
+      (t) =>
+        fetchFeaturesXYSnap(
+          PARCELS,
+          x,
+          y,
+          26915,
+          ['HOUSE_NO', 'STREET_NM', 'MUNIC_NM', 'ZIP_CD', 'PARCEL_AREA', 'PID', 'BUILD_YR', 'BLDG_MV1', 'OWNER_NM'],
+          30,
+          t,
+        ),
+      // maxAttempts 2: fetchFeaturesXYSnap already retries its exact query.
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired('zoning', (t) => fetchParcelSnap(ZONING, lat, lng, ['Land_Use_Code', 'Land_Use'], false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    readRequired('built-form', (t) => fetchFeatures(BUILT_FORM, lat, lng, ['Abbrv', 'Built_Form'], false, undefined, t), {
+      deadline,
+      maxAttempts: 3,
+      attemptCapMs: 3000,
+    }),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['DISTRICT']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+      fetchFeatures(PARKS, lat, lng, ['PARK_NAME1']),
+    ]),
   ])
+  const [histR, floodR, parkR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'minneapolis', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  if (!parcelR.ok || !zoningR.ok || !formR.ok) {
+    return upstreamUnavailable('minneapolis', 'Minneapolis', [parcelR, zoningR, formR], t0)
   }
 
   const parcel = firstAttrs(parcelR.value)
@@ -71,8 +110,10 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
-  const form = formR.status === 'fulfilled' ? firstAttrs(formR.value) : null
+  // Reached only when both zoning layers ANSWERED. A null here is "no polygon
+  // covers this point", which is a fact and not a failure.
+  const zoning = firstAttrs(zoningR.value)
+  const form = firstAttrs(formR.value)
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 

@@ -304,8 +304,14 @@ describe('getCharlotteParcelInfo', () => {
     expect(res.status).toBe(404)
   })
 
-  it('a failed ZONING fetch renders as a gap, never as a substantive answer', async () => {
-    // CLAUDE.md rule 5: a failed fetch must never silently become an answer.
+  // ⚠️ THIS TEST USED TO ASSERT THE DEFECT. It read the districtCode as
+  // 'Unknown' and called that "a gap", with a rationale citing CLAUDE.md rule 5
+  // — but 'Unknown' is exactly what assessDevelopability turns into
+  // `no_coverage`, a geographic claim about the parcel, with cost, timeline and
+  // hurdles zeroed by analyze.ts. A green test with a well-written reason is the
+  // hardest kind to overturn (rule 15); this is the corrected assertion. The
+  // EMPTY-answer case above is unchanged, because that one really is a gap.
+  it('a failed ZONING fetch REFUSES — it is not the Huntersville gap', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         ...charlotteRoutes,
@@ -315,13 +321,14 @@ describe('getCharlotteParcelInfo', () => {
       }),
     )
     const res = await getCharlotteParcelInfo(LAT, LNG)
-    expect(res.ok).toBe(true)
-    if (!res.ok) return
-    expect(res.info.zoning.districtCode).toBe('Unknown')
-    expect(res.info.zoning.maxHeightFt).toBeNull()
-    expect(res.info.zoning.farUnconstrained).toBeUndefined()
-    // The parcel half still resolves.
-    expect(res.info.parcelId).toBe('12108812')
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.code).toBe('UPSTREAM_ERROR')
+    expect(res.status).toBe(502)
+    // The copy must say the SERVICE failed, and must not restate the claim it
+    // replaces (CLAUDE.md rule 21) — no 'coverage', no 'neighboring city'.
+    expect(res.message).toMatch(/Charlotte/)
+    expect(res.message).not.toMatch(/coverage|neighbou?ring|unincorporated/i)
   })
 
   it('degrades gracefully when the optional historic and flood layers fail', async () => {

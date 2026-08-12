@@ -11,6 +11,7 @@ import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { polygonAreaSqFt } from '../geo'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveMiami, miamiUsesForZone } from '../zoning/miami'
 
 // Countywide parcel layer (native SR 2236 — Florida East, US survey feet).
@@ -31,37 +32,72 @@ const posInt = (v: unknown): number | null => {
 
 export async function getMiamiParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, histR, archR, floodR] = await Promise.allSettled([
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  //
+  // ⚠️ THE ZONING READ IS LOAD-BEARING TWICE OVER HERE. The parcel layer is
+  // Miami-Dade COUNTY-wide while ZoningMiami21 covers the City of Miami only —
+  // "zero features in Miami Beach, Hialeah, etc., which is what gates us to the
+  // city proper" (header). So an empty zoning answer IS this provider's
+  // jurisdiction gate, and a failed zoning fetch used to be indistinguishable
+  // from it: a timeout published Miami Beach's answer for a downtown Miami lot.
+  const [parcelR, zoningR, optional] = await Promise.all([
     // Geometry in Florida East feet so lot size can be derived when the assessor
     // record is a condo "REFERENCE FOLIO" placeholder (see below).
-    fetchParcelSnap(
-      PARCELS,
-      lat,
-      lng,
-      [
-        'FOLIO',
-        'TRUE_SITE_ADDR',
-        'TRUE_OWNER1',
-        'LOT_SIZE',
-        'YEAR_BUILT',
-        'UNIT_COUNT',
-        'FLOOR_COUNT',
-        'BUILDING_ACTUAL_AREA',
-        'DOR_DESC',
-        'TOTAL_VAL_CUR',
-      ],
-      true,
-      FL_EAST_FT,
+    // maxAttempts 2: fetchParcelSnap already retries its exact query internally.
+    readRequired(
+      'parcel',
+      (t) =>
+        fetchParcelSnap(
+          PARCELS,
+          lat,
+          lng,
+          [
+            'FOLIO',
+            'TRUE_SITE_ADDR',
+            'TRUE_OWNER1',
+            'LOT_SIZE',
+            'YEAR_BUILT',
+            'UNIT_COUNT',
+            'FLOOR_COUNT',
+            'BUILDING_ACTUAL_AREA',
+            'DOR_DESC',
+            'TOTAL_VAL_CUR',
+          ],
+          true,
+          FL_EAST_FT,
+          30,
+          t,
+        ),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
     ),
-    fetchParcelSnap(ZONING, lat, lng, ['M21_ZONE', 'Transect', 'Transect_Desc', 'Bldg_Height', 'FLR']),
-    fetchFeatures(HISTORIC, lat, lng, ['HD_NAME']),
-    fetchFeatures(ARCHAEOLOGICAL, lat, lng, ['AZ_NAME']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    readRequired(
+      'zoning',
+      (t) =>
+        fetchParcelSnap(
+          ZONING,
+          lat,
+          lng,
+          ['M21_ZONE', 'Transect', 'Transect_Desc', 'Bldg_Height', 'FLR'],
+          false,
+          undefined,
+          30,
+          t,
+        ),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['HD_NAME']),
+      fetchFeatures(ARCHAEOLOGICAL, lat, lng, ['AZ_NAME']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    ]),
   ])
+  const [histR, archR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'miami', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('miami', 'Miami', [parcelR, zoningR], t0)
   }
   const parcelFeat = firstFeature(parcelR.value)
   const parcel = parcelFeat?.attributes ?? null
@@ -69,7 +105,9 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED, so a null here means the
+  // point is outside the City of Miami.
+  const zoning = firstAttrs(zoningR.value)
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const arch = archR.status === 'fulfilled' ? firstAttrs(archR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null

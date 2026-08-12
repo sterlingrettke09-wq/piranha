@@ -78,6 +78,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { narrowestFarSubCap, resolveDallas, usesForZone } from '../zoning/dallas'
 
 // "Tax Parcels" — the five counties' appraisal-district parcels as republished
@@ -392,8 +393,15 @@ function buildArticle(
 
 export async function getDallasParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, cityR, pdSubR, histR, supR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, [
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts. maxAttempts 2, not 3:
+  // fetchParcelSnap already retries its exact query internally, so three outer
+  // attempts would be up to six queries.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, [
       'ACCT',
       'ST_NUM',
       'ST_DIR',
@@ -407,8 +415,12 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
       'COUNTY',
       'APPRAISALYEAR',
       'Website',
-    ]),
-    fetchParcelSnap(ZONING, lat, lng, [
+    ], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) => fetchParcelSnap(ZONING, lat, lng, [
       'LONG_ZONE_DIST',
       'ZONE_DIST',
       'PD_NUM',
@@ -416,26 +428,22 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
       'COMMON_NAME',
       'ORD_NUM',
       'CASE_NUMBER',
+    ], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      // Exact point, never a snap: a buffered retry on a boundary layer would pull
+      // the city limits 30 m across the line and open the gate for the enclave it
+      // exists to close.
+      fetchFeatures(CITY_LIMITS, lat, lng, ['CITY']),
+      fetchFeatures(PD_SUBDISTRICTS, lat, lng, ['LONG_ZONE_DIST', 'PD_NUM', 'SUBDIST1', 'SUBDIST2', 'COMMON_NAME']),
+      fetchFeatures(HISTORIC, lat, lng, ['H_OVERLAY', 'NAME', 'ORD_NUM']),
+      fetchFeatures(SUP, lat, lng, ['SUP_NUM', 'SPECIFICUSE', 'STATUS', 'EXPIRES']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
-    // Exact point, never a snap: a buffered retry on a boundary layer would pull
-    // the city limits 30 m across the line and open the gate for the enclave it
-    // exists to close.
-    fetchFeatures(CITY_LIMITS, lat, lng, ['CITY']),
-    fetchFeatures(PD_SUBDISTRICTS, lat, lng, ['LONG_ZONE_DIST', 'PD_NUM', 'SUBDIST1', 'SUBDIST2', 'COMMON_NAME']),
-    fetchFeatures(HISTORIC, lat, lng, ['H_OVERLAY', 'NAME', 'ORD_NUM']),
-    fetchFeatures(SUP, lat, lng, ['SUP_NUM', 'SPECIFICUSE', 'STATUS', 'EXPIRES']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
+  const [cityR, pdSubR, histR, supR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'dallas', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'UPSTREAM_ERROR',
-      message: 'A required upstream dataset is unavailable. Try again shortly.',
-      status: 502,
-    }
-  }
 
   // ── Jurisdiction gate ────────────────────────────────────────────────────
   // Run BEFORE the parcel is read, so nothing about an out-of-city parcel can
@@ -458,13 +466,25 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
     }
   }
 
+  // THE STATE SPLIT, and it sits AFTER the gate on purpose. The boundary layer
+  // answers independently of the zoning layer, so when it says the point is
+  // outside the city that is a complete answer and the more useful one — no
+  // reason to trade it for "we couldn't reach the service" just because zoning
+  // also timed out. Past this line, "the service did not answer" refuses and
+  // "the service answered and found nothing" becomes the `Unknown` the
+  // no-coverage copy is written for.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('dallas', 'Dallas', [parcelR, zoningR], t0)
+  }
+
   const parcel = firstAttrs(parcelR.value)
   warnIfMissing(parcel, ['ACCT', 'ST_NAME', 'AREA_FEET', 'TAXPANAME1'], 'dallas')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   warnIfMissing(zoning, ['LONG_ZONE_DIST', 'ZONE_DIST'], 'dallas')
   const pdSub = pdSubR.status === 'fulfilled' ? firstAttrs(pdSubR.value) : null
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null

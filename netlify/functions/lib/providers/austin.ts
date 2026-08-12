@@ -24,6 +24,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { reverseGeocode } from '../geo'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
 const PARCELS =
   'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/EXTERNAL_tcad_parcel/FeatureServer/0'
@@ -236,27 +237,44 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
   // reverseGeocode runs inside the fan-out: awaiting it after the parcel
   // fetch made its latency ADD to the slowest upstream instead of running
   // alongside it (and pushed worst-case toward the 10s function ceiling).
-  const [parcelR, zoningR, floodR, geocodeR, subFR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, ['SITUS', 'PID_10', 'Shape__Area']),
-    fetchParcelSnap(ZONING, lat, lng, ['BASE_ZONE', 'ZONE_NAME', 'ZONING_ZTYPE']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
-    reverseGeocode(lat, lng),
-    fetchFeatures(SUBCHAPTER_F, lat, lng, ['ZONING_OVERLAY_NAME']),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    // maxAttempts 2, not 3: fetchParcelSnap already retries its exact query
+    // internally, so three outer attempts would be up to six queries.
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, ['SITUS', 'PID_10', 'Shape__Area'], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) => fetchParcelSnap(ZONING, lat, lng, ['BASE_ZONE', 'ZONE_NAME', 'ZONING_ZTYPE'], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+      reverseGeocode(lat, lng),
+      fetchFeatures(SUBCHAPTER_F, lat, lng, ['ZONING_OVERLAY_NAME']),
+    ]),
   ])
+  const [floodR, geocodeR, subFR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'austin', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('austin', 'Austin', [parcelR, zoningR], t0)
   }
 
   const parcel = firstAttrs(parcelR.value)
   warnIfMissing(parcel, ['PID_10', 'Shape__Area'], 'austin')
-  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['BASE_ZONE'], 'austin')
+  warnIfMissing(firstAttrs(zoningR.value), ['BASE_ZONE'], 'austin')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 
   // The mirror's SITUS field holds only a house number (no street), so derive a

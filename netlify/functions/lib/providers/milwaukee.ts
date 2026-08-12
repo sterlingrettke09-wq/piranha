@@ -48,6 +48,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveMilwaukee, usesForZone, MILWAUKEE_DISTRICT_NAMES } from '../zoning/milwaukee'
 
 // MPROP_full (layer 2), not MPROP_lite (layer 1). Both are the same 159,963
@@ -379,24 +380,38 @@ function buildArticle(
 
 export async function getMilwaukeeParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, histR, dizR, sprozR, ncR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, PARCEL_FIELDS),
-    fetchParcelSnap(ZONING, lat, lng, ['Zoning', 'ZoningCategory', 'ZoningType']),
-    fetchFeatures(HISTORIC, lat, lng, ['NAME']),
-    fetchFeatures(OVERLAY_DIZ, lat, lng, ['DIZ_NAME', 'CFN', 'CFN_LINK']),
-    fetchFeatures(OVERLAY_SPROZ, lat, lng, ['SPROD_NAME', 'CFN', 'CFN_LINK']),
-    fetchFeatures(OVERLAY_NC, lat, lng, ['NAME', 'CFN_APPROVE']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts. maxAttempts 2, not 3:
+  // fetchParcelSnap already retries its exact query internally, so three outer
+  // attempts would be up to six queries.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    readRequired('parcel', (t) => fetchParcelSnap(PARCELS, lat, lng, PARCEL_FIELDS, false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    readRequired(
+      'zoning',
+      (t) => fetchParcelSnap(ZONING, lat, lng, ['Zoning', 'ZoningCategory', 'ZoningType'], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['NAME']),
+      fetchFeatures(OVERLAY_DIZ, lat, lng, ['DIZ_NAME', 'CFN', 'CFN_LINK']),
+      fetchFeatures(OVERLAY_SPROZ, lat, lng, ['SPROD_NAME', 'CFN', 'CFN_LINK']),
+      fetchFeatures(OVERLAY_NC, lat, lng, ['NAME', 'CFN_APPROVE']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    ]),
   ])
+  const [histR, dizR, sprozR, ncR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'milwaukee', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'UPSTREAM_ERROR',
-      message: 'A required upstream dataset is unavailable. Try again shortly.',
-      status: 502,
-    }
+  // THE STATE SPLIT. A service that did not answer is an error and the only legal
+  // handling is to refuse. A service that ANSWERED and found nothing is a
+  // different fact and survives past this line, where it becomes the `Unknown`
+  // the no-coverage copy is written for.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('milwaukee', 'Milwaukee', [parcelR, zoningR], t0)
   }
 
   const parcel = selectParcel(parcelR.value.features)
@@ -405,7 +420,8 @@ export async function getMilwaukeeParcelInfo(lat: number, lng: number): Promise<
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   warnIfMissing(zoning, ['Zoning'], 'milwaukee')
   const hist = histR.status === 'fulfilled' ? histR.value : null
   const dizFs = dizR.status === 'fulfilled' ? dizR.value : null

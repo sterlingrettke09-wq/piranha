@@ -91,6 +91,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type FeatureSet, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveColumbus, usesForZone, COLUMBUS_TITLE33_NAMES } from '../zoning/columbus'
 
 const SERVICE = 'https://maps2.columbus.gov/arcgis/rest/services/Applications/Zoning/MapServer'
@@ -289,8 +290,15 @@ function buildArticle(
 
 export async function getColumbusParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, cityR, histR, planR, commR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, [
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts. maxAttempts 2, not 3:
+  // fetchParcelSnap already retries its exact query internally, so three outer
+  // attempts would be up to six queries.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, [
       'PARCELID',
       'SITEADDRESS',
       // ACRES only. STATEDAREA is deliberately NOT requested — see the header.
@@ -304,8 +312,12 @@ export async function getColumbusParcelInfo(lat: number, lng: number): Promise<P
       'BLDVALUEBASE',
       'TOTVALUEBASE',
       'COUNTY',
-    ]),
-    fetchParcelSnap(ZONING, lat, lng, [
+    ], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) => fetchParcelSnap(ZONING, lat, lng, [
       'CLASSIFICATION',
       // The code discriminator. Without it the provider cannot tell Title 34's
       // UCR from Title 33's UCRPD (CLAUDE.md rule 13).
@@ -314,23 +326,18 @@ export async function getColumbusParcelInfo(lat: number, lng: number): Promise<P
       'ORD_NO',
       'CASE_NUMBER',
       'WEB_LINK',
+    ], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(CITY_BOUNDARY, lat, lng, ['CITY_NAME']),
+      fetchFeatures(HISTORIC_AND_DESIGN, lat, lng, ['TYPE', 'REVIEW_BODY', 'DISTRICT_NAME', 'PROPERTY_NAME']),
+      fetchFeatures(PLANNING_OVERLAYS, lat, lng, ['OVERLAY_NAME']),
+      fetchFeatures(COMMERCIAL_OVERLAYS, lat, lng, ['OVRLY_NAME']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
-    fetchFeatures(CITY_BOUNDARY, lat, lng, ['CITY_NAME']),
-    fetchFeatures(HISTORIC_AND_DESIGN, lat, lng, ['TYPE', 'REVIEW_BODY', 'DISTRICT_NAME', 'PROPERTY_NAME']),
-    fetchFeatures(PLANNING_OVERLAYS, lat, lng, ['OVERLAY_NAME']),
-    fetchFeatures(COMMERCIAL_OVERLAYS, lat, lng, ['OVRLY_NAME']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
-
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'columbus', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'UPSTREAM_ERROR',
-      message: 'A required upstream dataset is unavailable. Try again shortly.',
-      status: 502,
-    }
-  }
+  const [cityR, histR, planR, commR, floodR] = optional
 
   // ── Jurisdiction gate ────────────────────────────────────────────────────
   // Run BEFORE the parcel is read, because the county parcel layer will happily
@@ -349,13 +356,25 @@ export async function getColumbusParcelInfo(lat: number, lng: number): Promise<P
     }
   }
 
+  // THE STATE SPLIT, and it sits AFTER the gate on purpose. The city-boundary
+  // layer answers independently of the zoning layer, so when it says the point
+  // is outside the city that is a complete answer and the more useful one — no
+  // reason to trade it for "we couldn't reach the service" just because zoning
+  // also timed out. Past this line, "the service did not answer" refuses and
+  // "the service answered and found nothing" becomes the `Unknown` the
+  // no-coverage copy is written for.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('columbus', 'Columbus', [parcelR, zoningR], t0)
+  }
+
   const parcel = pickParcel(parcelR.value)
   warnIfMissing(parcel, ['PARCELID', 'SITEADDRESS', 'ACRES', 'TOTVALUEBASE'], 'columbus')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   warnIfMissing(zoning, ['CLASSIFICATION', 'GENERAL_ZONING_CATEGORY', 'HEIGHT_DISTRICT'], 'columbus')
   const histRows = histR.status === 'fulfilled' ? allAttrs(histR.value) : []
   const planRows = planR.status === 'fulfilled' ? allAttrs(planR.value) : []

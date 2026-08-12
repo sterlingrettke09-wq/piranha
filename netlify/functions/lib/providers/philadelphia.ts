@@ -24,6 +24,7 @@ import {
 } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { polygonAreaSqFt } from '../geo'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { parseMaxHeightFt, parseMaxFAR, phlFarUnconstrained } from '../zoning/philadelphia'
 
 // Pennsylvania State Plane South (EPSG:2272), units = US survey feet. Parcel
@@ -35,6 +36,9 @@ const PA_SOUTH_FT = 2272
 // to the whole building, not the unit. Philadelphia's smallest genuine rowhouse
 // lots are ~350-500 sq ft, so 100 is a safe floor.
 const MIN_CREDIBLE_LOT_SQFT = 100
+/** Ceiling for the whole function, inside Netlify's 10 s kill. The serial second
+ *  hop runs after the parallel group, so it gets what remains of this. */
+const WALL_MS = 9200
 
 const ORG = 'https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services'
 // Parcel polygons (geometry + pin). `status=1` filters inactive and stacked
@@ -81,18 +85,33 @@ function cleanAddress(raw: unknown): string | null {
 
 export async function getPhiladelphiaParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  const [parcelR, zoningR, optional] = await Promise.all([
     // Geometry in PA State Plane feet so we can derive lot size when the assessor
     // record is missing or degenerate (condo units, air-rights parcels).
-    fetchParcelSnap(PARCELS, lat, lng, ['pin', 'addr_std', 'status'], true, PA_SOUTH_FT),
-    fetchParcelSnap(ZONING, lat, lng, ['long_code', 'code']),
-    fetchFeatures(HISTORIC, lat, lng, ['name']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    // maxAttempts 2: fetchParcelSnap already retries its exact query internally.
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, ['pin', 'addr_std', 'status'], true, PA_SOUTH_FT, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired('zoning', (t) => fetchParcelSnap(ZONING, lat, lng, ['long_code', 'code'], false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['name']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    ]),
   ])
+  const [histR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'philadelphia', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('philadelphia', 'Philadelphia', [parcelR, zoningR], t0)
   }
   const parcelFeat = firstFeature(parcelR.value)
   const parcel = parcelFeat?.attributes ?? null
@@ -105,33 +124,58 @@ export async function getPhiladelphiaParcelInfo(lat: number, lng: number): Promi
     return { ok: false, code: 'NO_PARCEL', message: 'No active parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 
   const pin = parcel.pin != null ? String(parcel.pin).trim() : ''
   const code = zoning?.long_code ? String(zoning.long_code).trim() : null
 
-  // Second hop: OPA attributes by pin, and the dimensional limits by district.
-  // Both are optional enrichment — a failure degrades a field, not the response.
-  const [opaR, charsR] = await Promise.allSettled([
-    pin
-      ? fetchWhere(OPA, `pin = ${sqlQuote(pin)}`, [
-          'total_area',
-          'year_built',
-          'owner_1',
-          'number_stories',
-          'category_code_description',
-          'market_value',
-          'total_livable_area',
-        ])
-      : Promise.resolve({ features: [] }),
+  // Second hop. OPA is OPTIONAL enrichment — a failure degrades a field, and the
+  // lot area falls back to the parcel polygon, which is already in square feet.
+  //
+  // ⚠️ ZoningCodeCharacteristics is REQUIRED whenever we have a district code to
+  // look up, because it is the ONLY source of Philadelphia's max height and max
+  // FAR. Both of those figures are published as facts about the district, and a
+  // failed lookup used to erase them into nulls that read as "the city doesn't
+  // publish it" — for one of the two cities in this portfolio that does.
+  // Measured by perturbation 2026-08-11: control RM-1 h=38, chars-fail h=null.
+  // With no code there is nothing to look up, so the read is skipped rather than
+  // failed — that path is a zoning gap, not a table outage.
+  // ⏱ The second hop gets its OWN small budget rather than the request deadline,
+  // which the parallel phase has already spent. Sharing `deadline` here would
+  // hand the table a sub-second timeout on a slow day and refuse for a reason
+  // that has nothing to do with the table. It is still bounded by the function's
+  // wall clock so the two hops cannot stack past Netlify's 10 s kill.
+  const secondHopDeadline = Date.now() + Math.max(600, Math.min(2500, t0 + WALL_MS - Date.now()))
+  const [charsR, opaR] = await Promise.all([
     code
-      ? fetchWhere(ZONING_CHARS, `ZoningDist = ${sqlQuote(code)}`, ['ZoningDist', 'MaxHeight', 'MaxFAR'])
-      : Promise.resolve({ features: [] }),
+      ? readRequired(
+          'zoning-code characteristics',
+          (t) => fetchWhere(ZONING_CHARS, `ZoningDist = ${sqlQuote(code)}`, ['ZoningDist', 'MaxHeight', 'MaxFAR'], t),
+          { deadline: secondHopDeadline, maxAttempts: 2, attemptCapMs: 2500 },
+        )
+      : Promise.resolve({ ok: true as const, layer: 'zoning-code characteristics', value: { features: [] }, attempts: 0 }),
+    Promise.allSettled([
+      pin
+        ? fetchWhere(OPA, `pin = ${sqlQuote(pin)}`, [
+            'total_area',
+            'year_built',
+            'owner_1',
+            'number_stories',
+            'category_code_description',
+            'market_value',
+            'total_livable_area',
+          ])
+        : Promise.resolve({ features: [] }),
+    ]),
   ])
-  const opa = opaR.status === 'fulfilled' ? firstAttrs(opaR.value) : null
-  const chars = charsR.status === 'fulfilled' ? firstAttrs(charsR.value) : null
+  if (!charsR.ok) {
+    return upstreamUnavailable('philadelphia', 'Philadelphia', [charsR], t0)
+  }
+  const opa = opaR[0].status === 'fulfilled' ? firstAttrs(opaR[0].value) : null
+  const chars = firstAttrs(charsR.value)
 
   // Lot size: prefer the assessor's recorded area, but reject the degenerate
   // values condo-unit accounts carry (0 or 1 sq ft — the land belongs to the

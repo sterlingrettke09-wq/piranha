@@ -86,6 +86,22 @@
 //      in the output comes from Zoning/0's `ZONING` field. A test asserts the
 //      column never reaches the output.
 //
+//   3b. THE ZONING READ IS **REQUIRED**, NOT OPTIONAL, AND THAT IS LOAD-BEARING.
+//      It is fetched through `readRequired` (../requiredUpstream.ts) and a
+//      failure REFUSES with UPSTREAM_ERROR. It used to sit in the same
+//      `Promise.allSettled` as the cosmetic layers and degrade to
+//      `districtCode: 'Unknown'`, which `assessDevelopability` renders as
+//      "may sit in a neighboring city … that isn't in the zoning data we cover
+//      yet" while analyze.ts zeroes cost, timeline and hurdles. Measured
+//      2026-08-11: 7 of 20 answered parcels in a live batch, and 0 of 81
+//      isolated calls on the same golden parcel hours later — the parcels never
+//      changed, only the service's health. Read the contract in
+//      ../requiredUpstream.ts before touching either fetch.
+//
+//      NOTE THE ASYMMETRY: an EMPTY zoning answer still means `Unknown`. That
+//      is a real fact — no Phoenix polygon covers the point — and the
+//      Scottsdale gate depends on it. Only a failed FETCH refuses.
+//
 //   4. THERE IS NO DWELLING-UNIT COUNT ANYWHERE IN THIS DATA, and that is a
 //      stated gap rather than a zero. Neither COUNTY_PARCELS/3 nor its
 //      supplemental table publishes a unit count; the closest thing is the
@@ -105,6 +121,7 @@ import {
   type ParcelResult,
 } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolvePhoenix, usesForZone, type PhoenixLimits } from '../zoning/phoenix'
 
 // Layer ids read from each service's own layer index 2026-08-09, not guessed
@@ -305,24 +322,74 @@ function buildArticle(limits: PhoenixLimits, overlayNames: string[]): string | n
   return bits.length > 0 ? bits.join(' · ') : null
 }
 
+/** Fields on COUNTY_PARCELS/3 the provider reads. */
+const PARCEL_FIELDS = [
+  'APN',
+  'ADDRESS',
+  'STREET_NUM',
+  'STREET_DIR',
+  'STREET_NAME',
+  'STREET_TYPE',
+  'STREET_POSTDIR',
+  'OWNER',
+  SHAPE_AREA,
+  'DESCRIPTION',
+  'PROPERTY_USE_CODE',
+  'PARCEL_GROUP_CLASS',
+  'ASSESSOR_INFO',
+] as const
+
+/** Fields on Zoning/0. */
+const ZONING_FIELDS = ['ZONING', 'LABEL1', 'GEN_ZONE', 'TOD', 'HISTORIC', 'REDEFINE1', 'ORD_NUM', 'ACRES'] as const
+
+// ── The request's time budget ────────────────────────────────────────────────
+// Measured 2026-08-11 against the live services. Every layer this provider
+// reads answers in 60–680 ms when the servers are healthy (parcels 142–458,
+// zoning 111–205, city boundary 133–681, overlays 105–189, historic 118–354,
+// FEMA 61–1225, the assessor supplement 136–453), and 32 simultaneous zoning
+// queries showed no degradation at all. So the 8.7 s the smoke run recorded was
+// an upstream CONDITION, not a fixed cost of the fan-out — but the code had no
+// bound that would keep a bad day inside Netlify's 10 s wall:
+//
+//   fetchParcelSnap's own budget            8000 ms
+// + the serial assessor hop's default       6000 ms
+// = 14 s worst case, i.e. a platform kill rather than a clean UPSTREAM_ERROR.
+//
+// And the six parallel fetches are awaited together, so under load the SLOWEST
+// sets the response time — including three layers whose absence renders as
+// nothing at all. A 6 s hang on the FEMA flood layer used to cost six seconds
+// for a field the UI omits when it is null.
+//
+// These caps change no query — same URLs, same fields, same spatial filter —
+// only how long we wait before giving up on one. Verified byte-identical on
+// live parcels; see the report accompanying this change.
+const OPTIONAL_TIMEOUT_MS = 3000
+/** The city-boundary GATE keeps its original 6 s. It is the cheapest query here
+ *  (one polygon, one layer) and it is never the latency source, while shortening
+ *  it would make the gate fail OPEN more often — and failing open is the one
+ *  degradation on this provider that lets an out-of-city point through. */
+const GATE_TIMEOUT_MS = 6000
+/** Ceiling for the whole function, inside Netlify's 10 s kill. The serial
+ *  assessor hop runs after the parallel group, so it gets what remains. */
+const WALL_MS = 9200
+const SECOND_HOP_CAP_MS = 2500
+
 export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, cityR, overlayR, histR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, [
-      'APN',
-      'ADDRESS',
-      'STREET_NUM',
-      'STREET_DIR',
-      'STREET_NAME',
-      'STREET_TYPE',
-      'STREET_POSTDIR',
-      'OWNER',
-      SHAPE_AREA,
-      'DESCRIPTION',
-      'PROPERTY_USE_CODE',
-      'PARCEL_GROUP_CLASS',
-      'ASSESSOR_INFO',
-    ]),
+  const deadline = requestDeadline()
+  const capped = (ms: number) => Math.max(500, Math.min(ms, deadline - Date.now()))
+
+  // REQUIRED reads run through readRequired; OPTIONAL ones keep allSettled. The
+  // two categories are meant to look different in the source — see the contract
+  // at the top of ../requiredUpstream.ts. All of it is in flight at once.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    // maxAttempts 2, not 3: fetchParcelSnap already retries its exact query
+    // internally, so three outer attempts would be up to six queries.
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, PARCEL_FIELDS, false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
     // ⚠️ EXACT POINT, NOT A SNAP — and this is a correction, not a style
     // choice. Written first as `fetchParcelSnap(ZONING, …)` (which is what the
     // other county-parcel cities do), it passed every fixture test and then
@@ -346,34 +413,35 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
     // routes zoning to zero features, so the test asserted 'Unknown' and passed
     // against code that could not produce 'Unknown' in the field. Only running
     // the real entry point against the real services showed it (rule 9).
-    fetchFeatures(ZONING, lat, lng, [
-      'ZONING',
-      'LABEL1',
-      'GEN_ZONE',
-      'TOD',
-      'HISTORIC',
-      'REDEFINE1',
-      'ORD_NUM',
-      'ACRES',
+    //
+    // ⚠️ AND IT IS A **REQUIRED** READ — this is the second correction on this
+    // fetch, and it is the same rule as the first. It used to sit in the
+    // `Promise.allSettled` below and be read as
+    // `zoningR.status === 'fulfilled' ? firstAttrs(...) : null`, so a rejected
+    // fetch and a point no polygon covers produced the identical `null` →
+    // `districtCode: 'Unknown'` → `no_coverage` → *"may sit in a neighboring
+    // city … that isn't in the zoning data we cover yet"*, with cost, timeline
+    // and hurdles zeroed by analyze.ts. A timeout was being published as a
+    // geographic fact about a parcel that is fully covered. Measured: 7 of 20
+    // answered Phoenix parcels in the 2026-08-11 batch, and 0 of 81 isolated
+    // calls on the same golden parcel a few hours later. Nothing about the
+    // parcels changed; only the service's health did.
+    readRequired('zoning', (t) => fetchFeatures(ZONING, lat, lng, ZONING_FIELDS, false, undefined, t), {
+      deadline,
+      maxAttempts: 3,
+      attemptCapMs: 3000,
+    }),
+    Promise.allSettled([
+      // Exact point, never a snap — for the same reason the zoning fetch above is
+      // exact. A buffered retry on a boundary layer reaches 30 m across the line
+      // and re-opens the gate for the Scottsdale parcel that motivated it.
+      fetchFeatures(CITY_BOUNDARY, lat, lng, ['NAME'], false, undefined, capped(GATE_TIMEOUT_MS)),
+      fetchFeatures(ZONING_OVERLAYS, lat, lng, ['NAME', 'REGULATORY'], false, undefined, capped(OPTIONAL_TIMEOUT_MS)),
+      fetchFeatures(HISTORIC, lat, lng, ['NAME', 'TYPE', 'STATUS'], false, undefined, capped(OPTIONAL_TIMEOUT_MS)),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE'], false, undefined, capped(OPTIONAL_TIMEOUT_MS)),
     ]),
-    // Exact point, never a snap — for the same reason the zoning fetch above is
-    // exact. A buffered retry on a boundary layer reaches 30 m across the line
-    // and re-opens the gate for the Scottsdale parcel that motivated it.
-    fetchFeatures(CITY_BOUNDARY, lat, lng, ['NAME']),
-    fetchFeatures(ZONING_OVERLAYS, lat, lng, ['NAME', 'REGULATORY']),
-    fetchFeatures(HISTORIC, lat, lng, ['NAME', 'TYPE', 'STATUS']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
-
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'phoenix', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'UPSTREAM_ERROR',
-      message: 'A required upstream dataset is unavailable. Try again shortly.',
-      status: 502,
-    }
-  }
+  const [cityR, overlayR, histR, floodR] = optional
 
   // ── Jurisdiction gate ────────────────────────────────────────────────────
   // Run BEFORE the parcel is read, so nothing about an out-of-city parcel can
@@ -385,6 +453,14 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
   // Phoenix address because an optional layer timed out is a worse failure than
   // the one this prevents, and an out-of-city point still surfaces as a zoning
   // gap without it.
+  //
+  // ⚠️ IT ALSO RUNS BEFORE THE STATE SPLIT BELOW, and that ordering is a
+  // decision rather than an accident. This layer answers independently of the
+  // zoning layer, so a zero-feature result is a COMPLETE answer about the point
+  // and the more useful one to return. Refusing with "we couldn't reach the
+  // service" because zoning happened to time out on the same request would
+  // discard a fact we actually have. columbus.ts, dallas.ts and lasvegas.ts
+  // order their gates the same way, and upstreamSplit.test.ts pins all four.
   if (cityR.status === 'fulfilled' && (cityR.value.features?.length ?? 0) === 0) {
     console.log({ event: 'parcel.outside_city', city: 'phoenix', durationMs: Date.now() - t0 })
     return {
@@ -396,13 +472,28 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
     }
   }
 
+  // THE STATE SPLIT. "The service did not answer" is an error, and the only
+  // legal handling of it is to refuse: no default district, no fall-through to a
+  // verdict, no zeroed report. "The service answered and found nothing" is a
+  // different fact and it survives past this line, where `firstAttrs` of an
+  // empty feature set becomes the `Unknown` the no-coverage copy is *for*.
+  //
+  // One `if` narrows both reads for the rest of the function, which is what
+  // makes the check hard to forget rather than merely documented (rule 14).
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('phoenix', 'Phoenix', [parcelR, zoningR], t0)
+  }
+
   const parcel = firstAttrs(parcelR.value)
   warnIfMissing(parcel, ['APN', 'ADDRESS', SHAPE_AREA, 'OWNER'], 'phoenix')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED. A null here therefore means
+  // one thing — no Phoenix zoning polygon contains this point — and that is the
+  // fact `districtCode: 'Unknown'` is allowed to express.
+  const zoning = firstAttrs(zoningR.value)
   warnIfMissing(zoning, ['ZONING'], 'phoenix')
   const overlayFs = overlayR.status === 'fulfilled' ? (overlayR.value.features ?? []) : []
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
@@ -420,19 +511,31 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
   // A miss here degrades: the parcel, its lot and its zoning are all already
   // resolved, and the supplemental table has 1,759,497 rows against the parcel
   // layer's 1,759,634, so a missing row is a real state and not a failure.
+  //
+  // ⏱ It is also the only SERIAL hop — it needs the parcel's APN, so it cannot
+  // start until the parallel group is done, and its cost lands on top of the
+  // slowest of those. Its timeout is therefore what remains of the function's
+  // wall-clock ceiling rather than the 6 s default that used to make 14 s
+  // arithmetically reachable. Measured 136–453 ms live, so the 2.5 s cap has
+  // roughly 5× headroom and never binds on a healthy service.
   const apn = clean(parcel.APN)
   const suppR = apn
     ? await Promise.allSettled([
-        fetchWhere(PARCELS_SUPPLEMENT, `APN_DASH = ${sqlQuote(apn)}`, [
-          'APN_DASH',
-          'CONST_YEAR',
-          'LIVING_SPACE',
-          'NUMBER_STORIES',
-          'FCV_CUR',
-          'LPV_CUR',
-          'TAX_YR_CUR',
-          'JURISDICTION',
-        ]),
+        fetchWhere(
+          PARCELS_SUPPLEMENT,
+          `APN_DASH = ${sqlQuote(apn)}`,
+          [
+            'APN_DASH',
+            'CONST_YEAR',
+            'LIVING_SPACE',
+            'NUMBER_STORIES',
+            'FCV_CUR',
+            'LPV_CUR',
+            'TAX_YR_CUR',
+            'JURISDICTION',
+          ],
+          Math.max(500, Math.min(SECOND_HOP_CAP_MS, t0 + WALL_MS - Date.now())),
+        ),
       ])
     : []
   const supp = suppR[0]?.status === 'fulfilled' ? firstAttrs(suppR[0].value) : null

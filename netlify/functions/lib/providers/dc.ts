@@ -5,6 +5,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
 const BASE = 'https://maps2.dcgis.dc.gov/dcgis/rest/services'
 const PARCELS = `${BASE}/DCGIS_DATA/Property_and_Land/MapServer/40`
@@ -161,26 +162,53 @@ function usesForZone(code: string | null): string[] | null {
 
 export async function getDcParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, histR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE', 'SALETYPE', 'CLASSTYPE', 'OWNERNAME']),
-    fetchParcelSnap(ZONING, lat, lng, ['ZONING', 'ZR16', 'Zone_District']),
-    fetchFeatures(HISTORIC, lat, lng, ['HistDistrict_NAME']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    // maxAttempts 2, not 3: fetchParcelSnap already retries its exact query
+    // internally, so three outer attempts would be up to six queries.
+    readRequired(
+      'parcel',
+      (t) =>
+        fetchParcelSnap(
+          PARCELS,
+          lat,
+          lng,
+          ['PREMISEADD', 'SSL', 'LANDAREA', 'USECODE', 'SALETYPE', 'CLASSTYPE', 'OWNERNAME'],
+          false,
+          undefined,
+          30,
+          t,
+        ),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) => fetchParcelSnap(ZONING, lat, lng, ['ZONING', 'ZR16', 'Zone_District'], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['HistDistrict_NAME']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    ]),
   ])
+  const [histR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'dc', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('dc', 'Washington, DC', [parcelR, zoningR], t0)
   }
 
   const parcel = firstAttrs(parcelR.value)
   warnIfMissing(parcel, ['SSL', 'LANDAREA'], 'dc')
-  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, [['Zoning', 'ZONING', 'ZR16']], 'dc')
+  warnIfMissing(firstAttrs(zoningR.value), [['Zoning', 'ZONING', 'ZR16']], 'dc')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 

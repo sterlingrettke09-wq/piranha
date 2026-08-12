@@ -12,6 +12,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
 const PARCELS = 'https://maps.nashville.gov/arcgis/rest/services/Cadastral/Parcels/MapServer/0'
 const ZL = 'https://maps.nashville.gov/arcgis/rest/services/Zoning_Landuse'
@@ -46,23 +47,57 @@ function usesForZone(zone: string | null): string[] | null {
 
 export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, overlayR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, ['APN', 'PropAddr', 'Acres', 'LUCode', 'LUDesc', 'Owner', 'Zoning', 'TotlAppr']),
-    fetchParcelSnap(ZONING, lat, lng, ['ZONE_DESC', 'NAME']),
-    fetchFeatures(OVERLAYS, lat, lng, ['ZONE_DESC', 'NAME']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  //
+  // ⚠️ NASHVILLE IS THE ONE PROVIDER WHERE A FAILED ZONING FETCH DOES NOT HAVE TO
+  // REFUSE, and that is because of the fallback below rather than a judgement
+  // about how reliable the layer is. The parcel layer carries a denormalised
+  // `Zoning` copy that agreed with the authoritative layer at every verified test
+  // point, so a zoning outage has a second source to fall back on. The refusal is
+  // therefore CONDITIONAL: it fires only when the fetch failed AND the fallback
+  // is empty, which is the one state the fallback cannot cover. Measured by
+  // perturbation 2026-08-11: with the copy present a zoning-layer failure still
+  // published the district; with the copy dropped it published `Unknown`.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    // maxAttempts 2: fetchParcelSnap already retries its exact query internally.
+    readRequired(
+      'parcel',
+      (t) =>
+        fetchParcelSnap(
+          PARCELS,
+          lat,
+          lng,
+          ['APN', 'PropAddr', 'Acres', 'LUCode', 'LUDesc', 'Owner', 'Zoning', 'TotlAppr'],
+          false,
+          undefined,
+          30,
+          t,
+        ),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired('zoning', (t) => fetchParcelSnap(ZONING, lat, lng, ['ZONE_DESC', 'NAME'], false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    Promise.allSettled([
+      fetchFeatures(OVERLAYS, lat, lng, ['ZONE_DESC', 'NAME']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    ]),
   ])
+  const [overlayR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'nashville', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  if (!parcelR.ok) {
+    return upstreamUnavailable('nashville', 'Nashville', [parcelR], t0)
   }
   const parcel = firstAttrs(parcelR.value)
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  const zoning = zoningR.ok ? firstAttrs(zoningR.value) : null
   // A parcel can sit under SEVERAL of the 19 overlay types at once — downtown
   // Broadway returns Adult Entertainment, Historic Preservation District, AND
   // Urban Zoning Overlay. Taking features[0] picked whichever came back first
@@ -92,6 +127,16 @@ export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<
     : parcel.Zoning
       ? String(parcel.Zoning).trim()
       : null
+
+  // THE STATE SPLIT, deferred to here because the fallback above is what decides
+  // it. `code === null` with the zoning layer ANSWERING is a real fact: no
+  // polygon covers this point, and `Unknown` is the right render. `code === null`
+  // with the zoning layer having FAILED is not a fact about the parcel at all —
+  // both sources are silent for unrelated reasons, and publishing `Unknown` would
+  // turn a timeout into "we don't cover this land".
+  if (!zoningR.ok && code == null) {
+    return upstreamUnavailable('nashville', 'Nashville', [zoningR], t0)
+  }
 
   // Lot size is published in acres only.
   const acres = Number(parcel.Acres)

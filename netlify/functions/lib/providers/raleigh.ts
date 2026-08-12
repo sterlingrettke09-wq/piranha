@@ -36,10 +36,15 @@
 // returns a parcel with no zoning, which surfaces as districtCode 'Unknown'
 // with null limits. That is the correct render — a gap, not a fabricated
 // answer — and it is pinned by a test so it cannot quietly become one.
+//
+// ⚠️ THAT IS THE **EMPTY-ANSWER** CASE ONLY. A zoning fetch that FAILS is a
+// different state and refuses with UPSTREAM_ERROR; the two used to produce the
+// identical 'Unknown'. See ../requiredUpstream.ts.
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import {
   parseRaleighZone,
   resolveRaleigh,
@@ -150,8 +155,15 @@ function buildArticle(
 
 export async function getRaleighParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, hodGR, hodSR, ncodR, todR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, [
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts. maxAttempts 2, not 3:
+  // fetchParcelSnap already retries its exact query internally, so three outer
+  // attempts would be up to six queries.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    readRequired(
+      'parcel',
+      (t) => fetchParcelSnap(PARCELS, lat, lng, [
       'PIN_NUM',
       'SITE_ADDRESS',
       'Shape_Area',
@@ -165,8 +177,12 @@ export async function getRaleighParcelInfo(lat: number, lng: number): Promise<Pa
       'TOTUNITS',
       'TOTSTRUCTS',
       'PLANNING_JURISDICTION',
-    ]),
-    fetchParcelSnap(ZONING, lat, lng, [
+    ], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) => fetchParcelSnap(ZONING, lat, lng, [
       'ZONING',
       'ZONE_TYPE',
       'ZONE_TYPE_DECODE',
@@ -175,22 +191,25 @@ export async function getRaleighParcelInfo(lat: number, lng: number): Promise<Pa
       'CONDITIONAL',
       'COND_LINK',
       'ZONE_CASE',
+    ], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(OVERLAY_HISTORIC_GENERAL, lat, lng, OVERLAY_FIELDS),
+      fetchFeatures(OVERLAY_HISTORIC_STREETSIDE, lat, lng, OVERLAY_FIELDS),
+      fetchFeatures(OVERLAY_NCOD, lat, lng, OVERLAY_FIELDS),
+      fetchFeatures(OVERLAY_TOD, lat, lng, OVERLAY_FIELDS),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
-    fetchFeatures(OVERLAY_HISTORIC_GENERAL, lat, lng, OVERLAY_FIELDS),
-    fetchFeatures(OVERLAY_HISTORIC_STREETSIDE, lat, lng, OVERLAY_FIELDS),
-    fetchFeatures(OVERLAY_NCOD, lat, lng, OVERLAY_FIELDS),
-    fetchFeatures(OVERLAY_TOD, lat, lng, OVERLAY_FIELDS),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
   ])
+  const [hodGR, hodSR, ncodR, todR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'raleigh', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'UPSTREAM_ERROR',
-      message: 'A required upstream dataset is unavailable. Try again shortly.',
-      status: 502,
-    }
+  // THE STATE SPLIT. A service that did not answer is an error and the only legal
+  // handling is to refuse. A service that ANSWERED and found nothing is a
+  // different fact and survives past this line, where it becomes the `Unknown`
+  // the no-coverage copy is written for.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('raleigh', 'Raleigh', [parcelR, zoningR], t0)
   }
 
   const parcel = firstAttrs(parcelR.value)
@@ -199,7 +218,8 @@ export async function getRaleighParcelInfo(lat: number, lng: number): Promise<Pa
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   warnIfMissing(zoning, ['ZONING', 'HEIGHT'], 'raleigh')
   const hodG = hodGR.status === 'fulfilled' ? firstAttrs(hodGR.value) : null
   const hodS = hodSR.status === 'fulfilled' ? firstAttrs(hodSR.value) : null

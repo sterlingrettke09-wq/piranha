@@ -50,6 +50,10 @@
 // null limits — the correct render of a gap — and that behaviour is pinned by
 // a test so it cannot quietly become a substantive answer.
 //
+// ⚠️ THAT IS THE **EMPTY-ANSWER** CASE ONLY. A zoning fetch that FAILS is a
+// different state and refuses with UPSTREAM_ERROR; the two used to produce the
+// identical 'Unknown'. See ../requiredUpstream.ts.
+//
 // UDO CURRENCY, checked rather than assumed. The task flagged the risk that the
 // GIS might still be publishing the superseded 1992 ordinance. It is not, and
 // the strong evidence is negative: UDO Table 3-1 translates every pre-UDO
@@ -65,6 +69,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import {
   resolveCharlotte,
   usesForZone,
@@ -338,21 +343,35 @@ function buildArticle(limits: CharlotteLimits, zoneDes: string | null, lotSqFt: 
 
 export async function getCharlotteParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, historicR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, PARCEL_FIELDS),
-    fetchParcelSnap(ZONING, lat, lng, ZONING_FIELDS),
-    fetchFeatures(HISTORIC, lat, lng, ['DistrictName', 'DistrictType']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts. maxAttempts 2, not 3:
+  // fetchParcelSnap already retries its exact query internally, so three outer
+  // attempts would be up to six queries.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    readRequired('parcel', (t) => fetchParcelSnap(PARCELS, lat, lng, PARCEL_FIELDS, false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    readRequired('zoning', (t) => fetchParcelSnap(ZONING, lat, lng, ZONING_FIELDS, false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['DistrictName', 'DistrictType']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    ]),
   ])
+  const [historicR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'charlotte', durationMs: Date.now() - t0 })
-    return {
-      ok: false,
-      code: 'UPSTREAM_ERROR',
-      message: 'A required upstream dataset is unavailable. Try again shortly.',
-      status: 502,
-    }
+  // THE STATE SPLIT. A service that did not answer is an error and the only legal
+  // handling is to refuse. A service that ANSWERED and found nothing is a
+  // different fact and survives past this line, where it becomes the `Unknown`
+  // the no-coverage copy is written for.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('charlotte', 'Charlotte', [parcelR, zoningR], t0)
   }
 
   const features = parcelR.value.features ?? []
@@ -365,7 +384,9 @@ export async function getCharlotteParcelInfo(lat: number, lng: number): Promise<
   const cards = cardsForPrimaryParcel(features)
   const agg = aggregateCards(cards)
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED — the Huntersville case (a
+  // county parcel with no Charlotte polygon) still lands here as a null.
+  const zoning = firstAttrs(zoningR.value)
   warnIfMissing(zoning, ['ZoneDes'], 'charlotte')
   const historic = historicR.status === 'fulfilled' ? firstAttrs(historicR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null

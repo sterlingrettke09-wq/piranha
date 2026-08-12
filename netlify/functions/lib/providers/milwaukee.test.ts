@@ -419,16 +419,27 @@ describe('getMilwaukeeParcelInfo', () => {
     expect(res.info.assessedValue).toBe(128800)
   })
 
-  it('a zoning fetch returning an ArcGIS error body yields no zoning claims', async () => {
+  // ⚠️ THIS TEST USED TO ASSERT THE DEFECT. It read the districtCode as
+  // 'Unknown' and called that "a gap", with a rationale citing CLAUDE.md rule 5
+  // — but 'Unknown' is exactly what assessDevelopability turns into
+  // `no_coverage`, a geographic claim about the parcel, with cost, timeline and
+  // hurdles zeroed by analyze.ts. A green test with a well-written reason is the
+  // hardest kind to overturn (rule 15); this is the corrected assertion. The
+  // EMPTY-answer case above is unchanged, because that one really is a gap.
+  it('a zoning fetch returning an ArcGIS error body REFUSES', async () => {
+    // A 200-with-error-JSON body is a transport failure wearing an HTTP 200, and
+    // arcgis.ts already rejects on it. What changed is what the provider does
+    // next.
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({ ...milwaukeeRoutes, 'planning/zoning/MapServer/12': ARCGIS_ERROR_200 }),
     )
     const res = await getMilwaukeeParcelInfo(LAT, LNG)
-    expect(res.ok).toBe(true)
-    if (!res.ok) return
-    expect(res.info.zoning.districtCode).toBe('Unknown')
-    expect(res.info.zoning.maxHeightFt).toBeNull()
-    expect(res.info.zoning.farUnconstrained).toBeUndefined()
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.code).toBe('UPSTREAM_ERROR')
+    expect(res.status).toBe(502)
+    expect(res.message).toMatch(/Milwaukee/)
+    expect(res.message).not.toMatch(/coverage|neighbou?ring|unincorporated/i)
   })
 
   // ════════════════════════════════════════════════════════════════════════

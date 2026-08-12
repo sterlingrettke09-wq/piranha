@@ -13,6 +13,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt } from '../geo'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
 const PARCELS = 'https://geo.sandag.org/server/rest/services/Hosted/Parcels/FeatureServer/0'
 // California State Plane Zone 6 (EPSG:2230), US survey feet — the parcel layer's
@@ -83,26 +84,46 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
   //     was reliable but ran 10-12s end-to-end, over Netlify's 10s function kill —
   //     parallel keeps the total at the slowest single chain (~8s budget) instead
   //     of the sum.
-  const [parcelR, zoningR, histR, chlozR, cityLandR, coastalR, floodR] = await Promise.allSettled([
-    fetchParcelSnap(
-      PARCELS,
-      lat,
-      lng,
-      ['apn', 'situs_address', 'situs_street', 'situs_suffix', 'situs_zip', 'usable_sq_feet', 'asr_landuse', 'unitqty', 'total_lvg_area', 'asr_total'],
-      true,
-      CA_ZONE6_FT,
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts. The parcel layer is
+  // SANDAG's (regional) and the zoning layer is the City's, so an EMPTY zoning
+  // answer is a real out-of-city fact — only a failed FETCH refuses.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    // maxAttempts 2: fetchParcelSnap already retries its exact query internally.
+    readRequired(
+      'parcel',
+      (t) =>
+        fetchParcelSnap(
+          PARCELS,
+          lat,
+          lng,
+          ['apn', 'situs_address', 'situs_street', 'situs_suffix', 'situs_zip', 'usable_sq_feet', 'asr_landuse', 'unitqty', 'total_lvg_area', 'asr_total'],
+          true,
+          CA_ZONE6_FT,
+          30,
+          t,
+        ),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
     ),
-    fetchParcelSnap(ZONING, lat, lng, ['ZONE_NAME']),
-    fetchFeatures(HISTORIC, lat, lng, ['NAME', 'TYPE']),
-    fetchParcelSnap(COASTAL_HEIGHT, lat, lng, ['ZONENAME']),
-    fetchParcelSnap(CITY_LAND, lat, lng, ['COM_NAME', 'DES_USE', 'MG_DEPT']),
-    fetchFeatures(COASTAL_ZONE, lat, lng, ['FID']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    readRequired('zoning', (t) => fetchParcelSnap(ZONING, lat, lng, ['ZONE_NAME'], false, undefined, 30, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 4000,
+    }),
+    Promise.allSettled([
+      fetchFeatures(HISTORIC, lat, lng, ['NAME', 'TYPE']),
+      fetchParcelSnap(COASTAL_HEIGHT, lat, lng, ['ZONENAME']),
+      fetchParcelSnap(CITY_LAND, lat, lng, ['COM_NAME', 'DES_USE', 'MG_DEPT']),
+      fetchFeatures(COASTAL_ZONE, lat, lng, ['FID']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+    ]),
   ])
+  const [histR, chlozR, cityLandR, coastalR, floodR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'sandiego', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('sandiego', 'San Diego', [parcelR, zoningR], t0)
   }
   const parcelFeat = firstFeature(parcelR.value)
   const parcel = parcelFeat?.attributes ?? null
@@ -110,7 +131,8 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const chloz = chlozR.status === 'fulfilled' ? firstAttrs(chlozR.value) : null
   const cityLand = cityLandR.status === 'fulfilled' ? firstAttrs(cityLandR.value) : null

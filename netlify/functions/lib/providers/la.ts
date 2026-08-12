@@ -7,6 +7,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { polygonAreaSqFt } from '../geo'
+import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
 const PARCELS =
   'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0'
@@ -177,28 +178,50 @@ function usesForZone(code: string | null): string[] | null {
 
 export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelResult> {
   const t0 = Date.now()
-  const [parcelR, zoningR, hpozR, floodR, coastalR] = await Promise.allSettled([
-    fetchParcelSnap(PARCELS, lat, lng, ['SitusFullAddress', 'APN', 'UseType', 'UseDescription'], true, 2229),
-    fetchParcelSnap(ZONING, lat, lng, ['ZONE_CMPLT', 'ZONE_CLASS', 'ZONING_DESCRIPTION']),
-    fetchFeatures(HPOZ, lat, lng, ['NAME']),
-    fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
-    fetchFeatures(COASTAL, lat, lng, ['FID']),
+  const deadline = requestDeadline()
+  // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
+  // the contract at the top of ../requiredUpstream.ts.
+  const [parcelR, zoningR, optional] = await Promise.all([
+    // maxAttempts 2, not 3: fetchParcelSnap already retries its exact query
+    // internally, so three outer attempts would be up to six queries.
+    readRequired(
+      'parcel',
+      (t) =>
+        fetchParcelSnap(PARCELS, lat, lng, ['SitusFullAddress', 'APN', 'UseType', 'UseDescription'], true, 2229, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    readRequired(
+      'zoning',
+      (t) =>
+        fetchParcelSnap(ZONING, lat, lng, ['ZONE_CMPLT', 'ZONE_CLASS', 'ZONING_DESCRIPTION'], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
+    Promise.allSettled([
+      fetchFeatures(HPOZ, lat, lng, ['NAME']),
+      fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+      fetchFeatures(COASTAL, lat, lng, ['FID']),
+    ]),
   ])
+  const [hpozR, floodR, coastalR] = optional
 
-  if (parcelR.status === 'rejected') {
-    console.log({ event: 'parcel.upstream_fail', city: 'la', durationMs: Date.now() - t0 })
-    return { ok: false, code: 'UPSTREAM_ERROR', message: 'A required upstream dataset is unavailable. Try again shortly.', status: 502 }
+  // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
+  // LA's parcel layer is the COUNTY's and the zoning layer is the CITY's, so an
+  // empty zoning answer is the real "Manhattan Beach" case the coverage copy is
+  // written for. A timeout is not that.
+  if (!parcelR.ok || !zoningR.ok) {
+    return upstreamUnavailable('la', 'Los Angeles', [parcelR, zoningR], t0)
   }
 
   const feature = firstFeature(parcelR.value)
   const parcel = feature?.attributes ?? null
   warnIfMissing(parcel, ['APN'], 'la')
-  warnIfMissing(zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null, ['ZONE_CMPLT'], 'la')
+  warnIfMissing(firstAttrs(zoningR.value), ['ZONE_CMPLT'], 'la')
   if (!parcel) {
     return { ok: false, code: 'NO_PARCEL', message: 'No parcel found at this location.', status: 404 }
   }
 
-  const zoning = zoningR.status === 'fulfilled' ? firstAttrs(zoningR.value) : null
+  // Reached only when the zoning service ANSWERED.
+  const zoning = firstAttrs(zoningR.value)
   const hpoz = hpozR.status === 'fulfilled' ? firstAttrs(hpozR.value) : null
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const inCoastalZone = coastalR.status === 'fulfilled' && (coastalR.value.features?.length ?? 0) > 0

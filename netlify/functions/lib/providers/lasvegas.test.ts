@@ -536,8 +536,14 @@ describe('getLasVegasParcelInfo', () => {
     expect(res.info.overlays.floodZone).toBeNull()
   })
 
-  // A zoning outage must not look like a district with no limits.
-  it('a zoning-layer outage renders as a gap, not as an unconstrained district', async () => {
+  // ⚠️ THIS TEST USED TO ASSERT THE DEFECT. It read the districtCode as
+  // 'Unknown' and called that "a gap", with a rationale citing CLAUDE.md rule 5
+  // — but 'Unknown' is exactly what assessDevelopability turns into
+  // `no_coverage`, a geographic claim about the parcel, with cost, timeline and
+  // hurdles zeroed by analyze.ts. A green test with a well-written reason is the
+  // hardest kind to overturn (rule 15); this is the corrected assertion. The
+  // EMPTY-answer case above is unchanged, because that one really is a gap.
+  it('a zoning-layer outage REFUSES — it is not the Henderson gap', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         ...lasVegasRoutesProvidence,
@@ -547,11 +553,12 @@ describe('getLasVegasParcelInfo', () => {
       }),
     )
     const res = await getLasVegasParcelInfo(LAT, LNG)
-    expect(res.ok).toBe(true)
-    if (!res.ok) return
-    expect(res.info.zoning.districtCode).toBe('Unknown')
-    expect(res.info.zoning.farUnconstrained).toBeUndefined()
-    expect(res.info.zoning.maxHeightFt).toBeNull()
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.code).toBe('UPSTREAM_ERROR')
+    expect(res.status).toBe(502)
+    expect(res.message).toMatch(/Las Vegas/)
+    expect(res.message).not.toMatch(/coverage|neighbou?ring|unincorporated/i)
   })
 
   it('returns NO_PARCEL when the parcel layer has nothing at the point', async () => {
