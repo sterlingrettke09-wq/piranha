@@ -20,10 +20,23 @@
 // derived-present or carries exactly one reason — never both, never neither.
 // Landing new data for a city therefore FORCES deleting its stale reason, and
 // adding a city without accounting for all seven dimensions fails the suite.
+//
+//   A FILLED CELL IS NOT A UNIFORM CLAIM (added 2026-08-12). Presence being
+//   derived stopped a cell claiming coverage the product does not have. It did
+//   NOT stop a cell claiming coverage is uniform when it is not: `envelope` was
+//   derived from `CITIES[].live`, which says the provider is wired and nothing
+//   about how often it answers. Over the 575-parcel live sample, Denver
+//   resolved an envelope for 2 of the 6 developable parcels it answered for and
+//   Chicago for 11 of 11 — and the matrix drew the same dot for both. The
+//   envelope cell now carries a measured RATE, read from
+//   `envelopeSample.json` (see ./envelopeSample.ts). Derived like everything
+//   else here, so re-running the sampler moves the matrix and nobody can type a
+//   number into it.
 
 import { CITIES, CITIES_WITH_SPECIFIC_HURDLES } from './cities'
 import { PARKING_RULES } from './parkingRules'
 import { lifecycleMonths, cityCostIndex } from './estimates'
+import { envelopeSample, type EnvelopeSample } from './envelopeSample'
 // The SAME committed artifacts the analysis functions and the Red Tape Index
 // read. Imported, never transcribed.
 import permitStatsJson from '../../netlify/functions/lib/data/permitStats.json'
@@ -55,7 +68,11 @@ export type CoverageDimension = (typeof COVERAGE_DIMENSIONS)[number]
 
 /** Column labels + what a filled cell means, rendered on /math. */
 export const DIMENSION_LABELS: Record<CoverageDimension, { label: string; means: string }> = {
-  envelope: { label: 'Zoning envelope', means: 'live district lookup — use, FAR, height — from the city’s own GIS' },
+  envelope: {
+    label: 'Zoning envelope',
+    means:
+      'live district lookup — use, FAR, height — from the city’s own GIS, shown as the share of sampled developable parcels for which it actually resolved',
+  },
   parking: { label: 'Parking rule', means: 'the parking ordinance was read, and the rule is stated in the city’s own words' },
   hurdles: { label: 'City-specific hurdles', means: 'city-specific approvals encoded beyond the generic floor' },
   cost: { label: 'Cost index', means: 'RSMeans city cost index, matched by ZIP group' },
@@ -362,7 +379,28 @@ export const ABSENCE_REASONS: Partial<
 }
 
 export type CoverageCell =
-  | { covered: true; suppressedTiers: string[] }
+  | {
+      covered: true
+      suppressedTiers: string[]
+      /**
+       * How often a covered cell actually delivers, where that has been
+       * measured. Present on `envelope` and null everywhere else.
+       *
+       * WHY A QUALIFIER AND NOT A REASON CODE. Denver's envelope IS wired —
+       * provider, zoning module, dispatcher — and it resolves; it just resolves
+       * for a third of the parcels sampled. An absence reason would claim the
+       * cell is empty, which is false, and the drift guard would then demand
+       * the reason be deleted the moment the cell is derived-present, which it
+       * permanently is. A qualifier keeps the guard's XOR intact and still
+       * stops a 33% city rendering identically to a 100% one — the thing the
+       * matrix got wrong.
+       *
+       * DERIVED, not hand-entered: it is read from the committed 575-parcel
+       * measurement, so it cannot be typed in and cannot go stale by being
+       * forgotten. Re-running the sampler changes the matrix.
+       */
+      sample: EnvelopeSample | null
+    }
   | ({ covered: false } & AbsenceReason)
 
 /**
@@ -377,7 +415,11 @@ export function coverageCell(slug: string, dim: CoverageDimension): CoverageCell
     throw new Error(`${slug}/${dim} is derived-present but still carries a stale absence reason`)
   }
   if (covered) {
-    return { covered: true, suppressedTiers: dim === 'permits' ? suppressedPermitTiers(slug) : [] }
+    return {
+      covered: true,
+      suppressedTiers: dim === 'permits' ? suppressedPermitTiers(slug) : [],
+      sample: dim === 'envelope' ? envelopeSample(slug) : null,
+    }
   }
   if (!reason) {
     throw new Error(`${slug}/${dim} is absent with no recorded reason`)

@@ -4,12 +4,16 @@ import {
   reliability,
   reliabilityCell,
   reliabilitySummary,
+  sampledRateCell,
+  sampledRateSummary,
   failureCeiling,
   sampleCity,
   type Prober,
   type Reliability,
 } from './null-inventory'
 import type { ParcelResult } from '../netlify/functions/lib/parcel'
+import { envelopeSample, type EnvelopeSample } from '../src/config/envelopeSample'
+import { CITIES } from '../src/config/cities'
 
 // WHAT THESE TESTS DEFEND
 //
@@ -200,5 +204,106 @@ describe('classification and the identity axis', () => {
     const out = reliabilitySummary([{ city: 'phoenix', rel }])
     expect(out).toContain('phoenix 0/6')
     expect(out).toContain('never came back clean')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The `Sampled rate` column.
+//
+// Everything above is about whether the ONE golden parcel answered. This is
+// about the older and larger defect: that parcel's Outcome was being read as the
+// city's. Denver's probe is `G-MU-5`, a current form-based DZC district that
+// resolves 6/6; the multi-parcel sample drew `R-2` / `O-1` / `I-B` / `H-1-A`,
+// former Chapter 59 codes that fall through, and the envelope resolved for 2 of
+// the 6 developable parcels the pipeline answered for. Denver's row and
+// Chicago's — 11 of 11 — were identical.
+//
+// Note what the fix is NOT. The Method section already said "a single probed
+// parcel does not characterise a whole city" and had said it the whole time. A
+// caveat under a table does not survive contact with the table, so the fix is a
+// second column, not stronger prose.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const measured = (resolved: number, n: number): Extract<EnvelopeSample, { kind: 'measured' }> => ({
+  kind: 'measured',
+  n,
+  resolved,
+  gap: n - resolved,
+  indeterminate: n - resolved,
+  share: resolved / n,
+  counts: {
+    attempted: 25, outOfCity: 0, noParcel: 0, upstreamError: 0, exception: 0, noSpec: 0,
+    nonDevelopable: 25 - n, developable: n, resolved, unconstrained: 0, gap: n - resolved,
+    indeterminate: n - resolved, sampledOn: '2026-08-11',
+  },
+})
+
+describe('the sampled rate — one parcel is no longer read as the city', () => {
+  it('a city resolving a third of the time does not render like one that always does', () => {
+    const denver = sampledRateCell(measured(2, 6))
+    const chicago = sampledRateCell(measured(11, 11))
+    expect(denver).not.toBe(chicago)
+    // Both carry their denominator. 33% over 6 and 100% over 11 are different
+    // claims and the cell has to say which it is making.
+    expect(denver).toContain('n=6')
+    expect(chicago).toContain('n=11')
+    // The one that misses is emphasised: a difference nobody's eye lands on is
+    // half a fix.
+    expect(denver).toContain('**')
+    expect(chicago).not.toContain('**')
+  })
+
+  it('the summary ranks the misses worst-first and names their rates', () => {
+    const out = sampledRateSummary(['denver', 'chicago'])
+    expect(out).toMatch(/resolve for less than every sampled parcel/)
+    expect(out).toContain('denver')
+    // Denver is the real artifact's worst case, so it must precede Chicago,
+    // which resolves everything and is not in the list at all.
+    expect(out).not.toMatch(/chicago \d+\/\d+/)
+  })
+
+  it('every probed city has a rate — the two columns cannot disagree about who exists', () => {
+    // The null inventory probes one list of cities and reads rates from a file
+    // produced by a different script. A city in one and not the other renders
+    // "not sampled" while the run exits 0.
+    for (const c of CITIES.filter((c) => c.live)) {
+      expect(envelopeSample(c.slug).kind, `${c.slug}`).toBe('measured')
+    }
+  })
+})
+
+describe('rule 20 — the sampled-rate column cannot pass by finding nothing', () => {
+  it('an unmeasured city is words, not a blank', () => {
+    // A blank is also what a fully-resolving city would render as if the column
+    // went quiet, which is precisely the ambiguity rule 20 is about.
+    const cell = sampledRateCell({ kind: 'unmeasured' })
+    expect(cell).toContain('not sampled')
+    expect(cell).toContain('**')
+    expect(cell).not.toMatch(/%/)
+  })
+
+  it('a sample with no usable denominator is not printed as a percentage', () => {
+    const cell = sampledRateCell({
+      kind: 'no-denominator',
+      counts: measured(0, 1).counts,
+    })
+    expect(cell).toContain('no sample')
+    expect(cell).not.toMatch(/\d%/)
+  })
+
+  it('a summary over no measured cities refuses to read as a clean run', () => {
+    const out = sampledRateSummary([])
+    expect(out).toContain('NO SAMPLED RATES AVAILABLE')
+    expect(out).toContain('do not publish this file')
+    // And it says WHY it matters: without the column, the Outcome beside it is
+    // back to being one parcel read as a city.
+    expect(out).toContain('one parcel being read as a city')
+  })
+
+  it('names unsampled cities in the summary rather than omitting them', () => {
+    const out = sampledRateSummary(['denver', 'atlantis'])
+    expect(out).toContain('NOT SAMPLED')
+    expect(out).toContain('atlantis')
+    expect(out).toContain('An unsampled city is not a resolving one.')
   })
 })

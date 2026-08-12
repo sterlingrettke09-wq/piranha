@@ -36,11 +36,42 @@
 //   npx vite-node scripts/null-inventory.ts          # print
 //   npx vite-node scripts/null-inventory.ts --write  # rewrite the doc
 
+// ⚠️ AND THE ONE PARCEL WAS BEING READ AS THE CITY (fixed 2026-08-12). Every
+// caveat above is about whether the probe ANSWERED. None of them touches the
+// deeper problem: the probe is a single hand-picked parcel, and its Outcome
+// column was the city's row. Denver's probe is `G-MU-5`, a current form-based
+// DZC district that resolves cleanly six times out of six — and the 575-parcel
+// live sample drew `R-2` / `O-1` / `I-B` / `H-1-A`, former Chapter 59 codes that
+// fall through, withholding the verdict on 4 of the 6 developable parcels the
+// pipeline answered for. Denver's row read exactly like Chicago's, which
+// withheld none. Same for Las Vegas (2 of 9 resolved), Miami (5 of 15), Austin
+// (6 of 14) and LA (7 of 16).
+//
+// Nothing was misreported. The Method section at the foot of this file said so
+// in as many words — "a single probed parcel does not characterise a whole
+// city" — and it was read as a rate anyway, because a table of one-per-city
+// verdicts is a rate-shaped object. A caveat under a table does not survive
+// contact with the table.
+//
+// So the row now carries BOTH. The golden parcel stays: it is a fixed point, its
+// stability check catches provider drift, and replacing it with an aggregate
+// would trade a regression signal for a headline. Beside it is `Sampled rate` —
+// the share of sampled developable parcels for which the envelope actually
+// resolved, with its denominator — read from the committed measurement
+// `netlify/functions/lib/data/envelopeSample.json`. A city that resolves a third
+// of the time can no longer render identically to one that resolves always.
+
 import { writeFileSync } from 'node:fs'
 import { getParcelInfo, type ParcelResult } from '../netlify/functions/lib/parcel'
 import { buildDefaultSpec } from '../src/lib/defaultSpec'
 import { assessFeasibility } from '../netlify/functions/lib/feasibility'
 import { EXAMPLE_PARCELS } from '../src/config/exampleParcels'
+import {
+  envelopeSample,
+  envelopeSampleLabel,
+  ENVELOPE_SAMPLED_CITIES,
+  type EnvelopeSample,
+} from '../src/config/envelopeSample'
 
 /** Probe points for cities without a published example parcel. Chosen to land on
  *  a real parcel — a city landmark is often a street or a plaza (San Diego's
@@ -256,6 +287,9 @@ interface Row {
   outcome: string
   note: string
   rel: Reliability
+  /** The city's measured resolve rate, from the committed multi-parcel sample.
+   *  Beside the golden parcel, never instead of it. */
+  sample: EnvelopeSample
 }
 
 /** How many isolated calls each city gets. FIXED, and taken with no early exit.
@@ -376,6 +410,96 @@ export function reliabilityCell(rel: Reliability): string {
   return `⚠️ **${base}** (first clean on call ${rel.firstCleanAt})`
 }
 
+/** The `Sampled rate` cell, beside the golden parcel's Outcome.
+ *
+ *  Rule 20 again, and for the same reason the `Live sample` column prints its
+ *  denominator: the two states with no rate must not render as a blank, because
+ *  a blank is also what a fully-resolving city would look like if the column
+ *  ever went quiet. `envelopeSampleLabel` returns words — "not sampled", "no
+ *  sample (0 of 25)" — for exactly those two.
+ *
+ *  A rate below 100% is bolded. The point of the column is that Denver's row and
+ *  Chicago's row used to be identical; a difference nobody's eye lands on is
+ *  half a fix. */
+export function sampledRateCell(s: EnvelopeSample): string {
+  const label = envelopeSampleLabel(s)
+  if (s.kind !== 'measured') return `**${label}**`
+  return s.resolved === s.n ? label : `**${label}**`
+}
+
+/** The paragraph under the table, ranked worst-first.
+ *
+ *  Cannot pass by finding nothing: an empty city list is stated as such and
+ *  named as a measurement failure, not printed as a clean run. */
+export function sampledRateSummary(slugs: string[]): string {
+  const rows = slugs.map((slug) => ({ slug, s: envelopeSample(slug) }))
+  const unmeasured = rows.filter((r) => r.s.kind === 'unmeasured').map((r) => r.slug)
+  const noDenom = rows.filter((r) => r.s.kind === 'no-denominator').map((r) => r.slug)
+  const measured = rows.flatMap((r) => (r.s.kind === 'measured' ? [{ slug: r.slug, s: r.s }] : []))
+
+  if (rows.length === 0 || measured.length === 0)
+    return [
+      '**⚠️ NO SAMPLED RATES AVAILABLE — the committed measurement is empty or unreadable.**',
+      '',
+      'Every `Sampled rate` cell above is therefore a non-answer, and the Outcome',
+      'column beside it is once again one parcel being read as a city. Re-run',
+      '`npx vite-node scripts/smoke-parcels.ts`; do not publish this file.',
+    ].join('\n')
+
+  const n = measured.reduce((a, m) => a + m.s.n, 0)
+  const ok = measured.reduce((a, m) => a + m.s.resolved, 0)
+  // The two columns are dated INDEPENDENTLY and the header's "verified live on
+  // the date shown" is about the probe, not about this. Saying so matters most
+  // exactly when they disagree — a city whose probe failed today can still carry
+  // a rate measured last week, and the reader has to be able to see that.
+  const dates = [...new Set(measured.map((m) => m.s.counts.sampledOn))].sort()
+  const when =
+    dates.length === 1
+      ? `Measured ${dates[0]}`
+      : `Measured per city between ${dates[0]} and ${dates[dates.length - 1]}`
+  const out = [
+    `**Sampled rate: ${ok} of ${n} sampled developable parcels across ${cityN(measured.length)} resolved an envelope (${pct(ok / n)}).**`,
+    `${when} — a different run from the golden-parcel probe above, so the two`,
+    'columns can carry different dates, and a probe failing today does not erase a',
+    'rate measured earlier (nor the other way round).',
+    '',
+  ]
+  if (unmeasured.length)
+    out.push(
+      `**⚠️ ${cityN(unmeasured.length)} NOT SAMPLED** — ${unmeasured.join(', ')}. Their Outcome`,
+      'column is one parcel and nothing else. An unsampled city is not a resolving one.',
+      '',
+    )
+  if (noDenom.length)
+    out.push(
+      `**⚠️ ${cityN(noDenom.length)} sampled with NO DENOMINATOR** — ${noDenom.join(', ')}: not one`,
+      'sampled parcel came back both answered and developable, so there is no rate.',
+      '',
+    )
+  const worst = [...measured].sort((a, b) => a.s.share - b.s.share).filter((m) => m.s.share < 1)
+  if (worst.length)
+    out.push(
+      `**${cityN(worst.length)} resolve for less than every sampled parcel**, worst first — ${worst
+        .map((m) => `${m.slug} ${m.s.resolved}/${m.s.n} (${pct(m.s.share)})`)
+        .join(', ')}.`,
+      '',
+      'Read the Outcome column beside these with the rate in hand. The probe is one',
+      'hand-picked parcel, and for the low rows it is a parcel that works in a city',
+      'where most do not — Denver’s `G-MU-5` is a current form-based DZC district,',
+      'while the sample drew former Chapter 59 codes that fall through.',
+      '',
+    )
+  else
+    out.push(
+      `Every sampled city resolved an envelope for all ${n} of its sampled developable`,
+      'parcels. That is a statement about the parcels the sampler drew, not a',
+      'guarantee: the denominators are printed per row precisely because a rate of',
+      '100% over 6 parcels and one over 25 are different claims.',
+      '',
+    )
+  return out.join('\n').trimEnd()
+}
+
 /** Given `n` consecutive clean calls, the highest per-call failure rate still
  *  consistent with that at 95% one-sided: `1 - 0.05^(1/n)`.
  *
@@ -473,9 +597,10 @@ async function main() {
       )
     if (!rel.stable)
       console.warn(`  ⚠️ ${city}: probe UNSTABLE — ${rel.identities.join(' | ')} (overlapping parcels?)`)
+    const sample = envelopeSample(city)
     if (!r || !r.ok) {
       rows.push({ city, district: '—', farBasis: '—', gfaBasis: '—', verdict: '—',
-        outcome: 'PROBE FAILED', note: 'not a pass — re-run before trusting', rel })
+        outcome: 'PROBE FAILED', note: 'not a pass — re-run before trusting', rel, sample })
       continue
     }
     const env = r.info.envelope
@@ -503,7 +628,7 @@ async function main() {
     rows.push({
       city,
       district: String(r.info.zoning.districtCode).slice(0, 22),
-      farBasis, gfaBasis, verdict, outcome, rel,
+      farBasis, gfaBasis, verdict, outcome, rel, sample,
       note: rel.stable ? note : `${note} ⚠️ PROBE UNSTABLE — returned ${rel.identities.length} different parcels; this row is not reproducible`,
     })
   }
@@ -522,6 +647,27 @@ async function main() {
       `null-inventory: ${rows.length} rows but ${resolved + unc + gaps + noSpec + failed} counted — a gfaBasis the summary does not bucket`,
     )
   }
+
+  // The narrative below names five cities by their measured rate. Those figures
+  // are READ from the artifact, never typed — a hand-typed count in a generated
+  // document is the failure this file already records once (the stale test
+  // count), and prose is exactly where a retracted number survives longest
+  // (rule 17: headers and summaries are read FIRST).
+  const rateStr = (slug: string): string => {
+    const s = envelopeSample(slug)
+    return s.kind === 'measured' ? `${s.resolved} of ${s.n}` : `**${envelopeSampleLabel(s)}**`
+  }
+  const attemptedStr = (slug: string): string => {
+    const s = envelopeSample(slug)
+    return s.kind === 'unmeasured' ? 'an unrecorded number of' : String(s.counts.attempted)
+  }
+  const nStr = (slug: string): string => {
+    const s = envelopeSample(slug)
+    return s.kind === 'measured' ? String(s.n) : 'no'
+  }
+  const denverAttempted = attemptedStr('denver')
+  const lasVegasN = nStr('lasvegas')
+  const lasVegasAttempted = attemptedStr('lasvegas')
 
   const md = `# Null inventory — what the tool actually knows
 
@@ -544,14 +690,28 @@ generated document should not carry a number its generator cannot see.)
 
 ## Verified ${stamp}
 
-\`Live sample\` is clean calls / calls made, from ${CALLS_PER_CITY} isolated calls per city.
-See [why that column exists](#why-there-is-a-live-sample-column) — it is not decoration.
+Two independent columns, measuring two different things. **Read the last one
+first.**
 
-| City | District probed | Live sample | Outcome | Verdict | What it means |
-|---|---|---|---|---|---|
-${rows.map((r) => `| ${r.city} | \`${r.district}\` | ${reliabilityCell(r.rel)} | **${r.outcome}** | ${r.verdict} | ${r.note} |`).join('\n')}
+- \`Live sample\` — clean calls / calls made, from ${CALLS_PER_CITY} isolated calls to the ONE
+  golden parcel. Does the pipeline answer? See
+  [why that column exists](#why-there-is-a-live-sample-column).
+- \`Outcome\` / \`Verdict\` / \`What it means\` — what the pipeline returned **for that
+  one parcel.** A fixed point, not a rate.
+- \`Sampled rate\` — over a multi-parcel live sample drawn from the city's own
+  parcel layer, the share of DEVELOPABLE, answered parcels for which the envelope
+  actually resolved, and the \`n\` it is over. This is the column that describes
+  the city. See [why it was added](#why-there-is-a-sampled-rate-column).
 
-**${resolved} resolved from published data · ${unc} unconstrained (an answer) · ${gaps} gaps · ${noSpec} no default spec · ${failed} probe failures.**
+| City | District probed | Live sample | Outcome | Verdict | Sampled rate | What it means |
+|---|---|---|---|---|---|---|
+${rows.map((r) => `| ${r.city} | \`${r.district}\` | ${reliabilityCell(r.rel)} | **${r.outcome}** | ${r.verdict} | ${sampledRateCell(r.sample)} | ${r.note} |`).join('\n')}
+
+**Golden parcel, one per city: ${resolved} resolved from published data · ${unc} unconstrained (an answer) · ${gaps} gaps · ${noSpec} no default spec · ${failed} probe failures.**
+Those five counts describe ${cityN(rows.length)}' worth of hand-picked parcels and nothing
+more. The \`Sampled rate\` column is the one that generalises.
+
+${sampledRateSummary(rows.map((r) => r.city))}
 
 ${reliabilitySummary(rows)}
 
@@ -580,6 +740,46 @@ Two changes, and the pair is the point:
 This is also why the column prints \`6/6\` rather than a tick. A tick on an empty
 sample and a tick on a healthy system are the same glyph, and that is the vacuous
 pass rule 20 is about. The denominator makes an unsampled city loud.
+
+### Why there is a \`Sampled rate\` column
+
+The \`Live sample\` column fixed whether the probe ANSWERED. It did not touch the
+older and larger problem: **the probe is one hand-picked parcel, and its Outcome
+was being read as the city's.**
+
+Denver is the clean example. Its golden parcel is \`G-MU-5\`, a current form-based
+DZC district that resolves ${CALLS_PER_CITY} times out of ${CALLS_PER_CITY}. A ${denverAttempted}-parcel live sample drawn
+from Denver's own parcel layer returned \`R-2\`, \`O-1\`, \`I-B\`, \`H-1-A\` — former
+Chapter 59 codes that fall through — and the envelope resolved for **${rateStr('denver')}**
+developable parcels the pipeline answered for. Denver's row rendered exactly
+like Chicago's, which resolved ${rateStr('chicago')}. Four more cities sat in the same place:
+Las Vegas ${rateStr('lasvegas')}, Miami ${rateStr('miami')}, Austin ${rateStr('austin')}, LA ${rateStr('la')}.
+
+Nothing here was misreported, and that is the part worth keeping. The Method
+section at the foot of this file has said "a single probed parcel does not
+characterise a whole city" the whole time. **A caveat under a table does not
+survive contact with the table** — a grid of one-verdict-per-city is a
+rate-shaped object, and readers, including the coverage matrix on /math, read it
+as one.
+
+So the fix is not a stronger caveat. It is a second number, measured:
+
+- **The golden parcel stays.** It is a fixed point whose stability check catches
+  provider drift, and swapping it for an aggregate would trade a regression
+  signal for a headline. Both columns, not one replacing the other.
+- **The rate's denominator is developable, ANSWERED parcels** — not parcels
+  attempted. A parcel the sampler drew outside the city gate, or one nobody can
+  build on, is not an envelope failure; counting it as one would score each city
+  by how much public land it has. Those exclusions shrink \`n\`, which is why \`n\`
+  is printed in every cell: Las Vegas's rate is over ${lasVegasN} of the ${lasVegasAttempted} parcels
+  sampled for it, and a rate over ${lasVegasN} is a weaker claim than the same rate over ${lasVegasAttempted}.
+- **\`unconstrained\` counts as resolved**, because a code that affirmatively
+  imposes no FAR is an answer (rule 5). Only the fall-through to an assumed FAR
+  is a gap.
+- **It is DERIVED from a committed measurement**
+  (\`netlify/functions/lib/data/envelopeSample.json\`), not typed in here, and
+  \`src/config/coverage.ts\` reads the same file — so the /math matrix and this
+  document cannot disagree, and re-running the sampler moves both.
 
 ## What a "gap" costs the user, post fail-closed audit
 
@@ -694,9 +894,35 @@ most expensive kind of wrong — it buys research nobody needed.
   \`resolveZoningLimits\` with \`maxFAR: null\`, bypassed every provider-side
   resolver, and reported "11/65 resolved" — it measured the probe, not the
   pipeline.
-- A single probed parcel does not characterise a whole city. This table says
-  what the pipeline returned for one real address, which is enough to separate
-  "resolves" from "falls back" and not enough to quantify coverage.
+- A single probed parcel does not characterise a whole city. Columns 2–5 say
+  what the pipeline returned for ONE real address, which is enough to separate
+  "resolves" from "falls back" and not enough to quantify coverage. That
+  sentence sat here alone until 2026-08-12 and did not stop five cities being
+  read as covered; \`Sampled rate\` is the same statement made as a number.
+
+### Method for \`Sampled rate\`
+
+- **A different instrument, deliberately.** \`scripts/smoke-parcels.ts\` grids each
+  city's bbox, pulls one real parcel polygon per cell **from the same layer the
+  city's provider reads**, and takes an interior point of it — so the population
+  sampled is the one the tool actually serves. Hand-picked parcels are the ones
+  that already work.
+- **The same composition as \`netlify/functions/analyze.ts\`**, step for step
+  (rule 11). If it would change the answer to call a layer directly, calling the
+  layer directly measures the layer.
+- Written to \`netlify/functions/lib/data/envelopeSample.json\` as COUNTS. The
+  share is computed in \`src/config/envelopeSample.ts\` and nowhere else, so a
+  percentage cannot drift from its own numerator, and this document and the
+  /math coverage matrix read the same file.
+- **Not part of \`npm test\`.** It is about an hour of live municipal-GIS traffic;
+  the committed artifact is what ships, as with the permit pipelines. Regenerate
+  with \`npx vite-node scripts/smoke-parcels.ts\`.
+- Each city's entry carries its own \`sampledOn\`, so re-running one city cannot
+  restamp the other 22 as freshly measured.
+- **A sampled rate is not a guarantee either.** \`n\` is printed in every cell
+  because 100% over 6 parcels and 100% over 25 are different claims, and because
+  the sample is drawn from a grid over a bbox — spread across the city, but not
+  a random draw from its parcel population.
 `
 
   const obs = rows.reduce((n, r) => n + r.rel.calls, 0)
@@ -720,6 +946,20 @@ most expensive kind of wrong — it buys research nobody needed.
       `\nFAIL — expected ${expected} observations (${CITIES.length} cities × ${CALLS_PER_CITY}), got ${obs}.`,
     )
     console.error('The reliability column is not measuring what the document claims it measures.')
+    process.exitCode = 1
+  }
+
+  // Rule 20, on the OTHER column. `Sampled rate` is read from a committed
+  // artifact this script does not produce, so it can go quiet in a way the run
+  // itself would never notice: delete the file, or add a city and forget to
+  // sample it, and every affected cell renders "not sampled" while the run
+  // exits 0. Pin the membership, not just the count — a set that matches in
+  // size and not in members is the regex that silently stopped matching.
+  const unsampled = CITIES.filter((c) => !ENVELOPE_SAMPLED_CITIES.includes(c))
+  if (unsampled.length) {
+    console.error(`\nFAIL — ${unsampled.length} probed cities carry no sampled rate: ${unsampled.join(', ')}.`)
+    console.error('Their Outcome column is one parcel being read as a city, which is the defect')
+    console.error('the Sampled rate column exists to close. Run `npx vite-node scripts/smoke-parcels.ts`.')
     process.exitCode = 1
   }
 }

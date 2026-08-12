@@ -28,16 +28,51 @@
 //
 //   npx vite-node scripts/smoke-parcels.ts --sample   # phase 1 only
 //   npx vite-node scripts/smoke-parcels.ts --run      # phase 2 only (reuses samples)
-//   npx vite-node scripts/smoke-parcels.ts            # both
+//   npx vite-node scripts/smoke-parcels.ts --rates    # phase 4 only (reuses rows)
+//   npx vite-node scripts/smoke-parcels.ts            # all four
 //
 // Flags: --per=N (parcels per city, default 25) --cities=a,b --out=DIR
 //
 // NOT included, deliberately: logSearch (a Netlify Blobs write — a side effect,
 // not a computation) and the Mapbox reverse geocode where no token is
 // configured. Both are named in the report rather than silently skipped.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 4 (added 2026-08-12) — THE COMMITTED RATE ARTIFACT
+//
+// This run measured what `docs/NULL-INVENTORY.md` and the /math coverage matrix
+// were both getting wrong: the inventory probes ONE hand-picked parcel per city
+// and its verdict was being read as a statement about the city. Denver's golden
+// parcel is `G-MU-5`, a current form-based DZC district that resolves; the
+// sample drew `R-2` / `O-1` / `I-B` / `H-1-A`, former Chapter 59 codes that fall
+// through. Denver withheld a verdict on 4 of the 6 developable parcels it
+// answered for, and rendered in both places exactly like Chicago, which withheld
+// none. That is not a reporting bug — it is n=1 doing what n=1 always does.
+//
+// So this phase reduces `rows.json` to a per-city PARTITION of the sample and
+// writes it to `netlify/functions/lib/data/envelopeSample.json`, alongside
+// permitStats.json and reliefStats.json — the committed artifacts the app reads.
+// The matrix and the inventory then DERIVE their envelope claim from a measured
+// rate instead of from a boolean `live` flag.
+//
+// COUNTS ARE STORED, RATES ARE NOT. A stored `0.33` is a second source of truth
+// that can disagree with its own numerator; the share is computed where it is
+// read (`src/config/envelopeSample.ts`). The buckets must also PARTITION the
+// sample — `assertPartition` throws otherwise — because a parcel landing outside
+// every bucket would shrink a denominator silently, and a rate whose denominator
+// quietly drops the hard cases is the flattering-measurement failure this file
+// exists to catch.
+//
+// The live run is NOT part of `npm test`: it hits 23 municipal GIS services and
+// takes about an hour. The committed artifact is what ships, exactly as with the
+// permit pipelines.
 
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
+import { writeFileSync, readFileSync, existsSync, mkdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+
+// Aliased: this file's own `CITIES` is the set of parcel layers below. The
+// registry is what the artifact must be complete against.
+import { CITIES as REGISTRY_CITIES } from '../src/config/cities'
 
 import type { AnalysisInput, AnalysisResult, Funding, ProjectType } from '../src/types/analysis'
 import { getParcelInfo } from '../netlify/functions/lib/parcel'
@@ -773,6 +808,174 @@ function report(rows: RunRow[], samples: Sample[]): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Phase 4 — reduce the run to the committed rate artifact.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Where the artifact lands, relative to the repo root. Alongside the other two
+ *  committed measurement artifacts the app imports. */
+export const ENVELOPE_SAMPLE_PATH = 'netlify/functions/lib/data/envelopeSample.json'
+
+/** One city's sample, as a partition of the parcels attempted for it.
+ *
+ *  Every field is a COUNT. The share is derived where it is read, so there is
+ *  exactly one place a rate can come from and it cannot drift from its own
+ *  numerator. */
+export interface CityEnvelopeSample {
+  /** Parcels drawn from this city's own parcel layer and pushed through the
+   *  pipeline. The top of the funnel — every other field is a subset. */
+  attempted: number
+
+  // ── Non-answers. Excluded from the denominator, printed anyway. ──
+  //
+  // Rule 5: these are not envelope failures and must not be counted as any. But
+  // they are also not nothing — they shrink `developable`, and a rate off a
+  // denominator of 9 is a different claim from the same rate off 25. Las Vegas
+  // attempted 25 and answered 9.
+  /** The sampler drew a parcel the runtime city gate then rejected — the layer
+   *  is regional, the bbox is not. A fact about the SAMPLER, not the city. */
+  outOfCity: number
+  /** The point resolved to no parcel at all. */
+  noParcel: number
+  /** The provider or an upstream service failed the call. */
+  upstreamError: number
+  /** Three isolated attempts threw. */
+  exception: number
+  /** The parcel resolved and `buildDefaultSpec` declined — an answer about the
+   *  parcel (too small for the smallest default program), not a gap. */
+  noSpec: number
+
+  // ── Answered. ──
+  /** Answered, and `assessDevelopability` said no — public land, a civic hard
+   *  block, a barred land use. analyze.ts zeroes these, so they measure the
+   *  block rather than the city's regulatory encoding (the recorded San Diego /
+   *  San Jose probe failure) and are excluded from the denominator. */
+  nonDevelopable: number
+  /** THE DENOMINATOR: answered, and developable. The population the envelope
+   *  claim is actually about. */
+  developable: number
+
+  // ── The denominator, split three ways. resolved + unconstrained + gap === developable. ──
+  /** `gfaBasis: 'envelope'` — a district FAR or height came back from published
+   *  data and sized the envelope. */
+  resolved: number
+  /** `gfaBasis: 'assumed-unconstrained'` — the code affirmatively imposes no
+   *  FAR here. An ANSWER, not a gap (rule 5), so it counts as resolved. */
+  unconstrained: number
+  /** `gfaBasis: 'assumed-far-1.0'` — nothing resolved and the pipeline fell
+   *  through to an assumed FAR. The verdict is withheld. */
+  gap: number
+  /** Of the developable parcels, how many ended INDETERMINATE. Tracked
+   *  separately from `gap` because they are NOT the same set: Miami's sample has
+   *  10 gaps and 9 indeterminates — one gap parcel came back PROHIBITED, which
+   *  is a verdict, not a withheld one. */
+  indeterminate: number
+  /** The date the run that produced these counts finished. Per city, so a
+   *  partial re-run of one city does not restamp the other 22. */
+  sampledOn: string
+}
+
+export interface EnvelopeSampleArtifact {
+  /** How it was made, so the next reader does not have to guess the entry point. */
+  source: string
+  cities: Record<string, CityEnvelopeSample>
+}
+
+/** The buckets must cover every attempted parcel exactly once.
+ *
+ *  Without this, an outcome string nobody anticipated falls out of the partition
+ *  and lands nowhere: `attempted` still reads 25, `developable` quietly drops to
+ *  9, and the share goes UP because the hard cases left the denominator. That is
+ *  the exact shape of a measurement that flatters (rule 18), so it is a throw
+ *  rather than a warning. */
+function assertPartition(city: string, s: CityEnvelopeSample): void {
+  const counted =
+    s.outOfCity + s.noParcel + s.upstreamError + s.exception + s.noSpec + s.nonDevelopable + s.developable
+  if (counted !== s.attempted)
+    throw new Error(`envelope sample: ${city} attempted ${s.attempted} but ${counted} were bucketed — an outcome the partition does not cover`)
+  const split = s.resolved + s.unconstrained + s.gap
+  if (split !== s.developable)
+    throw new Error(`envelope sample: ${city} has ${s.developable} developable but ${split} in resolved/unconstrained/gap`)
+}
+
+/** Reduce raw run rows to the per-city partition. Pure — the aggregation is the
+ *  part worth testing, and it must be testable without a live run. */
+export function aggregateEnvelopeSample(rows: RunRow[], sampledOn: string): Record<string, CityEnvelopeSample> {
+  const out: Record<string, CityEnvelopeSample> = {}
+  for (const city of [...new Set(rows.map((r) => r.city))].sort()) {
+    const rs = rows.filter((r) => r.city === city)
+    const answered = rs.filter((r) => r.outcome === 'RESOLVED' || r.outcome === 'UNCONSTRAINED' || r.outcome === 'GAP')
+    const dev = answered.filter((r) => r.developable === true)
+    const s: CityEnvelopeSample = {
+      attempted: rs.length,
+      outOfCity: rs.filter((r) => r.outcome === 'PARCEL_OUT_OF_BBOX').length,
+      noParcel: rs.filter((r) => r.outcome === 'PARCEL_NO_PARCEL').length,
+      upstreamError: rs.filter(
+        (r) => r.outcome.startsWith('PARCEL_') && r.outcome !== 'PARCEL_OUT_OF_BBOX' && r.outcome !== 'PARCEL_NO_PARCEL',
+      ).length,
+      exception: rs.filter((r) => r.outcome === 'EXCEPTION').length,
+      noSpec: rs.filter((r) => r.outcome === 'NO_SPEC').length,
+      nonDevelopable: answered.length - dev.length,
+      developable: dev.length,
+      resolved: dev.filter((r) => r.outcome === 'RESOLVED').length,
+      unconstrained: dev.filter((r) => r.outcome === 'UNCONSTRAINED').length,
+      gap: dev.filter((r) => r.outcome === 'GAP').length,
+      indeterminate: dev.filter((r) => r.verdict === 'INDETERMINATE').length,
+      sampledOn,
+    }
+    assertPartition(city, s)
+    out[city] = s
+  }
+  return out
+}
+
+/** Merge a run's cities over whatever the artifact already held.
+ *
+ *  A partial run (`--cities=denver`) must update Denver and leave the other 22
+ *  alone — but each surviving entry keeps its OWN `sampledOn`, so the artifact
+ *  can never present a stale city as freshly measured. This is why the date is
+ *  per city and not a single file-level stamp. */
+export function mergeEnvelopeSample(
+  prior: Record<string, CityEnvelopeSample>,
+  fresh: Record<string, CityEnvelopeSample>,
+): Record<string, CityEnvelopeSample> {
+  const merged = { ...prior, ...fresh }
+  return Object.fromEntries(Object.keys(merged).sort().map((k) => [k, merged[k]]))
+}
+
+/** Rule 20 on the artifact itself: it must not be publishable by finding
+ *  nothing. Refuses to write when the run measured no parcels, when a live city
+ *  has no entry at all, or when an entry has an empty denominator — an
+ *  unsampled city is not a resolving one, and a `0/0` that renders as a blank is
+ *  indistinguishable from a healthy city.
+ *
+ *  Returns the messages rather than throwing on the first, so one run reports
+ *  every hole instead of one. */
+export function envelopeSampleFaults(cities: Record<string, CityEnvelopeSample>): string[] {
+  const faults: string[] = []
+  const live = REGISTRY_CITIES.filter((c) => c.live).map((c) => c.slug)
+  if (Object.keys(cities).length === 0) faults.push('the artifact is EMPTY — nothing was measured; do not commit it')
+  for (const slug of live) {
+    const s = cities[slug]
+    if (!s) {
+      faults.push(`${slug} is live and has NO entry — run the sampler for it; an unsampled city is not a clean one`)
+      continue
+    }
+    if (s.attempted === 0) faults.push(`${slug} attempted 0 parcels — an empty sample must not read as coverage`)
+    else if (s.developable === 0)
+      faults.push(
+        `${slug} answered 0 developable parcels of ${s.attempted} attempted — there is no denominator, so there is no rate`,
+      )
+  }
+  for (const slug of Object.keys(cities))
+    if (!live.includes(slug)) faults.push(`${slug} carries a sample but is not a live registry city`)
+  // The sampler's own coverage, which is invisible from the rows: a city with no
+  // parcel layer here is never sampled, so it can never appear as a fault above.
+  for (const slug of live)
+    if (!PARCEL_LAYERS[slug]) faults.push(`${slug} is live but has no parcel layer in this script — it cannot be sampled at all`)
+  return faults
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 async function main() {
   const argv = process.argv.slice(2)
   const flag = (k: string) => argv.find((a) => a.startsWith(`--${k}=`))?.split('=')[1]
@@ -780,10 +983,11 @@ async function main() {
   const per = Number(flag('per') ?? 25)
   const only = flag('cities')?.split(',').filter(Boolean)
   const cities = only?.length ? only : CITIES
-  const phases = ['--sample', '--run', '--report'].filter((p) => argv.includes(p))
+  const phases = ['--sample', '--run', '--report', '--rates'].filter((p) => argv.includes(p))
   const doSample = phases.length === 0 || phases.includes('--sample')
   const doRun = phases.length === 0 || phases.includes('--run')
   const doReport = phases.length === 0 || phases.includes('--report')
+  const doRates = phases.length === 0 || phases.includes('--rates')
   mkdirSync(outDir, { recursive: true })
   const samplePath = join(outDir, 'samples.json')
   const rowsPath = join(outDir, 'rows.json')
@@ -852,9 +1056,56 @@ async function main() {
     writeFileSync(p, md)
     console.log(`[report] wrote ${p}`)
   }
+
+  if (doRates) {
+    const rows: RunRow[] = JSON.parse(readFileSync(rowsPath, 'utf8'))
+    if (!rows.length) throw new Error('rates: zero rows — nothing was measured')
+    // The run's own completion time, taken from the file the counts come from.
+    // Not `new Date()`: re-reducing an old rows.json a week later would restamp
+    // every city as freshly measured, which is the stale-entry failure the null
+    // inventory's per-row timestamps exist to prevent.
+    const sampledOn = statSync(rowsPath).mtime.toISOString().slice(0, 10)
+    const fresh = aggregateEnvelopeSample(rows, sampledOn)
+    const prior: Record<string, CityEnvelopeSample> = existsSync(ENVELOPE_SAMPLE_PATH)
+      ? (JSON.parse(readFileSync(ENVELOPE_SAMPLE_PATH, 'utf8')) as EnvelopeSampleArtifact).cities
+      : {}
+    const merged = mergeEnvelopeSample(prior, fresh)
+
+    // Refuse to WRITE a hollow artifact rather than write it and warn. The file
+    // is committed and read by the coverage matrix; a warning scrolls past and
+    // the file ships.
+    const faults = envelopeSampleFaults(merged)
+    if (faults.length) {
+      console.error(`\n[rates] REFUSING TO WRITE — ${faults.length} fault(s):`)
+      for (const f of faults) console.error(`  · ${f}`)
+      process.exitCode = 1
+      return
+    }
+
+    const artifact: EnvelopeSampleArtifact = {
+      source:
+        'scripts/smoke-parcels.ts --rates, reduced from a live multi-parcel run over each city\'s own parcel layer. Counts only; shares are derived in src/config/envelopeSample.ts.',
+      cities: merged,
+    }
+    writeFileSync(ENVELOPE_SAMPLE_PATH, JSON.stringify(artifact, null, 2) + '\n')
+    const totals = Object.values(merged).reduce(
+      (a, s) => ({ n: a.n + s.developable, ok: a.ok + s.resolved + s.unconstrained }),
+      { n: 0, ok: 0 },
+    )
+    console.log(
+      `[rates] wrote ${ENVELOPE_SAMPLE_PATH} — ${Object.keys(merged).length} cities, ${totals.ok}/${totals.n} developable parcels resolved an envelope`,
+    )
+  }
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+// Importing this module (the colocated test does) must not fire a 575-parcel
+// live run. Same guard, and the same reasoning, as `null-inventory.ts`: it FAILS
+// OPEN — it runs unless it can see it is under Vitest — because an
+// is-this-the-entry-point check silently no-ops under any runner whose `argv[1]`
+// it does not recognise, and a measurement tool that quietly does nothing is the
+// exact failure this file exists to prevent.
+if (process.env.VITEST == null)
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })

@@ -10,6 +10,7 @@ import {
   type CoverageDimension,
 } from './coverage'
 import { CITIES, CITIES_WITH_MEASURED_PERMITS } from './cities'
+import { envelopeSample } from './envelopeSample'
 import permitStatsJson from '../../netlify/functions/lib/data/permitStats.json'
 import reliefStatsJson from '../../netlify/functions/lib/data/reliefStats.json'
 
@@ -87,6 +88,67 @@ describe('derived presence', () => {
   it('a dimension label exists for every dimension', () => {
     for (const dim of COVERAGE_DIMENSIONS) {
       expect(DIMENSION_LABELS[dim as CoverageDimension].label.length).toBeGreaterThan(0)
+    }
+  })
+})
+
+// ─── A filled envelope cell is not a uniform claim ──────────────────────────
+// Presence being derived stopped a cell claiming coverage the product does not
+// have. It did NOT stop a cell claiming coverage is UNIFORM when it is not:
+// `envelope` was derived from `CITIES[].live`, a flag about our plumbing. Over
+// the 575-parcel live sample Denver resolved an envelope for 2 of the 6
+// developable parcels it answered for and Chicago for 11 of 11 — one dot each.
+//
+// The cell now carries a measured rate. These tests are the drift guard for it:
+// a rate that goes missing, or one hand-typed into this module, is the same
+// class of defect as a stale absence reason.
+describe('the envelope cell carries a measured rate', () => {
+  it('every live city has one — an unmeasured envelope cell must not ship', () => {
+    // Rule 20 at the boundary the matrix reads: the artifact can go quiet
+    // (deleted, or a new city nobody sampled) and every affected cell would
+    // render without anything failing. Pinned so it fails here instead.
+    for (const c of CITIES.filter((c) => c.live)) {
+      const cell = coverageCell(c.slug, 'envelope')
+      expect(cell.covered, `${c.slug}/envelope`).toBe(true)
+      if (!cell.covered) continue
+      expect(cell.sample, `${c.slug}/envelope carries no sample`).not.toBeNull()
+      expect(cell.sample!.kind, `${c.slug}/envelope is not measured`).toBe('measured')
+    }
+  })
+
+  it('the rate is read from the artifact, not restated here', () => {
+    // Same file, same numbers, one source. If this module ever grew its own copy
+    // of a rate the two could disagree and the matrix would show the copy.
+    for (const c of CITIES.filter((c) => c.live)) {
+      const cell = coverageCell(c.slug, 'envelope')
+      expect(cell.covered && cell.sample).toEqual(envelopeSample(c.slug))
+    }
+  })
+
+  it('no other dimension pretends to carry a rate', () => {
+    // The qualifier is specific to envelope. A permits or relief cell silently
+    // carrying an envelope sample would render a number about the wrong thing.
+    for (const c of CITIES) {
+      for (const dim of COVERAGE_DIMENSIONS) {
+        if (dim === 'envelope') continue
+        const cell = coverageCell(c.slug, dim)
+        if (cell.covered) expect(cell.sample, `${c.slug}/${dim}`).toBeNull()
+      }
+    }
+  })
+
+  it('the matrix would render the five overstated cities differently from the clean ones', () => {
+    // The defect, stated as the property that closes it: before this change
+    // every one of these eight cells produced the identical glyph.
+    const share = (slug: string) => {
+      const cell = coverageCell(slug, 'envelope')
+      if (!cell.covered || cell.sample?.kind !== 'measured') throw new Error(`${slug} has no measured envelope rate`)
+      return cell.sample.share
+    }
+    for (const slug of ['denver', 'lasvegas', 'miami', 'austin', 'la']) {
+      for (const clean of ['chicago', 'nyc', 'raleigh']) {
+        expect(share(slug), `${slug} still renders like ${clean}`).toBeLessThan(share(clean))
+      }
     }
   })
 })

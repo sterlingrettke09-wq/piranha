@@ -13,6 +13,12 @@ import {
   type AbsenceCode,
 } from '../config/coverage'
 import {
+  envelopeSampleLabel,
+  envelopeSampleDetail,
+  ENVELOPE_SAMPLE_SOURCE,
+  type EnvelopeSample,
+} from '../config/envelopeSample'
+import {
   costPerSqFtByUse,
   cityCostIndex,
   heightFactorTiers,
@@ -48,6 +54,37 @@ const CODE_CELL: Record<AbsenceCode, { text: string; className: string }> = {
   conservative: { text: 'Held back', className: 'font-medium text-piranha-charcoal/70' },
 }
 
+// A covered cell that carries a measured rate renders the RATE, not a dot.
+//
+// The dot was the defect. Denver's envelope resolved for 2 of the 6 developable
+// parcels the live sample answered for and Chicago's for 11 of 11, and both drew
+// the same ●. A percentage cannot be read as "complete" the way a dot can, and
+// the two states with no rate — sampled with no usable denominator, or never
+// sampled — deliberately render as WORDS rather than a blank, because a blank is
+// what full coverage would look like too (rule 20).
+function SampleCell({ sample, dim }: { sample: EnvelopeSample; dim: string }) {
+  const label = envelopeSampleLabel(sample)
+  const title = envelopeSampleDetail(dim, sample)
+  if (sample.kind !== 'measured') {
+    return (
+      <span className="text-xs font-semibold text-piranha-burgundy" title={title}>
+        {label}
+      </span>
+    )
+  }
+  // Below 1.0 the cell is charcoal rather than gold: gold is this table's
+  // "delivered" colour and a two-thirds miss rate has not delivered.
+  const full = sample.resolved === sample.n
+  return (
+    <span
+      className={`text-xs tabular-nums ${full ? 'font-medium text-piranha-gold' : 'text-piranha-charcoal/70'}`}
+      title={title}
+    >
+      {label}
+    </span>
+  )
+}
+
 function CoverageMatrix() {
   const cities = [...CITIES].sort((a, b) => a.name.localeCompare(b.name))
   return (
@@ -70,6 +107,13 @@ function CoverageMatrix() {
                 <td className="px-5 py-2.5 font-medium text-piranha-charcoal">{c.name}</td>
                 {COVERAGE_DIMENSIONS.map((dim) => {
                   const cell = coverageCell(c.slug, dim)
+                  if (cell.covered && cell.sample) {
+                    return (
+                      <td key={dim} className="px-3 py-2.5 text-center">
+                        <SampleCell sample={cell.sample} dim={c.slug} />
+                      </td>
+                    )
+                  }
                   if (cell.covered) {
                     const held = cell.suppressedTiers.length > 0
                     return (
@@ -115,6 +159,16 @@ function CoverageMatrix() {
           <span className="text-piranha-gold">●</span>
           <span className="text-piranha-charcoal/60">*</span>
           {' — covered, with a measured tier withheld below the publishable sample floor (Denver’s 2–4 unit tier).'}
+        </li>
+        <li>
+          <span className="tabular-nums text-piranha-charcoal/70">82% · n=23</span>
+          {' — the zoning-envelope column is a measured rate, not a yes: the share of sampled parcels ' +
+            'in that city that were developable, reached an answer, and had an envelope resolve — either from a ' +
+            'published FAR and height, or from a code that affirmatively imposes none. '}
+          <span className="tabular-nums text-piranha-charcoal/70">n</span>
+          {' is how many parcels that share is over. Parcels the sampler drew outside the city, and parcels ' +
+            'nobody can build on, are excluded from n rather than counted as failures — which is why some ' +
+            'cities carry a much smaller n than others.'}
         </li>
       </ul>
       <details className="rounded-2xl border border-piranha-charcoal/10 bg-white/60 px-5 py-4 text-sm text-piranha-charcoal/75">
@@ -391,6 +445,20 @@ export default function Methodology() {
               A withdrawn figure is one we published, then measured a disqualifier against and
               took down. Each withdrawal&rsquo;s reason states what was measured; the six permit
               withdrawals were six different defects, not one.
+            </p>
+            <p className="text-sm text-piranha-charcoal/60">
+              The zoning-envelope column used to be a yes or a no, and that was wrong in a way
+              worth stating plainly. It said whether a city&rsquo;s live data feed is wired, which
+              is a fact about our plumbing, not about your parcel &mdash; so a city where the
+              envelope resolves for every parcel and a city where it resolves for a third of them
+              looked identical. It now reports a rate we measured by pushing{' '}
+              <span className="tabular-nums">575</span> real parcels, drawn from each
+              city&rsquo;s own parcel layer, through the same pipeline your search runs. Denver is
+              the clearest case: its districts are being rewritten, and a parcel still carrying a
+              former Chapter 59 code has no envelope for us to read. Where the envelope
+              doesn&rsquo;t resolve, we withhold the verdict rather than assume a limit &mdash; so
+              a low rate here means &ldquo;expect to be told we don&rsquo;t know,&rdquo; not
+              &ldquo;expect a wrong answer.&rdquo; {ENVELOPE_SAMPLE_SOURCE}
             </p>
           </Section>
 
