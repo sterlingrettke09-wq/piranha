@@ -12,6 +12,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 
@@ -89,7 +90,7 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
   // the contract at the top of ../requiredUpstream.ts. The parcel layer is
   // SANDAG's (regional) and the zoning layer is the City's, so an EMPTY zoning
   // answer is a real out-of-city fact — only a failed FETCH refuses.
-  const [parcelR, zoningR, optional] = await Promise.all([
+  const [parcelR, zoningR, cityLandR, optional] = await Promise.all([
     // maxAttempts 2: fetchParcelSnap already retries its exact query internally.
     readRequired(
       'parcel',
@@ -111,19 +112,38 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
       maxAttempts: 2,
       attemptCapMs: 4000,
     }),
+    // ⚠️ CITY-OWNED LAND IS REQUIRED, because it is this city's ONLY input to a
+    // hard block. `ownerPublic` stops the analysis in `assessDevelopability`,
+    // and San Diego derives it from nothing else — there is no owner name on any
+    // layer we can reach (see the header). Read as optional, a timeout on this
+    // one layer silently erased the government-ownership finding and published a
+    // priced development scenario for a civic site, with nothing in the output
+    // saying the check had not run. The invariant: ANY INPUT TO A HARD BLOCK
+    // MUST COME FROM A READ THAT CAN REFUSE (../requiredUpstream.ts; inventory
+    // pinned in ./hardBlockInputs.test.ts).
+    //
+    // Note what is NOT claimed: this layer still covers CITY land only, so a
+    // successful empty answer remains a weak negative — county, state, federal,
+    // port and school-district land are invisible to it, which is why the
+    // curated civic list in src/lib/siteFlags.ts carries more weight here. An
+    // incomplete signal is still a signal; a signal that did not run is not.
+    readRequired(
+      'city-owned land',
+      (t) => fetchParcelSnap(CITY_LAND, lat, lng, ['COM_NAME', 'DES_USE', 'MG_DEPT'], false, undefined, 30, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
     Promise.allSettled([
       fetchFeatures(HISTORIC, lat, lng, ['NAME', 'TYPE']),
       fetchParcelSnap(COASTAL_HEIGHT, lat, lng, ['ZONENAME']),
-      fetchParcelSnap(CITY_LAND, lat, lng, ['COM_NAME', 'DES_USE', 'MG_DEPT']),
       fetchFeatures(COASTAL_ZONE, lat, lng, ['FID']),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
     ]),
   ])
-  const [histR, chlozR, cityLandR, coastalR, floodR] = optional
+  const [histR, chlozR, coastalR, floodR] = optional
 
   // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
-  if (!parcelR.ok || !zoningR.ok) {
-    return upstreamUnavailable('sandiego', 'San Diego', [parcelR, zoningR], t0)
+  if (!parcelR.ok || !zoningR.ok || !cityLandR.ok) {
+    return upstreamUnavailable('sandiego', 'San Diego', [parcelR, zoningR, cityLandR], t0)
   }
   const parcelFeat = firstFeature(parcelR.value)
   const parcel = parcelFeat?.attributes ?? null
@@ -135,7 +155,10 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
   const zoning = firstAttrs(zoningR.value)
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
   const chloz = chlozR.status === 'fulfilled' ? firstAttrs(chlozR.value) : null
-  const cityLand = cityLandR.status === 'fulfilled' ? firstAttrs(cityLandR.value) : null
+  // Reached only when the city-land service ANSWERED. A null here means "no
+  // city-owned polygon covers this point", which is a finding; it is no longer
+  // reachable from a fetch that failed.
+  const cityLand = firstAttrs(cityLandR.value)
   const inCoastal = coastalR.status === 'fulfilled' ? (coastalR.value.features?.length ?? 0) > 0 : false
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
 
@@ -212,6 +235,14 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
       historicDistrict: hist?.NAME ? String(hist.NAME).trim() : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
       coastalZone: inCoastal || undefined,
+      // `coastal` reaches more here than the permit itself: `hurdles.ts` also
+      // moves the inclusionary threshold 5 → 10 units and drops the Mello Act
+      // replacement row on a null. See `lib/unresolvedOverlays.ts`.
+      ...unresolvedOverlays({
+        coastal: !inCoastal && readFailed(coastalR),
+        historic: !hist?.NAME && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     // California assesses at Prop-13 acquisition value, which drifts far from

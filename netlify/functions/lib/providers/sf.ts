@@ -3,6 +3,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveSfFar } from '../zoning/sf'
@@ -49,7 +50,7 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const deadline = requestDeadline()
   // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled. See
   // the contract at the top of ../requiredUpstream.ts.
-  const [parcelR, zoningR, heightR, optional] = await Promise.all([
+  const [parcelR, zoningR, heightR, landR, optional] = await Promise.all([
     // maxAttempts 2, not 3: fetchParcelSnap already retries its exact query
     // internally, so three outer attempts would be up to six queries.
     readRequired(
@@ -72,19 +73,32 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
       maxAttempts: 2,
       attemptCapMs: 4000,
     }),
+    // ⚠️ THE LAND-USE LAYER IS REQUIRED, and for a narrower reason than it looks.
+    // Most of SF_LANDUSE is descriptive, but ONE value is a hard block: code
+    // `OPENSPACE` maps to 'Open space', which `assessDevelopability`'s
+    // PUBLIC_LANDUSE pattern stops on. Measured 2026-08-11, not assumed —
+    // assessDevelopability({districtCode:'R-1', landUse:'Open space'}) returns
+    // developable:false, while every other value in the table returns true.
+    // Read as optional, a timeout on this layer erased that block and published
+    // a priced scenario for parkland. ANY INPUT TO A HARD BLOCK MUST COME FROM A
+    // READ THAT CAN REFUSE (../requiredUpstream.ts; ./hardBlockInputs.test.ts).
+    readRequired(
+      'land use',
+      (t) => fetchFeatures(LANDUSE, lat, lng, ['landuse_landuse', 'landuse_resunits'], false, undefined, t),
+      { deadline, maxAttempts: 2, attemptCapMs: 4000 },
+    ),
     Promise.allSettled([
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
       fetchFeatures(HISTORIC, lat, lng, ['name_1']),
-      fetchFeatures(LANDUSE, lat, lng, ['landuse_landuse', 'landuse_resunits']),
     ]),
   ])
-  const [floodR, histR, landR] = optional
+  const [floodR, histR] = optional
 
   // THE STATE SPLIT. A service that did not answer is an error and the only
   // legal handling is to refuse; a service that answered and found nothing is a
   // different fact and survives past this line.
-  if (!parcelR.ok || !zoningR.ok || !heightR.ok) {
-    return upstreamUnavailable('sf', 'San Francisco', [parcelR, zoningR, heightR], t0)
+  if (!parcelR.ok || !zoningR.ok || !heightR.ok || !landR.ok) {
+    return upstreamUnavailable('sf', 'San Francisco', [parcelR, zoningR, heightR, landR], t0)
   }
 
   const pf = firstFeature(parcelR.value)
@@ -97,7 +111,8 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
   const zoning = firstAttrs(zoningR.value)
   const flood = floodR.status === 'fulfilled' ? firstAttrs(floodR.value) : null
   const hist = histR.status === 'fulfilled' ? firstAttrs(histR.value) : null
-  const land = landR.status === 'fulfilled' ? firstAttrs(landR.value) : null
+  // Reached only when the land-use service ANSWERED; a null is "no polygon here".
+  const land = firstAttrs(landR.value)
   const height = firstAttrs(heightR.value)
   // gen_hght encodes non-numeric height districts as repdigit sentinels, NOT as
   // a single 9999 "no limit" value. Distinct-value query against layer 5 on
@@ -161,6 +176,14 @@ export async function getSfParcelInfo(lat: number, lng: number): Promise<ParcelR
     overlays: {
       historicDistrict: hist?.name_1 ? String(hist.name_1) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({
+        historic: !hist?.name_1 && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing: {
       landUse: existingUse,

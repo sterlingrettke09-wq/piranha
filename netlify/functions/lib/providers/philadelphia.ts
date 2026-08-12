@@ -22,6 +22,7 @@ import {
   sqlQuote,
   type ParcelResult,
 } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
@@ -132,8 +133,25 @@ export async function getPhiladelphiaParcelInfo(lat: number, lng: number): Promi
   const pin = parcel.pin != null ? String(parcel.pin).trim() : ''
   const code = zoning?.long_code ? String(zoning.long_code).trim() : null
 
-  // Second hop. OPA is OPTIONAL enrichment — a failure degrades a field, and the
-  // lot area falls back to the parcel polygon, which is already in square feet.
+  // Second hop.
+  //
+  // ⚠️ OPA IS REQUIRED, AND IT IS REQUIRED FOR ONE REASON: `owner_1`. Everything
+  // else it carries (lot area, year built, stories, market value) really is
+  // enrichment whose absence degrades a field — but the OWNERSHIP boolean it
+  // derives is a HARD BLOCK input. `assessDevelopability` stops the analysis on
+  // `ownerPublic`, so when this fetch failed the block simply did not happen and
+  // the parcel came back developable. Measured by perturbation 2026-08-11 on a
+  // city-owned parcel with only this layer faulted: control `developable:false,
+  // kind:'public'`; OPA-fail a full priced report, `costs.total $16,829,936`.
+  // A timeout erased a government-ownership finding and published a development
+  // scenario for a civic building, with nothing in the output saying a check had
+  // not run. The invariant this now obeys: ANY INPUT TO A HARD BLOCK MUST COME
+  // FROM A READ THAT CAN REFUSE (see ../requiredUpstream.ts, and the inventory
+  // pinned in ./hardBlockInputs.test.ts).
+  //
+  // The lot-area fallback to the parcel polygon is unchanged and still correct;
+  // it is simply no longer reachable via a failed fetch, only via an OPA row
+  // that answered with a degenerate area.
   //
   // ⚠️ ZoningCodeCharacteristics is REQUIRED whenever we have a district code to
   // look up, because it is the ONLY source of Philadelphia's max height and max
@@ -157,24 +175,37 @@ export async function getPhiladelphiaParcelInfo(lat: number, lng: number): Promi
           { deadline: secondHopDeadline, maxAttempts: 2, attemptCapMs: 2500 },
         )
       : Promise.resolve({ ok: true as const, layer: 'zoning-code characteristics', value: { features: [] }, attempts: 0 }),
-    Promise.allSettled([
-      pin
-        ? fetchWhere(OPA, `pin = ${sqlQuote(pin)}`, [
-            'total_area',
-            'year_built',
-            'owner_1',
-            'number_stories',
-            'category_code_description',
-            'market_value',
-            'total_livable_area',
-          ])
-        : Promise.resolve({ features: [] }),
-    ]),
+    // No `pin` means there is no join key to look anything up WITH — the DOR
+    // record itself is degenerate. That is a data state, not a table outage, so
+    // it resolves rather than refuses; see the residual noted in the test file.
+    pin
+      ? readRequired(
+          'assessor',
+          (t) =>
+            fetchWhere(
+              OPA,
+              `pin = ${sqlQuote(pin)}`,
+              [
+                'total_area',
+                'year_built',
+                'owner_1',
+                'number_stories',
+                'category_code_description',
+                'market_value',
+                'total_livable_area',
+              ],
+              t,
+            ),
+          { deadline: secondHopDeadline, maxAttempts: 2, attemptCapMs: 2500 },
+        )
+      : Promise.resolve({ ok: true as const, layer: 'assessor', value: { features: [] }, attempts: 0 }),
   ])
-  if (!charsR.ok) {
-    return upstreamUnavailable('philadelphia', 'Philadelphia', [charsR], t0)
+  if (!charsR.ok || !opaR.ok) {
+    return upstreamUnavailable('philadelphia', 'Philadelphia', [charsR, opaR], t0)
   }
-  const opa = opaR[0].status === 'fulfilled' ? firstAttrs(opaR[0].value) : null
+  // Reached only when the assessor service ANSWERED. A null here is "no OPA row
+  // joins this pin", which is a fact about the parcel — not a failed check.
+  const opa = firstAttrs(opaR.value)
   const chars = firstAttrs(charsR.value)
 
   // Lot size: prefer the assessor's recorded area, but reject the degenerate
@@ -226,6 +257,14 @@ export async function getPhiladelphiaParcelInfo(lat: number, lng: number): Promi
     overlays: {
       historicDistrict: hist?.name ? String(hist.name).trim() : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({
+        historic: !hist?.name && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     // Philadelphia assesses at market value, so this is a usable reference.

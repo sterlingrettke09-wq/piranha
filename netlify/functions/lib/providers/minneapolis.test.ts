@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { getMinneapolisParcelInfo } from './minneapolis'
 import { mockArcgisFetch, featureSet, ARCGIS_ERROR_200 } from './__fixtures__'
+import { assessDevelopability } from '../../../../src/lib/developability'
 
 // Endpoint URL substrings the Minneapolis provider hits (see minneapolis.ts):
 //   PARCELS    = Hennepin LAND_PROPERTY → 'LAND_PROPERTY' (queried in UTM 15N via
@@ -107,9 +108,21 @@ describe('getMinneapolisParcelInfo — happy path', () => {
     const res = await getMinneapolisParcelInfo(LAT, LNG)
     expect(res.ok).toBe(true)
     if (!res.ok) return
-    // Park name flows into existing.landUse as "<name> (park)" so the
-    // developability gate's public-land check catches it.
-    expect(res.info.existing?.landUse).toBe('Loring (park)')
+    expect(res.info.existing?.landUse).toBe('Loring (public park)')
+    // ⚠️ THE LABEL IS NOT THE POINT — THE BLOCK IS. This assertion previously
+    // stopped at the string, under a comment claiming the gate caught it, and
+    // the claim was false: the suffix in use matched nothing in PUBLIC_LANDUSE
+    // and Minneapolis parks came back developable for as long as the layer had
+    // been read (CLAUDE.md rule 15 — a well-explained test defending a wrong
+    // interpretation). Assert the OUTCOME, at the same function analyze.ts
+    // calls, so no future relabelling can quietly disarm it again.
+    const dev = assessDevelopability({
+      districtCode: res.info.zoning.districtCode,
+      landUse: res.info.existing?.landUse ?? null,
+      ownerPublic: res.info.existing?.ownerPublic ?? false,
+    })
+    expect(dev.developable).toBe(false)
+    expect(dev.kind).toBe('public')
   })
 
   it('detects a government owner via OWNER_NM and surfaces ownerPublic', async () => {
@@ -131,7 +144,7 @@ describe('getMinneapolisParcelInfo — happy path', () => {
 })
 
 describe('getMinneapolisParcelInfo — resilience', () => {
-  it('still ok:true with null overlays when historic + flood + parks reject', async () => {
+  it('still ok:true with null overlays when historic + flood reject', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       mockArcgisFetch({
         LAND_PROPERTY: mplsParcel(),
@@ -143,9 +156,7 @@ describe('getMinneapolisParcelInfo — resilience', () => {
         NFHL: () => {
           throw new Error('flood down')
         },
-        'Parks/FeatureServer': () => {
-          throw new Error('parks down')
-        },
+        'Parks/FeatureServer': featureSet(),
       }),
     )
     const res = await getMinneapolisParcelInfo(LAT, LNG)
@@ -154,6 +165,30 @@ describe('getMinneapolisParcelInfo — resilience', () => {
     expect(res.info.overlays.historicDistrict).toBeNull()
     expect(res.info.overlays.floodZone).toBeNull()
     expect(res.info.parcelId).toBe('2202924320045')
+  })
+
+  // The park layer used to sit in that same optional group, and this test used
+  // to assert it could fail without consequence. It cannot: it is the only
+  // signal that blocks a Minneapolis park, so its failure has to REFUSE rather
+  // than degrade into a developable verdict for parkland. Historic and flood
+  // stay optional above, which is the contrast that makes the categories real.
+  it('returns UPSTREAM_ERROR when the park layer rejects — it is a hard-block input', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({
+        LAND_PROPERTY: mplsParcel(),
+        Planning_Primary_Zoning: mplsZoning('CM4'),
+        Planning_Zoning_Built_Form: mplsForm('BFC6'),
+        HPC_Districts: featureSet(),
+        NFHL: featureSet(),
+        'Parks/FeatureServer': () => {
+          throw new Error('parks down')
+        },
+      }),
+    )
+    const res = await getMinneapolisParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.code).toBe('UPSTREAM_ERROR')
   })
 
   it('returns UPSTREAM_ERROR 502 when the parcel dataset returns ArcGIS error-200 on every call', async () => {

@@ -10,6 +10,7 @@ import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { resolveMinneapolisFar } from '../zoning/minneapolis'
 import { fetchFeatures, fetchFeaturesXYSnap, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { lngLatToUtm15 } from '../geo'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
@@ -65,7 +66,7 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   // district height limit is available in public data" — a statement about the
   // published data that the published data contradicts. Measured by perturbation
   // 2026-08-11: control h=56, overlay-fail h=null, nothing else changed.
-  const [parcelR, zoningR, formR, optional] = await Promise.all([
+  const [parcelR, zoningR, formR, parkR, optional] = await Promise.all([
     readRequired(
       'parcel',
       (t) =>
@@ -91,17 +92,33 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
       maxAttempts: 3,
       attemptCapMs: 3000,
     }),
+    // ⚠️ THE PARK LAYER IS REQUIRED, because it is the ONLY thing that blocks a
+    // Minneapolis park. Two measurements 2026-08-11, both against the real
+    // helpers rather than by reading the regexes:
+    //   · `isGovernmentOwner('MINNEAPOLIS PARK & RECREATION BOARD')` is FALSE —
+    //     MPRB, not the City, is the owner of record on park parcels, and the
+    //     government-owner vocabulary does not name it. So `ownerPublic` does
+    //     not cover this and there is no second signal.
+    //   · the zoning layer reports an ordinary residential code over parkland,
+    //     so `districtCode` does not cover it either.
+    // Read as optional, a timeout here published a priced development scenario
+    // for a public park. ANY INPUT TO A HARD BLOCK MUST COME FROM A READ THAT
+    // CAN REFUSE (../requiredUpstream.ts; inventory in ./hardBlockInputs.test.ts).
+    readRequired('parks', (t) => fetchFeatures(PARKS, lat, lng, ['PARK_NAME1'], false, undefined, t), {
+      deadline,
+      maxAttempts: 2,
+      attemptCapMs: 3000,
+    }),
     Promise.allSettled([
       fetchFeatures(HISTORIC, lat, lng, ['DISTRICT']),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
-      fetchFeatures(PARKS, lat, lng, ['PARK_NAME1']),
     ]),
   ])
-  const [histR, floodR, parkR] = optional
+  const [histR, floodR] = optional
 
   // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
-  if (!parcelR.ok || !zoningR.ok || !formR.ok) {
-    return upstreamUnavailable('minneapolis', 'Minneapolis', [parcelR, zoningR, formR], t0)
+  if (!parcelR.ok || !zoningR.ok || !formR.ok || !parkR.ok) {
+    return upstreamUnavailable('minneapolis', 'Minneapolis', [parcelR, zoningR, formR, parkR], t0)
   }
 
   const parcel = firstAttrs(parcelR.value)
@@ -132,7 +149,8 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
 
   // Park boundary → mark as public open space so the developability gate blocks
   // it (the zoning layer reports a normal residential code over parkland).
-  const park = parkR.status === 'fulfilled' ? firstAttrs(parkR.value) : null
+  // Reached only when the park service ANSWERED; a null is "no park here".
+  const park = firstAttrs(parkR.value)
   const parkName = park?.PARK_NAME1 ? String(park.PARK_NAME1).replace(/\s+/g, ' ').trim() : null
 
   // Existing structure: a building market value (BLDG_MV1 > 0) or a build year
@@ -147,7 +165,23 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
   // only; never feeds the cost math.
   const hasBldgVal = Number.isFinite(bldgVal) && bldgVal > 0
   const existingBase = parkName
-    ? { landUse: `${parkName} (park)` } // "...park" → caught by the public-land gate
+    ? // ⚠️ "(public park)", NOT "(park)". This suffix is not cosmetic — it is the
+      // token `assessDevelopability`'s PUBLIC_LANDUSE pattern matches on, and the
+      // gate is the whole reason the layer is read at all.
+      //
+      // The old "(park)" MATCHED NOTHING. Measured 2026-08-11 at the real
+      // helper: assessDevelopability({districtCode:'R-1', landUse:'Loring
+      // (park)'}) returns developable:TRUE. PUBLIC_LANDUSE has no bare \bpark\b
+      // token — deliberately, so "Trailer park" cannot block a private lot — and
+      // its park terms are the compounds ('public park', 'city park', 'state
+      // park', 'parkland') plus a whole-value ^parks?$. "Loring (park)" is none
+      // of them. The block this layer exists to produce had never once fired.
+      //
+      // A green test defended it: minneapolis.test.ts asserted the exact string
+      // 'Loring (park)' under a comment saying the gate catches it (CLAUDE.md
+      // rule 15). Nothing here broadens the regex — the label is changed to one
+      // of the compounds it already names, which is the narrow fix.
+      { landUse: `${parkName} (public park)` }
     : hasBldgVal || (Number.isFinite(buildYr) && buildYr > 1000)
       ? {
           yearBuilt: Number.isFinite(buildYr) && buildYr > 1000 ? buildYr : null,
@@ -183,6 +217,14 @@ export async function getMinneapolisParcelInfo(lat: number, lng: number): Promis
     overlays: {
       historicDistrict: hist?.DISTRICT ? String(hist.DISTRICT) : null,
       floodZone: flood?.FLD_ZONE ? String(flood.FLD_ZONE) : null,
+      // A failed optional read is NOT "nothing here". Left as a bare null, the
+      // hurdle each field triggers silently disappears along with the months it
+      // carries — see `lib/unresolvedOverlays.ts` and the "could not be checked"
+      // rows in `hurdles.ts`.
+      ...unresolvedOverlays({
+        historic: !hist?.DISTRICT && readFailed(histR),
+        flood: readFailed(floodR),
+      }),
     },
     existing,
     sources: { parcels: PARCELS, zoning: ZONING, builtForm: BUILT_FORM, historic: HISTORIC, flood: ENDPOINTS.flood },
