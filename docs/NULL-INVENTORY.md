@@ -3,6 +3,30 @@
 **GENERATED, not hand-written.** Run `npx vite-node scripts/null-inventory.ts --write`.
 Every entry below was verified live on the date shown.
 
+> ## ⚠️ SUPERSEDED — this run predates the reliability fix of 2026-08-11
+>
+> Regenerate before reading the table below as a statement about availability.
+>
+> The generator was changed on 2026-08-11 because its retry logic hid the failure
+> it was there to survive. It re-probed a city up to 3× whenever the district came
+> back unresolved, recorded the first clean attempt, and **counted nothing** — so a
+> city failing roughly one request in five resolved cleanly on ~99% of runs and
+> appeared here beside cities that never failed at all. The run below has no
+> `Live sample` column because at the time there was nothing to put in it.
+>
+> **What is still good below:** the FAR/verdict columns. Those describe what the
+> pipeline returns when it answers, and nothing about that changed.
+>
+> **What is not established below:** how often each city answers. This document
+> gave no per-city availability figure, and the absence of one must not be read as
+> a claim that there was nothing to report — that is exactly the vacuous pass of
+> ledger rule 20. A re-run will print `clean/calls` per city and name any
+> intermittent one.
+>
+> Not re-run in this session on purpose: another agent was probing Phoenix live
+> and two concurrent samplers contend, which is the load condition that produced
+> the original Chicago `Unknown` in the first place.
+
 A hand-maintained version of this file drifted from the system inside a single
 session: Chicago sat recorded as unresolved while `B3-2` resolves, San Diego's
 probe coordinate was a landmark rather than a parcel, and Philadelphia's RM
@@ -141,9 +165,15 @@ most expensive kind of wrong — it buys research nobody needed.
 ## Method
 
 - One real parcel per city; published example parcels where they exist.
-- **Each probe retried up to 3× in isolation** before a failure is recorded
-  (rule 10 — Chicago returned `Unknown` once under concurrent load and resolved
-  to `B3-2` on three consecutive isolated re-probes).
+- ⚠️ **This bullet described the retry-and-discard behaviour replaced on
+  2026-08-11** — a bounded number of isolated re-probes, first clean one recorded,
+  attempts never counted. It is the defect the banner at the top of this file
+  describes, and it is left here only because this run was produced by it. The
+  generator now takes a fixed 6 isolated calls per city with no early exit and
+  publishes `clean/calls`; the recorded row is still the first clean call, so
+  rule 10 is unchanged (Chicago returned `Unknown` once under concurrent load and
+  resolved to `B3-2` on three consecutive isolated re-probes). **A re-run replaces
+  this bullet.**
 - Exercises the REAL entry point (`getParcelInfo` → `computeEnvelope` →
   `buildDefaultSpec` → `assessFeasibility`). An earlier attempt called
   `resolveZoningLimits` with `maxFAR: null`, bypassed every provider-side

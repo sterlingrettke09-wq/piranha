@@ -14,11 +14,30 @@
 // Every entry carries the timestamp it was verified. An inventory without
 // timestamps cannot tell you which parts of it you still trust.
 //
+// ⚠️ AND THE RETRY USED TO HIDE THE THING IT WAS ADDED TO PROTECT (fixed
+// 2026-08-11). `probe()` retried up to 3× whenever a city came back with
+// `districtCode: 'Unknown'` and returned the first clean result. That is rule 10
+// done right for the RECORDED verdict — a transient failure must not be written
+// down as a permanent one. But the retry was also the only place the failure was
+// ever observed, and nothing counted it. Phoenix fails roughly one call in five;
+// three tries make that resolve cleanly on ~99% of runs, so the document reported
+// 23 of 23 cities clean while one of them was failing 19% of requests.
+//
+// The instrument was measuring the BEST case and publishing it as the state. That
+// is rule 18 inside the tool: the retry produced an answer, an answer gets less
+// scrutiny than a gap, and the discarded attempts were the measurement.
+//
+// So: the retry stays, the recorded verdict still comes from the first clean
+// call, and every call is now COUNTED. Each city is sampled a fixed number of
+// times with no early exit — an early exit biases the sample towards success by
+// construction — and the doc prints clean/total per city. A city that needed a
+// second attempt can no longer render identically to one that needed none.
+//
 //   npx vite-node scripts/null-inventory.ts          # print
 //   npx vite-node scripts/null-inventory.ts --write  # rewrite the doc
 
 import { writeFileSync } from 'node:fs'
-import { getParcelInfo } from '../netlify/functions/lib/parcel'
+import { getParcelInfo, type ParcelResult } from '../netlify/functions/lib/parcel'
 import { buildDefaultSpec } from '../src/lib/defaultSpec'
 import { assessFeasibility } from '../netlify/functions/lib/feasibility'
 import { EXAMPLE_PARCELS } from '../src/config/exampleParcels'
@@ -236,58 +255,227 @@ interface Row {
   verdict: string
   outcome: string
   note: string
+  rel: Reliability
 }
 
-/** Rule 10: a single probe is not evidence. Retry in isolation before recording
- *  a failure — Chicago returned `Unknown` once under concurrent batch load and
- *  resolved to B3-2 on three consecutive isolated re-probes. */
-async function probe(city: string, lat: number, lng: number, attempts = 3) {
-  let last: unknown = null
-  for (let i = 0; i < attempts; i++) {
-    const r = await getParcelInfo(city, lat, lng)
-    if (r.ok && r.info.zoning.districtCode !== 'Unknown') return r
+/** How many isolated calls each city gets. FIXED, and taken with no early exit.
+ *
+ *  6 is not an increase in live load: the old code made up to 3 retry calls plus
+ *  3 unconditional stability calls, so 6 was already the worst case. It is now
+ *  the only case, and one sample answers both questions (does it resolve, and
+ *  does it land on the same parcel) instead of two samples answering one each. */
+const CALLS_PER_CITY = 6
+const CALL_GAP_MS = 400
+
+export type Prober = (city: string, lat: number, lng: number) => Promise<ParcelResult>
+
+/** What one live call produced, reduced to the two axes this document reports. */
+export type CallOutcome = 'clean' | 'unknown-district' | 'error'
+
+export interface ProbeCall {
+  outcome: CallOutcome
+  /** `parcelId/lotSqFt` — the identity axis. `ERR` when the call failed. */
+  identity: string
+}
+
+export function classify(r: ParcelResult): ProbeCall {
+  if (!r.ok) return { outcome: 'error', identity: 'ERR' }
+  return {
+    outcome: r.info.zoning.districtCode === 'Unknown' ? 'unknown-district' : 'clean',
+    identity: `${r.info.parcelId}/${r.info.lot.sizeSqFt}`,
+  }
+}
+
+export interface Reliability {
+  calls: number
+  clean: number
+  /** 1-based index of the first clean call; null if none ever came back clean. */
+  firstCleanAt: number | null
+  /** Distinct parcel identities across the sample.
+   *
+   *  A point inside OVERLAPPING parcel polygons returns an arbitrary one: every
+   *  candidate contains it, so `nearestFeatureSet()` has no tiebreak and the
+   *  server's ordering decides. San Diego's old probe did exactly this — four
+   *  calls gave two parcelIds at lot sizes 97,106 / 39,615 / 21,389 / 8,500 sq ft.
+   *  A single call always looks fine, which is why it went unnoticed.
+   *
+   *  >1 means the COORDINATE is ambiguous, not that the city is broken — and note
+   *  that this axis is INDEPENDENT of `clean`. That independence is how the
+   *  Phoenix failure survived: identity was sampled unconditionally and district
+   *  resolution was not, and a call that returns the right parcel with
+   *  `districtCode: 'Unknown'` is stable on this axis and dirty on the other. */
+  identities: string[]
+  stable: boolean
+  outcomes: CallOutcome[]
+}
+
+export function reliability(calls: ProbeCall[]): Reliability {
+  const identities = [...new Set(calls.map((c) => c.identity))]
+  const firstClean = calls.findIndex((c) => c.outcome === 'clean')
+  return {
+    calls: calls.length,
+    clean: calls.filter((c) => c.outcome === 'clean').length,
+    firstCleanAt: firstClean === -1 ? null : firstClean + 1,
+    identities,
+    // An unsampled city is NOT stable. Zero observations agreeing with each other
+    // is the vacuous pass of rule 20; `seen.size === 1` used to call it stable.
+    stable: calls.length > 0 && identities.length === 1,
+    outcomes: calls.map((c) => c.outcome),
+  }
+}
+
+/** Sample a city `calls` times with NO early exit, and report both the full
+ *  sample and the result that should be RECORDED.
+ *
+ *  The two halves are deliberately different, and that is the whole fix:
+ *
+ *  · `recorded` is the FIRST CLEAN call if there was one. Rule 10 stands — a
+ *    transient `Unknown` under load must not be written down as a permanent
+ *    failure. Chicago returned `Unknown` once during a 15-city batch and resolved
+ *    to `B3-2` on three consecutive isolated re-probes.
+ *  · `calls` is EVERY attempt, including the ones the retry threw away. Stopping
+ *    at the first success would sample until the answer is good and then report
+ *    it, which is how a 19%-failing city came to be published as clean.
+ *
+ *  `prober` is injected so the accounting can be tested without touching a live
+ *  service — the accounting is the part that was broken, and it must not be
+ *  checkable only by hitting a city and hoping it misbehaves. */
+export async function sampleCity(
+  city: string,
+  lat: number,
+  lng: number,
+  opts: { calls?: number; gapMs?: number; prober?: Prober } = {},
+): Promise<{ calls: ProbeCall[]; recorded: ParcelResult | null }> {
+  const n = opts.calls ?? CALLS_PER_CITY
+  const gap = opts.gapMs ?? CALL_GAP_MS
+  const prober = opts.prober ?? getParcelInfo
+  const calls: ProbeCall[] = []
+  let firstClean: ParcelResult | null = null
+  let last: ParcelResult | null = null
+  for (let i = 0; i < n; i++) {
+    const r = await prober(city, lat, lng)
+    const c = classify(r)
+    calls.push(c)
     last = r
-    await new Promise((res) => setTimeout(res, 400))
+    if (c.outcome === 'clean' && firstClean == null) firstClean = r
+    if (i < n - 1 && gap > 0) await new Promise((res) => setTimeout(res, gap))
   }
-  return last as Awaited<ReturnType<typeof getParcelInfo>>
+  return { calls, recorded: firstClean ?? last }
 }
 
-/** Does this coordinate resolve to the SAME parcel every time?
+/** The per-row cell. The DENOMINATOR is always printed.
  *
- *  A point inside OVERLAPPING parcel polygons returns an arbitrary one: every
- *  candidate contains it, so `nearestFeatureSet()` has no tiebreak and the
- *  server's ordering decides. San Diego's old probe did exactly this — four calls
- *  gave two parcelIds at lot sizes 97,106 / 39,615 / 21,389 / 8,500 sq ft.
- *
- *  **A single call always looks fine**, which is why this went unnoticed: the
- *  symptom is only visible by calling repeatedly and comparing. That makes it
- *  rule 18's shape — a plausible answer is indistinguishable from a correct one —
- *  and this inventory already hits every city, so it is the cheapest place to
- *  detect it.
- *
- *  This checks the PROBE, not the city. An unstable result means the coordinate
- *  sits on overlapping polygons, not that the provider is broken. */
-async function stability(city: string, lat: number, lng: number, calls = 3) {
-  const seen = new Set<string>()
-  for (let i = 0; i < calls; i++) {
-    const r = await getParcelInfo(city, lat, lng)
-    seen.add(r.ok ? `${r.info.parcelId}/${r.info.lot.sizeSqFt}` : 'ERR')
-    await new Promise((res) => setTimeout(res, 300))
-  }
-  return { stable: seen.size === 1, seen: [...seen] }
+ *  Rule 20 applied to this column: a bare "clean" can be produced by a sample of
+ *  zero, and a reader cannot tell those apart. `6/6` and `0/0` cannot be
+ *  confused; "clean" and "clean" can. */
+export function reliabilityCell(rel: Reliability): string {
+  if (rel.calls === 0) return '**NOT SAMPLED**'
+  const base = `${rel.clean}/${rel.calls}`
+  if (rel.clean === rel.calls) return base
+  if (rel.clean === 0) return `**${base} — never clean**`
+  return `⚠️ **${base}** (first clean on call ${rel.firstCleanAt})`
 }
 
-;(async () => {
+/** Given `n` consecutive clean calls, the highest per-call failure rate still
+ *  consistent with that at 95% one-sided: `1 - 0.05^(1/n)`.
+ *
+ *  This exists so the clean case cannot be read as a measurement of zero. Six
+ *  clean calls admit a true failure rate near 40% — which is roughly twice
+ *  Phoenix's actual 19%, i.e. this sample size would have caught Phoenix most
+ *  runs but certifies nothing about a city it did not catch. */
+export function failureCeiling(n: number): number {
+  return n > 0 ? 1 - Math.pow(0.05, 1 / n) : 1
+}
+
+const pct = (x: number) => `${(x * 100).toFixed(1)}%`
+const cityN = (n: number) => `${n} ${n === 1 ? 'city' : 'cities'}`
+
+/** The paragraph under the table. It must be impossible for this to read as a
+ *  clean run when nothing was measured, so every branch names its denominator
+ *  and the empty case is loud rather than absent. */
+export function reliabilitySummary(rows: Array<{ city: string; rel: Reliability }>): string {
+  const observations = rows.reduce((n, r) => n + r.rel.calls, 0)
+  if (rows.length === 0 || observations === 0)
+    return [
+      '**⚠️ NO OBSERVATIONS RECORDED — this run sampled nothing.**',
+      '',
+      'The table above is not evidence of anything, clean or otherwise. This line',
+      'exists because a reliability column that renders blank on an empty sample is',
+      'indistinguishable from one that renders blank on a healthy system (rule 20).',
+      'Re-run the inventory; do not publish this file.',
+    ].join('\n')
+
+  const clean = rows.reduce((n, r) => n + r.rel.clean, 0)
+  const sizes = [...new Set(rows.map((r) => r.rel.calls))]
+  const shape =
+    sizes.length === 1
+      ? `${rows.length} cities × ${sizes[0]} isolated calls = ${observations} observations`
+      : `${observations} observations across ${rows.length} cities`
+
+  const unsampled = rows.filter((r) => r.rel.calls === 0)
+  const never = rows.filter((r) => r.rel.calls > 0 && r.rel.clean === 0)
+  const intermittent = rows.filter((r) => r.rel.clean > 0 && r.rel.clean < r.rel.calls)
+
+  const out = [`**Sample: ${shape}; ${clean} came back clean (${pct(clean / observations)}).**`, '']
+
+  if (unsampled.length)
+    out.push(
+      `**⚠️ ${cityN(unsampled.length)} NOT SAMPLED** — ${unsampled.map((r) => r.city).join(', ')}.`,
+      'Their rows describe nothing. An unsampled city is not a clean one.',
+      '',
+    )
+  if (never.length)
+    out.push(
+      `**⚠️ ${cityN(never.length)} never came back clean** — ${never.map((r) => `${r.city} 0/${r.rel.calls}`).join(', ')}.`,
+      '',
+    )
+  if (intermittent.length)
+    out.push(
+      `**⚠️ ${cityN(intermittent.length)} INTERMITTENT** — ${intermittent
+        .map((r) => `${r.city} ${r.rel.clean}/${r.rel.calls} (first clean on call ${r.rel.firstCleanAt})`)
+        .join(', ')}.`,
+      '',
+      'The recorded row for each is the first CLEAN call, which is right — a',
+      'transient failure must not be written down as a permanent one (rule 10). But',
+      'a user of these cities hits the failure at the rate shown, and before',
+      '2026-08-11 this document rendered them exactly like a city that never failed.',
+      '',
+    )
+  if (!unsampled.length && !never.length && !intermittent.length) {
+    const n = Math.min(...rows.map((r) => r.rel.calls))
+    out.push(
+      `Every one of the ${observations} observations came back clean on the first call.`,
+      '',
+      `**Read that as "no intermittent failure was OBSERVED", not as "the failure`,
+      `rate is zero".** ${n} clean calls for a city are still consistent with a true`,
+      `per-call failure rate of up to ${pct(failureCeiling(n))} (95% one-sided). This paragraph`,
+      'names its own denominator so that a run which sampled nothing cannot render',
+      'as a clean one — the failure this column was added to fix was precisely a',
+      'green reading produced by discarded evidence.',
+      '',
+    )
+  }
+  return out.join('\n').trimEnd()
+}
+
+async function main() {
   const stamp = new Date().toISOString().slice(0, 10)
   const rows: Row[] = []
 
   for (const city of CITIES) {
     const ex = EXAMPLE_PARCELS[city]
     const [lat, lng] = ex ? [ex.lat, ex.lng] : EXTRA[city]
-    const r = await probe(city, lat, lng)
+    const { calls, recorded: r } = await sampleCity(city, lat, lng)
+    const rel = reliability(calls)
+    if (rel.clean < rel.calls)
+      console.warn(
+        `  ⚠️ ${city}: ${rel.calls - rel.clean} of ${rel.calls} calls did not resolve — ${rel.outcomes.join(',')}`,
+      )
+    if (!rel.stable)
+      console.warn(`  ⚠️ ${city}: probe UNSTABLE — ${rel.identities.join(' | ')} (overlapping parcels?)`)
     if (!r || !r.ok) {
       rows.push({ city, district: '—', farBasis: '—', gfaBasis: '—', verdict: '—',
-        outcome: 'PROBE FAILED', note: 'not a pass — re-run before trusting' })
+        outcome: 'PROBE FAILED', note: 'not a pass — re-run before trusting', rel })
       continue
     }
     const env = r.info.envelope
@@ -305,15 +493,11 @@ async function stability(city: string, lat: number, lng: number, calls = 3) {
       : gfaBasis === 'assumed-unconstrained' ? 'code affirmatively imposes no FAR; lot area is a placeholder'
       : 'no FAR resolvable; cost/timeline still estimated and disclosed'
 
-    const st = await stability(city, lat, lng)
-    if (!st.stable) {
-      console.warn(`  ⚠️ ${city}: probe UNSTABLE — ${st.seen.join(' | ')} (overlapping parcels?)`)
-    }
     rows.push({
       city,
       district: String(r.info.zoning.districtCode).slice(0, 22),
-      farBasis, gfaBasis, verdict, outcome,
-      note: st.stable ? note : `${note} ⚠️ PROBE UNSTABLE — returned ${st.seen.length} different parcels; this row is not reproducible`,
+      farBasis, gfaBasis, verdict, outcome, rel,
+      note: rel.stable ? note : `${note} ⚠️ PROBE UNSTABLE — returned ${rel.identities.length} different parcels; this row is not reproducible`,
     })
   }
 
@@ -336,15 +520,49 @@ the same failure as measuring your probe instead of the pipeline (rule 11), one
 level up.
 
 **This is the artifact that says whether the tool is fit to ship — not the test
-count.** 709 tests pass whether a city resolves a FAR or assumes one.
+count.** The whole suite passes whether a city resolves a FAR or assumes one —
+and, until 2026-08-11, whether a city answered every request or one in five.
+(A hand-typed test count used to sit here; the suite had grown well past it. A
+generated document should not carry a number its generator cannot see.)
 
 ## Verified ${stamp}
 
-| City | District probed | Outcome | Verdict | What it means |
-|---|---|---|---|---|
-${rows.map((r) => `| ${r.city} | \`${r.district}\` | **${r.outcome}** | ${r.verdict} | ${r.note} |`).join('\n')}
+\`Live sample\` is clean calls / calls made, from ${CALLS_PER_CITY} isolated calls per city.
+See [why that column exists](#why-there-is-a-live-sample-column) — it is not decoration.
+
+| City | District probed | Live sample | Outcome | Verdict | What it means |
+|---|---|---|---|---|---|
+${rows.map((r) => `| ${r.city} | \`${r.district}\` | ${reliabilityCell(r.rel)} | **${r.outcome}** | ${r.verdict} | ${r.note} |`).join('\n')}
 
 **${resolved} resolved from published data · ${unc} unconstrained (an answer) · ${gaps} gaps · ${failed} probe failures.**
+
+${reliabilitySummary(rows)}
+
+### Why there is a \`Live sample\` column
+
+Until 2026-08-11 there wasn't one, and this document said **23 of 23 cities clean**
+while Phoenix was failing about one request in five.
+
+The probe retried up to 3× whenever a city returned \`districtCode: 'Unknown'\` and
+recorded the first clean result. That half is correct and still stands: a
+transient failure must not be written down as a permanent one (rule 10). What was
+wrong is that **the retry was the only place the failure was ever observed, and
+nothing counted it.** At a 19% per-call failure rate, three tries hide the failure
+on ~99% of runs. The instrument measured the best case and published it as the
+state — rule 18 turned on the tool itself, since the retry produced an answer and
+an answer gets less scrutiny than a gap.
+
+Two changes, and the pair is the point:
+
+- Each city is now sampled a **fixed ${CALLS_PER_CITY} times with no early exit.** Stopping at the
+  first clean call samples until the answer is good and then reports it, which
+  biases the estimate towards success by construction.
+- The recorded row is **still the first clean call.** The fix is not to start
+  recording transients as defects; it is to stop discarding the evidence.
+
+This is also why the column prints \`6/6\` rather than a tick. A tick on an empty
+sample and a tick on a healthy system are the same glyph, and that is the vacuous
+pass rule 20 is about. The denominator makes an unsampled city loud.
 
 ## What a "gap" costs the user, post fail-closed audit
 
@@ -443,9 +661,17 @@ most expensive kind of wrong — it buys research nobody needed.
 ## Method
 
 - One real parcel per city; published example parcels where they exist.
-- **Each probe retried up to 3× in isolation** before a failure is recorded
+- **${CALLS_PER_CITY} isolated calls per city, ${CALL_GAP_MS} ms apart, with no early exit**, and every one of
+  them counted in the \`Live sample\` column. The recorded row is the first CLEAN
+  call, so a transient \`Unknown\` is still not written down as a permanent failure
   (rule 10 — Chicago returned \`Unknown\` once under concurrent load and resolved
-  to \`B3-2\` on three consecutive isolated re-probes).
+  to \`B3-2\` on three consecutive isolated re-probes). Retrying and *not counting*
+  is what published Phoenix as clean at a 19% failure rate.
+- This is not more live load than before: the old code made up to 3 retry calls
+  plus 3 unconditional stability calls. One sample now answers both questions.
+- **A clean sample bounds the failure rate; it does not measure it as zero.**
+  ${CALLS_PER_CITY} clean calls admit a true per-call failure rate up to ${pct(failureCeiling(CALLS_PER_CITY))} (95% one-sided).
+  A city quieter than that can still be broken and this table will not see it.
 - Exercises the REAL entry point (\`getParcelInfo\` → \`computeEnvelope\` →
   \`buildDefaultSpec\` → \`assessFeasibility\`). An earlier attempt called
   \`resolveZoningLimits\` with \`maxFAR: null\`, bypassed every provider-side
@@ -456,10 +682,35 @@ most expensive kind of wrong — it buys research nobody needed.
   "resolves" from "falls back" and not enough to quantify coverage.
 `
 
+  const obs = rows.reduce((n, r) => n + r.rel.calls, 0)
+  const cleanCalls = rows.reduce((n, r) => n + r.rel.clean, 0)
+
   if (process.argv.includes('--write')) {
     writeFileSync('docs/NULL-INVENTORY.md', md)
     console.log(`wrote docs/NULL-INVENTORY.md — ${resolved} resolved · ${unc} unconstrained · ${gaps} gaps · ${failed} failed`)
   } else {
     console.log(md)
   }
-})()
+  console.log(`sample: ${cleanCalls}/${obs} calls clean across ${rows.length} cities`)
+
+  // Rule 20, on this script's own output. The expected observation count is
+  // pinned, so the reliability column going quiet reads RED rather than clean:
+  // a run that made no calls, or a `CALLS_PER_CITY` someone dropped to 1, is a
+  // measurement failure and not a healthy system.
+  const expected = CITIES.length * CALLS_PER_CITY
+  if (obs !== expected) {
+    console.error(
+      `\nFAIL — expected ${expected} observations (${CITIES.length} cities × ${CALLS_PER_CITY}), got ${obs}.`,
+    )
+    console.error('The reliability column is not measuring what the document claims it measures.')
+    process.exitCode = 1
+  }
+}
+
+// Importing this module (the colocated test does) must not fire live probes at
+// 23 cities. Same guard, and the same reasoning, as `check-citations.ts`: it
+// FAILS OPEN — it runs unless it can see it is under Vitest — because an
+// is-this-the-entry-point check silently no-ops under any runner whose `argv[1]`
+// it does not recognise, and a measurement tool that quietly does nothing is the
+// exact failure this file exists to prevent.
+if (process.env.VITEST == null) void main()
