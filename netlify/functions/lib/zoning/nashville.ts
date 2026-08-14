@@ -196,6 +196,19 @@ export function nashvilleZoneKey(code: string | null | undefined): string | null
   if (z in DISTRICTS) return z
   // "SP-2019-123" and friends all resolve to the SP row, which is itself a gap.
   if (/^SP\b|^SP-/.test(z)) return 'SP'
+  // The "-NS" overlay suffix — RM40-A-NS, RM20-A-NS. NS is a USE restriction,
+  // not a bulk one: BL2019-111 prohibits "Short Term Rental Property - Owner
+  // Occupied and Short Term Rental Property - Not Owner Occupied" in NS
+  // districts, and says nothing about floor area, height or setbacks. So the
+  // base district's dimensional standards apply unchanged and the suffix is
+  // dropped for the FAR lookup.
+  //
+  // Deliberately the ONLY suffix stripped here. Nashville hangs several
+  // overlays off a base code and the others have not been read; stripping an
+  // unknown suffix would resolve a district by discarding the part that might
+  // change the answer, which is worse than the gap it closes.
+  const withoutNs = z.replace(/-NS$/, '')
+  if (withoutNs !== z && withoutNs in DISTRICTS) return withoutNs
   return null
 }
 

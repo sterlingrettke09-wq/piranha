@@ -135,3 +135,42 @@ describe('single-family bulk is a structural absence in Table A', () => {
     expect(NASHVILLE_DISTRICT_CODES.filter((c) => /-SF$|SINGLE/i.test(c))).toEqual([])
   })
 })
+
+describe('the -NS short-term-rental overlay', () => {
+  // RM40-A-NS was the single remaining developable gap in Nashville's
+  // 2026-08-14 sample. NS is a USE overlay — BL2019-111 prohibits short-term
+  // rental property in NS districts — so it changes nothing dimensional and the
+  // base district's floor-area rule applies unchanged.
+  it.each([
+    ['RM40-A-NS', 'RM40-A'],
+    ['RM20-A-NS', 'RM20-A'],
+    ['RM15-A-NS', 'RM15-A'],
+    ['RM60-A-NS', 'RM60-A'],
+  ])('%s resolves as its base district %s', (suffixed, base) => {
+    expect(nashvilleZoneKey(suffixed)).toBe(base)
+    expect(resolveNashville(suffixed)).toEqual(resolveNashville(base))
+  })
+
+  it('does not alter the base district FAR in either direction', () => {
+    // RM40-A is an affirmative absence via Table D Note 1. Stripping the
+    // overlay must not turn that into a number, nor into a gap.
+    const r = resolveNashville('RM40-A-NS')
+    expect(r.farUnconstrained).toBe(true)
+    expect(r.maxFAR).toBeNull()
+    expect(r.kind).toBe('unconstrained')
+  })
+
+  it('strips ONLY -NS, never an unread suffix', () => {
+    // Resolving a district by discarding the part that might change the answer
+    // is worse than the gap it closes. Any other suffix stays unresolved.
+    for (const code of ['RM40-A-XX', 'RM40-A-UZO', 'RS10-HP', 'MUG-CN', 'CL-ZZ']) {
+      expect(nashvilleZoneKey(code), `${code} must not be stripped`).toBeNull()
+    }
+  })
+
+  it('does not invent a base district that does not exist', () => {
+    // "-NS" hung off something not in the table stays a gap.
+    expect(nashvilleZoneKey('ZZZ-NS')).toBeNull()
+    expect(nashvilleZoneKey('-NS')).toBeNull()
+  })
+})
