@@ -213,18 +213,18 @@
     },
     "nashville": {
       "attempted": 25,
-      "outOfCity": 0,
+      "outOfCity": 1,
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
-      "noSpec": 1,
+      "noSpec": 3,
       "nonDevelopable": 0,
-      "developable": 24,
-      "resolved": 0,
+      "developable": 21,
+      "resolved": 18,
       "unconstrained": 0,
-      "gap": 24,
-      "indeterminate": 24,
-      "sampledOn": "2026-08-11"
+      "gap": 3,
+      "indeterminate": 3,
+      "sampledOn": "2026-08-14"
     },
     "nyc": {
       "attempted": 25,

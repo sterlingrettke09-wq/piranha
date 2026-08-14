@@ -16,6 +16,7 @@ import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import { recordAddress } from '../address'
+import { resolveNashville } from '../zoning/nashville'
 
 const PARCELS = 'https://maps.nashville.gov/arcgis/rest/services/Cadastral/Parcels/MapServer/0'
 const ZL = 'https://maps.nashville.gov/arcgis/rest/services/Zoning_Landuse'
@@ -177,6 +178,9 @@ export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<
   const existingBase = { landUse: luDesc || null }
   const existing = ownerPublic ? { ...existingBase, ownerPublic: true } : luDesc ? existingBase : undefined
 
+  // Floor-area rule from the Title 17 Ch. 17.12 district bulk tables.
+  const nashLimits = resolveNashville(code)
+
   const info: ParcelInfo = {
     ...recordAddress(parcel.PropAddr),
     parcelId: String(parcel.APN ?? ''),
@@ -186,10 +190,18 @@ export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<
       subdistrict: describe(primaryOverlay),
       article: zoning?.NAME ? String(zoning.NAME).trim() : null,
       // Nashville publishes neither height nor FAR in GIS — the zoning layer
-      // carries only the district code and ordinance reference. Metro's bulk
-      // standards live in Title 17 text, so both stay "not in public data".
+      // carries only the district code and ordinance reference.
+      //
+      // ⚠️ SUPERSEDED 2026-08-14 for FAR only. This comment previously said
+      // Metro's bulk standards live in Title 17 text and so BOTH figures stay
+      // "not in public data". The FAR half no longer holds: § 17.12.020's four
+      // district bulk tables have been read and resolve through
+      // ../zoning/nashville.ts. HEIGHT is unchanged — Nashville regulates it as
+      // a height-at-setback-line plus a control-plane slope, which is not a
+      // single ceiling and is not encoded. Still a GAP.
       maxHeightFt: null,
-      maxFAR: null,
+      maxFAR: nashLimits.maxFAR,
+      ...(nashLimits.farUnconstrained ? { farUnconstrained: true } : {}),
       allowedUses: usesForZone(code),
     },
     lot: { sizeSqFt: lotSqFt, lotType: null },

@@ -194,13 +194,14 @@ describe('the claim set is pinned to the registry', () => {
     // starts resolving, this goes RED and the entry is deleted deliberately,
     // which is the point: the alternative is a fix nobody notices.
     //
-    // It has now gone red once for that reason and been edited deliberately.
-    // The list previously carried a third city alongside these two; San Diego
-    // left it on 2026-08-14, when Land Development Code Chapter 13 Article 1
-    // Division 4 was read and its 33 residential base zones began resolving
-    // (0/11 → 3/11 on a fresh sample). The remaining two still have no FAR
-    // source wired at all.
-    expect(coverageFacts().silent.map((c) => c.slug).sort()).toEqual(['nashville', 'sanjose'])
+    // It has now gone red twice for that reason and been edited deliberately
+    // both times, on 2026-08-14. The list started that day with three cities:
+    //   · San Diego left when Land Development Code Ch. 13 Art. 1 Div. 4 was
+    //     read and its 33 residential base zones began resolving (0/11 → 3/11).
+    //   · Nashville left when Metro Code § 17.12.020's four district bulk
+    //     tables were read (0/24 → 18/21).
+    // San Jose is the last city with no FAR source wired at all.
+    expect(coverageFacts().silent.map((c) => c.slug).sort()).toEqual(['sanjose'])
   })
 
   it('the rate still discriminates between cities', () => {
