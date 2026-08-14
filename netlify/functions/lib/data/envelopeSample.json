@@ -235,10 +235,10 @@
       "nonDevelopable": 0,
       "developable": 21,
       "resolved": 18,
-      "unconstrained": 0,
+      "unconstrained": 1,
       "plannedDevelopment": 2,
-      "gap": 1,
-      "indeterminate": 3,
+      "gap": 0,
+      "indeterminate": 2,
       "sampledOn": "2026-08-14"
     },
     "nyc": {
