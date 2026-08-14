@@ -9,6 +9,7 @@ function info(over: {
   maxHeightFt?: number | null
   allowedUses?: string[] | null
   farByUse?: ParcelInfo['zoning']['farByUse']
+  farUnconstrained?: boolean
   lotSqFt?: number | null
 }): ParcelInfo {
   return {
@@ -24,6 +25,7 @@ function info(over: {
       maxHeightFt: over.maxHeightFt ?? null,
       allowedUses: over.allowedUses ?? null,
       farByUse: over.farByUse,
+      ...(over.farUnconstrained ? { farUnconstrained: true } : {}),
     },
     lot: { sizeSqFt: over.lotSqFt ?? null, lotType: null },
     overlays: { historicDistrict: null, floodZone: null },
@@ -191,5 +193,69 @@ describe('envelope — storiesBasis marks derived story counts', () => {
     // The Miami/Denver bug: both present, the code's figure must win.
     const env = computeEnvelope({ ...base, zoning: z({ maxStories: 12, maxHeightFt: 144 }) }, 'denver')
     expect(env.maxStories).toBe(12) // not floor(144/11) = 13
+  })
+})
+
+describe('planned-development districts', () => {
+  // A PD parcel has a floor-area limit; it is in the ordinance that created the
+  // district, not in any table. Before this bucket existed these reported as
+  // GAPS, which told the reader we had failed to find a figure that is not in a
+  // district table to begin with.
+  it.each([
+    ['dallas', 'PD 193'],
+    ['chicago', 'PD 1103'],
+    ['sanjose', 'A(PD)'],
+    ['nashville', 'SP-2019-12'],
+    ['columbus', 'PUD4'],
+    ['lasvegas', 'PD'],
+    ['atlanta', 'PD-MU'],
+  ])('%s / %s reports farBasis planned-development', (city, districtCode) => {
+    const env = computeEnvelope(info({ districtCode, lotSqFt: 10_000 }), city)
+    expect(env.farBasis).toBe('planned-development')
+    // No invented floor area — the binding figure is in a document we have not read.
+    expect(env.maxFloorAreaSqFt).toBeNull()
+  })
+
+  it('never overrides a FAR the city actually resolved', () => {
+    // Defensive ordering: if a provider ever does resolve a figure for a PD
+    // parcel, that figure wins. The PD branch is a fallback for the null case,
+    // not a veto on real data.
+    const env = computeEnvelope(info({ districtCode: 'PD 193', maxFAR: 3, lotSqFt: 10_000 }), 'dallas')
+    expect(env.farBasis).toBe('district')
+    expect(env.maxFloorAreaSqFt).toBe(30_000)
+  })
+
+  it('outranks farUnconstrained, because it is the more specific claim', () => {
+    // "set by its own ordinance" tells the reader where to look; "no FAR
+    // applies" tells them there is nothing to look for. Both would be
+    // defensible renderings, and they are not the same sentence.
+    const env = computeEnvelope(info({ districtCode: 'PD 193', farUnconstrained: true, lotSqFt: 10_000 }), 'dallas')
+    expect(env.farBasis).toBe('planned-development')
+  })
+
+  it('leaves ordinary districts in the same cities alone', () => {
+    // The over-match direction is the expensive one: turning a by-right
+    // district into "governed by an ordinance" SUPPRESSES a real answer.
+    for (const [city, code] of [
+      ['dallas', 'R-7.5(A)'],
+      ['chicago', 'B3-2'],
+      ['sanjose', 'R-1-8'],
+      ['nashville', 'RS10'],
+      ['columbus', 'R4'],
+      ['lasvegas', 'R-PD4'],
+      ['atlanta', 'R-4'],
+    ] as const) {
+      expect(computeEnvelope(info({ districtCode: code, lotSqFt: 10_000 }), city).farBasis).not.toBe(
+        'planned-development',
+      )
+    }
+  })
+
+  it('does not classify a PD-looking code in a city with no established rule', () => {
+    // DC's PDR districts are ordinary by-right zones. An absence is only an
+    // answer once someone has looked (rule 23).
+    expect(computeEnvelope(info({ districtCode: 'PDR-1', lotSqFt: 10_000 }), 'dc').farBasis).not.toBe(
+      'planned-development',
+    )
   })
 })

@@ -45,6 +45,8 @@ const row = (over: Partial<RunRow> & { city: string }): RunRow => ({
 const resolved = (city: string) => row({ city })
 const unconstrained = (city: string) => row({ city, outcome: 'UNCONSTRAINED' })
 const gap = (city: string) => row({ city, outcome: 'GAP', verdict: 'INDETERMINATE' })
+/** A planned-development parcel: the limit exists, in its own ordinance. */
+const pd = (city: string) => row({ city, outcome: 'PLANNED_DEVELOPMENT', verdict: 'INDETERMINATE' })
 /** Answered, but nobody can build here — analyze.ts zeroes it. */
 const blocked = (city: string) => row({ city, outcome: 'GAP', developable: false, verdict: 'INDETERMINATE' })
 /** The sampler drew a parcel the runtime city gate rejected. */
@@ -63,6 +65,36 @@ describe('the denominator', () => {
     expect(s.developable).toBe(2)
     expect(s.nonDevelopable).toBe(2)
     expect(s.outOfCity).toBe(1)
+  })
+
+  it('keeps a planned-development parcel INSIDE the denominator', () => {
+    // THE REGRESSION THIS TEST EXISTS FOR. PLANNED_DEVELOPMENT was added to the
+    // partition and to the counting, but not to the `answered` filter that
+    // feeds `dev`. The parcel then left the denominator entirely: `attempted`
+    // still read 25 while `developable` fell to 11, and the share went UP
+    // because a hard case had dropped out of the bottom of the fraction — the
+    // flattering-measurement shape of rule 18, arrived at by omission.
+    //
+    // assertPartition threw on the first live Dallas run, which is the only
+    // reason it never reached the committed artifact.
+    const s = aggregateEnvelopeSample([resolved('dallas'), pd('dallas'), outside('dallas')], '2026-08-11').dallas
+    expect(s.attempted).toBe(3)
+    expect(s.developable).toBe(2)
+    expect(s.plannedDevelopment).toBe(1)
+    expect(s.resolved).toBe(1)
+    expect(s.gap).toBe(0)
+    // The partition must still close over the new bucket.
+    expect(s.resolved + s.unconstrained + s.plannedDevelopment + s.gap).toBe(s.developable)
+  })
+
+  it('does not count a planned development as resolved or as a gap', () => {
+    // It is neither: no envelope was produced, and nobody failed to look. The
+    // whole point of the bucket is that those two claims are both wrong.
+    const s = aggregateEnvelopeSample([pd('sanjose'), pd('sanjose'), gap('sanjose')], '2026-08-11').sanjose
+    expect(s.plannedDevelopment).toBe(2)
+    expect(s.resolved).toBe(0)
+    expect(s.unconstrained).toBe(0)
+    expect(s.gap).toBe(1)
   })
 
   it('counts an affirmative absence of FAR as resolved, not as a gap', () => {

@@ -29,7 +29,7 @@ function Fact({
 // Labels which FAR drove the envelope's headline floor area, so the figure reads
 // as use-specific rather than a single use-agnostic cap (WO-5.5).
 function farBasisLabel(
-  basis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null | undefined,
+  basis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null | undefined,
 ): string | null {
   switch (basis) {
     case 'residential':
@@ -38,6 +38,10 @@ function farBasisLabel(
       return '(mixed-use FAR)'
     case 'district':
       return '(district FAR)'
+    case 'planned-development':
+      // Not a resolved figure and not a missing one — the binding number is in
+      // the ordinance that created this district.
+      return '(set by PD ordinance)'
     default:
       return null
   }
@@ -68,7 +72,15 @@ export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
               note: 'governed by height, setbacks and lot coverage',
             },
           ]
-        : []),
+        : env?.farBasis === 'planned-development'
+          ? [
+              {
+                label: 'Max floor area',
+                value: 'Set by PD ordinance',
+                note: 'this district\u2019s limits are in its own ordinance, not a district table',
+              },
+            ]
+          : []),
     {
       label: 'Max FAR',
       // "The code imposes no FAR here" is an ANSWER; "Not in public data" is a
@@ -80,7 +92,9 @@ export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
           ? parcel.maxFAR.toFixed(2)
           : env?.farBasis === 'unconstrained'
             ? 'No FAR limit applies'
-            : 'Not in public data',
+            : env?.farBasis === 'planned-development'
+              ? 'Set by PD ordinance'
+              : 'Not in public data',
     },
     {
       label: 'Max height',

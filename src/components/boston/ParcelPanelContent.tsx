@@ -50,7 +50,7 @@ type Props =
 // "the code sets no FAR limit" is an ANSWER and must not look like the silence
 // of a failed lookup.
 function farBasisLabel(
-  basis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null | undefined,
+  basis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null | undefined,
 ): string | null {
   switch (basis) {
     case 'residential':
@@ -59,6 +59,10 @@ function farBasisLabel(
       return '(mixed-use FAR)'
     case 'district':
       return '(district FAR)'
+    case 'planned-development':
+      // Not a resolved figure and not a missing one — the binding number is in
+      // the ordinance that created this district.
+      return '(set by PD ordinance)'
     default:
       return null
   }
@@ -270,6 +274,15 @@ export function ParcelPanelContent(props: Props) {
               <p className="text-sm text-piranha-charcoal/70">
                 No floor-area ratio limit applies here — size is governed by height,
                 setbacks and lot coverage instead.
+              </p>
+            )}
+            {env.maxFloorAreaSqFt == null && env.farBasis === 'planned-development' && (
+              // A third state: the limit exists and is elsewhere. Falling through
+              // to the gap wording would say we could not find a figure that is
+              // not in a district table to begin with.
+              <p className="text-sm text-piranha-charcoal/70">
+                Floor area here is set by the ordinance that created this planned
+                development district, not by a district table.
               </p>
             )}
             {(() => {

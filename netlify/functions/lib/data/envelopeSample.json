@@ -7,29 +7,31 @@
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
-      "noSpec": 0,
+      "noSpec": 2,
       "nonDevelopable": 2,
-      "developable": 23,
-      "resolved": 22,
+      "developable": 21,
+      "resolved": 20,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 1,
       "indeterminate": 1,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "austin": {
       "attempted": 25,
-      "outOfCity": 0,
+      "outOfCity": 11,
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 11,
-      "developable": 14,
+      "nonDevelopable": 2,
+      "developable": 12,
       "resolved": 4,
       "unconstrained": 2,
-      "gap": 8,
-      "indeterminate": 8,
-      "sampledOn": "2026-08-11"
+      "plannedDevelopment": 0,
+      "gap": 6,
+      "indeterminate": 6,
+      "sampledOn": "2026-08-14"
     },
     "boston": {
       "attempted": 25,
@@ -37,44 +39,47 @@
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
-      "noSpec": 1,
+      "noSpec": 2,
       "nonDevelopable": 9,
-      "developable": 14,
-      "resolved": 13,
+      "developable": 13,
+      "resolved": 12,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 1,
       "indeterminate": 1,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "charlotte": {
       "attempted": 25,
-      "outOfCity": 0,
+      "outOfCity": 4,
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 3,
-      "developable": 22,
+      "nonDevelopable": 0,
+      "developable": 21,
       "resolved": 0,
-      "unconstrained": 16,
+      "unconstrained": 15,
+      "plannedDevelopment": 0,
       "gap": 6,
       "indeterminate": 5,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "chicago": {
       "attempted": 25,
-      "outOfCity": 0,
+      "outOfCity": 14,
       "noParcel": 0,
-      "upstreamError": 0,
+      "upstreamError": 1,
       "exception": 0,
-      "noSpec": 0,
-      "nonDevelopable": 14,
-      "developable": 11,
-      "resolved": 11,
+      "noSpec": 1,
+      "nonDevelopable": 0,
+      "developable": 9,
+      "resolved": 9,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 0,
       "indeterminate": 0,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "columbus": {
       "attempted": 25,
@@ -87,9 +92,10 @@
       "developable": 14,
       "resolved": 0,
       "unconstrained": 13,
+      "plannedDevelopment": 0,
       "gap": 1,
       "indeterminate": 1,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "dallas": {
       "attempted": 25,
@@ -102,9 +108,10 @@
       "developable": 12,
       "resolved": 2,
       "unconstrained": 9,
-      "gap": 1,
+      "plannedDevelopment": 1,
+      "gap": 0,
       "indeterminate": 1,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "dc": {
       "attempted": 25,
@@ -113,13 +120,14 @@
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 2,
-      "nonDevelopable": 14,
-      "developable": 9,
-      "resolved": 1,
+      "nonDevelopable": 13,
+      "developable": 10,
+      "resolved": 3,
       "unconstrained": 6,
-      "gap": 2,
-      "indeterminate": 2,
-      "sampledOn": "2026-08-11"
+      "plannedDevelopment": 0,
+      "gap": 1,
+      "indeterminate": 1,
+      "sampledOn": "2026-08-14"
     },
     "denver": {
       "attempted": 25,
@@ -132,24 +140,26 @@
       "developable": 6,
       "resolved": 0,
       "unconstrained": 2,
+      "plannedDevelopment": 0,
       "gap": 4,
       "indeterminate": 4,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "la": {
       "attempted": 25,
-      "outOfCity": 1,
+      "outOfCity": 7,
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 8,
+      "nonDevelopable": 2,
       "developable": 16,
       "resolved": 7,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 9,
       "indeterminate": 9,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "lasvegas": {
       "attempted": 25,
@@ -162,24 +172,26 @@
       "developable": 9,
       "resolved": 0,
       "unconstrained": 2,
+      "plannedDevelopment": 0,
       "gap": 7,
       "indeterminate": 7,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "miami": {
       "attempted": 25,
-      "outOfCity": 1,
+      "outOfCity": 7,
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 9,
+      "nonDevelopable": 3,
       "developable": 15,
       "resolved": 5,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 10,
       "indeterminate": 9,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "milwaukee": {
       "attempted": 25,
@@ -192,9 +204,10 @@
       "developable": 23,
       "resolved": 0,
       "unconstrained": 20,
+      "plannedDevelopment": 0,
       "gap": 3,
       "indeterminate": 3,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "minneapolis": {
       "attempted": 25,
@@ -207,9 +220,10 @@
       "developable": 21,
       "resolved": 8,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 13,
       "indeterminate": 13,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "nashville": {
       "attempted": 25,
@@ -222,7 +236,8 @@
       "developable": 21,
       "resolved": 18,
       "unconstrained": 0,
-      "gap": 3,
+      "plannedDevelopment": 2,
+      "gap": 1,
       "indeterminate": 3,
       "sampledOn": "2026-08-14"
     },
@@ -237,54 +252,58 @@
       "developable": 15,
       "resolved": 15,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 0,
       "indeterminate": 0,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "philadelphia": {
       "attempted": 25,
       "outOfCity": 0,
       "noParcel": 4,
-      "upstreamError": 0,
-      "exception": 0,
-      "noSpec": 0,
-      "nonDevelopable": 1,
-      "developable": 20,
-      "resolved": 1,
-      "unconstrained": 18,
-      "gap": 1,
-      "indeterminate": 1,
-      "sampledOn": "2026-08-11"
-    },
-    "phoenix": {
-      "attempted": 25,
-      "outOfCity": 5,
-      "noParcel": 0,
       "upstreamError": 1,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 11,
-      "developable": 8,
-      "resolved": 0,
-      "unconstrained": 7,
+      "nonDevelopable": 1,
+      "developable": 19,
+      "resolved": 1,
+      "unconstrained": 17,
+      "plannedDevelopment": 0,
       "gap": 1,
       "indeterminate": 1,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
-    "raleigh": {
+    "phoenix": {
       "attempted": 25,
-      "outOfCity": 0,
+      "outOfCity": 11,
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 11,
+      "nonDevelopable": 5,
+      "developable": 9,
+      "resolved": 0,
+      "unconstrained": 8,
+      "plannedDevelopment": 0,
+      "gap": 1,
+      "indeterminate": 1,
+      "sampledOn": "2026-08-14"
+    },
+    "raleigh": {
+      "attempted": 25,
+      "outOfCity": 11,
+      "noParcel": 0,
+      "upstreamError": 0,
+      "exception": 0,
+      "noSpec": 0,
+      "nonDevelopable": 0,
       "developable": 14,
       "resolved": 0,
       "unconstrained": 14,
+      "plannedDevelopment": 0,
       "gap": 0,
       "indeterminate": 0,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "sandiego": {
       "attempted": 25,
@@ -297,6 +316,7 @@
       "developable": 11,
       "resolved": 3,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 8,
       "indeterminate": 8,
       "sampledOn": "2026-08-14"
@@ -312,8 +332,9 @@
       "developable": 15,
       "resolved": 0,
       "unconstrained": 3,
-      "gap": 12,
-      "indeterminate": 12,
+      "plannedDevelopment": 4,
+      "gap": 8,
+      "indeterminate": 8,
       "sampledOn": "2026-08-14"
     },
     "seattle": {
@@ -327,9 +348,10 @@
       "developable": 18,
       "resolved": 1,
       "unconstrained": 0,
+      "plannedDevelopment": 0,
       "gap": 17,
       "indeterminate": 17,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     },
     "sf": {
       "attempted": 25,
@@ -338,13 +360,14 @@
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 6,
-      "developable": 19,
+      "nonDevelopable": 7,
+      "developable": 18,
       "resolved": 2,
-      "unconstrained": 15,
+      "unconstrained": 14,
+      "plannedDevelopment": 0,
       "gap": 2,
       "indeterminate": 2,
-      "sampledOn": "2026-08-11"
+      "sampledOn": "2026-08-14"
     }
   }
 }

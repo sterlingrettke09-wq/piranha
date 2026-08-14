@@ -60,7 +60,10 @@ describe('the artifact inventory is PINNED, not merely non-empty', () => {
       const counted =
         c.outOfCity + c.noParcel + c.upstreamError + c.exception + c.noSpec + c.nonDevelopable + c.developable
       expect(counted, `${slug}: buckets vs attempted`).toBe(c.attempted)
-      expect(c.resolved + c.unconstrained + c.gap, `${slug}: split vs developable`).toBe(c.developable)
+      expect(
+        c.resolved + c.unconstrained + c.plannedDevelopment + c.gap,
+        `${slug}: split vs developable`,
+      ).toBe(c.developable)
       expect(c.indeterminate, `${slug}: indeterminate exceeds its own denominator`).toBeLessThanOrEqual(c.developable)
     }
   })
@@ -93,7 +96,7 @@ describe('the share is derived, never stored', () => {
       expect(s.resolved).toBe(c.resolved + c.unconstrained)
       expect(s.n).toBe(c.developable)
       expect(s.share).toBeCloseTo(s.resolved / s.n, 10)
-      expect(s.resolved + s.gap).toBe(s.n)
+      expect(s.resolved + s.plannedDevelopment + s.gap).toBe(s.n)
     }
   })
 })
@@ -134,7 +137,8 @@ describe('the column still discriminates', () => {
 describe('the states with no rate are LOUD, not blank', () => {
   const counts = (over: Partial<EnvelopeSampleCounts> = {}): EnvelopeSampleCounts => ({
     attempted: 25, outOfCity: 0, noParcel: 0, upstreamError: 0, exception: 0, noSpec: 0,
-    nonDevelopable: 25, developable: 0, resolved: 0, unconstrained: 0, gap: 0, indeterminate: 0,
+    nonDevelopable: 25, developable: 0, resolved: 0, unconstrained: 0, plannedDevelopment: 0, gap: 0,
+    indeterminate: 0,
     sampledOn: '2026-08-11', ...over,
   })
 

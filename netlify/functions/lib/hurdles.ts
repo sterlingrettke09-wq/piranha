@@ -636,14 +636,23 @@ export interface HurdleContext {
 // carrying 'likely' or 'info' are left alone — their own text already hedges.
 // `assumed-unconstrained` is NOT downgraded: the code affirmatively imposes no
 // FAR there, so the size sits under a stated absence.
+// `assumed-planned-development` IS downgraded, and for a different reason than
+// `assumed-far-1.0`: there the figure could not be found, here it exists in the
+// district's own ordinance and has not been read. Either way the threshold is
+// being measured against a placeholder, which is what the softening is about —
+// the distinction that matters to the reader is WHY, and that goes in the note.
 function softenSizeDependent(hurdles: Hurdle[], gfaBasis: AnalysisInput['gfaBasis']): Hurdle[] {
-  if (gfaBasis !== 'assumed-far-1.0') return hurdles
+  if (gfaBasis !== 'assumed-far-1.0' && gfaBasis !== 'assumed-planned-development') return hurdles
+  const why =
+    gfaBasis === 'assumed-planned-development'
+      ? 'this is a planned-development district, so the binding floor-area figure is in its own ordinance rather than a district table'
+      : 'no floor-area limit could be resolved for this district'
   return hurdles.map((h) =>
     h.sizeDependent && h.status === 'required'
       ? {
           ...h,
           status: 'info' as const,
-          note: `${h.note} ⚠️ This threshold is measured against a placeholder size — no floor-area limit could be resolved for this district, so whether the rule applies here is unconfirmed.`,
+          note: `${h.note} ⚠️ This threshold is measured against a placeholder size — ${why}, so whether the rule applies here is unconfirmed.`,
         }
       : h,
   )

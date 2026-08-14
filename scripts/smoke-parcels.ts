@@ -468,7 +468,9 @@ async function runOne(city: string, latRaw: number, lngRaw: number): Promise<Run
       ? 'envelope'
       : env?.farBasis === 'unconstrained'
         ? 'assumed-unconstrained'
-        : 'assumed-far-1.0'
+        : env?.farBasis === 'planned-development'
+          ? 'assumed-planned-development'
+          : 'assumed-far-1.0'
 
   const project: AnalysisInput = {
     parcelId: parcel.parcelId,
@@ -565,7 +567,14 @@ async function runOne(city: string, latRaw: number, lngRaw: number): Promise<Run
 
   return {
     city, lat, lng, ms: Date.now() - t0, attempts: 1,
-    outcome: gfaBasis === 'envelope' ? 'RESOLVED' : gfaBasis === 'assumed-unconstrained' ? 'UNCONSTRAINED' : 'GAP',
+    outcome:
+      gfaBasis === 'envelope'
+        ? 'RESOLVED'
+        : gfaBasis === 'assumed-unconstrained'
+          ? 'UNCONSTRAINED'
+          : gfaBasis === 'assumed-planned-development'
+            ? 'PLANNED_DEVELOPMENT'
+            : 'GAP',
     parcelId: parcel.parcelId,
     address: parcel.address,
     districtCode: String(parcel.zoning.districtCode),
@@ -854,13 +863,20 @@ export interface CityEnvelopeSample {
    *  claim is actually about. */
   developable: number
 
-  // ── The denominator, split three ways. resolved + unconstrained + gap === developable. ──
+  // ── The denominator, split four ways.
+  //    resolved + unconstrained + plannedDevelopment + gap === developable. ──
   /** `gfaBasis: 'envelope'` — a district FAR or height came back from published
    *  data and sized the envelope. */
   resolved: number
   /** `gfaBasis: 'assumed-unconstrained'` — the code affirmatively imposes no
    *  FAR here. An ANSWER, not a gap (rule 5), so it counts as resolved. */
   unconstrained: number
+  /** `gfaBasis: 'assumed-planned-development'` — the parcel is in a district
+   *  whose standards come from its own ordinance rather than a district table.
+   *  A limit EXISTS and is not in any table, so this is NOT a failure to look.
+   *  Deliberately NOT counted as resolved either: no envelope was produced.
+   *  It is broken out so the gap figure stops overstating how much is unread. */
+  plannedDevelopment: number
   /** `gfaBasis: 'assumed-far-1.0'` — nothing resolved and the pipeline fell
    *  through to an assumed FAR. The verdict is withheld. */
   gap: number
@@ -892,9 +908,11 @@ function assertPartition(city: string, s: CityEnvelopeSample): void {
     s.outOfCity + s.noParcel + s.upstreamError + s.exception + s.noSpec + s.nonDevelopable + s.developable
   if (counted !== s.attempted)
     throw new Error(`envelope sample: ${city} attempted ${s.attempted} but ${counted} were bucketed — an outcome the partition does not cover`)
-  const split = s.resolved + s.unconstrained + s.gap
+  const split = s.resolved + s.unconstrained + s.plannedDevelopment + s.gap
   if (split !== s.developable)
-    throw new Error(`envelope sample: ${city} has ${s.developable} developable but ${split} in resolved/unconstrained/gap`)
+    throw new Error(
+      `envelope sample: ${city} has ${s.developable} developable but ${split} in resolved/unconstrained/plannedDevelopment/gap`,
+    )
 }
 
 /** Reduce raw run rows to the per-city partition. Pure — the aggregation is the
@@ -903,7 +921,20 @@ export function aggregateEnvelopeSample(rows: RunRow[], sampledOn: string): Reco
   const out: Record<string, CityEnvelopeSample> = {}
   for (const city of [...new Set(rows.map((r) => r.city))].sort()) {
     const rs = rows.filter((r) => r.city === city)
-    const answered = rs.filter((r) => r.outcome === 'RESOLVED' || r.outcome === 'UNCONSTRAINED' || r.outcome === 'GAP')
+    // Every outcome that means "the pipeline answered for this parcel" must be
+    // listed here, or it silently leaves the denominator: `attempted` still
+    // reads 25 while `developable` drops, and the share goes UP because a hard
+    // case left the bottom of the fraction. Adding PLANNED_DEVELOPMENT to the
+    // partition without adding it here did exactly that, and assertPartition
+    // threw on the very first live run — which is the only reason it is not in
+    // the committed artifact.
+    const answered = rs.filter(
+      (r) =>
+        r.outcome === 'RESOLVED' ||
+        r.outcome === 'UNCONSTRAINED' ||
+        r.outcome === 'PLANNED_DEVELOPMENT' ||
+        r.outcome === 'GAP',
+    )
     const dev = answered.filter((r) => r.developable === true)
     const s: CityEnvelopeSample = {
       attempted: rs.length,
@@ -918,6 +949,7 @@ export function aggregateEnvelopeSample(rows: RunRow[], sampledOn: string): Reco
       developable: dev.length,
       resolved: dev.filter((r) => r.outcome === 'RESOLVED').length,
       unconstrained: dev.filter((r) => r.outcome === 'UNCONSTRAINED').length,
+      plannedDevelopment: dev.filter((r) => r.outcome === 'PLANNED_DEVELOPMENT').length,
       gap: dev.filter((r) => r.outcome === 'GAP').length,
       indeterminate: dev.filter((r) => r.verdict === 'INDETERMINATE').length,
       sampledOn,

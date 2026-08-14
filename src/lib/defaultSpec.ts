@@ -107,7 +107,7 @@ export function buildDefaultSpec(parcel: ParcelInfo, city: string): AnalysisInpu
   // the permissive direction, and the reason is structural: "we did not find a
   // constraint" naturally defaults to "unconstrained".
   let gfa: number | null = null
-  let gfaBasis: 'envelope' | 'assumed-unconstrained' | 'assumed-far-1.0' | null = null
+  let gfaBasis: 'envelope' | 'assumed-unconstrained' | 'assumed-planned-development' | 'assumed-far-1.0' | null = null
   if (env && env.maxFloorAreaSqFt != null && env.maxFloorAreaSqFt > 0) {
     // The envelope is the constraint, so it bounds the proposal — a default that
     // does not fit inside it is not a default, it is a program we invented and
@@ -130,7 +130,16 @@ export function buildDefaultSpec(parcel: ParcelInfo, city: string): AnalysisInpu
     // The code SAYS no FAR binds here, so a lot-area stand-in is a stated
     // absence with a placeholder size — weaker than an envelope, stronger than
     // a guess made in ignorance.
-    gfaBasis = env?.farBasis === 'unconstrained' ? 'assumed-unconstrained' : 'assumed-far-1.0'
+    gfaBasis =
+      env?.farBasis === 'unconstrained'
+        ? 'assumed-unconstrained'
+        : // A planned-development parcel HAS a floor-area limit; it is in the
+          // ordinance that created the district. The stand-in is just as much a
+          // placeholder as the other two, but the reason is different and the
+          // reader can act on it — there is a specific document to go and read.
+          env?.farBasis === 'planned-development'
+          ? 'assumed-planned-development'
+          : 'assumed-far-1.0'
   }
   if (gfa === null || gfaBasis === null) return null
 

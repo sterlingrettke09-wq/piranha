@@ -138,7 +138,9 @@ export const handler: JsonHandler = async (event) => {
       ? 'envelope'
       : env?.farBasis === 'unconstrained'
         ? 'assumed-unconstrained'
-        : 'assumed-far-1.0'
+        : env?.farBasis === 'planned-development'
+          ? 'assumed-planned-development'
+          : 'assumed-far-1.0'
 
   const project: AnalysisInput = {
     parcelId: parcel.parcelId,

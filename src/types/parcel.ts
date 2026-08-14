@@ -93,7 +93,7 @@ export interface ParcelInfo {
      *  'unconstrained' means "FAR does not bind — height/setbacks/coverage do",
      *  while null means "we could not resolve a FAR". Never render them the
      *  same; the first is an answer, the second is a gap. */
-    farBasis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null
+    farBasis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null
     /** Set when the headline floor area came from the code's fixed floor
      *  allowance rather than the ratio (small-lot case). Lets the UI cite the
      *  right half of a "greater of X or Y SF" rule. */

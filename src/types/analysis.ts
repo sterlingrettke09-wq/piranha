@@ -26,7 +26,7 @@ export interface AnalysisInput {
    *  area is a placeholder under a stated absence. 'assumed-far-1.0' = we could
    *  not resolve a FAR at all — a guess made in ignorance, and the state that
    *  should fail closed. Keeping these apart is the fail-closed audit's finding. */
-  gfaBasis?: 'envelope' | 'assumed-unconstrained' | 'assumed-far-1.0'
+  gfaBasis?: 'envelope' | 'assumed-unconstrained' | 'assumed-planned-development' | 'assumed-far-1.0'
   units?: number
   stories?: number
   heightFt?: number
@@ -142,7 +142,7 @@ export interface AnalysisResult {
       /** 'unconstrained' = the code imposes no FAR here (an ANSWER); null = we
        *  could not resolve one (a GAP). Both carry a null floor area, so the UI
        *  must not render them the same. Mirrors ParcelInfo['envelope']. */
-      farBasis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null
+      farBasis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null
       floorAreaFromAllowance?: boolean
       /** Other programs the code allows — alternatives to the headline, not a
        *  range around it. */

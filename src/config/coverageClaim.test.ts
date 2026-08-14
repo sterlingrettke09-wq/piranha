@@ -218,13 +218,14 @@ describe('the claim set is pinned to the registry', () => {
     //    'answering', the empty list above means the opposite of what it reads.
     const counts: EnvelopeSampleCounts = {
       attempted: 25, outOfCity: 0, noParcel: 0, upstreamError: 0, exception: 0, noSpec: 0,
-      nonDevelopable: 13, developable: 12, resolved: 0, unconstrained: 0, gap: 12,
+      nonDevelopable: 13, developable: 12, resolved: 0, unconstrained: 0, plannedDevelopment: 0, gap: 12,
       indeterminate: 12, sampledOn: '2026-01-01',
     }
     const measured = (resolved: number): EnvelopeSample => ({
       kind: 'measured',
       n: 12,
       resolved,
+      plannedDevelopment: 0,
       gap: 12 - resolved,
       indeterminate: 12 - resolved,
       share: resolved / 12,
@@ -247,11 +248,13 @@ describe('the copy moves when the measurement moves', () => {
   // indistinguishable until something changes the measurement, so change it.
   const counts = (over: Partial<EnvelopeSampleCounts> = {}): EnvelopeSampleCounts => ({
     attempted: 25, outOfCity: 0, noParcel: 0, upstreamError: 0, exception: 0, noSpec: 0,
-    nonDevelopable: 14, developable: 11, resolved: 0, unconstrained: 0, gap: 11, indeterminate: 11,
+    nonDevelopable: 14, developable: 11, resolved: 0, unconstrained: 0, plannedDevelopment: 0, gap: 11,
+    indeterminate: 11,
     sampledOn: '2026-08-11', ...over,
   })
   const ZEROED: EnvelopeSample = {
-    kind: 'measured', n: 11, resolved: 0, gap: 11, indeterminate: 11, share: 0, counts: counts(),
+    kind: 'measured', n: 11, resolved: 0, plannedDevelopment: 0, gap: 11, indeterminate: 11, share: 0,
+    counts: counts(),
   }
   const drop = (slug: string) => (s: string): EnvelopeSample =>
     s === slug ? ZEROED : envelopeSample(s)
@@ -263,7 +266,10 @@ describe('the copy moves when the measurement moves', () => {
     const after = perturbed.find((c) => c.slug === 'chicago')!
     expect(before.verdict).toBe('answering')
     expect(after.verdict).toBe('silent')
-    expect(before.rateLabel).toBe('100% · n=11')
+    // n moved 11 -> 9 in the 2026-08-14 full re-run: that run was the first
+    // with the jurisdiction gate in place, and 14 of Chicago's 25 draws now
+    // refuse as outside the city rather than entering the denominator.
+    expect(before.rateLabel).toBe('100% · n=9')
     expect(after.rateLabel).toBe('0% · n=11')
   })
 
@@ -287,7 +293,7 @@ describe('the copy moves when the measurement moves', () => {
     // Rule 5 inside the copy: the sentence must be absent because there is
     // nothing to report, never because the generator quietly stopped emitting.
     const allFull = buildCityClaims(() => ({
-      kind: 'measured', n: 10, resolved: 10, gap: 0, indeterminate: 0, share: 1,
+      kind: 'measured', n: 10, resolved: 10, plannedDevelopment: 0, gap: 0, indeterminate: 0, share: 1,
       counts: counts({ developable: 10, resolved: 10, gap: 0, indeterminate: 0, nonDevelopable: 15 }),
     }))
     expect(silentSentence(allFull)).toBe('')
@@ -326,15 +332,16 @@ describe('the derived list cannot disagree with the derived count', () => {
   it('verdictFor is the only place the zero cutoff is drawn', () => {
     expect(verdictFor({ kind: 'unmeasured' })).toBe('unknown')
     expect(verdictFor({ kind: 'no-denominator', counts: counts0() })).toBe('unknown')
-    expect(verdictFor({ kind: 'measured', n: 5, resolved: 0, gap: 5, indeterminate: 5, share: 0, counts: counts0() })).toBe('silent')
-    expect(verdictFor({ kind: 'measured', n: 5, resolved: 1, gap: 4, indeterminate: 4, share: 0.2, counts: counts0() })).toBe('answering')
+    expect(verdictFor({ kind: 'measured', n: 5, resolved: 0, plannedDevelopment: 0, gap: 5, indeterminate: 5, share: 0, counts: counts0() })).toBe('silent')
+    expect(verdictFor({ kind: 'measured', n: 5, resolved: 1, plannedDevelopment: 0, gap: 4, indeterminate: 4, share: 0.2, counts: counts0() })).toBe('answering')
   })
 })
 
 function counts0(): EnvelopeSampleCounts {
   return {
     attempted: 5, outOfCity: 0, noParcel: 0, upstreamError: 0, exception: 0, noSpec: 0,
-    nonDevelopable: 0, developable: 5, resolved: 0, unconstrained: 0, gap: 5, indeterminate: 5,
+    nonDevelopable: 0, developable: 5, resolved: 0, unconstrained: 0, plannedDevelopment: 0, gap: 5,
+    indeterminate: 5,
     sampledOn: '2026-08-11',
   }
 }

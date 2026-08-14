@@ -229,11 +229,13 @@ const measured = (resolved: number, n: number): Extract<EnvelopeSample, { kind: 
   n,
   resolved,
   gap: n - resolved,
+  plannedDevelopment: 0,
   indeterminate: n - resolved,
   share: resolved / n,
   counts: {
     attempted: 25, outOfCity: 0, noParcel: 0, upstreamError: 0, exception: 0, noSpec: 0,
-    nonDevelopable: 25 - n, developable: n, resolved, unconstrained: 0, gap: n - resolved,
+    nonDevelopable: 25 - n, developable: n, resolved, unconstrained: 0, plannedDevelopment: 0,
+    gap: n - resolved,
     indeterminate: n - resolved, sampledOn: '2026-08-11',
   },
 })

@@ -50,6 +50,7 @@ export interface EnvelopeSampleCounts {
   developable: number
   resolved: number
   unconstrained: number
+  plannedDevelopment: number
   gap: number
   indeterminate: number
   sampledOn: string
@@ -77,7 +78,14 @@ export type EnvelopeSample =
        *  (`resolved`) or a stated absence of one (`unconstrained`). Both are
        *  answers; only the fall-through is a gap. */
       resolved: number
-      /** Fell through to an assumed FAR. `resolved + gap === n`. */
+      /** In a district whose standards come from its own ordinance rather than
+       *  a district table. A limit EXISTS and is not in any table, so this is
+       *  neither an envelope nor a failure to look — it is broken out so `gap`
+       *  stops overstating how much is genuinely unread. NOT in `resolved`: no
+       *  envelope was produced. */
+      plannedDevelopment: number
+      /** Fell through to an assumed FAR.
+       *  `resolved + plannedDevelopment + gap === n`. */
       gap: number
       /** Of the developable parcels, how many ended with the verdict withheld.
        *  NOT identical to `gap`: Miami's sample has 10 gaps and 9
@@ -109,6 +117,7 @@ export function envelopeSample(slug: string): EnvelopeSample {
     kind: 'measured',
     n: c.developable,
     resolved,
+    plannedDevelopment: c.plannedDevelopment,
     gap: c.gap,
     indeterminate: c.indeterminate,
     share: resolved / c.developable,

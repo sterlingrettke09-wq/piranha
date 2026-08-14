@@ -46,7 +46,7 @@ export function assumptionsSummary(
   // stand-in — an unsourced assumption that drives cost, unit counts and impact
   // fees. It has to be visible: an undisclosed guess is indistinguishable from
   // a code-derived figure, which is the whole defect.
-  gfaBasis?: 'envelope' | 'assumed-unconstrained' | 'assumed-far-1.0',
+  gfaBasis?: 'envelope' | 'assumed-unconstrained' | 'assumed-planned-development' | 'assumed-far-1.0',
 ): Record<string, string> {
   const idx = cityCostIndex[city] ?? 1.0
   const rate = (n: number) => `$${Math.round(n * idx)}/sf`
@@ -62,9 +62,14 @@ export function assumptionsSummary(
             floorAreaBasis:
               'This district has NO floor-area ratio in the zoning code — size is governed by height, setbacks and lot coverage instead. Lot area is used as a placeholder here; it is not a code limit.',
           }
-        : gfaBasis === 'envelope'
-          ? { floorAreaBasis: 'Derived from the published zoning limit for this district' }
-          : {}),
+        : gfaBasis === 'assumed-planned-development'
+          ? {
+              floorAreaBasis:
+                'This is a planned-development district: floor area is set by the ordinance that created it, not by a district table. Lot area is used as a placeholder here; the binding figure is in that ordinance.',
+            }
+          : gfaBasis === 'envelope'
+            ? { floorAreaBasis: 'Derived from the published zoning limit for this district' }
+            : {}),
     cityCostIndex: `${idx.toFixed(2)}× U.S. national average`,
     hardCostResidential: rate(costPerSqFtByUse.residential),
     hardCostCommercial: rate(costPerSqFtByUse.commercial),

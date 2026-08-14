@@ -1,5 +1,6 @@
 import type { ParcelInfo } from '../../../src/types/parcel'
 import { resolveZoningLimits } from './zoningLimits'
+import { isPlannedDevelopment } from './zoning/plannedDevelopment'
 import { ftPerStory, avgUnitGrossSqFt, MIXED_RESIDENTIAL_SHARE } from '../../../src/config/estimates'
 
 // The maximum by-right envelope a parcel allows, derived from its resolved
@@ -16,7 +17,7 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   const residFar = info.zoning.farByUse?.residential
   const mixedFar = info.zoning.farByUse?.mixed
   let far: number | null
-  let farBasis: 'residential' | 'mixed' | 'district' | 'unconstrained' | null
+  let farBasis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null
   if (residFar != null) {
     far = residFar
     farBasis = 'residential'
@@ -26,6 +27,19 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   } else if (limits.maxFAR != null) {
     far = limits.maxFAR
     farBasis = 'district'
+  } else if (isPlannedDevelopment(city, info.zoning.districtCode)) {
+    // A limit EXISTS for this parcel; it is in the ordinance that created this
+    // specific district rather than in any district table (Dallas § 51A-4.702
+    // (a)(4) says so outright). Neither a resolved figure nor a failure to
+    // look — reporting it as a gap told the reader we could not find something
+    // that is not there to be found, and it is why a city like Chicago, with
+    // 1,457 PD/PMD classes, can never reach 100% by reading tables.
+    //
+    // Ordered BEFORE `farUnconstrained` because it is the more specific claim:
+    // "set by its own ordinance" says where to look, "no FAR applies" says
+    // there is nothing to look for. No city currently asserts both.
+    far = null
+    farBasis = 'planned-development'
   } else if (info.zoning.farUnconstrained) {
     // The code imposes no FAR here. That is an ANSWER, not a gap: floor area is
     // governed by height/setbacks/coverage instead. Deliberately does NOT
