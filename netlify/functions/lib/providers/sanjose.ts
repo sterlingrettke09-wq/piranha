@@ -21,6 +21,7 @@ import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { geocodedAddress } from '../address'
+import { resolveSanJose } from '../zoning/sanjose'
 
 const PLN = 'https://geo.sanjoseca.gov/server/rest/services/PLN/PLN_Geocortex_Public_PRD/MapServer'
 const PARCELS = `${PLN}/49`
@@ -224,6 +225,9 @@ export async function getSanJoseParcelInfo(lat: number, lng: number): Promise<Pa
   const zone = zoning?.ZONING ? String(zoning.ZONING).trim() : null
   const abbrev = zoning?.ZONINGABBREV ? String(zoning.ZONINGABBREV).trim() : null
 
+  // Chapter 20.30 residential districts only; see the note at maxFAR below.
+  const sjLimits = resolveSanJose(abbrev ?? zone)
+
   const info: ParcelInfo = {
     // No address in the parcel layer at all — Mapbox is the only source.
     ...geocodedAddress(geocoded),
@@ -261,7 +265,19 @@ export async function getSanJoseParcelInfo(lat: number, lng: number): Promise<Pa
       // Resolving this properly needs the chosen program as an input, not a
       // district lookup. Until then a null that defaultSpec labels as an
       // assumption beats a number that looks code-derived.
-      maxFAR: null,
+      //
+      // ⚠️ NARROWED 2026-08-14, and only for the Chapter 20.30 RESIDENTIAL
+      // districts. Everything above still holds for the Chapter 20.55 urban
+      // village districts it is about — those figures stay withheld for the
+      // rule-6 reason given. What changed is that R-1-*, R-2, R-M and R-MH now
+      // resolve through ../zoning/sanjose.ts as a KNOWN ABSENCE rather than a
+      // gap: § 20.30.200's development standards table has a "Floor area ratio"
+      // row whose cell is a cross-reference, and the clause it points at
+      // (§ 20.100.1030(C)(1)) is a permit-exemption test, not a cap. Note that
+      // § 20.55.040.D — quoted above — reaches the same conclusion from the
+      // other direction for a 100% residential project.
+      maxFAR: sjLimits.maxFAR,
+      ...(sjLimits.farUnconstrained ? { farUnconstrained: true } : {}),
       allowedUses: sanJoseUsesForZone(abbrev ?? zone),
     },
     lot: { sizeSqFt: polygonAreaSqFt(parcelFeat?.geometry?.rings), lotType: null },

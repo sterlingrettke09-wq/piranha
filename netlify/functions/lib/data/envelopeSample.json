@@ -311,10 +311,10 @@
       "nonDevelopable": 10,
       "developable": 15,
       "resolved": 0,
-      "unconstrained": 0,
-      "gap": 15,
-      "indeterminate": 15,
-      "sampledOn": "2026-08-11"
+      "unconstrained": 3,
+      "gap": 12,
+      "indeterminate": 12,
+      "sampledOn": "2026-08-14"
     },
     "seattle": {
       "attempted": 25,

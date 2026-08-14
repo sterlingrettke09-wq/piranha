@@ -188,20 +188,50 @@ describe('the claim set is pinned to the registry', () => {
     }
   })
 
-  it('records exactly the cities the latest run found silent', () => {
-    // Pinned membership, not a count — a set that matches in size and not in
-    // members is the regex that silently stopped matching. If one of these
-    // starts resolving, this goes RED and the entry is deleted deliberately,
-    // which is the point: the alternative is a fix nobody notices.
+  it('records exactly the cities the latest run found silent — and no longer any', () => {
+    // ⚠️ THIS ASSERTION IS NOW EMPTY ON THE RIGHT-HAND SIDE, WHICH IS EXACTLY
+    // THE SHAPE RULE 20 WARNS ABOUT: a check that passes by finding nothing.
+    // On 2026-08-14 the list emptied — it began the day with three cities and
+    // each left for a reason:
+    //   · San Diego  — LDC Ch. 13 Art. 1 Div. 4 read, 33 residential base
+    //                  zones now resolve (0/11 → 3/11).
+    //   · Nashville  — Metro Code § 17.12.020's four bulk tables read
+    //                  (0/24 → 18/21).
+    //   · San Jose   — § 20.30.200's FAR row proved to be a cross-reference and
+    //                  § 20.100.1030(C)(1) a permit trigger, so its residential
+    //                  districts report a known absence (0/15 → 3/15).
     //
-    // It has now gone red twice for that reason and been edited deliberately
-    // both times, on 2026-08-14. The list started that day with three cities:
-    //   · San Diego left when Land Development Code Ch. 13 Art. 1 Div. 4 was
-    //     read and its 33 residential base zones began resolving (0/11 → 3/11).
-    //   · Nashville left when Metro Code § 17.12.020's four district bulk
-    //     tables were read (0/24 → 18/21).
-    // San Jose is the last city with no FAR source wired at all.
-    expect(coverageFacts().silent.map((c) => c.slug).sort()).toEqual(['sanjose'])
+    // `toEqual([])` alone would now pass forever, including if `verdictFor`
+    // stopped classifying entirely. The two assertions below are what keep it a
+    // check: the input set must be non-empty and complete, and the classifier
+    // must still be able to PRODUCE a silent verdict when given one.
+    const facts = coverageFacts()
+    expect(facts.silent.map((c) => c.slug)).toEqual([])
+
+    // 1. The set being filtered is non-empty and covers the whole registry, so
+    //    "no silent cities" cannot mean "no cities".
+    expect(CITY_CLAIMS.length).toBe(CITIES.length)
+    expect(CITY_CLAIMS.filter((c) => c.sample.kind === 'measured').length).toBe(CITIES.length)
+
+    // 2. The classifier still works. Hand it a measured sample that resolved
+    //    nothing and it must still say 'silent' — if this ever returns
+    //    'answering', the empty list above means the opposite of what it reads.
+    const counts: EnvelopeSampleCounts = {
+      attempted: 25, outOfCity: 0, noParcel: 0, upstreamError: 0, exception: 0, noSpec: 0,
+      nonDevelopable: 13, developable: 12, resolved: 0, unconstrained: 0, gap: 12,
+      indeterminate: 12, sampledOn: '2026-01-01',
+    }
+    const measured = (resolved: number): EnvelopeSample => ({
+      kind: 'measured',
+      n: 12,
+      resolved,
+      gap: 12 - resolved,
+      indeterminate: 12 - resolved,
+      share: resolved / 12,
+      counts: { ...counts, resolved, gap: 12 - resolved },
+    })
+    expect(verdictFor(measured(0))).toBe('silent')
+    expect(verdictFor(measured(1))).toBe('answering')
   })
 
   it('the rate still discriminates between cities', () => {
