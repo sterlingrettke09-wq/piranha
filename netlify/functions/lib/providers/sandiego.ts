@@ -17,6 +17,7 @@ import { polygonAreaSqFt } from '../geo'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import { recordAddress } from '../address'
+import { resolveSanDiego } from '../zoning/sandiego'
 
 const PARCELS = 'https://geo.sandag.org/server/rest/services/Hosted/Parcels/FeatureServer/0'
 // California State Plane Zone 6 (EPSG:2230), US survey feet — the parcel layer's
@@ -203,10 +204,16 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
 
   const zone = zoning?.ZONE_NAME ? String(zoning.ZONE_NAME).trim() : null
   // The §132.0505 30 ft coastal cap is the one numeric height San Diego
-  // publishes spatially. Base-zone heights/FARs live in Land Development Code
-  // tables keyed on the zone-name suffix and are NOT in the GIS, so they stay
-  // null ("not in public data") rather than being guessed. That null is a GAP
-  // (missing lookup), not an answer — with one documented exception below.
+  // publishes spatially. Base-zone heights and FARs are not in the GIS at all —
+  // they live in Land Development Code tables keyed on the zone-name suffix.
+  //
+  // ⚠️ SUPERSEDED 2026-08-13 for FAR, and only for FAR. This comment previously
+  // asserted that both figures stay null because neither is in public data. The
+  // FAR half is no longer true: Chapter 13 Art. 1 Div. 4 has been read and the
+  // 33 residential base zones now resolve through ../zoning/sandiego.ts. HEIGHT
+  // is unchanged — still null, still a GAP. Commercial, industrial and
+  // planned-district FARs are also unchanged, because those divisions have not
+  // been read (rule 23).
   //
   // Two things checked 2026-08-05 against Chapter 13 Article 1 (3-2026 printing):
   //
@@ -226,6 +233,10 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
   //     of `zoning.farUnconstrained` in src/types/parcel.ts, so it is recorded
   //     here rather than fixed — do not let this comment read as if it shipped.
   const inCoastalHeight = chloz?.ZONENAME != null && /chloz/i.test(String(chloz.ZONENAME))
+
+  // Residential base-zone FAR, from the Chapter 13 Art. 1 Div. 4 tables. Passed
+  // the lot size because six RS zones state their ratio as a function of it.
+  const sdLimits = resolveSanDiego(zone, lotSqFt)
 
   // City-owned land is the only ownership signal available here.
   const ownerPublic = cityLand?.COM_NAME != null || cityLand?.DES_USE != null
@@ -252,7 +263,13 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
       subdistrict: null,
       article: null,
       maxHeightFt: inCoastalHeight ? COASTAL_HEIGHT_LIMIT_FT : null,
-      maxFAR: null,
+      // Division 4 residential base zones resolve from ../zoning/sandiego.ts.
+      // Everything else — commercial, industrial, planned districts — is
+      // OUT OF THE SCOPE THAT WAS READ and stays null, i.e. a gap (rule 23).
+      // RS-1-2…RS-1-7 need the lot size: their FAR is a function of it
+      // (Table 131-04J), and the resolver refuses rather than pick a band.
+      maxFAR: sdLimits.maxFAR,
+      ...(sdLimits.farAlternatives.length > 0 ? { farAlternatives: [...sdLimits.farAlternatives] } : {}),
       allowedUses: usesForZone(zone),
     },
     lot: { sizeSqFt: lotSqFt, lotType: null },

@@ -288,18 +288,18 @@
     },
     "sandiego": {
       "attempted": 25,
-      "outOfCity": 0,
+      "outOfCity": 11,
       "noParcel": 0,
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 14,
+      "nonDevelopable": 3,
       "developable": 11,
-      "resolved": 0,
+      "resolved": 3,
       "unconstrained": 0,
-      "gap": 11,
-      "indeterminate": 11,
-      "sampledOn": "2026-08-11"
+      "gap": 8,
+      "indeterminate": 8,
+      "sampledOn": "2026-08-14"
     },
     "sanjose": {
       "attempted": 25,

@@ -188,16 +188,19 @@ describe('the claim set is pinned to the registry', () => {
     }
   })
 
-  it('records exactly the cities the 2026-08-11 run found silent', () => {
+  it('records exactly the cities the latest run found silent', () => {
     // Pinned membership, not a count — a set that matches in size and not in
     // members is the regex that silently stopped matching. If one of these
     // starts resolving, this goes RED and the entry is deleted deliberately,
     // which is the point: the alternative is a fix nobody notices.
-    expect(coverageFacts().silent.map((c) => c.slug).sort()).toEqual([
-      'nashville',
-      'sandiego',
-      'sanjose',
-    ])
+    //
+    // It has now gone red once for that reason and been edited deliberately.
+    // The list previously carried a third city alongside these two; San Diego
+    // left it on 2026-08-14, when Land Development Code Chapter 13 Article 1
+    // Division 4 was read and its 33 residential base zones began resolving
+    // (0/11 → 3/11 on a fresh sample). The remaining two still have no FAR
+    // source wired at all.
+    expect(coverageFacts().silent.map((c) => c.slug).sort()).toEqual(['nashville', 'sanjose'])
   })
 
   it('the rate still discriminates between cities', () => {
