@@ -315,10 +315,10 @@
       "nonDevelopable": 3,
       "developable": 11,
       "resolved": 3,
-      "unconstrained": 0,
+      "unconstrained": 2,
       "plannedDevelopment": 0,
-      "gap": 8,
-      "indeterminate": 8,
+      "gap": 6,
+      "indeterminate": 6,
       "sampledOn": "2026-08-14"
     },
     "sanjose": {

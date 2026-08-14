@@ -269,6 +269,7 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
       // RS-1-2…RS-1-7 need the lot size: their FAR is a function of it
       // (Table 131-04J), and the resolver refuses rather than pick a band.
       maxFAR: sdLimits.maxFAR,
+      ...(sdLimits.farUnconstrained ? { farUnconstrained: true } : {}),
       ...(sdLimits.farAlternatives.length > 0 ? { farAlternatives: [...sdLimits.farAlternatives] } : {}),
       allowedUses: usesForZone(zone),
     },

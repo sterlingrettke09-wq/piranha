@@ -23,9 +23,25 @@
 // section headings. **Establish an absence from the document's structure, never
 // from a reader's report that it could not find something (rule 8).**
 //
-// SCOPE READ (rule 23). Division 4 ONLY — the residential base zones. NOT read,
-// and therefore still gaps rather than absences:
-//   · Division 3 (open space), Division 5 (commercial), Division 6 (industrial)
+// SCOPE READ (rule 23). Division 4 (residential base zones) and Division 3
+// (agricultural). NOT read, and therefore still gaps rather than absences:
+//   · Division 2 (open space) — its Table 131-02C DOES have a "Max Floor Area
+//     Ratio" row reading `-- -- 0.45 0.10 --`, so a FAR applies to some of
+//     OP/OC/OR/OF. It is not encoded because the four-row column header does
+//     not survive text extraction and the values differ per column; assigning
+//     0.45 or 0.10 to OR-1-1 would be a guess between two real figures.
+//   · Division 5 (commercial) — § 131.0546 exists and its tables state FARs
+//     from 0.75 to 4.0. Same blocker, and worse: the values vary across every
+//     column, so a misalignment produces a plausible wrong number rather than
+//     an obvious one.
+//   · Division 6 (industrial) — § 131.0632 exists and Table 131-06C reads 2.0
+//     across all five zone families. The figure is NOT encoded because
+//     footnotes 7 and 11 override it geographically: "Within the Kearny Mesa
+//     Community Plan area, the maximum floor area ratio is 1.0" and "Within
+//     the Otay Mesa Community Plan area, the maximum floor area ratio is 0.50".
+//     Publishing 2.0 would overstate an Otay Mesa parcel by 4×. This is rule
+//     13 — the value resolves only from the base zone AND the community plan
+//     area jointly, and no community-plan layer is wired.
 //   · Chapter 13 Article 2 overlay zones, including the Coastal Height Limit
 //   · Planned districts (Little Italy, Barrio Logan, Centre City, …), whose
 //     FARs are set by their own planned-district ordinances
@@ -44,12 +60,16 @@ export interface SanDiegoZone {
    *  building, or a 3-to-7-unit one. NEVER folded into `far`: reporting the
    *  larger assumes a program the user has not selected (rule 6). */
   alternatives?: readonly { label: string; far: number }[]
+  /** True where the division's own structure shows no FAR applies at all. */
+  farUnconstrained?: boolean
   /** The exact table this row was read from, for the citation trail. */
   source: string
 }
 
 const DEV_REGS = 'San Diego Municipal Code § 131.0431, Development Regulations Table for Residential Zones (7-2026)'
 const FAR_SEC = 'San Diego Municipal Code § 131.0446, Maximum Floor Area Ratio in Residential Zones (7-2026)'
+const AG_TABLE =
+  'San Diego Municipal Code § 131.0331, Table 131-03C (Development Regulations for Agricultural Zones, 7-2026) — the table states Max Lot Coverage and has no Max Floor Area Ratio row, and Division 3 has no maximum-FAR section'
 
 /**
  * Table 131-04J — maximum FAR by lot area, for RS-1-2 through RS-1-7 only.
@@ -161,6 +181,27 @@ const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
   // RM-5-12's own row reads 1.80 with footnote 35; § 131.0446(f) raises it with
   // height per Table 131-04K.
   'RM-5-12': { far: 1.8, alternatives: RM_5_12_BY_HEIGHT, source: FAR_SEC },
+
+  // ── AG / AR, Division 3 (Agricultural Zones). NO FAR APPLIES. ──
+  //
+  // This is the rule-5 slot test answering in the negative, from the document's
+  // own structure rather than from a reader failing to find something:
+  //
+  //   · Table 131-03C has NO "Max Floor Area Ratio" row. Its bulk row is "Max
+  //     Lot Coverage (%)" — 10 / 20 / 10 / 20. (The table's "Min Floor Area(6)"
+  //     row is a 650 sq ft MINIMUM dwelling size, not a ratio; do not read it
+  //     as one.)
+  //   · Division 3's section list has § 131.0344 "Maximum Structure Height in
+  //     Agricultural Zones" and no maximum-floor-area-ratio section, while the
+  //     divisions where FAR does apply each have one exactly where it belongs —
+  //     § 131.0446 residential, § 131.0546 commercial, § 131.0632 industrial.
+  //
+  // Column alignment is unambiguous here, unlike the commercial tables: the
+  // header reads `1st & 2nd >> AG AR`, `3rd >> 1- 1- 1- 1-`, `4th >> 1 2 1 2`.
+  'AG-1-1': { far: null, farUnconstrained: true, source: AG_TABLE },
+  'AG-1-2': { far: null, farUnconstrained: true, source: AG_TABLE },
+  'AR-1-1': { far: null, farUnconstrained: true, source: AG_TABLE },
+  'AR-1-2': { far: null, farUnconstrained: true, source: AG_TABLE },
 })
 
 export const SAN_DIEGO_ZONE_CODES: readonly string[] = Object.freeze(Object.keys(ZONES))
@@ -179,11 +220,18 @@ export function sanDiegoZoneKey(code: string | null | undefined): string | null 
 
 export interface SanDiegoLimits {
   maxFAR: number | null
+  /** The code affirmatively imposes no FAR here — an ANSWER, not a gap. */
+  farUnconstrained: boolean
   farAlternatives: readonly { label: string; far: number; source: string }[]
   source: string | null
 }
 
-const UNRESOLVED: SanDiegoLimits = Object.freeze({ maxFAR: null, farAlternatives: [], source: null })
+const UNRESOLVED: SanDiegoLimits = Object.freeze({
+  maxFAR: null,
+  farUnconstrained: false,
+  farAlternatives: [],
+  source: null,
+})
 
 /** Table 131-04J lookup. Exported so a test can pin the band edges directly. */
 export function rsFarForLotArea(lotSqFt: number): number {
@@ -209,10 +257,19 @@ export function resolveSanDiego(code: string | null | undefined, lotSqFt: number
 
   const alternatives = (zone.alternatives ?? []).map((a) => ({ ...a, source: zone.source }))
 
-  if (zone.farByLotArea) {
-    if (lotSqFt == null || !Number.isFinite(lotSqFt) || lotSqFt <= 0) return UNRESOLVED
-    return { maxFAR: rsFarForLotArea(lotSqFt), farAlternatives: alternatives, source: zone.source }
+  if (zone.farUnconstrained) {
+    return { maxFAR: null, farUnconstrained: true, farAlternatives: [], source: zone.source }
   }
 
-  return { maxFAR: zone.far, farAlternatives: alternatives, source: zone.source }
+  if (zone.farByLotArea) {
+    if (lotSqFt == null || !Number.isFinite(lotSqFt) || lotSqFt <= 0) return UNRESOLVED
+    return {
+      maxFAR: rsFarForLotArea(lotSqFt),
+      farUnconstrained: false,
+      farAlternatives: alternatives,
+      source: zone.source,
+    }
+  }
+
+  return { maxFAR: zone.far, farUnconstrained: false, farAlternatives: alternatives, source: zone.source }
 }

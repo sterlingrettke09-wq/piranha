@@ -18,8 +18,8 @@ describe('inventory', () => {
   // Rule 20: a check that can pass by finding nothing is not a check. Pin the
   // size AND the membership, so a regex that silently stops matching goes RED
   // rather than green.
-  it('covers all 33 Division 4 residential base zones', () => {
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(33)
+  it('covers the 33 Division 4 residential zones plus the 4 Division 3 agricultural ones', () => {
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(37)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',
@@ -122,7 +122,7 @@ describe('scope (rule 23)', () => {
   // return null and keep reading downstream as a GAP. If one of these ever
   // starts resolving, an out-of-scope table has been folded in without its
   // source being read.
-  it.each(['CC-3-4', 'CN-1-3', 'IL-2-1', 'IH-2-1', 'OP-1-1', 'OC-1-1', 'CCPD-ER', 'BLPD-CT'])(
+  it.each(['CC-3-4', 'CN-1-3', 'IL-2-1', 'IH-2-1', 'OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
     'leaves the out-of-scope zone %s unresolved',
     (code) => {
       expect(sanDiegoZoneKey(code)).toBeNull()
@@ -142,5 +142,33 @@ describe('scope (rule 23)', () => {
     expect(sanDiegoZoneKey('rs-1-7')).toBe('RS-1-7')
     expect(sanDiegoZoneKey(' RM-3-8 ')).toBe('RM-3-8')
     expect(sanDiegoZoneKey('RS -1- 7')).toBe('RS-1-7')
+  })
+})
+
+describe('agricultural zones — a structural absence (rule 5)', () => {
+  // Table 131-03C has no "Max Floor Area Ratio" row: its bulk row is "Max Lot
+  // Coverage (%)". Division 3 has no maximum-FAR section either, while the
+  // divisions where FAR applies each have one exactly where it belongs
+  // (§ 131.0446 residential, § 131.0546 commercial, § 131.0632 industrial).
+  it.each(['AG-1-1', 'AG-1-2', 'AR-1-1', 'AR-1-2'])('%s reports no FAR as an answer', (code) => {
+    const r = resolveSanDiego(code, 40_000)
+    expect(r.farUnconstrained).toBe(true)
+    expect(r.maxFAR).toBeNull()
+    expect(r.source).toContain('131.0331')
+  })
+
+  it('does not confuse the table\u2019s "Min Floor Area" row with a ratio', () => {
+    // Min Floor Area(6) is a 650 sq ft MINIMUM dwelling size. If it were ever
+    // read as a FAR the value would be enormous and obviously wrong; the risk
+    // is reading its "applies" cell as a ratio existing.
+    expect(resolveSanDiego('AR-1-1', 40_000).maxFAR).toBeNull()
+  })
+
+  it('separates the agricultural absence from an unread division', () => {
+    // AR is an answer; the commercial and industrial districts are gaps,
+    // because their divisions state FARs this module has not encoded.
+    expect(resolveSanDiego('AR-1-1', 40_000).farUnconstrained).toBe(true)
+    expect(resolveSanDiego('CC-2-3', 40_000).farUnconstrained).toBe(false)
+    expect(resolveSanDiego('IH-2-1', 40_000).farUnconstrained).toBe(false)
   })
 })
