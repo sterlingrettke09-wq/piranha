@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveSeattle, SEATTLE_FAR } from './seattle'
+import { NR_FAR_BASE, NR_SMALL_LOT_FLOOR_SQFT, NR_SMALL_LOT_THRESHOLD_SQFT, resolveSeattle, SEATTLE_FAR } from './seattle'
 
 // Every FAR below is pinned to SMC 23.47A.013 Table A (FAR limit OUTSIDE a
 // Station Area Overlay District) cited in seattle.ts, re-read verbatim from the
@@ -158,9 +158,15 @@ describe('resolveSeattle — non-NC/C zones have a separate/no FAR table → nul
     'II U/125',
     'UI U/65',
     'MML U/45',
-    'NR',
+    // 'NR' was in this list until 2026-08-15. That was an INTERPRETATION —
+    // that Seattle states no FAR for Neighborhood Residential — and it was
+    // wrong: SMC § 23.44.050 is titled "Floor area" and Table A for 23.44.050
+    // states the ratio by density band. NR was 15 of Seattle's 17 developable
+    // gaps while this assertion was green (rule 15: a test defends an
+    // interpretation, and a green one is evidence the code matches it, never
+    // evidence the interpretation is right).
     'MPC-YT',
-    'SF 5000', // single-family
+    'SF 5000', // the superseded single-family code, correctly unresolved
   ])('%s → far null', (zone) => {
     expect(resolveSeattle(zone).far).toBeNull()
   })
@@ -231,5 +237,46 @@ describe('Seattle NC/C FAR — values match SMC 23.47A.013 Table A', () => {
     for (const z of ['LR2', 'MR', 'HR', 'SM-U-85', 'IG1 U/85', 'SF 5000']) {
       expect(resolveSeattle(z).far, z).toBeNull()
     }
+  })
+})
+
+describe('NR — Neighborhood Residential (SMC 23.44.050)', () => {
+  // Table A for 23.44.050 keys the FAR to the DENSITY of the proposed
+  // development, not to the district. The least dense row is the headline; the
+  // denser rows are programme choices the applicant has not made (rule 6).
+  it('resolves the least-dense row as the headline', () => {
+    const r = resolveSeattle('NR')
+    expect(r.far).toBe(NR_FAR_BASE)
+    expect(r.far).toBe(0.6)
+  })
+
+  it('carries the denser rows as alternatives, never as the headline', () => {
+    const r = resolveSeattle('NR')
+    expect(r.farAlternatives?.map((a) => a.far)).toEqual([0.8, 1.0, 1.0, 1.2, 1.6, 2.0])
+    // The largest figure must never become the published ratio.
+    for (const a of r.farAlternatives ?? []) expect(r.far).toBeLessThanOrEqual(a.far)
+  })
+
+  it('carries the § 23.44.050.B small-lot floor', () => {
+    expect(resolveSeattle('NR').farFloorSqFt).toBe(NR_SMALL_LOT_FLOOR_SQFT)
+    // The floor can only bind below the code's own 5,000 sq ft threshold: at
+    // FAR 0.6 the ratio already yields 2,500 sq ft on a 4,167 sq ft lot.
+    expect(NR_SMALL_LOT_FLOOR_SQFT / NR_FAR_BASE).toBeLessThan(NR_SMALL_LOT_THRESHOLD_SQFT)
+  })
+
+  it('labels the affordable-housing election as elective', () => {
+    const alt = resolveSeattle('NR').farAlternatives?.find((a) => a.far === 2.0)
+    expect(alt?.source).toContain('23.44.170')
+    expect(alt?.label).toMatch(/affordable/i)
+  })
+
+  it.each(['NR', 'NR (M)', 'NR-1', 'nr'])('matches the live-feed variant %s', (z) => {
+    expect(resolveSeattle(z).far).toBe(NR_FAR_BASE)
+  })
+
+  // The NR branch must not swallow anything else beginning with N.
+  it.each(['NC1-30', 'NC3-65 (M)', 'C1-40', 'NCTOD', 'NORTHGATE'])('does not capture %s', (z) => {
+    const r = resolveSeattle(z)
+    expect(r.farAlternatives).toBeUndefined()
   })
 })

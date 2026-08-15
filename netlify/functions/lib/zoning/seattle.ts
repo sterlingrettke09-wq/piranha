@@ -26,7 +26,54 @@
 export interface DistrictLimits {
   far: number | null
   heightFt: number | null
+  /** Ratios the code allows under a DENSER programme than the headline. Never
+   *  folded into `far` — reporting the larger assumes a programme the user has
+   *  not chosen (rule 6). */
+  farAlternatives?: readonly { label: string; far: number; source: string }[]
+  /** Floor-area ALLOWANCE in square feet, where the code caps at "the greater
+   *  of the ratio or a fixed value". */
+  farFloorSqFt?: number | null
 }
+
+// ── NR, Neighborhood Residential (SMC 23.44.050, Table A for 23.44.050) ──────
+//
+// NR was 15 of Seattle's 17 developable gaps — 88% of the city's shortfall in
+// one district — because this module only ever handled NC/C.
+//
+// ⚠️ THE FAR IS KEYED BY THE DENSITY OF THE PROPOSED DEVELOPMENT, NOT BY THE
+// DISTRICT. Table A's rows are "dwelling units per lot size" bands, so a bare NR
+// parcel has no single by-right ratio: the applicant's programme picks the row.
+// The LEAST DENSE row is therefore the headline, and the rest are alternatives
+// (rule 6) — reporting 1.6 as "the" NR FAR would assume a programme nobody has
+// chosen and flow into unit counts, fees and hurdles.
+const NR_SRC = 'Seattle Municipal Code § 23.44.050.B, Table A for 23.44.050 (floor area ratio in NR zones)'
+
+/** Table A verbatim. The headline is the first row; the rest are programme
+ *  choices. The 1.0 and 1.2 figures are each conditioned on § 23.44.050.D in
+ *  addition to the density band, so they are labelled as such. */
+export const NR_FAR_BASE = 0.6
+export const NR_FAR_ALTERNATIVES: readonly { label: string; far: number; source: string }[] = Object.freeze([
+  { label: '1 unit per 4,000–2,201 sq ft of lot', far: 0.8, source: NR_SRC },
+  { label: '1 unit per 4,000–2,201 sq ft, meeting § 23.44.050.D', far: 1.0, source: NR_SRC },
+  { label: '1 unit per 2,200–1,601 sq ft', far: 1.0, source: NR_SRC },
+  { label: '1 unit per 2,200–1,601 sq ft, meeting § 23.44.050.D', far: 1.2, source: NR_SRC },
+  { label: '1 unit per 1,600 sq ft or denser', far: 1.6, source: NR_SRC },
+  {
+    label: 'affordable housing under § 23.44.170',
+    far: 2.0,
+    source: 'Seattle Municipal Code § 23.44.170.B.1 — an ELECTIVE standard in lieu of § 23.44.050.B, available only on a lot meeting § 23.44.170.A',
+  },
+])
+
+/** § 23.44.050.B: "structures on lots with less than 5,000 square feet of lot
+ *  area can include up to 2,500 square feet of total chargeable floor area or
+ *  the amount … allowed by the FAR limit …, whichever is greater." */
+export const NR_SMALL_LOT_FLOOR_SQFT = 2_500
+export const NR_SMALL_LOT_THRESHOLD_SQFT = 5_000
+
+/** Matches the NR district and its live-feed variants. Deliberately does NOT
+ *  match NC/C — `isNcOrC` owns those — nor anything merely starting with N. */
+const NR_RE = /^NR(?=$|[\s(-])/
 
 // ── NC/C FAR by height-limit suffix (SMC 23.47A.013 Table A, outside Station
 //    Area Overlay Districts) ──────────────────────────────────────────────────
@@ -129,6 +176,19 @@ export function resolveSeattle(zone: string | null | undefined): DistrictLimits 
   // Strip a leading MIO (Major Institution Overlay) prefix the way the provider
   // does, so "MIO-105-NC3-65" reads as the NC3-65 base zone.
   z = z.replace(/^MIO-\d{1,3}-/, '')
+
+  if (NR_RE.test(z)) {
+    return {
+      far: NR_FAR_BASE,
+      heightFt: null,
+      farAlternatives: NR_FAR_ALTERNATIVES,
+      // Applied unconditionally because it can only ever bind below the code's
+      // own 5,000 sq ft threshold: at the 0.6 headline the ratio yields 2,500
+      // sq ft at a 4,167 sq ft lot, so any lot large enough to clear the
+      // threshold already clears the floor.
+      farFloorSqFt: NR_SMALL_LOT_FLOOR_SQFT,
+    }
+  }
 
   if (!isNcOrC(z)) return { far: null, heightFt: null }
 

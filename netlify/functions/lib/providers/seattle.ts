@@ -114,6 +114,9 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
   const sqft = Number(parcel.SQFTLOT)
   const zone = zoning?.ZONING ? String(zoning.ZONING) : null
 
+  const seaLimits = resolveSeattle(zone)
+
+
   const info: ParcelInfo = {
     ...addressed,
     parcelId: String(parcel.PIN ?? ''),
@@ -129,8 +132,17 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
       // This field was left null anyway, so /api/parcel and the UI reported "no
       // FAR" for a parcel whose floor area had been computed from FAR 4.5.
       // Surfacing the same sourced value keeps the response self-consistent.
-      // Returns null outside NC/C (LR/MR/HR and SM have their own tables).
-      maxFAR: resolveSeattle(zone).far,
+      // Returns null outside NC/C and NR (LR/MR/HR and SM have their own
+      // tables and are not read yet).
+      //
+      // NR carries ALTERNATIVES rather than a single ratio: SMC Table A for
+      // 23.44.050 keys the FAR to the density of the proposed development, so
+      // the least-dense row is the headline and the denser rows are choices the
+      // applicant has not made (rule 6). It also carries a 2,500 sq ft
+      // small-lot floor from § 23.44.050.B.
+      maxFAR: seaLimits.far,
+      ...(seaLimits.farAlternatives?.length ? { farAlternatives: [...seaLimits.farAlternatives] } : {}),
+      ...(seaLimits.farFloorSqFt != null ? { farFloorSqFt: seaLimits.farFloorSqFt } : {}),
       allowedUses: usesForZone(zone),
     },
     lot: {
