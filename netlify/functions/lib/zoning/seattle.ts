@@ -71,6 +71,97 @@ export const NR_FAR_ALTERNATIVES: readonly { label: string; far: number; source:
 export const NR_SMALL_LOT_FLOOR_SQFT = 2_500
 export const NR_SMALL_LOT_THRESHOLD_SQFT = 5_000
 
+// ── LR / MR / HR, Multifamily (SMC 23.45.510, Table A and Table B) ──────────
+//
+// ⚠️ LR3's ROW SPLITS ON A GEOGRAPHIC FACT, NOT A PROGRAMME CHOICE. The table
+// has separate rows for "LR3 outside regional centers and urban centers" (MHA
+// 1.8) and "LR3 inside regional centers and urban centers" (MHA 2.3). That is a
+// joint dependency (rule 13): the zone string alone cannot resolve it, and the
+// two figures differ by 28%.
+//
+// The city publishes the boundary as `Centers_Boundaries_2044`, adopted by
+// Ordinance 127375 and effective 2026-01-21. Its PLACE_TYPE_NAME values are
+// Regional Center, Urban Center, Neighborhood Center, Manufacturing Industrial
+// Center and Outside Centers — enumerated from the layer rather than assumed.
+//
+// ⚠️ ONLY "Regional Center" AND "Urban Center" COUNT AS INSIDE. The code names
+// those two; a Neighborhood Center is not one of them and takes the OUTSIDE
+// row. Matching on the word "Center" would put those parcels on 2.3 instead of
+// 1.8.
+//
+// Without MHA, LR3 is 1.2 either way, so only its stacked-dwelling ALTERNATIVE
+// needs the boundary. With MHA the base itself needs it, and the resolver
+// refuses rather than pick a row.
+export type SeattleCenter = 'inside' | 'outside' | null | undefined
+
+const MF_SRC = 'Seattle Municipal Code § 23.45.510.B, Table A for 23.45.510 (FAR limits in LR and MR zones)'
+const HR_SRC = 'Seattle Municipal Code § 23.45.510.C, Table B for 23.45.510 (FAR limits in HR zones)'
+
+/** PLACE_TYPE_NAME values that satisfy the code's "regional centers and urban
+ *  centers". Exported so the provider cannot drift from this list. */
+export const SEATTLE_INSIDE_CENTER_TYPES: readonly string[] = Object.freeze(['REGIONAL CENTER', 'URBAN CENTER'])
+
+/** Table A / Table B, verbatim. `stacked` is a programme choice and therefore
+ *  an alternative, never the headline (rule 6). */
+function multifamilyFar(zone: string, mha: boolean, center: SeattleCenter): DistrictLimits | null {
+  const alt = (label: string, far: number) => ({ label, far, source: MF_SRC })
+
+  if (/^LR1(?=$|[\s(-])/.test(zone)) {
+    return mha
+      ? { far: 1.3, heightFt: null, farAlternatives: [alt('stacked dwelling units', 1.5)] }
+      : { far: 1.0, heightFt: null }
+  }
+
+  if (/^LR2(?=$|[\s(-])/.test(zone)) {
+    return mha
+      ? {
+          far: 1.4,
+          heightFt: null,
+          farAlternatives: [
+            alt('stacked dwelling units', 1.6),
+            // Footnote 1: 1.8 for stacked units with an outdoor amenity area of
+            // at least 35% of lot area, min 20 ft in width and depth, at or
+            // within 4 ft of grade. Three conditions the applicant elects.
+            alt('stacked dwelling units with a § 23.45.522 outdoor amenity area (footnote 1)', 1.8),
+          ],
+        }
+      : { far: 1.1, heightFt: null }
+  }
+
+  if (/^LR3(?=$|[\s(-])/.test(zone)) {
+    if (!mha) {
+      // 1.2 on both rows, so the base resolves without the boundary; only the
+      // stacked figure differs (1.3 outside, 1.5 inside).
+      const stacked = center === 'inside' ? 1.5 : center === 'outside' ? 1.3 : null
+      return {
+        far: 1.2,
+        heightFt: null,
+        ...(stacked != null ? { farAlternatives: [alt('stacked dwelling units', stacked)] } : {}),
+      }
+    }
+    // With MHA the BASE differs by row. Refuse rather than pick one.
+    if (center === 'inside') return { far: 2.3, heightFt: null }
+    if (center === 'outside') return { far: 1.8, heightFt: null }
+    return { far: null, heightFt: null }
+  }
+
+  if (/^MR(?=$|[\s(-])/.test(zone)) {
+    return { far: mha ? 4.5 : 3.2, heightFt: null }
+  }
+
+  if (/^HR(?=$|[\s(-])/.test(zone)) {
+    // Table B: base 7, maximum 15 "allowed pursuant to Section 23.45.516 and
+    // Chapter 23.58A". The extra is EARNED, so the base is the headline.
+    return {
+      far: 7,
+      heightFt: null,
+      farAlternatives: [{ label: 'extra floor area earned under § 23.45.516 and Ch. 23.58A', far: 15, source: HR_SRC }],
+    }
+  }
+
+  return null
+}
+
 /** Matches the NR district and its live-feed variants. Deliberately does NOT
  *  match NC/C — `isNcOrC` owns those — nor anything merely starting with N. */
 const NR_RE = /^NR(?=$|[\s(-])/
@@ -169,7 +260,10 @@ function farForHeight(height: number, mha: boolean): number | null {
  * row. Height is always null here (the provider already derives it). NEVER
  * guesses a FAR.
  */
-export function resolveSeattle(zone: string | null | undefined): DistrictLimits {
+export function resolveSeattle(
+  zone: string | null | undefined,
+  center?: SeattleCenter,
+): DistrictLimits {
   if (!zone) return { far: null, heightFt: null }
   let z = zone.trim().toUpperCase()
 
@@ -189,6 +283,9 @@ export function resolveSeattle(zone: string | null | undefined): DistrictLimits 
       farFloorSqFt: NR_SMALL_LOT_FLOOR_SQFT,
     }
   }
+
+  const mf = multifamilyFar(z, hasMhaSuffix(z), center)
+  if (mf) return mf
 
   if (!isNcOrC(z)) return { far: null, heightFt: null }
 

@@ -304,6 +304,20 @@ const CASES: Case[] = [
         discloses: { unresolved: 'feeArea' },
         why: 'the MHA rate is published per area ($10.78–$50.46/sf); a failed read moved a live line from ~$45/sf to ~$28/sf before it was marked',
       },
+      {
+        label: 'regional/urban centre boundary',
+        substr: 'Centers_Boundaries_2044',
+        // With the boundary resolved an LR3 (M) lot carries a stated 1.8 or
+        // 2.3; without it the field is absent and the verdict is withheld.
+        // Nothing false is published either way.
+        publishes: 'disclosed-gap',
+        discloses: { gapField: 'zoning.maxFAR', answeredValue: 1.8 },
+        why: 'Table A for 23.45.510 splits LR3 on whether the lot is inside a regional or urban centre — MHA 1.8 outside vs 2.3 inside — so a failed read leaves that row unresolved rather than picking one (rule 13)',
+        // The probe parcel is downtown; only an LR3 lot WITH an MHA suffix
+        // depends on the boundary, so activate one. An empty centres answer is
+        // a real 'outside', which is why the answered value is 1.8.
+        activate: [{ substr: 'Current_Land_Use_Zoning_Detail_2', attrs: { ZONING: 'LR3 (M)' } }],
+      },
       flood(),
     ],
   },

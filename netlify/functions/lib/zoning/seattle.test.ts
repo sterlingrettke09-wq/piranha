@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { NR_FAR_BASE, NR_SMALL_LOT_FLOOR_SQFT, NR_SMALL_LOT_THRESHOLD_SQFT, resolveSeattle, SEATTLE_FAR } from './seattle'
+import { SEATTLE_INSIDE_CENTER_TYPES, NR_FAR_BASE, NR_SMALL_LOT_FLOOR_SQFT, NR_SMALL_LOT_THRESHOLD_SQFT, resolveSeattle, SEATTLE_FAR } from './seattle'
 
 // Every FAR below is pinned to SMC 23.47A.013 Table A (FAR limit OUTSIDE a
 // Station Area Overlay District) cited in seattle.ts, re-read verbatim from the
@@ -143,13 +143,13 @@ describe('resolveSeattle — MIO prefix is stripped to the NC/C base zone', () =
 })
 
 describe('resolveSeattle — non-NC/C zones have a separate/no FAR table → null (honest)', () => {
+  // LR1/LR2/LR3/MR/HR were in this list until 2026-08-15, asserting that the
+  // multifamily zones have no readable FAR. SMC § 23.45.510 is titled "Floor
+  // area" and Table A states every one of them. Fourth instance today of a
+  // green test defending a gap (rule 15), after Seattle's own NR, Charlotte's
+  // site-plan districts and Minneapolis's Table 540-2. Their figures are
+  // asserted in the multifamily block at the foot of this file.
   it.each([
-    'LR1', // multifamily — SMC 23.45, not replicated here
-    'LR2',
-    'LR2 (0.75)',
-    'LR3 RC (M1)',
-    'MR',
-    'HR (M)',
     'SM-U 95-320', // Seattle Mixed — SMC 23.48
     'SM-UP 65 (M)',
     'DOC1 U/450-U', // downtown
@@ -233,8 +233,11 @@ describe('Seattle NC/C FAR — values match SMC 23.47A.013 Table A', () => {
     expect(resolveSeattle(zone as string).far).toBe(far)
   })
 
-  it('returns null outside NC/C (LR/MR/HR and SM have their own tables)', () => {
-    for (const z of ['LR2', 'MR', 'HR', 'SM-U-85', 'IG1 U/85', 'SF 5000']) {
+  it('returns null outside NC/C and the multifamily and NR tables', () => {
+    // LR2/MR/HR left this list on 2026-08-15 when SMC § 23.45.510 was read.
+    // What remains is genuinely unread: Seattle Mixed (SMC 23.48), industrial,
+    // and the superseded single-family code.
+    for (const z of ['SM-U-85', 'IG1 U/85', 'DOC1 U/450-U', 'SF 5000']) {
       expect(resolveSeattle(z).far, z).toBeNull()
     }
   })
@@ -278,5 +281,69 @@ describe('NR — Neighborhood Residential (SMC 23.44.050)', () => {
   it.each(['NC1-30', 'NC3-65 (M)', 'C1-40', 'NCTOD', 'NORTHGATE'])('does not capture %s', (z) => {
     const r = resolveSeattle(z)
     expect(r.farAlternatives).toBeUndefined()
+  })
+})
+
+describe('LR / MR / HR — SMC 23.45.510 Table A and Table B', () => {
+  it.each([
+    ['LR1 (M)', 1.3], ['LR1', 1.0],
+    ['LR2 (M)', 1.4], ['LR2', 1.1],
+    ['MR (M)', 4.5], ['MR', 3.2],
+  ])('%s = %f', (z, far) => {
+    expect(resolveSeattle(z).far).toBe(far)
+  })
+
+  it('LR2 RC (M) — the sampled gap district — resolves at 1.4', () => {
+    expect(resolveSeattle('LR2 RC (M)').far).toBe(1.4)
+  })
+
+  // ⚠️ LR3's ROW SPLITS ON A GEOGRAPHIC FACT (rule 13). The two MHA figures
+  // differ by 28% and the zone string cannot distinguish them.
+  it('LR3 with MHA REFUSES without the centre boundary', () => {
+    expect(resolveSeattle('LR3 (M)').far).toBeNull()
+    expect(resolveSeattle('LR3 (M)', undefined).far).toBeNull()
+  })
+
+  it('LR3 with MHA resolves once the boundary is known', () => {
+    expect(resolveSeattle('LR3 (M)', 'inside').far).toBe(2.3)
+    expect(resolveSeattle('LR3 (M)', 'outside').far).toBe(1.8)
+  })
+
+  it('LR3 without MHA is 1.2 either way — only the stacked figure needs the boundary', () => {
+    expect(resolveSeattle('LR3').far).toBe(1.2)
+    expect(resolveSeattle('LR3', 'inside').farAlternatives?.map((a) => a.far)).toEqual([1.5])
+    expect(resolveSeattle('LR3', 'outside').farAlternatives?.map((a) => a.far)).toEqual([1.3])
+    // With no boundary the base still stands and no stacked figure is guessed.
+    expect(resolveSeattle('LR3').farAlternatives).toBeUndefined()
+  })
+
+  // Rule 6: stacked dwelling units and the footnote-1 amenity option are
+  // programme choices, so the plain figure is the headline.
+  it('keeps stacked-unit figures as alternatives', () => {
+    expect(resolveSeattle('LR1 (M)').farAlternatives?.map((a) => a.far)).toEqual([1.5])
+    expect(resolveSeattle('LR2 (M)').farAlternatives?.map((a) => a.far)).toEqual([1.6, 1.8])
+  })
+
+  it('HR publishes the base 7, with the earned 15 as an alternative', () => {
+    const r = resolveSeattle('HR')
+    expect(r.far).toBe(7)
+    expect(r.farAlternatives?.map((a) => a.far)).toEqual([15])
+    expect(r.farAlternatives?.[0].label).toContain('23.58A')
+    expect(r.farAlternatives?.[0].source).toContain('23.45.510')
+  })
+
+  // ⚠️ ONLY the two types the code names count as inside. A Neighborhood Center
+  // is not one of them, and matching on the word "Center" would put those
+  // parcels on 2.3 instead of 1.8.
+  it('pins the centre types that count as inside', () => {
+    expect([...SEATTLE_INSIDE_CENTER_TYPES].sort()).toEqual(['REGIONAL CENTER', 'URBAN CENTER'])
+    expect(SEATTLE_INSIDE_CENTER_TYPES).not.toContain('NEIGHBORHOOD CENTER')
+    expect(SEATTLE_INSIDE_CENTER_TYPES.length).toBeGreaterThan(0)
+  })
+
+  it('does not let the multifamily branch capture NC/C or NR', () => {
+    expect(resolveSeattle('NC3-65 (M)').far).toBe(4.5) // NC table, not MR's 4.5
+    expect(resolveSeattle('NR').far).toBe(0.6)
+    expect(resolveSeattle('MPC-YT').far).toBeNull()
   })
 })

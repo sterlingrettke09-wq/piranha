@@ -5,7 +5,7 @@ import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
-import { resolveSeattle } from '../zoning/seattle'
+import { resolveSeattle, SEATTLE_INSIDE_CENTER_TYPES, type SeattleCenter } from '../zoning/seattle'
 import { recordAddress } from '../address'
 
 const ORG = 'https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services'
@@ -16,6 +16,15 @@ const HISTORIC = `${ORG}/Zoning_Overlays-Historic-Special_Review_Districts/Featu
 // MHA fee area (Low / Medium / High / Downtown-SLU) — drives the affordable-housing
 // payment rate, so we surface it for a parcel-aware fee note.
 const MHA = `${ORG}/MHA_Fee_Areas_1/FeatureServer/0`
+// Regional / urban centre boundaries — SMC Table A for 23.45.510 splits LR3 on
+// whether the lot is inside one, and the two MHA figures differ by 28% (1.8 vs
+// 2.3). Adopted by Ordinance 127375, effective 2026-01-21.
+//
+// OPTIONAL, and its failure costs only the LR3-with-MHA base: ../zoning/
+// seattle.ts refuses that row without a boundary rather than picking one. Every
+// other multifamily row resolves without it.
+const CENTERS =
+  'https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/Centers_Boundaries_2044/FeatureServer/0'
 
 function seattleHistoricName(features: Array<{ attributes: Record<string, unknown> }> | undefined): string | null {
   const f = features?.find((x) => String(x.attributes.TYPE ?? '').toUpperCase() === 'HISTORIC')
@@ -88,9 +97,10 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
       fetchFeatures(HISTORIC, lat, lng, ['OVERLAY', 'DESCRIPTION', 'TYPE']),
       fetchFeatures(MHA, lat, lng, ['FEE_AREA']),
+      fetchFeatures(CENTERS, lat, lng, ['PLACE_TYPE_NAME']),
     ]),
   ])
-  const [floodR, histR, mhaR] = optional
+  const [floodR, histR, mhaR, centersR] = optional
 
   // THE STATE SPLIT — a failed fetch refuses; an empty answer is still an answer.
   if (!parcelR.ok || !zoningR.ok) {
@@ -114,7 +124,21 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
   const sqft = Number(parcel.SQFTLOT)
   const zone = zoning?.ZONING ? String(zoning.ZONING) : null
 
-  const seaLimits = resolveSeattle(zone)
+  // THREE STATES, and the middle one is a real answer:
+  //   undefined — the read FAILED, so "inside" cannot be ruled out.
+  //   'outside'  — the layer ANSWERED and no Regional/Urban Center covers the
+  //                point. Note a Neighborhood Center is NOT one of the two the
+  //                code names, so it lands here.
+  //   'inside'   — a Regional Center or Urban Center covers it.
+  const centerType: SeattleCenter =
+    centersR.status !== 'fulfilled'
+      ? undefined
+      : SEATTLE_INSIDE_CENTER_TYPES.includes(
+            String(firstAttrs(centersR.value)?.PLACE_TYPE_NAME ?? '').trim().toUpperCase(),
+          )
+        ? 'inside'
+        : 'outside'
+  const seaLimits = resolveSeattle(zone, centerType)
 
 
   const info: ParcelInfo = {

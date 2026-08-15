@@ -346,11 +346,11 @@
       "noSpec": 4,
       "nonDevelopable": 1,
       "developable": 18,
-      "resolved": 16,
+      "resolved": 18,
       "unconstrained": 0,
       "plannedDevelopment": 0,
-      "gap": 2,
-      "indeterminate": 2,
+      "gap": 0,
+      "indeterminate": 0,
       "sampledOn": "2026-08-15"
     },
     "sf": {
