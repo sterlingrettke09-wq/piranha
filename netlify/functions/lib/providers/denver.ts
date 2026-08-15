@@ -40,7 +40,32 @@ const EHA = 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/
 // The shape of the code is intrinsic; a description string is an annotation that
 // may or may not be filled in. Detect on the shape, and treat the description as
 // a secondary confirmation only.
-function isFormerChapter59(zone?: unknown, description?: unknown): boolean {
+/** The layer's own marker for a district that is not a current DZC one. Every
+ *  Former Chapter 59 district carries it and no DZC district does — measured
+ *  2026-08-15 across all 184 distinct ZONE_DISTRICT values: 76 carry '999' and
+ *  108 do not, and the split is exactly legacy vs DZC. */
+const LEGACY_USE_FORM = '999'
+
+/**
+ * ⚠️ THE HYPHEN RULE MISSES 31 OF THE 76 LEGACY DISTRICTS, and the miss is not
+ * harmless. `C-MU-20`, `C-MU-30`, `R-MU-20`, `R-MU-30`, `T-MU-30`, `C-CCN-4/5/
+ * 7/8/12`, `D-AS-12+`, `D-AS-20+`, `B-8-A`, `R-2-A` and the rest all carry two
+ * or more hyphens, so the shape test called them current DZC. For the ones
+ * ending in a number the trailing token was then read as a STORY COUNT:
+ * measured 2026-08-15, C-MU-30 published 30 stories and 360 feet, and
+ * `farUnconstrained: true` on top — a fabricated height derived from a district
+ * CLASS number, plus a false claim that no FAR applies to a code this repo
+ * elsewhere records as one that "DID impose FAR in some districts".
+ *
+ * That is the same defect the B-3 note below describes, one heuristic later.
+ * The lesson is that a code's SHAPE is a proxy; the layer publishes the fact
+ * itself in ZONE_USE_FORM, so read the fact.
+ *
+ * The shape test is kept as a fallback for a missing field — it is right about
+ * the 45 districts it does catch — but the layer's own value wins.
+ */
+function isFormerChapter59(zone?: unknown, description?: unknown, useForm?: unknown): boolean {
+  if (useForm != null && String(useForm).trim() === LEGACY_USE_FORM) return true
   if (/former chapter 59/i.test(String(description ?? ''))) return true
   const z = String(zone ?? '').trim().toUpperCase()
   if (!z) return false
@@ -50,7 +75,12 @@ function isFormerChapter59(zone?: unknown, description?: unknown): boolean {
   return /^[A-Z]{1,3}-[0-9A-Z]+$/.test(z)
 }
 
-function denverMaxHeightFt(zone: string | null, heightStories: unknown, description?: unknown): number | null {
+function denverMaxHeightFt(
+  zone: string | null,
+  heightStories: unknown,
+  description?: unknown,
+  useForm?: unknown,
+): number | null {
   // ⚠️ ORDER IS THE WHOLE POINT. This used to derive `stories × 12` from the live
   // HEIGHT_STORIES field FIRST and only consult the curated table when the field
   // was absent — so a C-MX-5 parcel published 60 ft while the DZC prints 70 ft,
@@ -62,7 +92,7 @@ function denverMaxHeightFt(zone: string | null, heightStories: unknown, descript
   // an unsourced ft/story constant. Only where the DZC's printed feet have not
   // been read (`derived-estimate` — Articles 3–6, whose districts print different
   // feet per building form) does the live story count still drive an estimate.
-  const fromCode = resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description) })
+  const fromCode = resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description, useForm) })
   if (fromCode.heightBasis === 'code-stated' && fromCode.heightFt != null) return fromCode.heightFt
 
   const stories = Number(heightStories)
@@ -76,18 +106,23 @@ function denverMaxHeightFt(zone: string | null, heightStories: unknown, descript
 // live layer carries it in HEIGHT_STORIES — the provider already HAS this number
 // and was throwing it away by converting to feet, after which the envelope
 // divided by a different constant and drifted (C-MX-12 published 13 stories).
-function denverMaxStories(zone: string | null, heightStories: unknown, description?: unknown): number | null {
+function denverMaxStories(
+  zone: string | null,
+  heightStories: unknown,
+  description?: unknown,
+  useForm?: unknown,
+): number | null {
   const s = Number(heightStories)
   if (Number.isFinite(s) && s > 0) return s
-  return resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description) }).stories ?? null
+  return resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description, useForm) }).stories ?? null
 }
 
 // Whether the DZC imposes NO FAR on this district (a known absence) as opposed
 // to us simply not resolving one. Both previously surfaced as `maxFAR: null`,
 // which made defaultSpec fall back to an unsourced FAR-1.0 assumption on every
 // Denver parcel. Former-Chapter-59 and unrecognised codes stay unresolved.
-function denverFarUnconstrained(zone: string | null, description?: unknown): boolean {
-  return resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description) }).farUnconstrained === true
+function denverFarUnconstrained(zone: string | null, description?: unknown, useForm?: unknown): boolean {
+  return resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description, useForm) }).farUnconstrained === true
 }
 
 // Denver code (ZONE_DISTRICT, e.g. "U-SU-A", "G-MU-3", "C-MX-5", "D-C") →
@@ -150,7 +185,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
           ZONING,
           lat,
           lng,
-          ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES'],
+          ['ZONE_DISTRICT', 'ZONE_DESCRIPTION', 'OVERLAY_DISTRICT', 'HEIGHT_STORIES', 'ZONE_USE_FORM'],
           false,
           undefined,
           30,
@@ -197,7 +232,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const address = parcel.SITUS_ADDRESS_LINE1 ? String(parcel.SITUS_ADDRESS_LINE1).replace(/\s+/g, ' ').trim() : 'Selected location'
   const land = Number(parcel.LAND_AREA)
   const code = zoning?.ZONE_DISTRICT ? String(zoning.ZONE_DISTRICT) : null
-  const maxHeightFt = denverMaxHeightFt(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION)
+  const maxHeightFt = denverMaxHeightFt(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM)
 
   // Existing structure: improvement (building) value > 0 means a building stands
   // here. D_CLASS_CN is a human-readable use; COM/RES_ORIG_YEAR_BUILT the year.
@@ -232,9 +267,9 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       maxHeightFt,
       maxFAR: null,
       allowedUses: usesForZone(code),
-      ...(denverFarUnconstrained(code, zoning?.ZONE_DESCRIPTION) ? { farUnconstrained: true } : {}),
-      ...(denverMaxStories(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION) != null
-        ? { maxStories: denverMaxStories(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION) }
+      ...(denverFarUnconstrained(code, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM) ? { farUnconstrained: true } : {}),
+      ...(denverMaxStories(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM) != null
+        ? { maxStories: denverMaxStories(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM) }
         : {}),
     },
     lot: {

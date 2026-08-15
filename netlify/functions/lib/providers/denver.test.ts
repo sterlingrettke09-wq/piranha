@@ -40,12 +40,14 @@ interface DenverZoningAttrs {
   ZONE_DESCRIPTION: string
   OVERLAY_DISTRICT: string | null
   HEIGHT_STORIES: number | null
+  ZONE_USE_FORM: string | null
 }
 const DENVER_ZONING: DenverZoningAttrs = {
   ZONE_DISTRICT: 'C-MX-5',
   ZONE_DESCRIPTION: 'Urban Center, Mixed Use',
   OVERLAY_DISTRICT: null,
   HEIGHT_STORIES: 5,
+  ZONE_USE_FORM: 'MX',
 }
 const denverZoning = (over: Partial<DenverZoningAttrs> = {}) =>
   featureSet({ ...DENVER_ZONING, ...over })
@@ -227,5 +229,80 @@ describe('getDenverParcelInfo — resilience', () => {
     if (res.ok) return
     expect(res.code).toBe('NO_PARCEL')
     expect(res.status).toBe(404)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ZONE_USE_FORM = '999' is the layer's OWN marker for a Former Chapter 59
+// district. Measured 2026-08-15 across all 184 distinct ZONE_DISTRICT values:
+// 76 carry it, 108 do not, and the split is exactly legacy vs DZC.
+//
+// The hyphen heuristic it replaces missed 31 of those 76 — every code with two
+// or more hyphens — and for the ones ending in a number the trailing token was
+// then read as a STORY COUNT. This is the B-3 defect one heuristic later.
+// ---------------------------------------------------------------------------
+describe('Former Chapter 59 detection reads the layer, not the code shape', () => {
+  const legacy = async (code: string) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({
+        'MapServer/0': denverParcel(),
+        // No HEIGHT_STORIES: a legacy polygon carries none, and the point is
+        // that the CODE must not manufacture one either.
+        'MapServer/1': denverZoning({ ZONE_DISTRICT: code, ZONE_DESCRIPTION: '', HEIGHT_STORIES: null, ZONE_USE_FORM: '999' }),
+        ODC_HIST_LANDMARKDISTRICT_A: featureSet(),
+        NFHL: featureSet({ FLD_ZONE: 'X' }),
+        EHA_WebService: featureSet({ MarketArea: 'High' }),
+      }),
+    )
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) throw new Error('refused')
+    return res.info.zoning
+  }
+
+  // Each of these has TWO OR MORE hyphens, so the shape test called it a
+  // current DZC district. C-MU-30 published 30 stories and 360 ft before this.
+  it.each(['C-MU-20', 'C-MU-30', 'R-MU-20', 'R-MU-30', 'T-MU-30', 'C-CCN-12'])(
+    '%s: the trailing number is a district CLASS, never a storey count',
+    async (code) => {
+      const z = await legacy(code)
+      expect(z.maxStories ?? null).toBeNull()
+      expect(z.maxHeightFt).toBeNull()
+    },
+  )
+
+  // The second half of the same fabrication: Chapter 59 DID impose FAR in some
+  // districts and this repo does not carry that table, so claiming none applies
+  // asserts an absence nobody established (rule 5).
+  it.each(['C-MU-30', 'C-CCN-12', 'H-1-A', 'R-2-A'])('%s never claims that no FAR applies', async (code) => {
+    const z = await legacy(code)
+    expect(z.farUnconstrained).toBeUndefined()
+    expect(z.maxFAR).toBeNull()
+  })
+
+  it('still catches the single-hyphen legacy codes the shape test already got', async () => {
+    for (const code of ['B-3', 'R-2', 'I-B']) {
+      const z = await legacy(code)
+      expect(z.maxStories ?? null, code).toBeNull()
+      expect(z.maxHeightFt, code).toBeNull()
+    }
+  })
+
+  it('leaves a current DZC district alone', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({
+        'MapServer/0': denverParcel(),
+        'MapServer/1': denverZoning({ ZONE_DISTRICT: 'C-MX-5', ZONE_USE_FORM: 'MX', HEIGHT_STORIES: 5 }),
+        ODC_HIST_LANDMARKDISTRICT_A: featureSet(),
+        NFHL: featureSet({ FLD_ZONE: 'X' }),
+        EHA_WebService: featureSet({ MarketArea: 'High' }),
+      }),
+    )
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    // The DZC figure, not a 999 refusal.
+    expect(res.info.zoning.maxHeightFt).not.toBeNull()
+    expect(res.info.zoning.farUnconstrained).toBe(true)
   })
 })
