@@ -67,7 +67,9 @@
 //     encoded below. Table 20-40 states a FAR outright; Tables 20-100 and
 //     20-120 have no FAR row at all.
 //   · Chapter 20.70 (downtown, the DC districts) and 20.75 (pedestrian-
-//     oriented, MS-C / MS-G) — NOT read. Gaps.
+//     oriented, MS-C / MS-G) — READ 2026-08-15. Neither chapter has a
+//     floor-area-ratio section anywhere in the parts that carry bulk rules, so
+//     both are encoded below as known absences.
 //   · Chapter 20.60 (PD — planned development), where standards come from the
 //     approved PD permit rather than the code. § 20.100.1030(C)(2) says the
 //     same: "The site is located in a planned development zoning district. All
@@ -94,12 +96,19 @@ const T_20120 =
 const T_20100 =
   'San Jose Municipal Code § 20.40.200, Table 20-100 (commercial zoning districts development standards) — the table has no Maximum Floor Area Ratio row'
 
+const T_2070 =
+  'San Jose Municipal Code Chapter 20.70 Part 3 — the downtown chapter has no floor-area-ratio section; its development regulations are § 20.70.200 (height), § 20.70.210 (setbacks) and § 20.70.220 (DC-NT1, Table 20-150, keyed by street segment)'
+const T_2075 =
+  'San Jose Municipal Code Chapter 20.75 Part 2 — none of its ten development-regulation sections is a floor-area-ratio section; bulk is lot size, building placement, setbacks, frontage, height and stories'
+
 /** Districts whose figures come from a table other than § 20.30.200's. */
 const SOURCE_FOR: Readonly<Record<string, string>> = Object.freeze({
   OS: T_2040,
   A: T_2040,
   CIC: T_20120, TEC: T_20120, IP: T_20120, LI: T_20120, HI: T_20120,
   CO: T_20100, CP: T_20100, CN: T_20100, CG: T_20100, PQP: T_20100,
+  DC: T_2070, 'DC-NT1': T_2070,
+  'MS-C': T_2075, 'MS-G': T_2075,
 })
 
 export interface SanJoseZone {
@@ -169,6 +178,36 @@ const ZONES: Readonly<Record<string, SanJoseZone>> = Object.freeze({
   CN: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
   CG: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
   PQP: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+
+  // ── Chapter 20.70, downtown. NO FAR SECTION IN THE CHAPTER. ──
+  // Part 3 (Development Regulations) has exactly three sections: § 20.70.200
+  // "Height, DC districts", § 20.70.210 "Setback requirements, DC districts",
+  // § 20.70.220 "Development regulations - DC-NT1 district". Downtown is
+  // regulated by HEIGHT and SETBACK, not floor area. Checked across the parts
+  // that could carry a bulk rule — Part 1 (General), Part 3, Part 6 (General
+  // Regulations) — and "floor area ratio" appears in none of them. DC-NT1's
+  // Table 20-150 confirms it from the other side: its columns are Location |
+  // Height Limit | Setback | Special Conditions | Supplemental Standards, and
+  // it is keyed by STREET SEGMENT rather than by district.
+  DC: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  'DC-NT1': { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+
+  // ── Chapter 20.75, pedestrian-oriented / MS main street. Same finding. ──
+  // Part 2 (Development Regulations) has ten sections — lot size, building
+  // placement and its exceptions, setbacks, building frontage, commercial
+  // building design, building height and story regulations, residential
+  // recreation space — and not one of them is a floor-area-ratio section.
+  // (§ 20.75.100 itself is only the pointer sentence "All development in the
+  // pedestrian oriented districts shall conform to the regulations set forth in
+  // this part"; the standards are its siblings.)
+  //
+  // NOTE: the provider separately records MS-C and MS-G as unresolved for USES,
+  // because § 20.75.200's use table splits MS-G into "Ground Floor Commercial
+  // Frontage" and "Residential Street Frontage" sub-columns that the parcel
+  // layer cannot resolve. That is a USE gap and is untouched by this FAR
+  // finding — the two are independent.
+  'MS-C': { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  'MS-G': { maxHeightFt: null, maxStories: null, farUnconstrained: true },
 })
 
 export const SAN_JOSE_ZONE_CODES: readonly string[] = Object.freeze(Object.keys(ZONES))

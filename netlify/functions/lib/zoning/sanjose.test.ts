@@ -10,7 +10,7 @@ import {
 
 describe('inventory', () => {
   it('pins the districts read from four chapters (rule 20)', () => {
-    expect(SAN_JOSE_ZONE_CODES.length).toBe(20)
+    expect(SAN_JOSE_ZONE_CODES.length).toBe(24)
     expect([...SAN_JOSE_ZONE_CODES].sort()).toEqual(
       [
         // § 20.30.200 residential
@@ -21,6 +21,8 @@ describe('inventory', () => {
         'CIC', 'TEC', 'IP', 'LI', 'HI',
         // § 20.40.200 Table 20-100 commercial
         'CO', 'CP', 'CN', 'CG', 'PQP',
+        // Ch. 20.70 downtown, Ch. 20.75 pedestrian-oriented
+        'DC', 'DC-NT1', 'MS-C', 'MS-G',
       ].sort(),
     )
   })
@@ -97,7 +99,7 @@ describe('scope (rule 23)', () => {
     expect(resolveSanJose(code).farUnconstrained).toBe(false)
   })
 
-  it.each(['DC', 'DC-NT1', 'MS-G', 'MS-C', 'UV', 'MUC', 'UR', 'TR', 'UVC', 'MUN'])(
+  it.each(['UV', 'MUC', 'UR', 'TR', 'UVC', 'MUN', 'TEC(PD)', 'ZZZ'])(
     'leaves the out-of-scope district %s unresolved',
     (code) => {
       expect(sanJoseZoneKey(code)).toBeNull()
@@ -111,13 +113,15 @@ describe('scope (rule 23)', () => {
   // The distinction the whole module turns on: an unknown district and a known
   // one must not look the same. Both have maxFAR null; only one is an answer.
   it('separates a known absence from an unknown district', () => {
-    // CN was the example here until 2026-08-14, when Table 20-100 was read and
-    // CN became a known absence. DC is still genuinely unread, which is the
-    // point of the test: both return maxFAR null and only one is an answer.
+    // This example has moved twice as chapters were read: CN became known on
+    // 2026-08-14 (Table 20-100), DC on 2026-08-15 (Chapter 20.70). UV is an
+    // urban-village district whose FAR is deliberately WITHHELD rather than
+    // absent, so it is the durable example: both return maxFAR null and only
+    // one of the two is an answer.
     expect(resolveSanJose('R-1-8').maxFAR).toBeNull()
-    expect(resolveSanJose('DC').maxFAR).toBeNull()
+    expect(resolveSanJose('UV').maxFAR).toBeNull()
     expect(resolveSanJose('R-1-8').farUnconstrained).toBe(true)
-    expect(resolveSanJose('DC').farUnconstrained).toBe(false)
+    expect(resolveSanJose('UV').farUnconstrained).toBe(false)
   })
 
   it('returns null for absent or malformed input', () => {
@@ -171,5 +175,37 @@ describe('the three tables read on 2026-08-14', () => {
     // The regression the flattened-text read would have caused.
     expect(resolveSanJose('A').farUnconstrained).toBe(false)
     expect(resolveSanJose('A').maxFAR).not.toBeNull()
+  })
+})
+
+describe('chapters 20.70 and 20.75 — no FAR section in either', () => {
+  // Neither chapter has a floor-area-ratio section in the parts that carry bulk
+  // rules. Downtown is height + setback (§ 20.70.200/.210/.220); the
+  // pedestrian-oriented districts are lot size, placement, setbacks, frontage,
+  // height and stories. Checked part by part, not by searching for a phrase.
+  it.each(['DC', 'DC-NT1'])('downtown %s reports no FAR as an answer', (code) => {
+    const r = resolveSanJose(code)
+    expect(r.farUnconstrained).toBe(true)
+    expect(r.maxFAR).toBeNull()
+    expect(r.source).toContain('20.70')
+  })
+
+  it.each(['MS-C', 'MS-G'])('main street %s reports no FAR as an answer', (code) => {
+    const r = resolveSanJose(code)
+    expect(r.farUnconstrained).toBe(true)
+    expect(r.maxFAR).toBeNull()
+    expect(r.source).toContain('20.75')
+  })
+
+  it('leaves the MS use question untouched', () => {
+    // The provider records MS-G as unresolved for USES because § 20.75.200's
+    // table splits it by street frontage. That is independent of this FAR
+    // finding, and resolving the FAR must not imply the use is resolved.
+    expect(resolveSanJose('MS-G').farUnconstrained).toBe(true)
+    expect(resolveSanJose('MS-G').maxHeightFt).toBeNull()
+  })
+
+  it('still does not resolve a downtown PD parcel from the base table', () => {
+    expect(sanJoseZoneKey('DC(PD)')).toBeNull()
   })
 })
