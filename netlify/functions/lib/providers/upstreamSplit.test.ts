@@ -480,6 +480,31 @@ const CASES: Case[] = [
       },
       coastal(),
       flood(),
+      {
+        label: 'community plan area',
+        substr: 'CMTY_PLAN_SD',
+        // A DISCLOSED gap, not a silent removal: with the plan area resolved
+        // the field carries a stated 2.0, and without it the field is simply
+        // absent and the pipeline withholds the verdict. The reader is told the
+        // floor area is an assumption rather than shown a number.
+        publishes: 'disclosed-gap',
+        discloses: { gapField: 'zoning.maxFAR', answeredValue: 2 },
+        // The Division 6 industrial FAR is a JOINT function of zone and
+        // community plan (rule 13). Table 131-06C states 2.0; footnote 11 makes
+        // it 0.50 in Otay Mesa. Without the plan area we cannot rule Otay Mesa
+        // out, so ../zoning/sandiego.ts REFUSES rather than publishing the base
+        // figure — a failed read costs the FAR, which is the correct direction:
+        // defaulting to 2.0 would overstate an Otay Mesa parcel fourfold.
+        why: 'a failed read leaves the industrial FAR unresolved, because the base 2.0 cannot be published without ruling out the Otay Mesa 0.50 override',
+        // The probe parcel is downtown, where the community plan changes
+        // nothing — the FAR only depends on it in a Division 6 industrial zone.
+        // So activate one: an IH-2-1 parcel in North Park resolves to the base
+        // 2.0, and faulting the plan layer takes it to null.
+        activate: [
+          { substr: 'Zoning_Base', attrs: { ZONE_NAME: 'IH-2-1' } },
+          { substr: 'CMTY_PLAN_SD', attrs: { cpname: 'NORTH PARK' } },
+        ],
+      },
     ],
   },
   {

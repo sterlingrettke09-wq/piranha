@@ -62,12 +62,42 @@ export interface SanDiegoZone {
   alternatives?: readonly { label: string; far: number }[]
   /** True where the division's own structure shows no FAR applies at all. */
   farUnconstrained?: boolean
+  /** Division 6 zone: the FAR is a joint function of zone and community plan. */
+  industrial?: boolean
   /** The exact table this row was read from, for the citation trail. */
   source: string
 }
 
 const DEV_REGS = 'San Diego Municipal Code § 131.0431, Development Regulations Table for Residential Zones (7-2026)'
 const FAR_SEC = 'San Diego Municipal Code § 131.0446, Maximum Floor Area Ratio in Residential Zones (7-2026)'
+/** Table 131-06C's own FAR row, read with its header `1st & 2nd >> IP- IL- IH-
+ *  IS- IBT-`: `2.0(11) 2.0(7)(11) 2.0(11) 2.0(11) 2.0(7)(11)`. Every base value
+ *  is the SAME, so a column misalignment cannot change the answer here — the
+ *  risk in this division is the two footnotes, not the columns. */
+export const INDUSTRIAL_BASE_FAR = 2.0
+
+/** § 131.0632 footnote 7. Applies to IL and IBT only — the two columns carrying
+ *  a (7). */
+export const KEARNY_MESA_FAR = 1.0
+const FN7_FAMILIES = new Set(['IL', 'IBT'])
+
+/**
+ * The community plan names that change the industrial answer, EXACT-matched.
+ *
+ * ⚠️ `OTAY MESA` and `OTAY MESA-NESTOR` are two different plan areas in
+ * SANDAG's layer. A substring match on "OTAY MESA" would apply the 0.50 cap to
+ * Otay Mesa-Nestor, which footnote 11 does not name — understating a parcel by
+ * 4×. Enumerated from the layer's own 57 distinct `cpname` values rather than
+ * guessed.
+ */
+export const CP_KEARNY_MESA = 'KEARNY MESA'
+export const CP_OTAY_MESA = 'OTAY MESA'
+
+const IND_TABLE =
+  'San Diego Municipal Code § 131.0632 and Table 131-06C (Development Regulations for Industrial Zones, 7-2026)'
+const IND_OTAY =
+  'San Diego Municipal Code § 131.0632, Table 131-06C footnote 11: "Within the Otay Mesa Community Plan area, the maximum floor area ratio is 0.50 unless a final map has been recorded prior to May 18, 2014" — the recording date is not in the parcel layer, so the figure cannot be resolved here'
+
 const AG_TABLE =
   'San Diego Municipal Code § 131.0331, Table 131-03C (Development Regulations for Agricultural Zones, 7-2026) — the table states Max Lot Coverage and has no Max Floor Area Ratio row, and Division 3 has no maximum-FAR section'
 
@@ -202,6 +232,22 @@ const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
   'AG-1-2': { far: null, farUnconstrained: true, source: AG_TABLE },
   'AR-1-1': { far: null, farUnconstrained: true, source: AG_TABLE },
   'AR-1-2': { far: null, farUnconstrained: true, source: AG_TABLE },
+
+  // ── Industrial, Division 6. FAR depends on the COMMUNITY PLAN AREA as well
+  // as the zone (rule 13), so these carry no flat `far` — resolveSanDiego
+  // computes them from the base figure and the two footnotes. Listed here so
+  // the district is KNOWN (and so `sanDiegoZoneKey` accepts it); the value
+  // comes from `industrialFar` below.
+  'IP-1-1': { far: null, industrial: true, source: IND_TABLE },
+  'IP-2-1': { far: null, industrial: true, source: IND_TABLE },
+  'IP-3-1': { far: null, industrial: true, source: IND_TABLE },
+  'IL-1-1': { far: null, industrial: true, source: IND_TABLE },
+  'IL-2-1': { far: null, industrial: true, source: IND_TABLE },
+  'IL-3-1': { far: null, industrial: true, source: IND_TABLE },
+  'IH-1-1': { far: null, industrial: true, source: IND_TABLE },
+  'IH-2-1': { far: null, industrial: true, source: IND_TABLE },
+  'IS-1-1': { far: null, industrial: true, source: IND_TABLE },
+  'IBT-1-1': { far: null, industrial: true, source: IND_TABLE },
 })
 
 export const SAN_DIEGO_ZONE_CODES: readonly string[] = Object.freeze(Object.keys(ZONES))
@@ -250,10 +296,16 @@ export function rsFarForLotArea(lotSqFt: number): number {
  * not a default band. A guessed band is an invented number wearing a citation
  * (rule 4), and the 0.70/0.45 spread across the table is 56%.
  */
-export function resolveSanDiego(code: string | null | undefined, lotSqFt: number | null | undefined): SanDiegoLimits {
+export function resolveSanDiego(
+  code: string | null | undefined,
+  lotSqFt: number | null | undefined,
+  communityPlan?: string | null,
+): SanDiegoLimits {
   const key = sanDiegoZoneKey(code)
   if (!key) return UNRESOLVED
   const zone = ZONES[key]
+
+  if (zone.industrial) return industrialFar(key, communityPlan)
 
   const alternatives = (zone.alternatives ?? []).map((a) => ({ ...a, source: zone.source }))
 
@@ -272,4 +324,45 @@ export function resolveSanDiego(code: string | null | undefined, lotSqFt: number
   }
 
   return { maxFAR: zone.far, farUnconstrained: false, farAlternatives: alternatives, source: zone.source }
+}
+
+
+/**
+ * Industrial FAR — a joint function of the zone family and the community plan
+ * area (rule 13). Table 131-06C states 2.0 for every family; two footnotes move
+ * it geographically.
+ *
+ * THE UNKNOWN CASE FAILS CLOSED. With no community plan resolved we cannot rule
+ * out Otay Mesa, where the figure may be 0.50 — a quarter of the base. So an
+ * absent or failed community-plan read yields UNRESOLVED, never the base 2.0.
+ * Publishing 2.0 for an Otay Mesa parcel would overstate it fourfold, and that
+ * number flows into unit counts, fees and hurdles.
+ */
+function industrialFar(key: string, communityPlan?: string | null): SanDiegoLimits {
+  // THREE STATES, and two of them are NOT the same (the state split this repo
+  // runs on):
+  //   · undefined — the layer was not read, or the read FAILED. Otay Mesa
+  //     cannot be ruled out, so refuse.
+  //   · null      — the layer ANSWERED and no plan polygon covers the point.
+  //     That is a fact: the parcel is outside every community plan area, so it
+  //     is outside Otay Mesa and Kearny Mesa, and the base figure applies.
+  //   · a name    — match it exactly.
+  // Collapsing the first two would either refuse on a real answer or publish
+  // on a failed fetch; the first is merely lossy, the second is the defect.
+  if (communityPlan === undefined) return UNRESOLVED
+  const cp = communityPlan === null ? '' : String(communityPlan).trim().toUpperCase()
+
+  // Otay Mesa: 0.50 "unless a final map has been recorded prior to May 18,
+  // 2014". The parcel layer carries no map-recording date, so BOTH 0.50 and
+  // 2.0 remain live and neither can be published. A gap, with the reason.
+  if (cp === CP_OTAY_MESA) {
+    return { maxFAR: null, farUnconstrained: false, farAlternatives: [], source: IND_OTAY }
+  }
+
+  const family = key.split('-')[0]
+  if (cp === CP_KEARNY_MESA && FN7_FAMILIES.has(family)) {
+    return { maxFAR: KEARNY_MESA_FAR, farUnconstrained: false, farAlternatives: [], source: IND_TABLE }
+  }
+
+  return { maxFAR: INDUSTRIAL_BASE_FAR, farUnconstrained: false, farAlternatives: [], source: IND_TABLE }
 }

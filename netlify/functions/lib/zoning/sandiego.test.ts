@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
+  CP_KEARNY_MESA,
+  CP_OTAY_MESA,
+  INDUSTRIAL_BASE_FAR,
+  KEARNY_MESA_FAR,
   resolveSanDiego,
   sanDiegoZoneKey,
   rsFarForLotArea,
@@ -18,8 +22,8 @@ describe('inventory', () => {
   // Rule 20: a check that can pass by finding nothing is not a check. Pin the
   // size AND the membership, so a regex that silently stops matching goes RED
   // rather than green.
-  it('covers the 33 Division 4 residential zones plus the 4 Division 3 agricultural ones', () => {
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(37)
+  it('covers 33 residential, 4 agricultural and 10 industrial zones', () => {
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(47)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',
@@ -122,7 +126,7 @@ describe('scope (rule 23)', () => {
   // return null and keep reading downstream as a GAP. If one of these ever
   // starts resolving, an out-of-scope table has been folded in without its
   // source being read.
-  it.each(['CC-3-4', 'CN-1-3', 'IL-2-1', 'IH-2-1', 'OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
+  it.each(['CC-3-4', 'CN-1-3', 'CV-1-1', 'OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
     'leaves the out-of-scope zone %s unresolved',
     (code) => {
       expect(sanDiegoZoneKey(code)).toBeNull()
@@ -169,6 +173,76 @@ describe('agricultural zones — a structural absence (rule 5)', () => {
     // because their divisions state FARs this module has not encoded.
     expect(resolveSanDiego('AR-1-1', 40_000).farUnconstrained).toBe(true)
     expect(resolveSanDiego('CC-2-3', 40_000).farUnconstrained).toBe(false)
-    expect(resolveSanDiego('IH-2-1', 40_000).farUnconstrained).toBe(false)
+    expect(resolveSanDiego('CC-2-3', 40_000).maxFAR).toBeNull()
+  })
+})
+
+describe('industrial — a JOINT dependency on zone and community plan (rule 13)', () => {
+  // Table 131-06C states 2.0 for every zone family, so a column misalignment
+  // cannot change the answer. The risk here is entirely in the two footnotes.
+  it.each(['IP-2-1', 'IL-2-1', 'IH-2-1', 'IS-1-1', 'IBT-1-1'])(
+    '%s is the base 2.0 outside the two named community plans',
+    (code) => {
+      const r = resolveSanDiego(code, 40_000, 'NORTH PARK')
+      expect(r.maxFAR).toBe(INDUSTRIAL_BASE_FAR)
+      expect(r.source).toContain('131.0632')
+    },
+  )
+
+  // Footnote 7 carries a (7) on the IL and IBT columns only.
+  it('Kearny Mesa drops IL and IBT to 1.0 and leaves the rest at 2.0', () => {
+    expect(resolveSanDiego('IL-2-1', 40_000, CP_KEARNY_MESA).maxFAR).toBe(KEARNY_MESA_FAR)
+    expect(resolveSanDiego('IBT-1-1', 40_000, CP_KEARNY_MESA).maxFAR).toBe(KEARNY_MESA_FAR)
+    expect(resolveSanDiego('IP-2-1', 40_000, CP_KEARNY_MESA).maxFAR).toBe(INDUSTRIAL_BASE_FAR)
+    expect(resolveSanDiego('IH-2-1', 40_000, CP_KEARNY_MESA).maxFAR).toBe(INDUSTRIAL_BASE_FAR)
+  })
+
+  // Footnote 11's 0.50 applies "unless a final map has been recorded prior to
+  // May 18, 2014". The parcel layer has no recording date, so 0.50 and 2.0 are
+  // both live and NEITHER can be published.
+  it.each(['IP-2-1', 'IL-2-1', 'IH-2-1', 'IBT-1-1'])('%s stays a gap in Otay Mesa', (code) => {
+    const r = resolveSanDiego(code, 40_000, CP_OTAY_MESA)
+    expect(r.maxFAR).toBeNull()
+    expect(r.farUnconstrained).toBe(false)
+    expect(r.source).toContain('final map')
+  })
+
+  // ⚠️ OTAY MESA and OTAY MESA-NESTOR are DIFFERENT plan areas in SANDAG's
+  // layer. Footnote 11 names only the former. A substring match would cap
+  // Otay Mesa-Nestor at 0.50 — understating it fourfold.
+  it('does not apply the Otay Mesa cap to Otay Mesa-Nestor', () => {
+    expect(resolveSanDiego('IH-2-1', 40_000, 'OTAY MESA-NESTOR').maxFAR).toBe(INDUSTRIAL_BASE_FAR)
+  })
+
+  // THE STATE SPLIT. An unread/failed layer and a layer that answered "no
+  // polygon here" are different facts and must not collapse:
+  //   · undefined — not read or the read failed. Otay Mesa cannot be ruled
+  //     out, so refuse. Defaulting to 2.0 here would overstate fourfold.
+  //   · null      — the layer ANSWERED and no plan covers the point, so the
+  //     parcel is outside Otay Mesa and Kearny Mesa and the base applies.
+  // This was wrong in the first implementation: both returned UNRESOLVED, and
+  // the upstream-split guard caught it by asserting on the EMPTY run.
+  it('refuses only when the community plan was not read', () => {
+    const r = resolveSanDiego('IH-2-1', 40_000, undefined)
+    expect(r.maxFAR).toBeNull()
+    expect(r.farUnconstrained).toBe(false)
+    expect(r.source).toBeNull()
+  })
+
+  it.each([null, '', '   '])('takes the base 2.0 when the layer answered with %p', (cp) => {
+    // An answer of "no community plan covers this point" rules Otay Mesa out.
+    expect(resolveSanDiego('IH-2-1', 40_000, cp).maxFAR).toBe(INDUSTRIAL_BASE_FAR)
+  })
+
+  it('is case- and whitespace-insensitive on the plan name', () => {
+    expect(resolveSanDiego('IL-2-1', 40_000, ' kearny mesa ').maxFAR).toBe(KEARNY_MESA_FAR)
+    expect(resolveSanDiego('IH-2-1', 40_000, 'otay mesa').maxFAR).toBeNull()
+  })
+
+  it('never reports an industrial zone as having no FAR', () => {
+    // The code states 2.0; an absence would be a different and false claim.
+    for (const c of ['IP-1-1', 'IL-3-1', 'IH-1-1', 'IS-1-1', 'IBT-1-1']) {
+      expect(resolveSanDiego(c, 40_000, 'NORTH PARK').farUnconstrained).toBe(false)
+    }
   })
 })

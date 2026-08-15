@@ -26,6 +26,14 @@ const CA_ZONE6_FT = 2230
 const DSD = 'https://webmaps.sandiego.gov/arcgis/rest/services/DSD'
 const ZONING = `${DSD}/Zoning_Base/MapServer/0`
 const HISTORIC = 'https://webmaps.sandiego.gov/arcgis/rest/services/Planning/Historic_Preservation_Resources/MapServer/2'
+// SANDAG's City of San Diego community plan areas. Needed because the Division 6
+// industrial FAR is a JOINT function of zone and community plan (rule 13):
+// Table 131-06C states 2.0, footnote 7 makes it 1.0 in Kearny Mesa, footnote 11
+// makes it 0.50 in Otay Mesa. 57 distinct `cpname` values, enumerated 2026-08-15.
+// OPTIONAL: a failed read leaves cpname null, and ../zoning/sandiego.ts REFUSES
+// to publish an industrial FAR without it rather than falling back to the base
+// figure — which would overstate an Otay Mesa parcel fourfold.
+const COMMUNITY_PLAN = 'https://geo.sandag.org/server/rest/services/Hosted/CMTY_PLAN_SD/FeatureServer/0'
 
 // ── THE JURISDICTION GATE ─────────────────────────────────────────────────
 // The parcel layer is SANDAG's REGIONAL fabric; the zoning layer is the City's.
@@ -159,9 +167,10 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
       fetchParcelSnap(COASTAL_HEIGHT, lat, lng, ['ZONENAME']),
       fetchFeatures(COASTAL_ZONE, lat, lng, ['FID']),
       fetchFeatures(ENDPOINTS.flood, lat, lng, ['FLD_ZONE']),
+      fetchFeatures(COMMUNITY_PLAN, lat, lng, ['cpname', 'cpcode']),
     ]),
   ])
-  const [gateR, histR, chlozR, coastalR, floodR] = optional
+  const [gateR, histR, chlozR, coastalR, floodR, cpR] = optional
 
   // Runs BEFORE the parcel is read and BEFORE the state split below.
   const outside = outsideCity('sandiego', gateR, t0)
@@ -236,7 +245,13 @@ export async function getSanDiegoParcelInfo(lat: number, lng: number): Promise<P
 
   // Residential base-zone FAR, from the Chapter 13 Art. 1 Div. 4 tables. Passed
   // the lot size because six RS zones state their ratio as a function of it.
-  const sdLimits = resolveSanDiego(zone, lotSqFt)
+  // Community plan area — only the industrial districts need it, and the
+  // resolver refuses rather than defaults when it is absent.
+  // undefined on a FAILED read, null when the layer answered with no polygon —
+  // ../zoning/sandiego.ts treats those differently and must be able to tell.
+  const cpName: string | null | undefined =
+    cpR.status === 'fulfilled' ? ((firstAttrs(cpR.value)?.cpname as string | undefined) ?? null) : undefined
+  const sdLimits = resolveSanDiego(zone, lotSqFt, cpName)
 
   // City-owned land is the only ownership signal available here.
   const ownerPublic = cityLand?.COM_NAME != null || cityLand?.DES_USE != null
