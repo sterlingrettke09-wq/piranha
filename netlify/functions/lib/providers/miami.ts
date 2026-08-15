@@ -201,6 +201,11 @@ export async function getMiamiParcelInfo(lat: number, lng: number): Promise<Parc
       article: zoning?.Transect_Desc ? String(zoning.Transect_Desc).trim() : null,
       maxHeightFt: limits.heightFt,
       maxFAR: limits.maxFAR,
+      // Miami 21 states "d. Floor Lot Ratio (FLR) N/A" for T3/T4/T5 and D1/D2/
+      // D3 (Article 5 Illustrations 5.3-5.5, 5.9-5.10). A known absence, not a
+      // lookup we failed — the module carried that finding in a comment for
+      // months without a way to publish it.
+      ...(limits.farUnconstrained ? { farUnconstrained: true } : {}),
       // The code states stories exactly; passing it through stops the
       // envelope re-deriving a story count from feet with a different constant.
       ...(limits.stories != null ? { maxStories: limits.stories } : {}),

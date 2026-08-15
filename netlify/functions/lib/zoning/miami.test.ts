@@ -5,7 +5,7 @@ import { resolveMiami, miamiUsesForZone, MIAMI_MAX_FT_PER_STORY } from './miami'
 // live Miami 21 Primary Zoning layer (36 distinct zones, 2026-08-03).
 describe('resolveMiami — T6 (Urban Core), the only zones with published heights', () => {
   it('reads max stories from the layer and converts to feet', () => {
-    expect(resolveMiami('T6-48A-O', '48')).toEqual({ heightFt: 48 * MIAMI_MAX_FT_PER_STORY, stories: 48, maxFAR: 11 })
+    expect(resolveMiami('T6-48A-O', '48')).toEqual({ heightFt: 48 * MIAMI_MAX_FT_PER_STORY, stories: 48, maxFAR: 11, farUnconstrained: false })
     expect(resolveMiami('T6-8-L', '8').stories).toBe(8)
     expect(resolveMiami('T6-80-O', '80').stories).toBe(80)
     expect(resolveMiami('T6-12-R', '12').stories).toBe(12)
@@ -19,25 +19,28 @@ describe('resolveMiami — T6 (Urban Core), the only zones with published height
 describe('resolveMiami — T3 is exact (Article 5 §5.3.2(e): two stories, 25 ft)', () => {
   it('returns 25 ft for every T3 intensity', () => {
     for (const z of ['T3-R', 'T3-L', 'T3-O']) {
-      expect(resolveMiami(z, ' ')).toEqual({ heightFt: 25, stories: 2, maxFAR: null })
+      expect(resolveMiami(z, ' ')).toEqual({ heightFt: 25, stories: 2, maxFAR: null, farUnconstrained: true })
     }
   })
 })
 
 describe('resolveMiami — zones whose limits are not in public data', () => {
-  it('returns nulls for T4/T5/T1/D/CI/CS rather than guessing', () => {
-    // Article 5 defers these to Article 4 Table 2, which the GIS layer omits.
+  it('returns null HEIGHTS for T4/T5/T1/D/CI/CS rather than guessing', () => {
+    // Article 5 defers these HEIGHTS to Article 4 Table 2, which states them in
+    // stories and which the GIS layer omits for everything but T6.
     for (const z of ['T4-R', 'T4-L', 'T4-O', 'T5-R', 'T5-L', 'T5-O', 'T1', 'D1', 'D2', 'D3', 'CI', 'CS']) {
-      expect(resolveMiami(z, ' ')).toEqual({ heightFt: null, stories: null, maxFAR: null })
+      expect(resolveMiami(z, ' ').heightFt, z).toBeNull()
+      expect(resolveMiami(z, ' ').stories, z).toBeNull()
+      expect(resolveMiami(z, ' ').maxFAR, z).toBeNull()
     }
     // CI-HD is no longer all-null: Table 2 gives it an FLR (see below). Its
     // height stays unknown.
     expect(resolveMiami('CI-HD', ' ').heightFt).toBeNull()
   })
   it('handles missing / empty input', () => {
-    expect(resolveMiami(null)).toEqual({ heightFt: null, stories: null, maxFAR: null })
-    expect(resolveMiami('')).toEqual({ heightFt: null, stories: null, maxFAR: null })
-    expect(resolveMiami(undefined)).toEqual({ heightFt: null, stories: null, maxFAR: null })
+    expect(resolveMiami(null)).toEqual({ heightFt: null, stories: null, maxFAR: null, farUnconstrained: false })
+    expect(resolveMiami('')).toEqual({ heightFt: null, stories: null, maxFAR: null, farUnconstrained: false })
+    expect(resolveMiami(undefined)).toEqual({ heightFt: null, stories: null, maxFAR: null, farUnconstrained: false })
   })
 })
 
@@ -79,7 +82,7 @@ describe('resolveMiami — base FLR from Article 4 Table 2 (was null for all of 
   })
 
   it('CI-HD carries the flat FLR 8 of Table 2 / Illustration 5.8, and no height', () => {
-    expect(resolveMiami('CI-HD', ' ')).toEqual({ heightFt: null, stories: null, maxFAR: 8 })
+    expect(resolveMiami('CI-HD', ' ')).toEqual({ heightFt: null, stories: null, maxFAR: 8, farUnconstrained: false })
   })
 
   it('keeps FLR independent of the story count and of the R/L/O intensity', () => {
@@ -134,5 +137,45 @@ describe('Miami 21 story height — sourced, and the round-trip is gone', () => 
     const r = resolveMiami('T6-80-O', '80')
     expect(r.stories).toBe(80)
     expect(r.heightFt).toBe(80 * 14)
+  })
+})
+
+describe('the FLR absence Miami 21 states outright (rule 5)', () => {
+  // Re-verified 2026-08-15 by RENDERING Article 4 Table 2 (pp. IV.6–IV.7) and
+  // the Article 5 illustrations rather than extracting them. Each of
+  // Illustration 5.3 (T3), 5.4 (T4), 5.5 (T5), 5.9 (D1, D2) and 5.10 (D3)
+  // states "d. Floor Lot Ratio (FLR)  N/A". Table 2's FLR row is empty for
+  // those columns while every other Lot Occupation row is filled — the row is
+  // populated exactly where the instrument applies.
+  it.each(['T3-R', 'T3-L', 'T3-O', 'T4-R', 'T4-L', 'T4-O', 'T5-R', 'T5-L', 'T5-O', 'D1', 'D2', 'D3', 'T1'])(
+    '%s reports no FLR as an ANSWER',
+    (z) => {
+      const r = resolveMiami(z, ' ')
+      expect(r.farUnconstrained).toBe(true)
+      expect(r.maxFAR).toBeNull()
+    },
+  )
+
+  // ⚠️ CI IS NOT ONE OF THEM. Miami 21 gives plain CI no FLR row and no Table 2
+  // column; § 5.7.2.4(b) instead says "Development in a CI Zone shall follow
+  // the regulations of the Abutting Transect Zone". That is a joint dependency
+  // on the NEIGHBOUR's zoning (rule 13), which this provider does not read, so
+  // CI must stay a GAP and must never be reported as an absence.
+  it.each(['CI', 'CS'])('%s stays a gap, because an abutting zone governs it', (z) => {
+    const r = resolveMiami(z, ' ')
+    expect(r.farUnconstrained).toBe(false)
+    expect(r.maxFAR).toBeNull()
+  })
+
+  it('CI-HD is not swept into the absence either — Table 2 gives it 8', () => {
+    const r = resolveMiami('CI-HD', ' ')
+    expect(r.farUnconstrained).toBe(false)
+    expect(r.maxFAR).toBe(8)
+  })
+
+  it('never reports a T6 zone as unconstrained', () => {
+    for (const z of ['T6-8-O', 'T6-24A-L', 'T6-80-O']) {
+      expect(resolveMiami(z, '').farUnconstrained, z).toBe(false)
+    }
   })
 })

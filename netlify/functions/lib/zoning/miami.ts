@@ -106,6 +106,9 @@ export interface MiamiLimits {
   heightFt: number | null
   stories: number | null
   maxFAR: number | null
+  /** Miami 21 states "d. Floor Lot Ratio (FLR) N/A" for this zone — a KNOWN
+   *  ABSENCE, not a lookup we failed. See the T4/T5/D branch below. */
+  farUnconstrained: boolean
 }
 
 /**
@@ -114,7 +117,7 @@ export interface MiamiLimits {
  * number — matching the conservative rule used across the other zoning modules.
  */
 export function resolveMiami(zone: string | null | undefined, bldgHeight?: string | null): MiamiLimits {
-  const none: MiamiLimits = { heightFt: null, stories: null, maxFAR: null }
+  const none: MiamiLimits = { heightFt: null, stories: null, maxFAR: null, farUnconstrained: false }
   const z = (zone ?? '').trim().toUpperCase()
   if (!z) return none
 
@@ -134,27 +137,49 @@ export function resolveMiami(zone: string | null | undefined, bldgHeight?: strin
     // Height in feet is the code-implied CEILING (stories × the 14 ft maximum
     // Story height), not a published limit. `stories` is the exact figure the
     // code states and is what downstream consumers should prefer.
-    return { heightFt: Math.round(stories * MIAMI_MAX_FT_PER_STORY), stories, maxFAR }
+    return { heightFt: Math.round(stories * MIAMI_MAX_FT_PER_STORY), stories, maxFAR, farUnconstrained: false }
   }
 
   // T3: exact, stated in feet by the code itself. Article 5 Illustration 5.3
   // states "d. Floor Lot Ratio (FLR) N/A" — Miami 21 imposes no FLR in T3.
-  if (z.startsWith('T3')) return { heightFt: T3_MAX_HEIGHT_FT, stories: 2, maxFAR: null }
+  if (z.startsWith('T3')) return { heightFt: T3_MAX_HEIGHT_FT, stories: 2, maxFAR: null, farUnconstrained: true }
 
   // CI-HD: no published Height (Illustration 5.8 states Height by Story in a
   // separate row we do not read), but Table 2 does give a Floor Lot Ratio.
-  if (z.startsWith('CI-HD')) return { heightFt: null, stories: null, maxFAR: CI_HD_BASE_FLR }
+  if (z.startsWith('CI-HD')) return { heightFt: null, stories: null, maxFAR: CI_HD_BASE_FLR, farUnconstrained: false }
 
-  // T4 / T5 / T1 / D1 / D2 / D3 / CI / CS — heights live in Article 4 Table 2
-  // (stories), which is not in the GIS layer and not yet read from the primary
-  // table. Report unknown rather than fabricate.
+  // ── THE FLR ABSENCE, NOW REPORTED AS ONE ──────────────────────────────────
   //
-  // ⚠️ Their FAR null is currently a GAP-shaped null but is really a KNOWN
-  // ABSENCE (rule 5): Article 5 Illustrations 5.3/5.4/5.5 (T3/T4/T5) and
-  // 5.9/5.10 (D1/D2/D3) all state "d. Floor Lot Ratio (FLR) N/A", and the T1–T5
-  // and D columns of Article 4 Table 2 are blank. Distinguishing the two needs
-  // an `farUnconstrained` flag on MiamiLimits and a provider change, which is
-  // outside this file; recorded here so it is not re-discovered as a lookup gap.
+  // This branch used to return a GAP-shaped null for T4/T5/D1/D2/D3, with a
+  // comment saying the null was really a KNOWN ABSENCE and that reporting it
+  // needed an `farUnconstrained` flag "outside this file". That flag now
+  // exists, so the finding it recorded is finally published.
+  //
+  // Re-verified 2026-08-15 by rendering the primary document rather than
+  // extracting it, agreeing with the earlier read on every point:
+  //   · Article 5 Illustration 5.3 (T3), 5.4 (T4), 5.5 (T5), 5.9 (D1, D2) and
+  //     5.10 (D3) each state "d. Floor Lot Ratio (FLR)  N/A".
+  //   · Article 4 Table 2's FLR row is EMPTY for T1–T5 and for D1/D2/D3, while
+  //     every other Lot Occupation row in those columns is filled — the row is
+  //     populated exactly where the instrument applies, which is the slot test
+  //     (rule 5) rather than a bare blank cell.
+  //   · The only non-T6 column carrying a figure is CI-HD, at 8.
+  //
+  // HEIGHT is untouched and stays a gap: Table 2 states T4/T5/D heights in
+  // STORIES and the GIS layer populates Bldg_Height only for T6.
+  if (/^(T[145]|D[123])\b|^T4|^T5/.test(z)) {
+    return { heightFt: null, stories: null, maxFAR: null, farUnconstrained: true }
+  }
+
+  // ⚠️ CI IS NOT ONE OF THEM, and its reason is specific. Miami 21 gives plain
+  // CI no FLR row and no Table 2 column at all — § 5.7 covers CS and CI
+  // together and has no FLR row, while § 5.8 (CI-HD) does. What governs instead
+  // is § 5.7.2.4(b): "Development in a CI Zone shall follow the regulations of
+  // the Abutting Transect Zone, except that Height restrictions shall be as
+  // follows…". So a CI parcel's limits are a joint function of its NEIGHBOUR's
+  // zoning (rule 13), which this provider does not read, and it must stay a GAP
+  // rather than become an absence. CS is left alone for the same reason
+  // (§ 5.7.1.4 defers it to "the most restrictive Abutting Transect Zone").
   return none
 }
 
