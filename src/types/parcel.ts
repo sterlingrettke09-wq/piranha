@@ -43,6 +43,17 @@ export interface ParcelInfo {
      *  value, not the ratio, so `far * lot` alone understates them.
      *  Applied as max(maxFAR * lot, farFloorSqFt). */
     farFloorSqFt?: number | null
+    /** TRUE when this district's dimensional standards come from an approved
+     *  plan, site plan or council ordinance rather than a district table.
+     *
+     *  A THIRD STATE, distinct from both a resolved figure and a gap: a limit
+     *  exists and is not in any table, so nobody could have looked it up. Set
+     *  by the per-city module that already establishes it (Las Vegas
+     *  `planGoverned`, Phoenix `planGoverned`, Milwaukee `planGoverned`,
+     *  Charlotte `conditional`), which stays the single source of truth —
+     *  ../zoning/plannedDevelopment.ts covers only the cities whose modules
+     *  carry no such flag. */
+    planGoverned?: boolean
     /** TRUE when the code imposes no FAR limit here at all — a KNOWN absence,
      *  not a missing lookup. Distinguishes "this instrument does not bind"
      *  (floor area is governed by height/setbacks/coverage instead) from

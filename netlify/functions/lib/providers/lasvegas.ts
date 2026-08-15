@@ -538,6 +538,11 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
       // for an unrecognised code, so a gap can never render as "FAR does not
       // bind here" and can never fall back to an assumed FAR of 1.0.
       maxFAR: null,
+      // The module already establishes this district as plan/site-plan
+      // governed, with a citation and the disclosure text above. Carrying the
+      // flag through lets the envelope report it as a planned development
+      // rather than as a failure to look it up.
+      ...(limits.planGoverned ? { planGoverned: true } : {}),
       allowedUses: usesForZone(code),
       ...(limits.farUnconstrained ? { farUnconstrained: true } : {}),
     },

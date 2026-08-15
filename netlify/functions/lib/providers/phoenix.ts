@@ -652,6 +652,11 @@ export async function getPhoenixParcelInfo(lat: number, lng: number): Promise<Pa
       // in §626.H.1, and both mapped Commerce Park options hold an em dash
       // there. `farUnconstrained` below is what distinguishes that from a gap.
       maxFAR: limits.maxFAR,
+      // The module already establishes this district as plan/site-plan
+      // governed, with a citation and the disclosure text above. Carrying the
+      // flag through lets the envelope report it as a planned development
+      // rather than as a failure to look it up.
+      ...(limits.planGoverned ? { planGoverned: true } : {}),
       allowedUses: usesForZone(code),
       // The KNOWN absence, kept distinct from an unresolved lookup. Set only
       // where the district's own standards enumeration has no floor-area-ratio

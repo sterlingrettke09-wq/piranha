@@ -266,10 +266,13 @@ describe('the copy moves when the measurement moves', () => {
     const after = perturbed.find((c) => c.slug === 'chicago')!
     expect(before.verdict).toBe('answering')
     expect(after.verdict).toBe('silent')
-    // n moved 11 -> 9 in the 2026-08-14 full re-run: that run was the first
-    // with the jurisdiction gate in place, and 14 of Chicago's 25 draws now
-    // refuse as outside the city rather than entering the denominator.
-    expect(before.rateLabel).toBe('100% · n=9')
+    // n tracks the committed sample and moves whenever it is re-measured: 11
+    // before the jurisdiction gate landed, 9 on the 2026-08-14 full run, 10 on
+    // the 2026-08-15 one. The sampler grids the city's bbox and draws a fresh
+    // parcel per cell, so the denominator is not stable across runs. What this
+    // test is actually about is the RATE and the perturbation below, not the
+    // denominator — update the literal when the artifact is re-measured.
+    expect(before.rateLabel).toBe('100% · n=10')
     expect(after.rateLabel).toBe('0% · n=11')
   })
 

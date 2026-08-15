@@ -554,6 +554,11 @@ export async function getMilwaukeeParcelInfo(lat: number, lng: number): Promise<
       // downtown districts DO regulate floor area, by a formula this module
       // declines to collapse (FACT 1b). Either way there is no ratio to report.
       maxFAR: null,
+      // The module already establishes this district as plan/site-plan
+      // governed, with a citation and the disclosure text above. Carrying the
+      // flag through lets the envelope report it as a planned development
+      // rather than as a failure to look it up.
+      ...(limits.planGoverned ? { planGoverned: true } : {}),
       allowedUses: usesForZone(code),
       // The KNOWN absence, kept distinct from an unresolved lookup and from the
       // downtown formula case. An unrecognised code, a PD/RED plan district, a

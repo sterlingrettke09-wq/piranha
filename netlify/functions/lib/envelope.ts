@@ -27,7 +27,7 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   } else if (limits.maxFAR != null) {
     far = limits.maxFAR
     farBasis = 'district'
-  } else if (isPlannedDevelopment(city, info.zoning.districtCode)) {
+  } else if (info.zoning.planGoverned || isPlannedDevelopment(city, info.zoning.districtCode)) {
     // A limit EXISTS for this parcel; it is in the ordinance that created this
     // specific district rather than in any district table (Dallas § 51A-4.702
     // (a)(4) says so outright). Neither a resolved figure nor a failure to
@@ -38,6 +38,14 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
     // Ordered BEFORE `farUnconstrained` because it is the more specific claim:
     // "set by its own ordinance" says where to look, "no FAR applies" says
     // there is nothing to look for. No city currently asserts both.
+    //
+    // TWO SOURCES, deliberately, and the provider's flag comes first. Several
+    // per-city modules already establish this per DISTRICT, with a citation and
+    // user-facing disclosure text — Las Vegas P-C, Phoenix PAD/PUD/PC,
+    // Milwaukee PD/DPD/RED, Charlotte's conditional districts. Those stay the
+    // source of truth for their own city; the registry covers the cities whose
+    // modules carry no such flag. Duplicating a district in both would create
+    // two places that can disagree.
     far = null
     farBasis = 'planned-development'
   } else if (info.zoning.farUnconstrained) {

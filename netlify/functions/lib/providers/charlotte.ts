@@ -516,6 +516,17 @@ export async function getCharlotteParcelInfo(lat: number, lng: number): Promise<
       // occurrences of "floor area ratio", "FAR" or "F.A.R." in 1,780,151
       // characters across all 39 articles (zoning module FACT 1).
       maxFAR: null,
+      // The module already establishes this district as plan/site-plan
+      // governed, with a citation and the disclosure text above. Carrying the
+      // flag through lets the envelope report it as a planned development
+      // rather than as a failure to look it up.
+      // `basis === 'site-plan'`, NOT `limits.conditional`. The two mean
+      // different things and only the first is plan-governed: a site-plan
+      // district has NO by-right dimensional standards (UDO Sec. 1.4.C, the
+      // disclosure at the top of this file), while `conditional` marks a
+      // district that DOES have figures with conditions layered on top that
+      // "may limit height, units or use BELOW the district figures shown".
+      ...(limits.basis === 'site-plan' ? { planGoverned: true } : {}),
       allowedUses: usesForZone(zoneDes),
       // The KNOWN absence, kept strictly distinct from an unresolved lookup: a
       // site-plan-governed or unrecognised code leaves this OFF entirely, so a
