@@ -64,6 +64,8 @@ export interface SanDiegoZone {
   farUnconstrained?: boolean
   /** Division 6 zone: the FAR is a joint function of zone and community plan. */
   industrial?: boolean
+  /** Division 5 CC zone: same joint dependency, different override figure. */
+  commercial?: boolean
   /** The exact table this row was read from, for the citation trail. */
   source: string
 }
@@ -92,6 +94,57 @@ const FN7_FAMILIES = new Set(['IL', 'IBT'])
  */
 export const CP_KEARNY_MESA = 'KEARNY MESA'
 export const CP_OTAY_MESA = 'OTAY MESA'
+
+/**
+ * Table 131-05E — the CC commercial zones. Read 2026-08-15 by RENDERING pages
+ * 35 and 36 of the Division 5 PDF as images and reading them, which is the
+ * method this repo already validates for merged-cell tables (see
+ * ../zoning/minneapolis.ts). Neither text extraction nor pdfplumber's table
+ * parser could reconstruct this header: the 4th-row numeral spans FOUR 3rd-row
+ * tokens and the FAR is a single merged cell across that group.
+ *
+ * Key = the full district code; value = the group's Max Floor Area Ratio.
+ *
+ * ⚠️ TWO NEIGHBOURING ROWS ARE NOT THIS ONE. The table also carries "Floor Area
+ * Ratio Bonus for Residential Mixed Use" (§ 131.0546(a)) and "Minimum Floor
+ * Area Ratio for Residential Use". The first is a BONUS — an alternative, not
+ * the headline (rule 6) — and the second is a MINIMUM, which would be a
+ * catastrophic thing to publish as a maximum. Only the "Max Floor Area Ratio"
+ * row is transcribed here.
+ */
+const CC_FAR: Readonly<Record<string, number>> = Object.freeze({
+  // 4th >> 1  (3rd: 1- 2- 4- 5-)   Max FAR 0.75, height 30
+  'CC-1-1': 0.75, 'CC-2-1': 0.75, 'CC-4-1': 0.75, 'CC-5-1': 0.75,
+  // 4th >> 2  (3rd: 1- 2- 4- 5-)   Max FAR 2.0, height 60
+  'CC-1-2': 2.0, 'CC-2-2': 2.0, 'CC-4-2': 2.0, 'CC-5-2': 2.0,
+  // 4th >> 3  (3rd: 1- 2- 4- 5-)   Max FAR 0.75, height 45
+  'CC-1-3': 0.75, 'CC-2-3': 0.75, 'CC-4-3': 0.75, 'CC-5-3': 0.75,
+  // 4th >> 4  (3rd: 2- 3- 4- 5-)   Max FAR 1.0, height 30
+  'CC-2-4': 1.0, 'CC-3-4': 1.0, 'CC-4-4': 1.0, 'CC-5-4': 1.0,
+  // 4th >> 5  (3rd: 2- 3- 4- 5-)   Max FAR 2.0, height 100
+  'CC-2-5': 2.0, 'CC-3-5': 2.0, 'CC-4-5': 2.0, 'CC-5-5': 2.0,
+  // 4th >> 6  (3rd: 3- 4- 5-)      Max FAR 2.0, height 65
+  'CC-3-6': 2.0, 'CC-4-6': 2.0, 'CC-5-6': 2.0,
+  // 4th >> 7..11 (3rd: 3- only)
+  'CC-3-7': 2.0, 'CC-3-8': 2.0, 'CC-3-9': 2.0, 'CC-3-10': 3.0, 'CC-3-11': 4.0,
+})
+
+/** Table 131-05E footnote 4, verbatim: "Within the Otay Mesa Community Plan
+ *  area, the maximum floor area ratio is 0.30."
+ *
+ *  ⚠️ FOOTNOTE NUMBERING IS PER TABLE. The identical sentence is footnote 3 of
+ *  Table 131-05C. Reading a footnote by number across tables attributes the
+ *  wrong rule; this one was taken from the block that follows 131-05E.
+ *
+ *  Unlike the industrial footnote 11 this carries NO "unless a final map has
+ *  been recorded" exception, so an Otay Mesa commercial parcel resolves
+ *  cleanly at 0.30 rather than staying a gap. */
+export const CC_OTAY_MESA_FAR = 0.3
+
+const CC_TABLE =
+  'San Diego Municipal Code § 131.0531, Table 131-05E (Development Regulations for CC Zones, 7-2026) — Max Floor Area Ratio row'
+const CC_OTAY =
+  'San Diego Municipal Code § 131.0531, Table 131-05E footnote 4: "Within the Otay Mesa Community Plan area, the maximum floor area ratio is 0.30."'
 
 const IND_TABLE =
   'San Diego Municipal Code § 131.0632 and Table 131-06C (Development Regulations for Industrial Zones, 7-2026)'
@@ -248,6 +301,11 @@ const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
   'IH-2-1': { far: null, industrial: true, source: IND_TABLE },
   'IS-1-1': { far: null, industrial: true, source: IND_TABLE },
   'IBT-1-1': { far: null, industrial: true, source: IND_TABLE },
+
+  // ── CC commercial, Division 5. Like industrial, the figure depends on the
+  // community plan area, so these carry no flat `far`; resolveSanDiego computes
+  // them from CC_FAR and footnote 4.
+  ...Object.fromEntries(Object.keys(CC_FAR).map((z) => [z, { far: null, commercial: true, source: CC_TABLE }])),
 })
 
 export const SAN_DIEGO_ZONE_CODES: readonly string[] = Object.freeze(Object.keys(ZONES))
@@ -306,6 +364,7 @@ export function resolveSanDiego(
   const zone = ZONES[key]
 
   if (zone.industrial) return industrialFar(key, communityPlan)
+  if (zone.commercial) return commercialFar(key, communityPlan)
 
   const alternatives = (zone.alternatives ?? []).map((a) => ({ ...a, source: zone.source }))
 
@@ -365,4 +424,25 @@ function industrialFar(key: string, communityPlan?: string | null): SanDiegoLimi
   }
 
   return { maxFAR: INDUSTRIAL_BASE_FAR, farUnconstrained: false, farAlternatives: [], source: IND_TABLE }
+}
+
+
+/**
+ * CC commercial FAR — Table 131-05E, with footnote 4's Otay Mesa override.
+ *
+ * Same three-state community-plan contract as `industrialFar`, and the same
+ * fail-closed reason: without the plan area Otay Mesa cannot be ruled out, and
+ * the override is a QUARTER of the smallest base figure. The difference is that
+ * footnote 4 has no recorded-map exception, so an Otay Mesa parcel resolves at
+ * 0.30 instead of staying a gap.
+ */
+function commercialFar(key: string, communityPlan?: string | null): SanDiegoLimits {
+  if (communityPlan === undefined) return UNRESOLVED
+  const cp = communityPlan === null ? '' : String(communityPlan).trim().toUpperCase()
+  const base = CC_FAR[key]
+  if (base == null) return UNRESOLVED
+  if (cp === CP_OTAY_MESA) {
+    return { maxFAR: CC_OTAY_MESA_FAR, farUnconstrained: false, farAlternatives: [], source: CC_OTAY }
+  }
+  return { maxFAR: base, farUnconstrained: false, farAlternatives: [], source: CC_TABLE }
 }

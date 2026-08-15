@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  CC_OTAY_MESA_FAR,
   CP_KEARNY_MESA,
   CP_OTAY_MESA,
   INDUSTRIAL_BASE_FAR,
@@ -22,8 +23,8 @@ describe('inventory', () => {
   // Rule 20: a check that can pass by finding nothing is not a check. Pin the
   // size AND the membership, so a regex that silently stops matching goes RED
   // rather than green.
-  it('covers 33 residential, 4 agricultural and 10 industrial zones', () => {
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(47)
+  it('covers 33 residential, 4 agricultural, 10 industrial and 28 CC commercial zones', () => {
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(75)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',
@@ -126,7 +127,7 @@ describe('scope (rule 23)', () => {
   // return null and keep reading downstream as a GAP. If one of these ever
   // starts resolving, an out-of-scope table has been folded in without its
   // source being read.
-  it.each(['CC-3-4', 'CN-1-3', 'CV-1-1', 'OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
+  it.each(['CN-1-3', 'CV-1-1', 'CO-1-1', 'CR-1-1', 'OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
     'leaves the out-of-scope zone %s unresolved',
     (code) => {
       expect(sanDiegoZoneKey(code)).toBeNull()
@@ -172,8 +173,8 @@ describe('agricultural zones — a structural absence (rule 5)', () => {
     // AR is an answer; the commercial and industrial districts are gaps,
     // because their divisions state FARs this module has not encoded.
     expect(resolveSanDiego('AR-1-1', 40_000).farUnconstrained).toBe(true)
-    expect(resolveSanDiego('CC-2-3', 40_000).farUnconstrained).toBe(false)
-    expect(resolveSanDiego('CC-2-3', 40_000).maxFAR).toBeNull()
+    expect(resolveSanDiego('CN-1-3', 40_000).farUnconstrained).toBe(false)
+    expect(resolveSanDiego('CN-1-3', 40_000).maxFAR).toBeNull()
   })
 })
 
@@ -243,6 +244,66 @@ describe('industrial — a JOINT dependency on zone and community plan (rule 13)
     // The code states 2.0; an absence would be a different and false claim.
     for (const c of ['IP-1-1', 'IL-3-1', 'IH-1-1', 'IS-1-1', 'IBT-1-1']) {
       expect(resolveSanDiego(c, 40_000, 'NORTH PARK').farUnconstrained).toBe(false)
+    }
+  })
+})
+
+describe('CC commercial — Table 131-05E, read from rendered page images', () => {
+  // The header could not be reconstructed by text extraction or by pdfplumber's
+  // table parser: the 4th-row numeral spans FOUR 3rd-row tokens and the FAR is
+  // one merged cell across that group. Rendering the page and reading it is the
+  // method ../zoning/minneapolis.ts already uses for the same problem.
+  it.each([
+    ['CC-1-1', 0.75], ['CC-2-1', 0.75], ['CC-4-1', 0.75], ['CC-5-1', 0.75],
+    ['CC-1-2', 2.0], ['CC-5-2', 2.0],
+    ['CC-1-3', 0.75], ['CC-2-3', 0.75], ['CC-5-3', 0.75],
+    ['CC-2-4', 1.0], ['CC-3-4', 1.0],
+    ['CC-2-5', 2.0], ['CC-3-6', 2.0], ['CC-3-7', 2.0], ['CC-3-9', 2.0],
+    ['CC-3-10', 3.0], ['CC-3-11', 4.0],
+  ])('%s = %f outside Otay Mesa', (code, far) => {
+    const r = resolveSanDiego(code, 40_000, 'SAN YSIDRO')
+    expect(r.maxFAR).toBe(far)
+    expect(r.source).toContain('131-05E')
+  })
+
+  // THE SAMPLED GAP. Its parcel sits in San Ysidro, not Otay Mesa.
+  it('CC-2-3 — the sampled gap district — resolves at 0.75', () => {
+    expect(resolveSanDiego('CC-2-3', 14_727, 'SAN YSIDRO').maxFAR).toBe(0.75)
+  })
+
+  // Footnote 4, and NOT footnote 3 of Table 131-05C, which is the identical
+  // sentence attached to a different table. Unlike industrial's footnote 11
+  // this one has no recorded-map exception, so it resolves rather than refuses.
+  it.each(['CC-2-3', 'CC-3-11', 'CC-1-2'])('%s drops to 0.30 in Otay Mesa', (code) => {
+    const r = resolveSanDiego(code, 40_000, CP_OTAY_MESA)
+    expect(r.maxFAR).toBe(CC_OTAY_MESA_FAR)
+    expect(r.maxFAR).toBe(0.3)
+    expect(r.source).toContain('footnote 4')
+  })
+
+  it('refuses when the community plan was not read', () => {
+    // 0.30 is a quarter of the smallest base figure, so defaulting overstates.
+    expect(resolveSanDiego('CC-2-3', 40_000, undefined).maxFAR).toBeNull()
+  })
+
+  it('takes the base when the layer answered with no polygon', () => {
+    expect(resolveSanDiego('CC-2-3', 40_000, null).maxFAR).toBe(0.75)
+  })
+
+  // ⚠️ NEVER the neighbouring rows. "Floor Area Ratio Bonus for Residential
+  // Mixed Use" is a bonus (0.75/2.0/2.5/4.5 depending on group) and "Minimum
+  // Floor Area Ratio for Residential Use" is a MINIMUM (0.56/1.0/1.5/2.0).
+  // Publishing either as the maximum would be wrong in opposite directions.
+  it('never publishes the mixed-use bonus or the residential minimum as the max', () => {
+    expect(resolveSanDiego('CC-2-3', 40_000, 'SAN YSIDRO').maxFAR).not.toBe(0.56)
+    expect(resolveSanDiego('CC-3-10', 40_000, 'SAN YSIDRO').maxFAR).not.toBe(4.5)
+    expect(resolveSanDiego('CC-3-11', 40_000, 'SAN YSIDRO').maxFAR).not.toBe(2.0)
+  })
+
+  it('does not invent a CC district the table has no column for', () => {
+    // e.g. CC-1-4 is not in the 4th>>4 group (its 3rd row starts at 2-).
+    for (const z of ['CC-1-4', 'CC-1-5', 'CC-2-6', 'CC-2-11', 'CC-9-9']) {
+      expect(resolveSanDiego(z, 40_000, 'SAN YSIDRO').maxFAR, z).toBeNull()
     }
   })
 })
