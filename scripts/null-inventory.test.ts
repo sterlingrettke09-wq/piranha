@@ -256,12 +256,21 @@ describe('the sampled rate — one parcel is no longer read as the city', () => 
   })
 
   it('the summary ranks the misses worst-first and names their rates', () => {
-    const out = sampledRateSummary(['denver', 'chicago'])
+    // The comparison city must be one that ACTUALLY resolves every sampled
+    // parcel. This was chicago until the 2026-08-15 n=100 run took it to 98%,
+    // at which point the assertion failed for the right reason and the wrong
+    // cause — the city had changed, not the summary. Derived so a
+    // re-measurement cannot break it again.
+    const full = CITIES.map((c) => c.slug).filter((slug) => {
+      const s = envelopeSample(slug)
+      return s.kind === 'measured' && s.resolved === s.n
+    })
+    expect(full.length, 'no city resolves every sampled parcel, so this test compares nothing').toBeGreaterThan(0)
+    const clean = full[0]
+    const out = sampledRateSummary(['denver', clean])
     expect(out).toMatch(/resolve for less than every sampled parcel/)
     expect(out).toContain('denver')
-    // Denver is the real artifact's worst case, so it must precede Chicago,
-    // which resolves everything and is not in the list at all.
-    expect(out).not.toMatch(/chicago \d+\/\d+/)
+    expect(out).not.toMatch(new RegExp(`${clean} \\d+/\\d+`))
   })
 
   it('every probed city has a rate — the two columns cannot disagree about who exists', () => {
