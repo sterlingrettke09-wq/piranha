@@ -285,9 +285,14 @@ describe('the copy moves when the measurement moves', () => {
     expect(coverageFacts(perturbed).silent).toHaveLength(coverageFacts().silent.length + 1)
     // The range sentence carries the top of the range, so losing the only other
     // 100% cities would move it too — check the mechanism, not just the copy.
-    const noFull = buildCityClaims((s) =>
-      ['chicago', 'nyc', 'raleigh'].includes(s) ? ZEROED : envelopeSample(s),
-    )
+    // DERIVED, not listed. This was `['chicago', 'nyc', 'raleigh']` until
+    // 2026-08-15, when Minneapolis reached 100% and the hard-coded list stopped
+    // being "every 100% city" — the assertion then failed for the right reason
+    // and the wrong cause. Deriving it means a city arriving at or leaving 100%
+    // cannot silently make this perturbation a no-op.
+    const fullSlugs = CITY_CLAIMS.filter((c) => c.rateLabel.startsWith('100%')).map((c) => c.slug)
+    expect(fullSlugs.length, 'no city is at 100%, so this perturbation tests nothing').toBeGreaterThan(0)
+    const noFull = buildCityClaims((s) => (fullSlugs.includes(s) ? ZEROED : envelopeSample(s)))
     expect(rangeSentence(noFull)).not.toBe(rangeSentence())
     expect(rangeSentence(noFull)).not.toContain('100%')
   })

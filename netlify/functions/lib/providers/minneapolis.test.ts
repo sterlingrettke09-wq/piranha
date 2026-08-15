@@ -62,7 +62,12 @@ describe('getMinneapolisParcelInfo — happy path', () => {
     expect(res.info.lot.sizeSqFt).toBe(7200)
     // Built-form Abbrv BFC6 → 84 ft from MPLS_BUILT_FORM_FT.
     expect(res.info.zoning.maxHeightFt).toBe(84)
-    expect(res.info.zoning.maxFAR).toBeNull()
+    // BFC6 (Corridor 6) + CM4 primary: Table 540-2's "All other districts"
+    // column, 3.4. Null until 2026-08-15, when the Corridor/Transit/Core/
+    // Production/Parks rows were read from the adopted Chapter 540 ordinance.
+    // This is the joint dependency working end to end — neither layer alone
+    // gives 3.4 (CLAUDE.md rule 13).
+    expect(res.info.zoning.maxFAR).toBe(3.4)
     // CM prefix → commercial/mixed/residential.
     expect(res.info.zoning.allowedUses).toEqual(['commercial', 'mixed', 'residential'])
     expect(res.info.zoning.article).toBe('Commercial Mixed')

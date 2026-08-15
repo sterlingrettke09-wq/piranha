@@ -218,11 +218,11 @@
       "noSpec": 0,
       "nonDevelopable": 4,
       "developable": 21,
-      "resolved": 8,
+      "resolved": 21,
       "unconstrained": 0,
       "plannedDevelopment": 0,
-      "gap": 13,
-      "indeterminate": 13,
+      "gap": 0,
+      "indeterminate": 0,
       "sampledOn": "2026-08-15"
     },
     "nashville": {

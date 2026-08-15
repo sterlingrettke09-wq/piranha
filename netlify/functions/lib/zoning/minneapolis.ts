@@ -159,10 +159,79 @@ export function resolveMinneapolisFar(
     }
   }
 
-  // Corridor / Core 50 / Transit / Production / Parks — base FAR plus an earned
-  // premium system, not yet read from Table 540-2. UNRESOLVED, deliberately.
-  // Their cluster figure IS known (Table 540-3, "All other districts": 0.7),
-  // but an alternative with no base to compare against is not an answer, so
-  // nothing is emitted until the base row is read.
+  // ── Corridor / Transit / Core 50 / Production / Parks ─────────────────────
+  //
+  // READ 2026-08-15 from Table 540-2 itself. The note this replaces said the
+  // base figures "did not linearise from the handbook's multi-column layout" —
+  // that was true OF THE HANDBOOK, and the mistake was reading the summary
+  // document instead of the ordinance. The ordinance's own Table 540-2 states
+  // each of these as a plain two-value row and extracts cleanly:
+  //
+  //   Corridor 3   UN, RM 1.5   All other districts 1.9
+  //   Corridor 4   UN, RM 2.0   All other districts 2.4
+  //   Corridor 6   UN, RM 3.0   All other districts 3.4
+  //   Transit 10   UN, RM 5.0   All other districts 5.4
+  //   Transit 15   UN, RM 6.0   All other districts 6.4
+  //   Transit 20   UN, RM 7.0   All other districts 7.4
+  //   Transit 30   UN, RM 10.0  All other districts 10.4
+  //   Core 50      All primary districts 16.0
+  //   Production   All primary districts 3.0
+  //   Parks        UN  Residential buildings with 1-3 units 0.5
+  //                    All other uses: 0.8
+  //                All other districts 2.0
+  //
+  // ⚠️ SOURCED FROM THE ADOPTED PDF, NOT THE DRAFT. minneapolis2040.com serves
+  // two Chapter 540 files; media/1906 opens with the word "DRAFT" and media/1972
+  // is the adopted text. They differ in length (43 vs 47 pages). Encoding the
+  // draft would have published proposed figures as current ones.
+  //
+  // ⚠️ PARKS GROUPS ON "UN" ALONE, not "UN, RM" like every other row. Reusing
+  // isUnRm() there would put an RM parcel on the 0.5/0.8 rows when the table
+  // puts it under "All other districts" at 2.0 — a fourfold understatement.
+  //
+  // PREMIUMS ARE NOT ENCODED. Article III lets these districts earn additional
+  // floor area; earned floor area is not by-right, so it belongs in
+  // `alternatives` and only once Article III has been read. Its absence here is
+  // a gap in the ALTERNATIVES, not in the headline.
+  const CORRIDOR_TRANSIT: Record<string, [unRm: number, other: number]> = {
+    BFC3: [1.5, 1.9],
+    BFC4: [2.0, 2.4],
+    BFC6: [3.0, 3.4],
+    BFT10: [5.0, 5.4],
+    BFT15: [6.0, 6.4],
+    BFT20: [7.0, 7.4],
+    // Transit 30 is mapped as two abbreviations but is ONE row in Table 540-2.
+    BFT30A: [10.0, 10.4],
+    BFT30B: [10.0, 10.4],
+  }
+  const ct = CORRIDOR_TRANSIT[bf]
+  if (ct) {
+    return {
+      maxFAR: unRm ? ct[0] : ct[1],
+      // Table 540-3, "All other districts": every district below Interior 3
+      // takes the 0.7 cluster figure.
+      alternatives: [{ label: 'Cluster development', far: 0.7 }],
+    }
+  }
+
+  // "All primary districts" — one value, no UN/RM split to get wrong.
+  if (bf === 'BFC50') return { maxFAR: 16.0, alternatives: [{ label: 'Cluster development', far: 0.7 }] }
+  if (bf === 'BFPR') return { maxFAR: 3.0, alternatives: [{ label: 'Cluster development', far: 0.7 }] }
+
+  // Parks. The UN row splits by unit count; everything else is a flat 2.0.
+  if (bf === 'BFPA') {
+    const un = /^UN\d?/.test((primaryZone ?? '').trim().toUpperCase())
+    return un
+      ? {
+          maxFAR: 0.5,
+          alternatives: [
+            { label: 'Other uses', far: 0.8 },
+            { label: 'Cluster development', far: 0.7 },
+          ],
+        }
+      : { maxFAR: 2.0, alternatives: [{ label: 'Cluster development', far: 0.7 }] }
+  }
+
+  // An overlay abbreviation this module does not know is a GAP, never a zero.
   return NONE
 }
