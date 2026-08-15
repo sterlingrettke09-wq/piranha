@@ -4,7 +4,11 @@
 // Source: https://sanjose-ca.elaws.us/code/coor_title20_ch20.30_pt3_sec20.30.200
 //         https://sanjose-ca.elaws.us/code/coor_title20_ch20.100_pt9_sec20.100.1030
 //
-// WHY THIS MODULE EXISTS, AND WHY IT PUBLISHES NO FAR NUMBER
+// WHY THIS MODULE EXISTS
+//
+// (The header below explains the RESIDENTIAL finding, which is an absence. Note
+// that the module does now publish one FAR number: the A agricultural district,
+// from Chapter 20.20's Table 20-40. See that entry.)
 // San Jose was the last wired city resolving nothing: 15 developable parcels,
 // 15 gaps. The reason turned out not to be a table nobody had transcribed.
 //
@@ -58,9 +62,12 @@
 //     TR 2.0—12.0, MUN 0.25—2.0 all exist, and each is conditional on a
 //     programme the user has not chosen (rule 6). The reasoning lives at the
 //     `maxFAR` line in ../providers/sanjose.ts; do not duplicate it here.
-//   · Chapter 20.40 (commercial / public-quasi-public), 20.50 (industrial),
-//     20.70 (downtown, the DC districts), 20.75 (pedestrian-oriented, MS-C /
-//     MS-G) — NOT read. Gaps.
+//   · Chapter 20.20 (open space and agricultural), 20.40 (commercial and
+//     public/quasi-public) and 20.50 (industrial) — READ 2026-08-14 and now
+//     encoded below. Table 20-40 states a FAR outright; Tables 20-100 and
+//     20-120 have no FAR row at all.
+//   · Chapter 20.70 (downtown, the DC districts) and 20.75 (pedestrian-
+//     oriented, MS-C / MS-G) — NOT read. Gaps.
 //   · Chapter 20.60 (PD — planned development), where standards come from the
 //     approved PD permit rather than the code. § 20.100.1030(C)(2) says the
 //     same: "The site is located in a planned development zoning district. All
@@ -81,15 +88,31 @@ export const SFH_PERMIT_HEIGHT_FT = 30
 export const SFH_PERMIT_STORIES = 2
 
 const TABLE = 'San Jose Municipal Code § 20.30.200, Development standards table (residential zoning districts)'
+const T_2040 = 'San Jose Municipal Code § 20.20.200, Table 20-40 (OS open space and A agricultural district development standards) — the "Maximum Floor Area Ratio" row reads "none" for OS and ".80" for A'
+const T_20120 =
+  'San Jose Municipal Code § 20.50.200, Table 20-120 (industrial zoning districts development standards) — the table has no Maximum Floor Area Ratio row'
+const T_20100 =
+  'San Jose Municipal Code § 20.40.200, Table 20-100 (commercial zoning districts development standards) — the table has no Maximum Floor Area Ratio row'
+
+/** Districts whose figures come from a table other than § 20.30.200's. */
+const SOURCE_FOR: Readonly<Record<string, string>> = Object.freeze({
+  OS: T_2040,
+  A: T_2040,
+  CIC: T_20120, TEC: T_20120, IP: T_20120, LI: T_20120, HI: T_20120,
+  CO: T_20100, CP: T_20100, CN: T_20100, CG: T_20100, PQP: T_20100,
+})
 
 export interface SanJoseZone {
+  /** A stated maximum FAR, where the district's table gives one. Only the A
+   *  agricultural district does. */
+  far?: number | null
   /** Base-district height ceiling in feet, as § 20.30.200 states it. */
   maxHeightFt: number | null
   /** Storey count the table states directly. Carried rather than derived — a
    *  derived count round-trips through a floor-to-floor constant (rule 12). */
   maxStories: number | null
   /** True where the code states no by-right maximum FAR. See the header. */
-  farUnconstrained: boolean
+  farUnconstrained?: boolean
 }
 
 /**
@@ -113,6 +136,39 @@ const ZONES: Readonly<Record<string, SanJoseZone>> = Object.freeze({
   // provider's separate height-district layer is what resolves it in practice.
   'R-M': { maxHeightFt: 45, maxStories: null, farUnconstrained: true },
   'R-MH': { maxHeightFt: 45, maxStories: 3, farUnconstrained: true },
+
+  // ── Chapter 20.20, Table 20-40 (OS open space, A agricultural). ──
+  //
+  // ⚠️ THE ONLY TABLE IN TITLE 20 THAT STATES A FAR OUTRIGHT, and the two cells
+  // DISAGREE. The row is ['Maximum Floor Area Ratio', 'none', '.80'] — OS has
+  // none, A has 0.80. Flattened page text renders it as "Maximum Floor Area
+  // Ratio\tnone" and drops the second value entirely; reading it that way would
+  // have published a fabricated absence for A, which is the San Diego near-miss
+  // repeated. Read from the table's own cells (§ 20.20.200, Table 20-40).
+  OS: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  A: { far: 0.8, maxHeightFt: null, maxStories: null },
+
+  // ── Chapter 20.50, Table 20-120 (industrial). NO FAR ROW AT ALL. ──
+  // The table's rows are minimum lot area, minimum unit size, setbacks,
+  // maximum height, minimum street frontage and parking. Not a blank cell — the
+  // row does not exist, which is the rule-5 slot test answering in the negative
+  // from the table's own structure. Header is unambiguous: CIC | TEC | IP | LI
+  // | HI. Contrast § 20.30.200, whose residential table DOES have a FAR row
+  // (holding a cross-reference); here there is nothing to cross-reference.
+  CIC: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  TEC: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  IP: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  LI: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  HI: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+
+  // ── Chapter 20.40, Table 20-100 (commercial and public/quasi-public).
+  // Also no FAR row: lot area, setbacks, maximum height, maximum individual
+  // occupant square footage, parking. Header CO | CP | CN | CG | PQP.
+  CO: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  CP: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  CN: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  CG: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
+  PQP: { maxHeightFt: null, maxStories: null, farUnconstrained: true },
 })
 
 export const SAN_JOSE_ZONE_CODES: readonly string[] = Object.freeze(Object.keys(ZONES))
@@ -165,10 +221,10 @@ export function resolveSanJose(code: string | null | undefined): SanJoseLimits {
   if (!key) return UNRESOLVED
   const z = ZONES[key]
   return {
-    maxFAR: null,
-    farUnconstrained: z.farUnconstrained,
+    maxFAR: z.far ?? null,
+    farUnconstrained: z.farUnconstrained ?? false,
     maxHeightFt: z.maxHeightFt,
     maxStories: z.maxStories,
-    source: TABLE,
+    source: SOURCE_FOR[key] ?? TABLE,
   }
 }

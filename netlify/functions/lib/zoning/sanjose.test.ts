@@ -9,10 +9,19 @@ import {
 } from './sanjose'
 
 describe('inventory', () => {
-  it('pins the eight districts of § 20.30.200 (rule 20)', () => {
-    expect(SAN_JOSE_ZONE_CODES.length).toBe(8)
+  it('pins the districts read from four chapters (rule 20)', () => {
+    expect(SAN_JOSE_ZONE_CODES.length).toBe(20)
     expect([...SAN_JOSE_ZONE_CODES].sort()).toEqual(
-      ['R-1-1', 'R-1-2', 'R-1-5', 'R-1-8', 'R-1-RR', 'R-2', 'R-M', 'R-MH'].sort(),
+      [
+        // § 20.30.200 residential
+        'R-1-1', 'R-1-2', 'R-1-5', 'R-1-8', 'R-1-RR', 'R-2', 'R-M', 'R-MH',
+        // § 20.20.200 Table 20-40
+        'OS', 'A',
+        // § 20.50.200 Table 20-120 industrial
+        'CIC', 'TEC', 'IP', 'LI', 'HI',
+        // § 20.40.200 Table 20-100 commercial
+        'CO', 'CP', 'CN', 'CG', 'PQP',
+      ].sort(),
     )
   })
 })
@@ -21,7 +30,8 @@ describe('the FAR finding', () => {
   // § 20.30.200's "Floor area ratio" row holds a cross-reference, and the
   // referenced clause is a permit-exemption test, not a cap. So every district
   // this module knows reports a KNOWN ABSENCE rather than a number.
-  it.each(SAN_JOSE_ZONE_CODES)('%s reports no by-right FAR as an answer', (code) => {
+  const RESIDENTIAL = ['R-1-1', 'R-1-2', 'R-1-5', 'R-1-8', 'R-1-RR', 'R-2', 'R-M', 'R-MH'] as const
+  it.each(RESIDENTIAL)('%s reports no by-right FAR as an answer', (code) => {
     const r = resolveSanJose(code)
     expect(r.farUnconstrained).toBe(true)
     expect(r.maxFAR).toBeNull()
@@ -36,7 +46,6 @@ describe('the FAR finding', () => {
   it('never publishes the 0.45 permit threshold as a maximum FAR', () => {
     for (const code of SAN_JOSE_ZONE_CODES) {
       expect(resolveSanJose(code).maxFAR).not.toBe(SFH_PERMIT_FAR_THRESHOLD)
-      expect(resolveSanJose(code).maxFAR).toBeNull()
     }
   })
 
@@ -88,7 +97,7 @@ describe('scope (rule 23)', () => {
     expect(resolveSanJose(code).farUnconstrained).toBe(false)
   })
 
-  it.each(['CN', 'CG', 'CP', 'IP', 'LI', 'HI', 'DC', 'MS-G', 'MS-C', 'PQP', 'OS'])(
+  it.each(['DC', 'DC-NT1', 'MS-G', 'MS-C', 'UV', 'MUC', 'UR', 'TR', 'UVC', 'MUN'])(
     'leaves the out-of-scope district %s unresolved',
     (code) => {
       expect(sanJoseZoneKey(code)).toBeNull()
@@ -102,10 +111,13 @@ describe('scope (rule 23)', () => {
   // The distinction the whole module turns on: an unknown district and a known
   // one must not look the same. Both have maxFAR null; only one is an answer.
   it('separates a known absence from an unknown district', () => {
+    // CN was the example here until 2026-08-14, when Table 20-100 was read and
+    // CN became a known absence. DC is still genuinely unread, which is the
+    // point of the test: both return maxFAR null and only one is an answer.
     expect(resolveSanJose('R-1-8').maxFAR).toBeNull()
-    expect(resolveSanJose('CN').maxFAR).toBeNull()
+    expect(resolveSanJose('DC').maxFAR).toBeNull()
     expect(resolveSanJose('R-1-8').farUnconstrained).toBe(true)
-    expect(resolveSanJose('CN').farUnconstrained).toBe(false)
+    expect(resolveSanJose('DC').farUnconstrained).toBe(false)
   })
 
   it('returns null for absent or malformed input', () => {
@@ -118,5 +130,46 @@ describe('scope (rule 23)', () => {
   it('normalises case and whitespace', () => {
     expect(sanJoseZoneKey('r-1-8')).toBe('R-1-8')
     expect(sanJoseZoneKey(' R-MH ')).toBe('R-MH')
+  })
+})
+
+describe('the three tables read on 2026-08-14', () => {
+  // Table 20-40's FAR row is ['Maximum Floor Area Ratio', 'none', '.80'] — the
+  // two cells DISAGREE, and flattened page text drops the second one. Reading
+  // it flat would have published a fabricated absence for A.
+  it('A agricultural states a real FAR of 0.80', () => {
+    const r = resolveSanJose('A')
+    expect(r.maxFAR).toBe(0.8)
+    expect(r.farUnconstrained).toBe(false)
+    expect(r.source).toContain('20-40')
+  })
+
+  it('OS open space states "none" in the same row', () => {
+    const r = resolveSanJose('OS')
+    expect(r.maxFAR).toBeNull()
+    expect(r.farUnconstrained).toBe(true)
+    expect(r.source).toContain('20-40')
+  })
+
+  // Tables 20-120 and 20-100 have NO FAR row — not a blank cell, no row. That
+  // is the slot test answering from the table's own structure.
+  it.each(['CIC', 'TEC', 'IP', 'LI', 'HI'])('industrial %s reports no FAR as an answer', (code) => {
+    const r = resolveSanJose(code)
+    expect(r.farUnconstrained).toBe(true)
+    expect(r.maxFAR).toBeNull()
+    expect(r.source).toContain('20-120')
+  })
+
+  it.each(['CO', 'CP', 'CN', 'CG', 'PQP'])('commercial %s reports no FAR as an answer', (code) => {
+    const r = resolveSanJose(code)
+    expect(r.farUnconstrained).toBe(true)
+    expect(r.maxFAR).toBeNull()
+    expect(r.source).toContain('20-100')
+  })
+
+  it('never turns the A district into an absence', () => {
+    // The regression the flattened-text read would have caused.
+    expect(resolveSanJose('A').farUnconstrained).toBe(false)
+    expect(resolveSanJose('A').maxFAR).not.toBeNull()
   })
 })

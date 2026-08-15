@@ -330,12 +330,12 @@
       "noSpec": 0,
       "nonDevelopable": 10,
       "developable": 15,
-      "resolved": 0,
-      "unconstrained": 3,
+      "resolved": 3,
+      "unconstrained": 8,
       "plannedDevelopment": 4,
-      "gap": 8,
-      "indeterminate": 8,
-      "sampledOn": "2026-08-14"
+      "gap": 0,
+      "indeterminate": 0,
+      "sampledOn": "2026-08-15"
     },
     "seattle": {
       "attempted": 25,
