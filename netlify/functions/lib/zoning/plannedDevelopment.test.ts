@@ -9,9 +9,9 @@ import { CITIES } from '../../../../src/config/cities'
 
 describe('inventory (rule 20)', () => {
   it('pins the cities with an established rule', () => {
-    expect(PD_CITIES.length).toBe(7)
+    expect(PD_CITIES.length).toBe(8)
     expect([...PD_CITIES].sort()).toEqual(
-      ['atlanta', 'chicago', 'columbus', 'dallas', 'lasvegas', 'nashville', 'sanjose'].sort(),
+      ['atlanta', 'austin', 'chicago', 'columbus', 'dallas', 'lasvegas', 'nashville', 'sanjose'].sort(),
     )
   })
 

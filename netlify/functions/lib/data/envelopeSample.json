@@ -28,9 +28,9 @@
       "developable": 12,
       "resolved": 4,
       "unconstrained": 2,
-      "plannedDevelopment": 0,
-      "gap": 6,
-      "indeterminate": 6,
+      "plannedDevelopment": 1,
+      "gap": 5,
+      "indeterminate": 5,
       "sampledOn": "2026-08-15"
     },
     "boston": {

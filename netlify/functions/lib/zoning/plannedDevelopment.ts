@@ -114,6 +114,25 @@ const RULES: Readonly<Record<string, PlannedDevelopmentRule>> = Object.freeze({
       'San Jose Municipal Code § 20.100.1030(C)(2): "The site is located in a planned development zoning district. All construction in a planned development zoning district shall be governed by the provisions of Part 8 of this chapter…"',
   },
 
+  // Austin — PUD. § 25-2 Subchapter B Art. 2 SubPart C § 3.2.1: the site
+  // development regulations "are established by the ordinance zoning property
+  // as a PUD district, the accompanying land use plan, and this section", and
+  // § 3.2.2(C) requires that land use plan to state "for multifamily
+  // development, the maximum floor to area ratio". So the figure exists and is
+  // per-development.
+  //
+  // NOT added on the strength of zoningLimits.ts's note that "PUD/DR/AV/P vary
+  // case-by-case" — that is a repo note, not a citation, and it was the reason
+  // Austin was left out of this registry on 2026-08-15.
+  austin: {
+    match: (c) => /^PUD\b/.test(norm(c)),
+    alwaysMatch: ['PUD'],
+    neverMatch: ['SF-2', 'SF-6', 'MF-3', 'CBD', 'GR', 'LO', 'DR', 'RR', 'CS', 'P'],
+    governedBy: 'the ordinance zoning the property as a PUD and its accompanying land use plan',
+    citation:
+      'Austin Land Development Code § 25-2, Subchapter B, Article 2, SubPart C § 3.2.1: "The permitted uses, conditional uses, and site development regulations for a planned unit development (PUD) district are established by the ordinance zoning property as a PUD district, the accompanying land use plan, and this section."',
+  },
+
   // Nashville — SP, the Specific Plan district. Named differently, same shape.
   nashville: {
     match: (c) => /^SP\b|^SP-/.test(norm(c)),
