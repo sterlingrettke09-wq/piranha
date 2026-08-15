@@ -248,6 +248,29 @@ async function probe(url: string): Promise<{ status: number | null; note: string
   return { status: null, note: 'no response' }
 }
 
+// ⚠️ A 403 IS NOT A DEAD DOCUMENT. It is a refused FETCHER.
+//
+// This check exists because a repealed section keeps being cited: NYC's ZR
+// 23-662 returned 404 for months while nine height values pointed at it. A
+// 404 says the document moved or was withdrawn. A 401/403/429 says the
+// publisher declined to serve US — the document's state is simply unknown,
+// and reporting it as DEAD makes the check say something it did not measure.
+//
+// Measured 2026-08-15: eleven cited URLs returned 403 — city.milwaukee.gov,
+// code.mecknc.gov, four phoenix.municipal.codes pages, columbus.gov — and all
+// eleven still returned 403 under a full browser user-agent, so it is IP- or
+// challenge-based blocking rather than decay. The run was RED on all eleven,
+// which makes the whole result unreadable: a check that is red for a reason
+// unrelated to citation health is one that gets ignored, and then the real
+// 404 arrives and nobody looks.
+//
+// So: 404/410 and the other 4xx/5xx are DEAD; 401/403/429 are BLOCKED, which
+// is reported loudly and separately and does NOT fail the run. A blocked URL
+// is unverified, not verified — it must never be counted as live either.
+export const BLOCKED_STATUS = new Set([401, 403, 429])
+export const isBlocked = (s: number | null) => s != null && BLOCKED_STATUS.has(s)
+export const isDead = (s: number | null) => s != null && s >= 400 && !BLOCKED_STATUS.has(s)
+
 async function main() {
   const files = collectCoverage()
   const cites = distinctCitations(files)
@@ -257,22 +280,29 @@ async function main() {
     rows.push({ c, ...r })
   }
 
-  const isDead = (s: number | null) => s != null && s >= 400
+
   // A `known-dead` URL that resolves again is a stale record, not a pass.
   const resurrected = rows.filter((r) => r.c.knownDead && r.status != null && !isDead(r.status))
   const dead = rows.filter((r) => !r.c.knownDead && isDead(r.status))
+  const blocked = rows.filter((r) => !r.c.knownDead && isBlocked(r.status))
   const unreachable = rows.filter((r) => r.status == null)
-  const ok = rows.filter((r) => r.status != null && !isDead(r.status) && !r.c.knownDead)
+  // A blocked URL is NOT ok. It is excluded from both sides so the two counts
+  // never add up to a claim nobody measured.
+  const ok = rows.filter((r) => r.status != null && !isDead(r.status) && !isBlocked(r.status) && !r.c.knownDead)
   const recorded = rows.filter((r) => r.c.knownDead && isDead(r.status))
 
   for (const d of dead) console.log(`DEAD  ${d.status}  ${d.c.url}\n        ${d.c.file}:${d.c.line}`)
+  for (const b of blocked)
+    console.log(
+      `BLOCKED ${b.status}  ${b.c.url}\n        ${b.c.file}:${b.c.line} — the publisher refused this fetcher, so the document's state is UNKNOWN (not verified, not dead)`,
+    )
   for (const u of unreachable) console.log(`UNREACHABLE   ${u.c.url}  (${u.note})`)
   for (const r of resurrected)
     console.log(
       `RESURRECTED ${r.status}  ${r.c.url}\n        ${r.c.file}:${r.c.line} — recorded as known-dead but it resolves; the record is stale`,
     )
   console.log(
-    `\n${ok.length} live · ${dead.length} dead · ${recorded.length} recorded known-dead · ${resurrected.length} resurrected · ${unreachable.length} unreachable · ${cites.length} cited URLs`,
+    `\n${ok.length} live · ${dead.length} dead · ${blocked.length} blocked (state unknown) · ${recorded.length} recorded known-dead · ${resurrected.length} resurrected · ${unreachable.length} unreachable · ${cites.length} cited URLs`,
   )
   console.log(formatCoverage(files))
 

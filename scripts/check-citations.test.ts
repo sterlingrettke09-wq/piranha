@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+  BLOCKED_STATUS,
+  isBlocked,
+  isDead,
   scanSource,
   verdictFor,
   collectCoverage,
@@ -166,5 +169,49 @@ describe('measuring the real tree, not a fixture', () => {
   it('preserves the known-dead marker through the per-file scan', () => {
     const f = scanSource('nyc.ts', '// known-dead: https://zr.planning.nyc.gov/article-ii/chapter-3/23-662\n')
     expect(f.checkable[0].knownDead).toBe(true)
+  })
+})
+
+describe('a refused fetcher is not a dead document', () => {
+  // The check exists because a REPEALED section keeps being cited: NYC's
+  // ZR 23-662 returned 404 for months while nine height values pointed at it.
+  // A 403 is a different fact — the publisher declined to serve us, and the
+  // document's state is simply unknown.
+  //
+  // Measured 2026-08-15: nine cited URLs returned 403 (city.milwaukee.gov,
+  // phoenix.municipal.codes, columbus.gov) and all of them still 403 under a
+  // full browser user-agent, so it is IP- or challenge-based blocking. The run
+  // was RED on every one, which made the whole result unreadable — and a check
+  // that is red for a reason unrelated to citation health gets ignored, which
+  // is exactly when the real 404 slips through.
+  it.each([404, 410, 400, 500, 503])('%i is DEAD', (s) => {
+    expect(isDead(s)).toBe(true)
+    expect(isBlocked(s)).toBe(false)
+  })
+
+  it.each([401, 403, 429])('%i is BLOCKED, not dead', (s) => {
+    expect(isBlocked(s)).toBe(true)
+    expect(isDead(s)).toBe(false)
+  })
+
+  it.each([200, 206, 301, 302])('%i is neither', (s) => {
+    expect(isDead(s)).toBe(false)
+    expect(isBlocked(s)).toBe(false)
+  })
+
+  it('a null status is neither dead nor blocked — it is unreachable', () => {
+    expect(isDead(null)).toBe(false)
+    expect(isBlocked(null)).toBe(false)
+  })
+
+  // ⚠️ THE HALF THAT KEEPS THIS HONEST. A blocked URL must not be counted as
+  // LIVE either. It is unverified, and folding it into the pass column would
+  // turn "we could not check nine of these" into "all thirty-four resolve".
+  it('the blocked set is non-empty and pinned (rule 20)', () => {
+    expect(BLOCKED_STATUS.size).toBe(3)
+    expect([...BLOCKED_STATUS].sort()).toEqual([401, 403, 429])
+    // 404 must never drift into it — that is the status the whole check exists
+    // to catch.
+    expect(BLOCKED_STATUS.has(404)).toBe(false)
   })
 })

@@ -27,8 +27,24 @@ const PUBLIC_LANDUSE =
 // owners are individuals or LLCs, so these strong public-entity signals are safe
 // to hard-block. Used transiently in the provider to derive a boolean — owner
 // names are never stored or surfaced.
+// ⚠️ EVERY TOKEN HERE IS ANCHORED TO A GOVERNING NOUN, and that is the whole
+// discipline of this regex. `ownerPublic` feeds a HARD BLOCK: a false positive
+// tells someone their private parcel cannot be developed, which is a wrong
+// answer that looks authoritative. A bare `park`, `water` or `port` would catch
+// "Park Avenue Associates", "Waterfront Properties LLC" and "Portland Realty" —
+// all private. The words only appear below alongside district / authority /
+// board / commission / department, and the test file pins each of those
+// look-alikes as NOT matching (CLAUDE.md: never broaden a block-regex without a
+// test showing it cannot catch a legitimate private parcel).
+//
+// The 2026-08-15 additions are the special-district families the original list
+// missed: park and recreation boards, water and sewer districts, public utility
+// and flood-control districts, and "Port of <city>" (the list already had "port
+// authority" but not the form Seattle, Portland and Oakland actually use).
+// These own a great deal of urban land, and a parcel owned by one would have
+// passed the block and been priced for development.
 const GOV_OWNER =
-  /\b(cit(y|ies) of|town of|county of|commonwealth(\s+of)?|state of|united states|u\.?s\.?\s*gov|federal government|government of|district of columbia|housing authority|redevelopment authority|transit authority|MBTA|MTA|metropolitan transit|port authority|board of education|department of (education|transportation|general services|administrative)|school (district|department)|national park service|general services admin)\b/i
+  /\b(cit(y|ies) of|town of|county of|commonwealth(\s+of)?|state of|united states|u\.?s\.?\s*gov|federal government|government of|district of columbia|housing authority|redevelopment authority|transit authority|MBTA|MTA|metropolitan transit|port authority|port of\s+\w+|board of education|department of (education|transportation|general services|administrative)|school (district|department)|national park service|general services admin|park (district|board|authority|commission)|parks?\s+(and|&)\s+recreation|recreation (district|board|commission)|water (district|authority|board|commission)|metropolitan water|sewer (district|authority)|sanitary district|public utility district|flood control district|irrigation district|conservation district|regional (transit|water|park|open space) (district|authority))\b/i
 
 /** True when an assessing owner name denotes a government / public entity. */
 export function isGovernmentOwner(owner: string | null | undefined): boolean {
