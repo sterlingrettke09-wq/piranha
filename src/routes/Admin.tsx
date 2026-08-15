@@ -5,6 +5,7 @@ import type { CheckStatus } from '../types/analysis'
 
 interface SearchEntry {
   ts: string
+  kind?: 'lookup' | 'analysis'
   city: string
   address: string
   use?: string
@@ -114,12 +115,17 @@ export default function Admin() {
   }, [entries, now])
 
   function exportCsv() {
-    const head = ['timestamp', 'city', 'address', 'use', 'projectType', 'gfa', 'units', 'verdict', 'months']
+    // `kind` separates a map lookup from a full analysis run. Both writers
+    // stamp it; without the column the download cannot answer how many
+    // people actually ran an analysis.
+    const head = ['timestamp', 'city', 'address', 'kind', 'use', 'projectType', 'gfa', 'units', 'verdict', 'months']
     const cell = (c: unknown) => `"${String(c ?? '').replace(/"/g, '""')}"`
     const lines = [
       head.join(','),
       ...entries.map((e) =>
-        [e.ts, e.city, e.address, e.use, e.projectType, e.gfa, e.units, e.verdict, e.months].map(cell).join(','),
+        [e.ts, e.city, e.address, e.kind, e.use, e.projectType, e.gfa, e.units, e.verdict, e.months]
+          .map(cell)
+          .join(','),
       ),
     ]
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' })

@@ -331,6 +331,13 @@ export const handler: JsonHandler = async (event) => {
     ts: result.generatedAt,
     city,
     address: parcel.address,
+    // ⚠️ WITHOUT THIS THE TWO PATHS ARE NOT SEPARABLE. log-search.ts stamps
+    // `kind: 'lookup'` for a map search or click; this path left it undefined,
+    // so a full analysis could only be told apart from a lookup by noticing
+    // that `verdict` happened to be present. Every other field this call writes
+    // was already here — the log is populated, it just could not answer "how
+    // many people ran an analysis" without an inference.
+    kind: 'analysis',
     use: project.use,
     projectType: project.projectType,
     gfa: project.gfa,
