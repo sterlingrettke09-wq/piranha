@@ -133,6 +133,35 @@ const RULES: Readonly<Record<string, PlannedDevelopmentRule>> = Object.freeze({
       'Austin Land Development Code § 25-2, Subchapter B, Article 2, SubPart C § 3.2.1: "The permitted uses, conditional uses, and site development regulations for a planned unit development (PUD) district are established by the ordinance zoning property as a PUD district, the accompanying land use plan, and this section."',
   },
 
+  // Los Angeles — the "D" Development Limitation. It appears after the height
+  // district in the zone string (C2-2D, R3-1D) and is imposed by the ordinance
+  // that applied it, per LAMC § 12.32. It REDUCES what the height district
+  // would otherwise allow: a D limitation on a C2 lot in Height District 2 can
+  // take the FAR from 6:1 down to 3:1.
+  //
+  // So the base figure is an upper bound, not the answer, and the binding
+  // number is in the ordinance. Publishing the height district's FAR for a D
+  // parcel would overstate it — by 2x in that example.
+  //
+  // ⚠️ NOT the same shape as Charlotte's `conditional`, which layers conditions
+  // on top of figures that still bind. Here the district figure does not bind
+  // at all once a D limitation exists.
+  la: {
+    // Anchored to the height-district token so it cannot catch a stray D:
+    // "-1D", "-2D", "-3D", "-4D" only, optionally followed by another suffix.
+    match: (c) => /-[1-4]D(?=$|-)/.test(norm(c)),
+    alwaysMatch: ['C2-2D', 'C2-2D-CPIO', 'R3-1D', '[Q]C4-2D-O', 'C4-3D-SN'],
+    neverMatch: [
+      'C2-2', 'C2-1', 'C4-2', 'R3-1', 'R1-1', 'R1-1-CUGU', 'RS-1', 'RA-1', 'M1-1',
+      // The restrictive height-district variants end in letters too and must
+      // not be read as a D limitation.
+      'C2-1VL', 'R1-1XL', 'C4-1L', 'R3-1SS',
+    ],
+    governedBy: 'the ordinance that imposed the D Development Limitation on this property',
+    citation:
+      'LAMC § 12.32: a "D" Development Limitation is adopted on a property or neighbourhood to impose further restrictions on the height, floor area and setbacks of a building, and appears after the height district designation. It reduces the floor-area ratio the height district would otherwise permit — e.g. a C2 lot in Height District 2 from 6:1 to 3:1 — so the binding figure is in that ordinance rather than in § 12.21.1.',
+  },
+
   // Nashville — SP, the Specific Plan district. Named differently, same shape.
   nashville: {
     match: (c) => /^SP\b|^SP-/.test(norm(c)),
