@@ -1,3 +1,4 @@
+import { stripMioPrefix } from './seattleZoneString'
 // Seattle commercial/NC FAR table (WO-8.8 depth tranche 2).
 //
 // Source: Seattle Municipal Code (SMC) Title 23, Subtitle III, Chapter 23.47A
@@ -267,9 +268,14 @@ export function resolveSeattle(
   if (!zone) return { far: null, heightFt: null }
   let z = zone.trim().toUpperCase()
 
-  // Strip a leading MIO (Major Institution Overlay) prefix the way the provider
-  // does, so "MIO-105-NC3-65" reads as the NC3-65 base zone.
-  z = z.replace(/^MIO-\d{1,3}-/, '')
+  // Strip the MIO (Major Institution Overlay) prefix so "MIO-105-NC3-65" reads
+  // as the NC3-65 base zone. Shared with the provider — this file used to do it
+  // inline and claim in its docstring to "mirror the provider's suffix parsing",
+  // a claim nothing enforced and which was false on 39 live codes.
+  //
+  // PREFIX ONLY. The MHA suffix "(M)"/"(M1)"/"(M2)" must survive to hasMhaSuffix
+  // below; the parentheticals are dropped later, once it has been read.
+  z = stripMioPrefix(z)
 
   if (NR_RE.test(z)) {
     return {
@@ -296,6 +302,8 @@ export function resolveSeattle(
   // Left in place, such a parenthetical's digits would be picked up as the height
   // limit, since the parse takes the LAST in-range number.
   const mha = hasMhaSuffix(z)
+  // Already stripped by seattleBaseZoneToken above; kept as a no-op guard in
+  // case this function is ever called with a raw string again.
   const bare = z.replace(/\([^)]*\)/g, ' ')
 
   // Trailing 2-3 digit height-limit token (NC3-65 → 65, C1-40 → 40). Take the

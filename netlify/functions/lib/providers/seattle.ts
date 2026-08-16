@@ -3,6 +3,7 @@
 import type { ParcelInfo } from '../../../../src/types/parcel'
 import { ENDPOINTS } from '../../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
+import { seattleBaseHeightFt } from '../zoning/seattleZoneString'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
 import { resolveSeattle, SEATTLE_INSIDE_CENTER_TYPES, type SeattleCenter } from '../zoning/seattle'
@@ -41,26 +42,12 @@ const INDUSTRIAL = ['IB', 'IG', 'IC']
 // DRC 85-170 → 170 (max), SM-U 95-320 → 320, DMC 340/290-440 → 440. Take the
 // largest plausible height number in the string as the max. Lowrise/Midrise/
 // Highrise tiers without a number get the SMC base-height by tier.
-function seattleMaxHeightFt(zone: string | null): number | null {
-  if (!zone) return null
-  const z = zone.toUpperCase()
-  // Industrial "U/##" (e.g. IG1 U/85) means height is UNLIMITED for industrial
-  // uses; the number only caps non-industrial. Don't report the number as the
-  // max — return null (no by-right cap) rather than a wrongly-low height.
-  if (/\bU\s*\//.test(z)) return null
-  // Seattle writes the base-zone height as the TRAILING number ("NC3-65",
-  // "MIO-105-NC3-65"). Math.max over every number wrongly returned the MIO
-  // institutional-overlay height (105) instead of the by-right base (65) on
-  // layered zones — overstating the envelope for non-institutional projects.
-  const nums = (z.match(/\d{2,3}/g) ?? []).map(Number).filter((n) => n >= 25 && n <= 1000)
-  if (nums.length) return nums[nums.length - 1]
-  if (/\bLR1\b/.test(z)) return 30
-  if (/\bLR2\b/.test(z)) return 40
-  if (/\bLR3\b/.test(z)) return 50
-  if (/\bMR\b/.test(z)) return 85
-  if (/\bHR\b/.test(z)) return 240
-  return null
-}
+// Taking the LAST number worked only where the base zone had a trailing number
+// of its own. On "MIO-160-LR1 (M)" the overlay height WAS the last number, and
+// was published as the by-right height — 39 of 285 live codes, 5.3% of Seattle's
+// polygons, up to 6x. The shared reader strips the overlay prefix and any
+// parenthetical first. See ../zoning/seattleZoneString.ts.
+const seattleMaxHeightFt = seattleBaseHeightFt
 
 function usesForZone(zone: string | null): string[] | null {
   if (!zone) return null
