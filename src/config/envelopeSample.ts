@@ -121,6 +121,22 @@ export const ENVELOPE_SAMPLE_SOURCE: string = artifact.source
  *  non-empty and checkable. */
 export const ENVELOPE_SAMPLED_CITIES: string[] = Object.keys(CITIES_SAMPLED).sort()
 
+/**
+ * ⚠️ THIS NUMBER MEASURES RESOLUTION, NOT CORRECTNESS. It answers one question —
+ * did the pipeline produce an envelope? — and says nothing about whether the
+ * figures inside it are right.
+ *
+ * Seattle is the proof. The provider published a Major Institution Overlay
+ * height as the by-right height, 160 ft where the base zone allows 40, on 5.3%
+ * of the city's zoning polygons. Seattle's rate was 94% before the fix and 94%
+ * after: a 4x error was completely invisible here, and no affected parcel even
+ * appeared in the 100-parcel sample.
+ *
+ * The natural reading of "94% resolved" is "94% right", and that reading is
+ * wrong. Wrong VALUES are watched by `scripts/city-readiness.ts` — duplicated
+ * parses and uncited figures — which is a different check with a different
+ * verdict. Never let one stand in for the other.
+ */
 export function envelopeSample(slug: string): EnvelopeSample {
   const c = CITIES_SAMPLED[slug]
   if (!c) return { kind: 'unmeasured' }
