@@ -38,7 +38,7 @@ describe('the fixture is pinned to the live layer (rule 20)', () => {
     // that silently empties — or a regeneration that quietly shrinks — goes red.
     expect(FIXTURE.totalDistinct).toBe(285)
     expect(FIXTURE.allCodes.length).toBe(285)
-    expect(FIXTURE.divergent.length).toBe(39)
+    expect(FIXTURE.divergent.length).toBe(61)
     expect(FIXTURE.source).toMatch(/live enumeration/i)
   })
 
@@ -48,9 +48,12 @@ describe('the fixture is pinned to the live layer (rule 20)', () => {
     // flattering direction, and the one anybody would notice first — would sail
     // through a test that only counted "is it lower now".
     const by = (d: Row['direction']) => FIXTURE.divergent.filter((r) => r.direction === d)
-    expect(by('overstated').length).toBe(22)
-    expect(by('understated').length).toBe(11)
-    expect(by('null-side').length).toBe(6)
+    expect(by('overstated').length).toBe(25)
+    expect(by('understated').length).toBe(16)
+    // 20 null-side: LR3 codes now resolve to null WITHOUT a centre, because SMC
+    // 23.45.514 Table A answers differently inside and outside one and picking
+    // either would assume a boundary nobody read.
+    expect(by('null-side').length).toBe(20)
   })
 })
 
@@ -104,7 +107,7 @@ describe('every divergent code now returns the corrected value', () => {
   )
 })
 
-describe('the 246 non-divergent codes are unchanged', () => {
+describe('the 224 non-divergent codes are unchanged', () => {
   // The control. A "fix" that moved every code would also make the divergent
   // assertions pass, and would be a different bug. Pins that only the 39 moved.
   const unchanged = FIXTURE.allCodes.filter(
@@ -112,7 +115,7 @@ describe('the 246 non-divergent codes are unchanged', () => {
   )
 
   it('the control set is the rest of the enumeration', () => {
-    expect(unchanged.length).toBe(285 - 39)
+    expect(unchanged.length).toBe(285 - 61)
   })
 
   it('NC/C codes with a trailing height still read that height', () => {
@@ -147,7 +150,9 @@ describe('the two strip helpers stay distinct', () => {
   it('the parenthetical that started it', () => {
     // "LR2 (0.75)" is in the live enumeration; its "75" was read as a height.
     expect(FIXTURE.allCodes).toContain('LR2 (0.75)')
-    expect(seattleBaseHeightFt('LR2 (0.75)')).toBe(40)
+    // 32, not 40: '(0.75)' is not an MHA suffix, and SMC 23.45.514 Table A
+    // footnote 1 sets LR2 to 32 ft in zones without one.
+    expect(seattleBaseHeightFt('LR2 (0.75)')).toBe(32)
   })
 })
 
@@ -184,5 +189,77 @@ describe('Seattle reads a zone string in exactly one place', () => {
     expect(read(rel), 'inline MIO strip found — has the parse been copied back?').not.toMatch(
       /replace\(\/\^MIO-/,
     )
+  })
+})
+
+describe('SMC 23.45.514 tier heights, sourced 2026-08-16', () => {
+  // Every figure here was read from the CURRENT code, not the May 2019 archive
+  // Municode served first. All five constants these replace were wrong.
+
+  it('Table A: LR1 is 32 regardless of MHA', () => {
+    expect(seattleBaseHeightFt('LR1')).toBe(32)
+    expect(seattleBaseHeightFt('LR1 (M)')).toBe(32)
+  })
+
+  it('Table A footnote 1: LR2 drops to 32 without an MHA suffix', () => {
+    expect(seattleBaseHeightFt('LR2 (M)')).toBe(40)
+    expect(seattleBaseHeightFt('LR2')).toBe(32)
+  })
+
+  it('Table A: LR3 depends on the CENTRE, and refuses without one', () => {
+    expect(seattleBaseHeightFt('LR3 (M)', 'inside')).toBe(50)
+    expect(seattleBaseHeightFt('LR3 (M)', 'outside')).toBe(40)
+    expect(seattleBaseHeightFt('LR3', 'outside')).toBe(32)
+    // The input was already resolved and passed to the FAR path; the height
+    // path never consulted it. Refusing matches what multifamilyFar does.
+    expect(seattleBaseHeightFt('LR3 (M)')).toBeNull()
+    expect(seattleBaseHeightFt('LR3 (M)', null)).toBeNull()
+  })
+
+  it('THE ONE CELL where dwelling-unit type would change the answer', () => {
+    // LR3 in a centre WITHOUT an MHA suffix: attached/detached takes footnote 1
+    // (32 ft), stacked takes footnote 2 (40 ft). We do not model unit type, so
+    // the LOWER figure is carried — reporting 40 would assume a stacked-unit
+    // program nobody chose (rule 6). Named here so whoever models unit type
+    // knows exactly which cell to revisit.
+    expect(seattleBaseHeightFt('LR3', 'inside')).toBe(32)
+  })
+
+  it('Table B: MR is 80 with MHA and 60 without — 85 was never in the code', () => {
+    expect(seattleBaseHeightFt('MR (M)')).toBe(80)
+    expect(seattleBaseHeightFt('MR')).toBe(60)
+    expect(seattleBaseHeightFt('MR (M)')).not.toBe(85)
+    expect(seattleBaseHeightFt('MR')).not.toBe(85)
+  })
+
+  it('Table B: HR is 440 — the shipped 240 understated it by 45%', () => {
+    expect(seattleBaseHeightFt('HR')).toBe(440)
+    expect(seattleBaseHeightFt('HR (M)')).toBe(440)
+    expect(seattleBaseHeightFt('HR')).not.toBe(240)
+  })
+
+  it('a zone with its own trailing height still wins over the tier tables', () => {
+    // The tables only govern base zones that carry no number of their own.
+    expect(seattleBaseHeightFt('NC3-65')).toBe(65)
+    expect(seattleBaseHeightFt('MIO-105-NC3-65')).toBe(65)
+  })
+
+  it('the MHA suffix survives the MIO strip', () => {
+    // "MIO-160-MR (M)" must read as MR-with-MHA (80), not MR-without (60).
+    expect(seattleBaseHeightFt('MIO-160-MR (M)')).toBe(80)
+    expect(seattleBaseHeightFt('MIO-160-MR')).toBe(60)
+  })
+
+  it('every published figure is one of the code’s, and none is a legacy value', () => {
+    // Pinned inventory: the five wrong constants must not reappear anywhere the
+    // tier tables answer. 30/50/85/240 were the shipped figures; 32/40/50/60/80/440
+    // are the code's. 50 is in both, legitimately.
+    const answers = new Set(
+      ['LR1', 'LR2', 'LR2 (M)', 'MR', 'MR (M)', 'HR', 'HR (M)'].map((z) => seattleBaseHeightFt(z)),
+    )
+    expect(answers.has(30)).toBe(false)
+    expect(answers.has(85)).toBe(false)
+    expect(answers.has(240)).toBe(false)
+    expect([...answers].every((a) => [32, 40, 60, 80, 440].includes(a as number))).toBe(true)
   })
 })

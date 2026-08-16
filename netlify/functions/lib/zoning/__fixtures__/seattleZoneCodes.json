@@ -1,6 +1,6 @@
 {
   "source": "Live enumeration of the ZONING field on Current_Land_Use_Zoning_Detail_2/FeatureServer/0, captured 2026-08-16. 285 distinct values, verified non-truncated by two independent queries (returnDistinctValues and a groupBy count both returned 285).",
-  "note": "THE CODES ARE EXTERNAL. They come from the live layer, not from either parser — a fixture derived from a parse would pass whenever both implementations are wrong. `before` is the pre-fix parse transcribed from providers/seattle.ts; `after` is seattleBaseHeightFt. Directions are pinned separately so a fix that corrects only the flattering direction fails.",
+  "note": "THE CODES ARE EXTERNAL. They come from the live layer, not from either parser — a fixture derived from a parse would pass whenever both implementations are wrong. `before` is the pre-fix parse transcribed from providers/seattle.ts; `after` is seattleBaseHeightFt. Directions are pinned separately so a fix that corrects only the flattering direction fails. REGENERATED 2026-08-16 after SMC 23.45.514 was read: the tier heights are now sourced, so `after` changed for every LR/MR/HR code. `before` is preserved as the record of what shipped. LR3 resolves to null WITHOUT a centre, because the code answers differently inside and outside one.",
   "totalDistinct": 285,
   "allCodes": [
     "C1-145 (M)",
@@ -291,10 +291,94 @@
   ],
   "divergent": [
     {
+      "code": "HR (M)",
+      "before": 240,
+      "after": 440,
+      "direction": "understated"
+    },
+    {
+      "code": "LR1",
+      "before": 30,
+      "after": 32,
+      "direction": "understated"
+    },
+    {
+      "code": "LR1 (M)",
+      "before": 30,
+      "after": 32,
+      "direction": "understated"
+    },
+    {
+      "code": "LR1 (M1)",
+      "before": 30,
+      "after": 32,
+      "direction": "understated"
+    },
+    {
+      "code": "LR1 RC (M)",
+      "before": 30,
+      "after": 32,
+      "direction": "understated"
+    },
+    {
+      "code": "LR1 RC (M1)",
+      "before": 30,
+      "after": 32,
+      "direction": "understated"
+    },
+    {
+      "code": "LR2",
+      "before": 40,
+      "after": 32,
+      "direction": "overstated"
+    },
+    {
       "code": "LR2 (0.75)",
       "before": 75,
-      "after": 40,
+      "after": 32,
       "direction": "overstated"
+    },
+    {
+      "code": "LR3",
+      "before": 50,
+      "after": null,
+      "direction": "null-side"
+    },
+    {
+      "code": "LR3 (M)",
+      "before": 50,
+      "after": null,
+      "direction": "null-side"
+    },
+    {
+      "code": "LR3 (M1)",
+      "before": 50,
+      "after": null,
+      "direction": "null-side"
+    },
+    {
+      "code": "LR3 (M2)",
+      "before": 50,
+      "after": null,
+      "direction": "null-side"
+    },
+    {
+      "code": "LR3 RC",
+      "before": 50,
+      "after": null,
+      "direction": "null-side"
+    },
+    {
+      "code": "LR3 RC (M)",
+      "before": 50,
+      "after": null,
+      "direction": "null-side"
+    },
+    {
+      "code": "LR3 RC (M1)",
+      "before": 50,
+      "after": null,
+      "direction": "null-side"
     },
     {
       "code": "MIO-105-LR2 (M)",
@@ -305,25 +389,25 @@
     {
       "code": "MIO-105-LR3 (M)",
       "before": 105,
-      "after": 50,
-      "direction": "overstated"
+      "after": null,
+      "direction": "null-side"
     },
     {
       "code": "MIO-105-MR (M)",
       "before": 105,
-      "after": 85,
+      "after": 80,
       "direction": "overstated"
     },
     {
       "code": "MIO-160-HR (M)",
       "before": 160,
-      "after": 240,
+      "after": 440,
       "direction": "understated"
     },
     {
       "code": "MIO-160-LR1 (M)",
       "before": 160,
-      "after": 30,
+      "after": 32,
       "direction": "overstated"
     },
     {
@@ -335,13 +419,13 @@
     {
       "code": "MIO-160-LR3 (M)",
       "before": 160,
-      "after": 50,
-      "direction": "overstated"
+      "after": null,
+      "direction": "null-side"
     },
     {
       "code": "MIO-160-MR (M)",
       "before": 160,
-      "after": 85,
+      "after": 80,
       "direction": "overstated"
     },
     {
@@ -353,7 +437,7 @@
     {
       "code": "MIO-200-HR (M)",
       "before": 200,
-      "after": 240,
+      "after": 440,
       "direction": "understated"
     },
     {
@@ -365,14 +449,20 @@
     {
       "code": "MIO-200-LR3 (M)",
       "before": 200,
-      "after": 50,
-      "direction": "overstated"
+      "after": null,
+      "direction": "null-side"
     },
     {
       "code": "MIO-200-MR (M)",
       "before": 200,
-      "after": 85,
+      "after": 80,
       "direction": "overstated"
+    },
+    {
+      "code": "MIO-240-HR (M)",
+      "before": 240,
+      "after": 440,
+      "direction": "understated"
     },
     {
       "code": "MIO-240-LR2 (M)",
@@ -383,13 +473,13 @@
     {
       "code": "MIO-240-MR (M)",
       "before": 240,
-      "after": 85,
+      "after": 80,
       "direction": "overstated"
     },
     {
       "code": "MIO-37-LR1 (M)",
       "before": 37,
-      "after": 30,
+      "after": 32,
       "direction": "overstated"
     },
     {
@@ -401,19 +491,19 @@
     {
       "code": "MIO-37-LR3 (M)",
       "before": 37,
-      "after": 50,
-      "direction": "understated"
+      "after": null,
+      "direction": "null-side"
     },
     {
       "code": "MIO-37-LR3 RC (M)",
       "before": 37,
-      "after": 50,
-      "direction": "understated"
+      "after": null,
+      "direction": "null-side"
     },
     {
       "code": "MIO-37-MR (M)",
       "before": 37,
-      "after": 85,
+      "after": 80,
       "direction": "understated"
     },
     {
@@ -425,13 +515,13 @@
     {
       "code": "MIO-50-LR1 (M)",
       "before": 50,
-      "after": 30,
+      "after": 32,
       "direction": "overstated"
     },
     {
       "code": "MIO-50-LR1 RC (M)",
       "before": 50,
-      "after": 30,
+      "after": 32,
       "direction": "overstated"
     },
     {
@@ -441,9 +531,15 @@
       "direction": "overstated"
     },
     {
+      "code": "MIO-50-LR3 (M)",
+      "before": 50,
+      "after": null,
+      "direction": "null-side"
+    },
+    {
       "code": "MIO-50-MR (M)",
       "before": 50,
-      "after": 85,
+      "after": 80,
       "direction": "understated"
     },
     {
@@ -455,7 +551,7 @@
     {
       "code": "MIO-65-LR1 (M)",
       "before": 65,
-      "after": 30,
+      "after": 32,
       "direction": "overstated"
     },
     {
@@ -467,13 +563,13 @@
     {
       "code": "MIO-65-LR3 (M)",
       "before": 65,
-      "after": 50,
-      "direction": "overstated"
+      "after": null,
+      "direction": "null-side"
     },
     {
       "code": "MIO-65-MR (M)",
       "before": 65,
-      "after": 85,
+      "after": 80,
       "direction": "understated"
     },
     {
@@ -485,13 +581,13 @@
     {
       "code": "MIO-70-HR (M)",
       "before": 70,
-      "after": 240,
+      "after": 440,
       "direction": "understated"
     },
     {
       "code": "MIO-70-MR (M)",
       "before": 70,
-      "after": 85,
+      "after": 80,
       "direction": "understated"
     },
     {
@@ -503,13 +599,13 @@
     {
       "code": "MIO-90-HR (M)",
       "before": 90,
-      "after": 240,
+      "after": 440,
       "direction": "understated"
     },
     {
       "code": "MIO-90-LR1 (M)",
       "before": 90,
-      "after": 30,
+      "after": 32,
       "direction": "overstated"
     },
     {
@@ -523,6 +619,42 @@
       "before": 90,
       "after": null,
       "direction": "null-side"
+    },
+    {
+      "code": "MR",
+      "before": 85,
+      "after": 60,
+      "direction": "overstated"
+    },
+    {
+      "code": "MR (M)",
+      "before": 85,
+      "after": 80,
+      "direction": "overstated"
+    },
+    {
+      "code": "MR (M1)",
+      "before": 85,
+      "after": 80,
+      "direction": "overstated"
+    },
+    {
+      "code": "MR (M2)",
+      "before": 85,
+      "after": 80,
+      "direction": "overstated"
+    },
+    {
+      "code": "MR RC (M)",
+      "before": 85,
+      "after": 80,
+      "direction": "overstated"
+    },
+    {
+      "code": "MR RC (M1)",
+      "before": 85,
+      "after": 80,
+      "direction": "overstated"
     }
   ]
 }

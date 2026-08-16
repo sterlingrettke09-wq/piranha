@@ -99,12 +99,22 @@ describe('citation coverage counts what a city actually publishes', () => {
   })
 
   it('counts a returned tier default, not just an assignment', () => {
-    // `if (/\\bLR1\\b/.test(base)) return 30` is a published figure. An earlier
-    // filter skipped every line containing a comparison, which excluded these —
-    // the exact numbers the check was built to surface.
+    // `if (/\\bLR1\\b/.test(base)) return 32` is a published figure, and an
+    // earlier filter skipped every line containing a comparison — which excluded
+    // exactly the numbers the check was built to surface.
+    //
+    // SUPERSEDED BY THE FIX IT CAUSED. This asserted those lines appear in the
+    // UNCITED samples; they no longer do, because SMC 23.45.514 was read and the
+    // figures now carry SMC_HEIGHT_SRC. So the assertion is inverted: the tier
+    // returns must still be COUNTED as figures, and must now be counted as CITED.
+    // A check that stopped seeing them entirely would pass either way, which is
+    // why the count is pinned rather than just the samples.
     const s = citationCoverage('seattle')!
+    expect(s.numbers).toBeGreaterThan(30)
     const flagged = s.uncitedSamples.map((u) => u.text).join('\n')
-    expect(flagged).toMatch(/seattleZoneString\.ts:\d+\s+if \(\/\\bLR[12]\\b\/\.test\(base\)\) return \d+/)
+    expect(flagged, 'the tier heights are sourced now and must not read as uncited').not.toMatch(
+      /seattleZoneString\.ts:\d+\s+if \(\/\\bLR[123]\\b\/\.test\(base\)\) return \d+/,
+    )
   })
 
   it('does not count sanity bounds as figures', () => {

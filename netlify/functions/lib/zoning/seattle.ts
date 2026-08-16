@@ -1,4 +1,4 @@
-import { stripMioPrefix } from './seattleZoneString'
+import { stripMioPrefix, hasMhaSuffix } from './seattleZoneString'
 // Seattle commercial/NC FAR table (WO-8.8 depth tranche 2).
 //
 // Source: Seattle Municipal Code (SMC) Title 23, Subtitle III, Chapter 23.47A
@@ -209,9 +209,9 @@ const NC_FAR_40_NO_MHA = 3.25
 // SMC 23.30.010.B, verbatim: "Mandatory housing affordability suffixes include
 // (M), (M1), and (M2)." Anything else in parentheses (e.g. the incentive-zoning
 // "LR2 (0.75)") is not an MHA suffix.
-function hasMhaSuffix(zone: string): boolean {
-  return /\(\s*M[12]?\s*\)/.test(zone)
-}
+// hasMhaSuffix now lives in ./seattleZoneString — the MHA suffix drives BOTH
+// height and FAR, and two readings of it is the pair this file already learned
+// to avoid.
 
 // Zone-prefix families that 23.47A.013 Table A governs, per SMC 23.47A.002.A
 // (this chapter describes the standards for NC1, NC2, NC3, C1 and C2). SM

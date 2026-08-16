@@ -136,7 +136,11 @@ export async function getSeattleParcelInfo(lat: number, lng: number): Promise<Pa
       districtCode: zone ?? 'Unknown',
       subdistrict: null,
       article: null,
-      maxHeightFt: seattleMaxHeightFt(zone),
+      // ⚠️ PASS THE CENTRE. It was resolved above and handed to resolveSeattle
+      // for FAR, and the height call ignored it — so LR3, whose height differs
+      // inside and outside a Regional/Urban Center, was answered without the
+      // input that decides it.
+      maxHeightFt: seattleMaxHeightFt(zone, centerType),
       // SMC 23.47A.013 Table A publishes NC/C FAR as a function of the
       // height-limit suffix, and lib/zoning/seattle.ts already encodes it —
       // resolveZoningLimits layers it in, so the ENVELOPE was always correct.

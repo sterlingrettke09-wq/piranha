@@ -42,15 +42,39 @@
 // remedy: one exported function, both callers wired to it, and a wiring test that
 // fails if either reimplements it (CLAUDE.md rule 14).
 //
-// ⚠️ THIS MODULE DOES NOT ESTABLISH THE BASE-ZONE HEIGHTS. The LR/MR/HR figures
-// the provider falls back to (30/40/50/85/240) are PRE-EXISTING and carry no
-// citation — providers/seattle.ts says the tiers "get the SMC base-height by
-// tier" and cites nothing, and zoning/seattle.ts cites SMC 23.45.510, which is
-// the FAR table, not height. Sourcing them against SMC 23.45.514 is separate
-// work and is deliberately NOT done here: this change makes an MIO-prefixed code
-// behave exactly like its bare equivalent, which is a strict improvement whether
-// or not the bare figure is later corrected. Fixing two things at once would
-// leave neither measured.
+// ── THE TIER HEIGHTS, NOW SOURCED (2026-08-16) ───────────────────────────────
+//
+// These were five uncited constants — 30/40/50/85/240 — shipped on the strength
+// of a comment saying the tiers "get the SMC base-height by tier". Read against
+// the code, EVERY ONE was wrong:
+//
+//   zone   shipped   SMC 23.45.514 with MHA   without MHA
+//   LR1      30              32                   32
+//   LR2      40              40                   32
+//   LR3      50        40 outside / 50 inside     32 / 40
+//   MR       85              80                   60
+//   HR      240             440                  440
+//
+// MR 85 is not a figure in the code at all. HR 240 understated a 440 ft zone by
+// 45%. LR3 outside a centre without MHA overstated by 56%.
+//
+// ⚠️ READ THE VERSION BEFORE THE TABLE. The first read of 23.45.514 came back
+// LR1 30 / cottage housing 22 / HR 440 — from Municode's **May 21, 2019
+// ARCHIVE**, served from a versioned URL with the section flagged "modified".
+// Encoding it would have replaced uncited-but-maybe-right numbers with
+// CITED-AND-STALE ones, which is strictly worse: a citation stops the next
+// reader re-checking. The tell was `VERSION: MAY 21, 2019 (ARCHIVE)` in the page
+// chrome, not in the text being extracted. A primary source has a version, and
+// reading the wrong one produces a defensible-looking wrong answer.
+//
+// A search summary also suggested the Midrise tiers had been renumbered to
+// "MR1 65 / MR2 85". The code has a single MR at 80/60. It stayed flagged as
+// unverified and never reached the module.
+//
+// ⚠️ HEIGHT IS A JOINT DEPENDENCY: zone x MHA suffix x urban-centre membership.
+// Both extra inputs were ALREADY resolved and passed to the FAR path — the
+// height path simply never consulted them (CLAUDE.md rule 13; third instance of
+// a field fetched, read for one purpose, and not read for another).
 
 /** The MIO prefix: "MIO-105-NC3-65" → the 105 is the Major Institution Overlay
  *  height, not the base zone's. Stripped before any height is read. */
@@ -87,32 +111,72 @@ export function seattleBaseZoneToken(zone: string): string {
   return stripMioPrefix(zone).replace(PARENTHETICAL, ' ').trim()
 }
 
+/** TRUE when the zone carries a Mandatory Housing Affordability suffix —
+ *  "(M)", "(M1)", "(M2)". Load-bearing for BOTH height and FAR, which is why it
+ *  lives beside the other zone-string reads rather than in one consumer. */
+export function hasMhaSuffix(zone: string): boolean {
+  return /\(\s*M[12]?\s*\)/.test(zone)
+}
+
+/** Whether the parcel sits inside a Regional or Urban Center. `null`/`undefined`
+ *  mean the boundary layer did not answer — never "outside". */
+export type SeattleCenter = 'inside' | 'outside' | null | undefined
+
+/** SMC 23.45.514 Table A (LR) and Table B (MR/HR), read from the CURRENT code on
+ *  2026-08-16. One citation per figure; see the table in this file's header. */
+export const SMC_HEIGHT_SRC =
+  'Seattle Municipal Code § 23.45.514, Table A for 23.45.514 (structure height for LR zones) and Table B for 23.45.514 (MR and HR), read 2026-08-16'
+
 /**
  * The base-zone height limit a Seattle zone string encodes, in feet, or null
- * where the string carries none.
+ * where the code does not settle one.
  *
  * Reads the TRAILING in-range number of the BASE token — never a number that
- * belongs to the MIO overlay or to a parenthetical suffix.
+ * belongs to the MIO overlay or to a parenthetical suffix. Where the base zone
+ * carries no number, falls to the SMC 23.45.514 tier tables, which depend on the
+ * MHA suffix and, for LR3, on urban-centre membership.
  *
  * Returns null for industrial "U/##" (e.g. "IG1 U/85"), where height is
- * unlimited for industrial uses and the number caps only non-industrial ones:
- * reporting it as the max would publish a wrongly-low ceiling.
+ * unlimited for industrial uses and the number caps only non-industrial ones.
  */
-export function seattleBaseHeightFt(zone: string | null | undefined): number | null {
+export function seattleBaseHeightFt(
+  zone: string | null | undefined,
+  center?: SeattleCenter,
+): number | null {
   if (!zone) return null
   const z = String(zone).toUpperCase()
   if (/\bU\s*\//.test(z)) return null
   const base = seattleBaseZoneToken(z)
   const nums = (base.match(/\d{2,3}/g) ?? []).map(Number).filter((n) => n >= 25 && n <= 1000)
   if (nums.length) return nums[nums.length - 1]
-  // Tier defaults for base zones that carry no numeric suffix. UNCITED and
-  // pre-existing — see the warning in this file's header. They are reached now
-  // for MIO-prefixed strings, which is the fix: previously the overlay height
-  // shadowed them entirely.
-  if (/\bLR1\b/.test(base)) return 30
-  if (/\bLR2\b/.test(base)) return 40
-  if (/\bLR3\b/.test(base)) return 50
-  if (/\bMR\b/.test(base)) return 85
-  if (/\bHR\b/.test(base)) return 240
+
+  // The MHA suffix is read off the ORIGINAL string: seattleBaseZoneToken strips
+  // parentheticals, which is where it lives.
+  const mha = hasMhaSuffix(z)
+
+  // Table A. Both dwelling-unit-type rows agree everywhere except one cell.
+  if (/\bLR1\b/.test(base)) return 32
+  if (/\bLR2\b/.test(base)) return mha ? 40 : 32
+  if (/\bLR3\b/.test(base)) {
+    if (center === 'inside') {
+      // ⚠️ THE ONE CELL WHERE DWELLING-UNIT TYPE CHANGES THE ANSWER, and we do
+      // not model unit type. Table A, LR3-in-centres, WITHOUT an MHA suffix:
+      // "Attached and detached dwelling units" takes footnote 1 (32 ft) and
+      // "Stacked dwelling units" takes footnote 2 (40 ft). Everywhere else the
+      // two rows are identical.
+      //
+      // Carrying the LOWER figure, because reporting the higher would assume a
+      // stacked-unit program the user has not chosen (CLAUDE.md rule 6). If unit
+      // type is ever modelled, THIS is the cell to revisit.
+      return mha ? 50 : 32
+    }
+    if (center === 'outside') return mha ? 40 : 32
+    // Centre unresolved and the answer differs by centre. Refuse rather than
+    // pick one — the same choice the FAR path makes for LR3 (multifamilyFar).
+    return null
+  }
+  // Table B.
+  if (/\bMR\b/.test(base)) return mha ? 80 : 60
+  if (/\bHR\b/.test(base)) return 440
   return null
 }
