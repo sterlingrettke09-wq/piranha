@@ -55,15 +55,36 @@ import {
  * What the measurement licenses a surface to say about one city.
  *
  *   'answering'  — the sample resolved an envelope for at least one parcel.
- *   'silent'     — the sample resolved one for none of them. Wired, not
- *                  answering. This is the state the word "live" was hiding.
+ *   'explained'  — resolved none, and NOTHING WAS LEFT UNREAD: every parcel in
+ *                  the sample carries an established reason (its limit is in a
+ *                  planned-development ordinance, or the code applies its FAR
+ *                  to an area no public layer carries). Wired, answering, and
+ *                  never with a floor area.
+ *   'silent'     — resolved none AND some parcel fell through to an assumed
+ *                  FAR. Wired, not answering. This is the state the word "live"
+ *                  was hiding.
  *   'unknown'    — no usable sample: never sampled, or sampled with no
  *                  developable answered parcel to form a denominator. Not a
  *                  clean city and not a broken one; nobody has looked.
  *                  Deliberately NOT folded into 'answering' — an unmeasured
  *                  city reading as a working one is the original defect.
+ *
+ * ── WHY 'explained' EXISTS ────────────────────────────────────────────────
+ * LA resolves no envelope, because LAMC § 12.21.1 A.1 states every FAR against
+ * Buildable Area and the required front yard is the prevailing setback of the
+ * neighbouring built lots. That is an ANSWER about how the city regulates, and
+ * 'silent' published it as "No sampled parcel resolved in Los Angeles" — the
+ * same sentence a city nobody had coded would get. A deliberate withholding and
+ * an unread city rendering identically is rule 5, and this is its fourth
+ * appearance in one change: the envelope, the sampler's buckets, the default
+ * spec, and now the public claim.
+ *
+ * THE CUTOFF IS STILL ONLY ZERO, per this file's standing rule. 'explained' is
+ * `gap === 0`, not "few gaps" — no magnitude judgement is introduced. A city
+ * with one unread parcel is silent, and that is deliberate: it is the same
+ * refusal-to-pick-a-threshold the rest of this module already makes.
  */
-export type ClaimVerdict = 'answering' | 'silent' | 'unknown'
+export type ClaimVerdict = 'answering' | 'explained' | 'silent' | 'unknown'
 
 export interface CityClaim {
   slug: string
@@ -79,7 +100,9 @@ export interface CityClaim {
 
 export function verdictFor(s: EnvelopeSample): ClaimVerdict {
   if (s.kind !== 'measured') return 'unknown'
-  return s.resolved > 0 ? 'answering' : 'silent'
+  if (s.resolved > 0) return 'answering'
+  // Nothing resolved. The question is whether anything was left UNREAD.
+  return s.gap === 0 ? 'explained' : 'silent'
 }
 
 /**
@@ -113,8 +136,11 @@ export interface CoverageFacts {
   /** Of those, how many have a rate at all. */
   measured: number
   answering: number
-  /** Wired, sampled, and resolved nothing. */
+  /** Wired, sampled, resolved nothing, and something was left unread. */
   silent: CityClaim[]
+  /** Resolved nothing, but every parcel carries an established reason. Kept
+   *  APART from `silent` so no surface can state one by counting the other. */
+  explained: CityClaim[]
   /** Sampled and resolved every parcel drawn. */
   full: CityClaim[]
   /** Whole percents, over measured cities only. Null when nothing is measured. */
@@ -132,6 +158,7 @@ export function coverageFacts(claims: CityClaim[] = CITY_CLAIMS): CoverageFacts 
     measured: measured.length,
     answering: claims.filter((c) => c.verdict === 'answering').length,
     silent: claims.filter((c) => c.verdict === 'silent'),
+    explained: claims.filter((c) => c.verdict === 'explained'),
     full: measured.filter((c) => c.sample.kind === 'measured' && c.sample.share === 1),
     minPct: shares.length ? pct(Math.min(...shares)) : null,
     maxPct: shares.length ? pct(Math.max(...shares)) : null,

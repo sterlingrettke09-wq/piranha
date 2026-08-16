@@ -13,9 +13,10 @@
       "resolved": 81,
       "unconstrained": 1,
       "plannedDevelopment": 3,
+      "basisUnavailable": 0,
       "gap": 7,
       "indeterminate": 10,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "austin": {
       "attempted": 100,
@@ -29,9 +30,10 @@
       "resolved": 21,
       "unconstrained": 15,
       "plannedDevelopment": 5,
+      "basisUnavailable": 0,
       "gap": 19,
       "indeterminate": 19,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "boston": {
       "attempted": 85,
@@ -45,9 +47,10 @@
       "resolved": 53,
       "unconstrained": 0,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 7,
       "indeterminate": 7,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "charlotte": {
       "attempted": 100,
@@ -61,15 +64,16 @@
       "resolved": 0,
       "unconstrained": 54,
       "plannedDevelopment": 10,
+      "basisUnavailable": 0,
       "gap": 13,
       "indeterminate": 22,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "chicago": {
       "attempted": 100,
-      "outOfCity": 53,
+      "outOfCity": 52,
       "noParcel": 0,
-      "upstreamError": 0,
+      "upstreamError": 1,
       "exception": 0,
       "noSpec": 1,
       "nonDevelopable": 0,
@@ -77,9 +81,10 @@
       "resolved": 45,
       "unconstrained": 0,
       "plannedDevelopment": 1,
+      "basisUnavailable": 0,
       "gap": 0,
-      "indeterminate": 2,
-      "sampledOn": "2026-08-15"
+      "indeterminate": 1,
+      "sampledOn": "2026-08-16"
     },
     "columbus": {
       "attempted": 100,
@@ -93,9 +98,10 @@
       "resolved": 0,
       "unconstrained": 42,
       "plannedDevelopment": 4,
+      "basisUnavailable": 0,
       "gap": 6,
       "indeterminate": 6,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "dallas": {
       "attempted": 100,
@@ -109,9 +115,10 @@
       "resolved": 6,
       "unconstrained": 29,
       "plannedDevelopment": 5,
+      "basisUnavailable": 0,
       "gap": 2,
       "indeterminate": 7,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "dc": {
       "attempted": 79,
@@ -125,9 +132,10 @@
       "resolved": 12,
       "unconstrained": 39,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 6,
       "indeterminate": 6,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "denver": {
       "attempted": 84,
@@ -141,25 +149,27 @@
       "resolved": 0,
       "unconstrained": 39,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 19,
       "indeterminate": 19,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "la": {
       "attempted": 100,
-      "outOfCity": 23,
+      "outOfCity": 19,
       "noParcel": 0,
-      "upstreamError": 9,
+      "upstreamError": 12,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 12,
-      "developable": 56,
-      "resolved": 20,
+      "nonDevelopable": 14,
+      "developable": 55,
+      "resolved": 0,
       "unconstrained": 0,
       "plannedDevelopment": 1,
-      "gap": 35,
-      "indeterminate": 44,
-      "sampledOn": "2026-08-15"
+      "basisUnavailable": 54,
+      "gap": 0,
+      "indeterminate": 55,
+      "sampledOn": "2026-08-16"
     },
     "lasvegas": {
       "attempted": 100,
@@ -173,9 +183,10 @@
       "resolved": 0,
       "unconstrained": 13,
       "plannedDevelopment": 33,
+      "basisUnavailable": 0,
       "gap": 1,
       "indeterminate": 34,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "miami": {
       "attempted": 100,
@@ -189,9 +200,10 @@
       "resolved": 8,
       "unconstrained": 35,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 2,
       "indeterminate": 2,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "milwaukee": {
       "attempted": 100,
@@ -205,9 +217,10 @@
       "resolved": 0,
       "unconstrained": 87,
       "plannedDevelopment": 6,
+      "basisUnavailable": 0,
       "gap": 4,
       "indeterminate": 9,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "minneapolis": {
       "attempted": 100,
@@ -221,9 +234,10 @@
       "resolved": 83,
       "unconstrained": 0,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 0,
       "indeterminate": 0,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "nashville": {
       "attempted": 100,
@@ -237,9 +251,10 @@
       "resolved": 76,
       "unconstrained": 2,
       "plannedDevelopment": 6,
+      "basisUnavailable": 0,
       "gap": 0,
       "indeterminate": 6,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "nyc": {
       "attempted": 100,
@@ -253,25 +268,27 @@
       "resolved": 78,
       "unconstrained": 0,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 0,
       "indeterminate": 0,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "philadelphia": {
       "attempted": 100,
       "outOfCity": 0,
       "noParcel": 11,
-      "upstreamError": 1,
+      "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
       "nonDevelopable": 1,
-      "developable": 87,
+      "developable": 88,
       "resolved": 3,
-      "unconstrained": 79,
+      "unconstrained": 80,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 5,
       "indeterminate": 5,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "phoenix": {
       "attempted": 100,
@@ -280,14 +297,15 @@
       "upstreamError": 0,
       "exception": 0,
       "noSpec": 0,
-      "nonDevelopable": 6,
-      "developable": 46,
+      "nonDevelopable": 7,
+      "developable": 45,
       "resolved": 0,
-      "unconstrained": 44,
+      "unconstrained": 43,
       "plannedDevelopment": 2,
+      "basisUnavailable": 0,
       "gap": 0,
       "indeterminate": 2,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "raleigh": {
       "attempted": 100,
@@ -301,9 +319,10 @@
       "resolved": 0,
       "unconstrained": 54,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 0,
       "indeterminate": 5,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "sandiego": {
       "attempted": 100,
@@ -317,9 +336,10 @@
       "resolved": 34,
       "unconstrained": 4,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 6,
       "indeterminate": 6,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "sanjose": {
       "attempted": 85,
@@ -333,41 +353,44 @@
       "resolved": 5,
       "unconstrained": 40,
       "plannedDevelopment": 19,
+      "basisUnavailable": 0,
       "gap": 5,
       "indeterminate": 5,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "seattle": {
       "attempted": 100,
       "outOfCity": 2,
       "noParcel": 0,
-      "upstreamError": 0,
+      "upstreamError": 1,
       "exception": 0,
       "noSpec": 8,
       "nonDevelopable": 7,
-      "developable": 83,
-      "resolved": 78,
+      "developable": 82,
+      "resolved": 77,
       "unconstrained": 0,
       "plannedDevelopment": 0,
+      "basisUnavailable": 0,
       "gap": 5,
       "indeterminate": 5,
-      "sampledOn": "2026-08-15"
+      "sampledOn": "2026-08-16"
     },
     "sf": {
       "attempted": 100,
       "outOfCity": 0,
       "noParcel": 0,
-      "upstreamError": 7,
+      "upstreamError": 2,
       "exception": 0,
       "noSpec": 0,
       "nonDevelopable": 15,
-      "developable": 78,
+      "developable": 83,
       "resolved": 4,
-      "unconstrained": 67,
+      "unconstrained": 71,
       "plannedDevelopment": 0,
-      "gap": 7,
-      "indeterminate": 6,
-      "sampledOn": "2026-08-15"
+      "basisUnavailable": 0,
+      "gap": 8,
+      "indeterminate": 8,
+      "sampledOn": "2026-08-16"
     }
   }
 }

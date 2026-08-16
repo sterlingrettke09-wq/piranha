@@ -325,3 +325,56 @@ describe('assessFeasibility — districts regulated in stories, not feet', () =>
     expect(assessFeasibility(storiesOnly(7), project({ heightFt: undefined, stories: 6 })).envelopeKnown).toBe(true)
   })
 })
+
+describe("gfaBasis 'assumed-basis-unavailable' fails closed", () => {
+  // THE STRICTEST OF THE FOUR. Under 'assumed-far-1.0' no limit was found.
+  // Here a limit EXISTS, is published, and cannot be evaluated because the code
+  // applies it to buildable area rather than the lot. So the FAR dimension is
+  // not merely unknown — it is known to BIND and unmeasurable, which is the last
+  // state that may return AS_OF_RIGHT.
+  const unmeasurable = (gfa: number) =>
+    assessFeasibility(
+      parcel({ districtCode: 'C2-1', maxFAR: 3.0, maxHeightFt: 75, allowedUses: ['residential'] }),
+      // `use` must match the parcel's allowedUses — the factory defaults to
+      // 'commercial', which would fail the USE check and return PROHIBITED
+      // before the FAR guard is reached (PROHIBITED is stronger and is
+      // deliberately not softened to INDETERMINATE).
+      // city comes from project.city; assessFeasibility takes two arguments.
+      project({ gfa, use: 'residential', gfaBasis: 'assumed-basis-unavailable', city: 'la' }),
+    )
+
+  it('never returns AS_OF_RIGHT', () => {
+    const r = unmeasurable(5000)
+    expect(r.overall).toBe('INDETERMINATE')
+  })
+
+  it('explains that the limit is published but unmeasurable — not that it is missing', () => {
+    // The copy is the point. Saying "no floor-area limit could be resolved"
+    // here would be false, and false in the flattering direction: it would
+    // suggest the city publishes nothing when in fact we simply cannot apply
+    // what it publishes. Disclosure copy is code (CLAUDE.md).
+    // TWO 'far' checks exist: the original dimension check (which passes, since
+    // 5,000 sf is under 3.0 x 10,000) and the fail-closed one appended after it.
+    // This is pre-existing shape — the 'assumed-far-1.0' path does the same —
+    // so select the appended one rather than the first match.
+    const fars = unmeasurable(5000).checks.filter((c) => c.dimension === 'far')
+    expect(fars.length, 'expected the guard to APPEND a far check').toBe(2)
+    const far = fars.at(-1)!
+    expect(far.status).toBe('INDETERMINATE')
+    expect(far.note).toMatch(/buildable area/i)
+    expect(far.note).not.toMatch(/No floor-area limit could be resolved/i)
+    expect(far.allowed).not.toBe('not published for this district')
+  })
+
+  it("'assumed-unconstrained' is the one that legitimately keeps its verdict", () => {
+    // The discriminating case. Where the code affirmatively imposes NO FAR, any
+    // size clears the check honestly, so failing it closed would manufacture
+    // doubt about a district we actually resolved. If this ever flips, the
+    // fail-closed rule has been widened past its justification.
+    const r = assessFeasibility(
+      parcel({ districtCode: 'C2-1', maxHeightFt: 75, allowedUses: ['residential'] }),
+      project({ gfa: 5000, use: 'residential', gfaBasis: 'assumed-unconstrained', city: 'denver' }),
+    )
+    expect(r.overall).not.toBe('INDETERMINATE')
+  })
+})

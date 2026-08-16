@@ -29,7 +29,9 @@ function Fact({
 // Labels which FAR drove the envelope's headline floor area, so the figure reads
 // as use-specific rather than a single use-agnostic cap (WO-5.5).
 function farBasisLabel(
-  basis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null | undefined,
+  // Derived from the type rather than restated, so adding a basis is a compile
+  // error here instead of a silent `default: null`.
+  basis: NonNullable<Parcel['envelope']>['farBasis'] | undefined,
 ): string | null {
   switch (basis) {
     case 'residential':
@@ -42,6 +44,11 @@ function farBasisLabel(
       // Not a resolved figure and not a missing one — the binding number is in
       // the ordinance that created this district.
       return '(set by PD ordinance)'
+    case 'basis-unavailable':
+      // Unreachable in practice: this basis always carries a null floor area,
+      // so the row that calls this never renders. Present so the switch stays
+      // exhaustive and a future basis has to be decided rather than defaulted.
+      return null
     default:
       return null
   }
@@ -80,7 +87,21 @@ export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
                 note: 'this district\u2019s limits are in its own ordinance, not a district table',
               },
             ]
-          : []),
+          : env?.farBasis === 'basis-unavailable'
+            ? [
+                {
+                  // The FAR itself still prints in the row below \u2014 it is known.
+                  // What cannot be produced is the PRODUCT, because the code
+                  // multiplies the ratio by buildable area rather than by the
+                  // lot, and buildable area depends on the setbacks of
+                  // neighbouring built lots. Saying "not in public data" here
+                  // would be false: the limit is public and we have it.
+                  label: 'Max floor area',
+                  value: 'Not derivable from lot size',
+                  note: 'the FAR applies to buildable area \u2014 the lot minus required yards \u2014 which depends on neighbouring setbacks and is not in any public layer',
+                },
+              ]
+            : []),
     {
       label: 'Max FAR',
       // "The code imposes no FAR here" is an ANSWER; "Not in public data" is a

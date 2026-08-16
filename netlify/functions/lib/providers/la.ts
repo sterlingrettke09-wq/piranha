@@ -272,6 +272,14 @@ export async function getLaParcelInfo(lat: number, lng: number): Promise<ParcelR
       article: zoning?.ZONING_DESCRIPTION ? String(zoning.ZONING_DESCRIPTION) : null,
       maxHeightFt: lim.h,
       maxFAR: lim.f,
+      // EVERY LA FAR in § 12.21.1 A.1 is stated against Buildable Area, so this
+      // is unconditional rather than per-zone — set alongside `maxFAR` and not
+      // gated on it, because it describes the CODE's basis, not this parcel's
+      // resolution. See the UNIT NOTE in this file's header and the field's own
+      // docstring in src/types/parcel.ts. `maxFAR` stays populated on purpose:
+      // the ratio is a true fact about the district and feasibility still reads
+      // it; only the envelope's floor-area PRODUCT is withheld.
+      farAppliesTo: 'buildable-area',
       ...(lim.s != null ? { maxStories: lim.s } : {}),
       allowedUses: usesForZone(code),
     },

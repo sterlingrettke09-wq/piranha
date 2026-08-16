@@ -51,6 +51,7 @@ export interface EnvelopeSampleCounts {
   resolved: number
   unconstrained: number
   plannedDevelopment: number
+  basisUnavailable: number
   gap: number
   indeterminate: number
   sampledOn: string
@@ -84,8 +85,20 @@ export type EnvelopeSample =
        *  stops overstating how much is genuinely unread. NOT in `resolved`: no
        *  envelope was produced. */
       plannedDevelopment: number
+      /** The district's FAR is PUBLISHED and the area the code applies it to is
+       *  unobtainable, so no envelope can be computed from it. LA states every
+       *  ratio in § 12.21.1 A.1 against Buildable Area — the lot minus its
+       *  required yards — and the required front yard is the prevailing setback
+       *  of the neighbouring built lots, which no public layer carries.
+       *
+       *  Same standing as `plannedDevelopment`: NOT resolved (no envelope) and
+       *  NOT a gap (somebody looked; the answer is that it cannot be applied).
+       *  Counting it as a gap reported LA at 0% explained — "nobody has looked
+       *  at this city" — which is false and is rule 5 collapsing inside the
+       *  measurement rather than inside the product. */
+      basisUnavailable: number
       /** Fell through to an assumed FAR.
-       *  `resolved + plannedDevelopment + gap === n`. */
+       *  `resolved + plannedDevelopment + basisUnavailable + gap === n`. */
       gap: number
       /** Of the developable parcels, how many ended with the verdict withheld.
        *  NOT identical to `gap`: Miami's sample has 10 gaps and 9
@@ -118,6 +131,7 @@ export function envelopeSample(slug: string): EnvelopeSample {
     n: c.developable,
     resolved,
     plannedDevelopment: c.plannedDevelopment,
+    basisUnavailable: c.basisUnavailable,
     gap: c.gap,
     indeterminate: c.indeterminate,
     share: resolved / c.developable,
@@ -162,5 +176,21 @@ export function envelopeSampleDetail(slug: string, s: EnvelopeSample): string {
     .join(', ')
   if (s.kind === 'no-denominator')
     return `${c.attempted} parcels were sampled for ${slug} on ${c.sampledOn} and none of them was both answered and developable (${why}). There is no denominator, so there is no rate.`
-  return `${s.resolved} of ${s.n} sampled developable parcels resolved an envelope on ${c.sampledOn} — ${c.resolved} from published data, ${c.unconstrained} under a stated absence of FAR, ${s.gap} fell through to an assumed FAR (${s.indeterminate} ended with the verdict withheld). ${excluded} of ${c.attempted} sampled parcels are excluded from the denominator: ${why}.`
+  // THE FULL PARTITION, not four fifths of it. This sentence named resolved,
+  // unconstrained and gap, and stopped — so `plannedDevelopment` had no words
+  // and was read by anyone doing the arithmetic as part of "fell through to an
+  // assumed FAR". Las Vegas's 33 ordinance-governed parcels were being
+  // described as unread lookups on the strength of a sentence that simply did
+  // not mention them, and `basisUnavailable` would have inherited the same
+  // silence. An omission in a composition sentence is not a smaller error than
+  // a wrong bucket — it is the same rule 5 collapse with no code to blame.
+  const established = [
+    c.plannedDevelopment ? `${c.plannedDevelopment} governed by their own ordinance` : '',
+    c.basisUnavailable
+      ? `${c.basisUnavailable} with a published ratio the code applies to an area no public layer carries`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
+  return `${s.resolved} of ${s.n} sampled developable parcels resolved an envelope on ${c.sampledOn} — ${c.resolved} from published data, ${c.unconstrained} under a stated absence of FAR${established ? `, ${established}` : ''}, ${s.gap} fell through to an assumed FAR (${s.indeterminate} ended with the verdict withheld). ${excluded} of ${c.attempted} sampled parcels are excluded from the denominator: ${why}.`
 }

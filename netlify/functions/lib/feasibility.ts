@@ -321,15 +321,31 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   // a lot-area placeholder sits under a stated absence and the verdict stands.
   // Cost and timeline estimates are NOT blocked — they claim what building that
   // much would cost, not what the code allows.
-  if (project.gfaBasis === 'assumed-far-1.0' && (overall === 'AS_OF_RIGHT' || overall === 'NEEDS_RELIEF')) {
+  //
+  // 'assumed-basis-unavailable' fails closed TOO, and for a stricter reason.
+  // Under 'assumed-far-1.0' no limit was found; here a limit exists, is
+  // published, and cannot be evaluated because the code applies it to buildable
+  // area rather than the lot. So the FAR dimension is not merely unknown — it is
+  // KNOWN TO BIND and unmeasurable, which is the last state that should be
+  // allowed to return AS_OF_RIGHT. `assumed-unconstrained` is the one case that
+  // legitimately keeps its verdict: there, no FAR binds at all, so any size
+  // clears the check honestly.
+  const farUncheckable =
+    project.gfaBasis === 'assumed-far-1.0' || project.gfaBasis === 'assumed-basis-unavailable'
+  if (farUncheckable && (overall === 'AS_OF_RIGHT' || overall === 'NEEDS_RELIEF')) {
     overall = 'INDETERMINATE'
     checks.push({
       dimension: 'far',
       status: 'INDETERMINATE',
       proposed: `${project.gfa.toLocaleString()} sf (assumed)`,
-      allowed: 'not published for this district',
+      allowed:
+        project.gfaBasis === 'assumed-basis-unavailable'
+          ? 'published, but stated against buildable area rather than the lot'
+          : 'not published for this district',
       note:
-        'No floor-area limit could be resolved for this district, so the size above is a placeholder (lot area), not a code limit. A permitted/not-permitted verdict would be a claim about the law derived from a number the code never states.',
+        project.gfaBasis === 'assumed-basis-unavailable'
+          ? 'This district publishes a floor-area ratio, but the code applies it to buildable area — the lot minus its required yards — and those yards depend on the setbacks of neighbouring built lots, which no public layer carries. The limit therefore cannot be computed for this parcel, and the size above is a placeholder (lot area). A permitted/not-permitted verdict would be a claim about a limit we can state but cannot measure.'
+          : 'No floor-area limit could be resolved for this district, so the size above is a placeholder (lot area), not a code limit. A permitted/not-permitted verdict would be a claim about the law derived from a number the code never states.',
     })
   }
   const path: ApprovalPath = overall === 'PROHIBITED' ? 'prohibited' : overall === 'NEEDS_RELIEF' ? 'variance' : 'as_of_right'

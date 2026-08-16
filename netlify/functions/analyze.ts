@@ -4,6 +4,7 @@ import { USES, PROJECT_TYPES, FUNDING_TYPES } from '../../src/types/analysis'
 import { cacheControlFor, getParcelInfo } from './lib/parcel'
 import { assessFeasibility } from './lib/feasibility'
 import { assessDevelopability } from '../../src/lib/developability'
+import { deriveGfaBasis } from '../../src/lib/gfaBasis'
 import { assessSiteAdvisory, assessCivicHardBlock } from '../../src/lib/siteFlags'
 import { assessHurdles } from './lib/hurdles'
 import { estimateCost } from './lib/cost'
@@ -133,14 +134,10 @@ export const handler: JsonHandler = async (event) => {
   // whose FAR never resolved still gets the verdict withheld — which is the
   // point. The client's own value is now redundant, not load-bearing.
   const env = parcel.envelope
-  const gfaBasis: AnalysisInput['gfaBasis'] =
-    env?.maxFloorAreaSqFt != null && env.maxFloorAreaSqFt > 0
-      ? 'envelope'
-      : env?.farBasis === 'unconstrained'
-        ? 'assumed-unconstrained'
-        : env?.farBasis === 'planned-development'
-          ? 'assumed-planned-development'
-          : 'assumed-far-1.0'
+  // ONE derivation, shared with buildDefaultSpec and the coverage sampler.
+  // It was copied into all three and a fourth farBasis updated only one —
+  // see src/lib/gfaBasis.ts for what that cost.
+  const gfaBasis: AnalysisInput['gfaBasis'] = deriveGfaBasis(env)
 
   const project: AnalysisInput = {
     parcelId: parcel.parcelId,

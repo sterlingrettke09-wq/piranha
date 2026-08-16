@@ -290,3 +290,64 @@ describe('buildDefaultSpec — gfaBasis labels the assumption', () => {
     expect(fromEnv?.gfaBasis).not.toBe(fromLot?.gfaBasis)
   })
 })
+
+describe("gfaBasis: 'assumed-basis-unavailable' — a known FAR that cannot be applied", () => {
+  // 'assumed-far-1.0' asserts that NO floor-area limit was resolvable. For an LA
+  // parcel that sentence is false: the limit is published and we hold it. What
+  // is missing is the area the ratio multiplies (LAMC § 12.21.1 A.1 states it
+  // against Buildable Area). Letting this fall through to 'assumed-far-1.0'
+  // would be the same rule 5 collapse this module's header describes, one layer
+  // further down — so it gets its own label.
+  const laLike = (over: Record<string, unknown> = {}) =>
+    parcel({
+      lot: { sizeSqFt: 10_000, lotType: null },
+      envelope: {
+        maxFloorAreaSqFt: null,
+        maxHeightFt: 75,
+        maxStories: 6,
+        maxUnits: null,
+        allowedUses: ['residential'],
+        farBasis: 'basis-unavailable',
+      },
+      ...over,
+    })
+
+  it('labels the placeholder with its own basis, not assumed-far-1.0', () => {
+    const spec = buildDefaultSpec(laLike(), 'la')!
+    expect(spec.gfaBasis).toBe('assumed-basis-unavailable')
+    expect(spec.gfaBasis).not.toBe('assumed-far-1.0')
+  })
+
+  it('still produces a usable placeholder rather than declining outright', () => {
+    // Same trade the other assumed-* branches make: a disclosed assumption beats
+    // a blank screen. What must never happen is an UNDISCLOSED one.
+    const spec = buildDefaultSpec(laLike(), 'la')!
+    expect(spec.gfa).toBeGreaterThan(0)
+  })
+
+  it('the four assumed states remain four distinct labels (rule 5)', () => {
+    // A pinned inventory, so a future edit that collapses any pair goes red
+    // rather than quietly rendering two different facts the same way.
+    const seen = new Set(
+      (['unconstrained', 'planned-development', 'basis-unavailable', null] as const).map((b) => {
+        const p = parcel({
+          lot: { sizeSqFt: 10_000, lotType: null },
+          envelope: {
+            maxFloorAreaSqFt: null, maxHeightFt: 40, maxStories: 3, maxUnits: null,
+            allowedUses: ['residential'], farBasis: b,
+          },
+        })
+        return buildDefaultSpec(p, 'la')?.gfaBasis
+      }),
+    )
+    expect(seen.size).toBe(4)
+    expect(seen).toEqual(
+      new Set([
+        'assumed-unconstrained',
+        'assumed-planned-development',
+        'assumed-basis-unavailable',
+        'assumed-far-1.0',
+      ]),
+    )
+  })
+})

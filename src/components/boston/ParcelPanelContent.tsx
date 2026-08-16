@@ -50,7 +50,9 @@ type Props =
 // "the code sets no FAR limit" is an ANSWER and must not look like the silence
 // of a failed lookup.
 function farBasisLabel(
-  basis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null | undefined,
+  // Derived from the type rather than restated, so adding a basis is a compile
+  // error here instead of a silent `default: null`.
+  basis: NonNullable<ParcelInfo['envelope']>['farBasis'] | undefined,
 ): string | null {
   switch (basis) {
     case 'residential':

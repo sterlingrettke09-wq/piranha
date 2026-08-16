@@ -10,6 +10,8 @@ function info(over: {
   allowedUses?: string[] | null
   farByUse?: ParcelInfo['zoning']['farByUse']
   farUnconstrained?: boolean
+  farAppliesTo?: 'buildable-area'
+  planGoverned?: boolean
   lotSqFt?: number | null
 }): ParcelInfo {
   return {
@@ -26,6 +28,8 @@ function info(over: {
       allowedUses: over.allowedUses ?? null,
       farByUse: over.farByUse,
       ...(over.farUnconstrained ? { farUnconstrained: true } : {}),
+      ...(over.farAppliesTo ? { farAppliesTo: over.farAppliesTo } : {}),
+      ...(over.planGoverned ? { planGoverned: true } : {}),
     },
     lot: { sizeSqFt: over.lotSqFt ?? null, lotType: null },
     overlays: { historicDistrict: null, floodZone: null },
@@ -257,5 +261,155 @@ describe('planned-development districts', () => {
     expect(computeEnvelope(info({ districtCode: 'PDR-1', lotSqFt: 10_000 }), 'dc').farBasis).not.toBe(
       'planned-development',
     )
+  })
+})
+
+describe("farAppliesTo: 'buildable-area' — the FAR is known, its multiplicand is not", () => {
+  // THE DEFECT THIS EXISTS TO PREVENT. LAMC § 12.21.1 A.1 caps floor area at
+  // "three times the Buildable Area of the Lot" — the lot MINUS its required
+  // yards — while this function multiplies by the lot. Buildable area is never
+  // larger than the lot, so every LA floor area we published was an upper bound
+  // that overstated by the yard fraction, on the RESOLVED side of the ledger
+  // where scrutiny does not go (rule 18).
+  //
+  // It cannot be corrected, only withheld: LA's required front yard is the
+  // PREVAILING setback — the average of the front yards already built on 40%+
+  // of the frontage — so buildable area is a fact about the street, not about
+  // the parcel or its zone. Inventing a lot→buildable ratio is rule 4.
+
+  it('withholds the floor area even though maxFAR resolved', () => {
+    const env = computeEnvelope(
+      info({ maxFAR: 3.0, farAppliesTo: 'buildable-area', lotSqFt: 10_000 }),
+      'la',
+    )
+    expect(env.farBasis).toBe('basis-unavailable')
+    expect(env.maxFloorAreaSqFt).toBeNull()
+  })
+
+  it('withholds the UNIT COUNT too, which is the half that was live elsewhere', () => {
+    // maxUnits derives from maxFloorAreaSqFt, so withholding one withholds the
+    // other. This is what closes LA's R3/R4/R5 exposure: those zones published
+    // FAR 3.0 straight into a unit count with no density check, while R2/RD/RW
+    // were withheld upstream precisely to avoid that. The guard was on the
+    // quieter zones.
+    const env = computeEnvelope(
+      info({
+        maxFAR: 3.0,
+        farAppliesTo: 'buildable-area',
+        allowedUses: ['residential'],
+        lotSqFt: 10_000,
+      }),
+      'la',
+    )
+    expect(env.maxUnits).toBeNull()
+  })
+
+  it('does NOT suppress height or stories — those resolve independently', () => {
+    // Withholding must be surgical. Height comes from the height district and
+    // has no buildable-area dependency; dropping it would turn one honest gap
+    // into three.
+    const env = computeEnvelope(
+      info({ maxFAR: 3.0, farAppliesTo: 'buildable-area', maxHeightFt: 75, lotSqFt: 10_000 }),
+      'la',
+    )
+    expect(env.maxHeightFt).toBe(75)
+    expect(env.maxStories).not.toBeNull()
+  })
+
+  it('takes precedence over every other basis, because maxFAR IS populated', () => {
+    // The ordering guard. Each of these would otherwise consume the FAR and
+    // multiply it by the lot — this branch has to run FIRST or it never runs.
+    for (const over of [
+      { farByUse: { residential: 2.0 } },
+      { farByUse: { mixed: 2.0 } },
+      { farUnconstrained: true },
+      // `planGoverned` is DELIBERATELY ABSENT from this list. It used to be
+      // here, asserting that an unusable basis outranked everything — and that
+      // interpretation was overturned: a planned-development parcel has a
+      // document the reader can go and read, so the more specific code wins.
+      // See the specificity block below, which pins the exception.
+    ]) {
+      const env = computeEnvelope(
+        info({ maxFAR: 3.0, farAppliesTo: 'buildable-area', lotSqFt: 10_000, ...over }),
+        'la',
+      )
+      expect(env.farBasis, JSON.stringify(over)).toBe('basis-unavailable')
+      expect(env.maxFloorAreaSqFt, JSON.stringify(over)).toBeNull()
+    }
+  })
+
+  it('THE CONTROL: an identical parcel without the flag is unchanged', () => {
+    // Rule 20 in the other direction — a withholding test passes trivially if
+    // the pipeline stopped producing floor area for everyone. This pins that
+    // the ONLY difference is the flag.
+    const env = computeEnvelope(
+      info({ maxFAR: 3.0, allowedUses: ['residential'], lotSqFt: 10_000 }),
+      'boston',
+    )
+    expect(env.farBasis).toBe('district')
+    expect(env.maxFloorAreaSqFt).toBe(30_000)
+    expect(env.maxUnits).toBeGreaterThan(0)
+  })
+
+  it('is not asserted for any city that has not established it', () => {
+    // An absence is only an answer once someone has looked (rule 23). Atlanta is
+    // the specific near-miss: its code says "net lot area", which READS like a
+    // different basis, and §16-28.006 established that net lot area IS the lot.
+    // It must not acquire this state by resemblance.
+    for (const city of ['atlanta', 'boston', 'nyc', 'chicago', 'seattle']) {
+      const env = computeEnvelope(info({ maxFAR: 2.0, lotSqFt: 10_000 }), city)
+      expect(env.farBasis, city).not.toBe('basis-unavailable')
+    }
+  })
+})
+
+describe('specificity: when two true reason codes apply, the more actionable wins', () => {
+  // An LA parcel with a "D" Development Limitation is BOTH: the code states its
+  // FAR against buildable area (uncomputable) AND the binding figure is in the
+  // ordinance that imposed the D. Only one of those tells the reader what to do
+  // next, so planned-development wins.
+
+  it('a D-limitation parcel reports planned-development, not basis-unavailable', () => {
+    const env = computeEnvelope(
+      info({ districtCode: 'C2-2D', maxFAR: 3.0, farAppliesTo: 'buildable-area', lotSqFt: 10_000 }),
+      'la',
+    )
+    expect(env.farBasis).toBe('planned-development')
+    expect(env.maxFloorAreaSqFt).toBeNull()
+  })
+
+  it('an ordinary LA parcel still reports basis-unavailable', () => {
+    // The discriminator. If this ever flips to planned-development, the D-suffix
+    // match has widened and every LA parcel is being sent to an ordinance that
+    // does not exist for it.
+    for (const districtCode of ['C2-2', 'R3-1', 'C4-2', 'R1-1', 'M1-1']) {
+      const env = computeEnvelope(
+        info({ districtCode, maxFAR: 3.0, farAppliesTo: 'buildable-area', lotSqFt: 10_000 }),
+        'la',
+      )
+      expect(env.farBasis, districtCode).toBe('basis-unavailable')
+    }
+  })
+
+  it('the specificity rule is scoped to the unusable-basis branch only', () => {
+    // THE CONSTRAINT THAT MAKES THE ORDERING SAFE. Outside LA, a PD district
+    // whose FAR the city DID publish must keep publishing it — hoisting the PD
+    // check to the top of the chain would suppress a real figure. Same claim as
+    // 'never overrides a FAR the city actually resolved', asserted here against
+    // the new branch so a future reorder cannot break one without the other.
+    const env = computeEnvelope(info({ districtCode: 'PD 193', maxFAR: 2.0, lotSqFt: 10_000 }), 'dallas')
+    expect(env.farBasis).toBe('district')
+    expect(env.maxFloorAreaSqFt).toBe(20_000)
+  })
+
+  it('planGoverned also wins over an unusable basis', () => {
+    // The provider-side flag and the registry are two sources for the same
+    // fact; both must beat basis-unavailable or the answer depends on which
+    // one happened to establish it.
+    const env = computeEnvelope(
+      info({ districtCode: 'SOMETHING', maxFAR: 3.0, farAppliesTo: 'buildable-area', planGoverned: true, lotSqFt: 10_000 }),
+      'la',
+    )
+    expect(env.farBasis).toBe('planned-development')
   })
 })

@@ -77,6 +77,7 @@ import { CITIES as REGISTRY_CITIES } from '../src/config/cities'
 import type { AnalysisInput, AnalysisResult, Funding, ProjectType } from '../src/types/analysis'
 import { getParcelInfo } from '../netlify/functions/lib/parcel'
 import { buildDefaultSpec } from '../src/lib/defaultSpec'
+import { deriveGfaBasis } from '../src/lib/gfaBasis'
 import { assessFeasibility } from '../netlify/functions/lib/feasibility'
 import { assessDevelopability } from '../src/lib/developability'
 import { assessSiteAdvisory, assessCivicHardBlock } from '../src/lib/siteFlags'
@@ -463,14 +464,12 @@ async function runOne(city: string, latRaw: number, lngRaw: number): Promise<Run
   }
 
   const env = parcel.envelope
-  const gfaBasis: AnalysisInput['gfaBasis'] =
-    env?.maxFloorAreaSqFt != null && env.maxFloorAreaSqFt > 0
-      ? 'envelope'
-      : env?.farBasis === 'unconstrained'
-        ? 'assumed-unconstrained'
-        : env?.farBasis === 'planned-development'
-          ? 'assumed-planned-development'
-          : 'assumed-far-1.0'
+  // THE SAME derivation the live handler uses, not a copy of it. This block was
+  // a copy, and when a fourth farBasis landed the copy kept mapping LA to
+  // 'assumed-far-1.0' — so the sampler would have measured every LA parcel as a
+  // GAP while the product called it something else entirely. Measuring a
+  // reimplementation of the pipeline measures the reimplementation (rule 11).
+  const gfaBasis: AnalysisInput['gfaBasis'] = deriveGfaBasis(env)
 
   const project: AnalysisInput = {
     parcelId: parcel.parcelId,
@@ -574,7 +573,9 @@ async function runOne(city: string, latRaw: number, lngRaw: number): Promise<Run
           ? 'UNCONSTRAINED'
           : gfaBasis === 'assumed-planned-development'
             ? 'PLANNED_DEVELOPMENT'
-            : 'GAP',
+            : gfaBasis === 'assumed-basis-unavailable'
+              ? 'BASIS_UNAVAILABLE'
+              : 'GAP',
     parcelId: parcel.parcelId,
     address: parcel.address,
     districtCode: String(parcel.zoning.districtCode),
@@ -664,7 +665,11 @@ interface Suspicion { code: string; detail: string; row: RunRow }
 
 function suspicions(r: RunRow): Suspicion[] {
   const out: Suspicion[] = []
-  const ok = r.outcome === 'RESOLVED' || r.outcome === 'UNCONSTRAINED' || r.outcome === 'GAP'
+  const ok =
+    r.outcome === 'RESOLVED' ||
+    r.outcome === 'UNCONSTRAINED' ||
+    r.outcome === 'BASIS_UNAVAILABLE' ||
+    r.outcome === 'GAP'
   if (!ok) return out
   for (const [k, v] of Object.entries(r)) if (isBadNum(v)) out.push({ code: 'NAN', detail: `${k}=${String(v)}`, row: r })
   const prohibited = r.verdict === 'PROHIBITED' || r.timelinePath === 'prohibited' || r.developable === false
@@ -864,7 +869,8 @@ export interface CityEnvelopeSample {
   developable: number
 
   // ── The denominator, split four ways.
-  //    resolved + unconstrained + plannedDevelopment + gap === developable. ──
+  //    resolved + unconstrained + plannedDevelopment + basisUnavailable
+  //      + gap === developable. ──
   /** `gfaBasis: 'envelope'` — a district FAR or height came back from published
    *  data and sized the envelope. */
   resolved: number
@@ -877,6 +883,19 @@ export interface CityEnvelopeSample {
    *  Deliberately NOT counted as resolved either: no envelope was produced.
    *  It is broken out so the gap figure stops overstating how much is unread. */
   plannedDevelopment: number
+  /** `gfaBasis: 'assumed-basis-unavailable'` — the district's FAR IS published
+   *  and the area the code applies it to is not obtainable, so no envelope can
+   *  be computed from it. LA: § 12.21.1 A.1 states every ratio against Buildable
+   *  Area, the lot minus its required yards, and the required front yard is the
+   *  PREVAILING setback — the average of the front yards already built on the
+   *  street. Nothing we fetch carries it.
+   *
+   *  Like `plannedDevelopment`: NOT resolved (no envelope was produced) and NOT
+   *  a gap (somebody looked, and the answer is that it cannot be applied).
+   *  Folding it into `gap` was the first thing this bucket's absence did — it
+   *  reported LA at 0% EXPLAINED, i.e. "nobody has looked at this city", which
+   *  is the rule 5 collapse one level up in the instrument. */
+  basisUnavailable: number
   /** `gfaBasis: 'assumed-far-1.0'` — nothing resolved and the pipeline fell
    *  through to an assumed FAR. The verdict is withheld. */
   gap: number
@@ -908,10 +927,10 @@ function assertPartition(city: string, s: CityEnvelopeSample): void {
     s.outOfCity + s.noParcel + s.upstreamError + s.exception + s.noSpec + s.nonDevelopable + s.developable
   if (counted !== s.attempted)
     throw new Error(`envelope sample: ${city} attempted ${s.attempted} but ${counted} were bucketed — an outcome the partition does not cover`)
-  const split = s.resolved + s.unconstrained + s.plannedDevelopment + s.gap
+  const split = s.resolved + s.unconstrained + s.plannedDevelopment + s.basisUnavailable + s.gap
   if (split !== s.developable)
     throw new Error(
-      `envelope sample: ${city} has ${s.developable} developable but ${split} in resolved/unconstrained/plannedDevelopment/gap`,
+      `envelope sample: ${city} has ${s.developable} developable but ${split} in resolved/unconstrained/plannedDevelopment/basisUnavailable/gap`,
     )
 }
 
@@ -933,6 +952,12 @@ export function aggregateEnvelopeSample(rows: RunRow[], sampledOn: string): Reco
         r.outcome === 'RESOLVED' ||
         r.outcome === 'UNCONSTRAINED' ||
         r.outcome === 'PLANNED_DEVELOPMENT' ||
+        // The pipeline ANSWERED for this parcel — it produced a published FAR
+        // and established that the area it applies to is unobtainable. Omitting
+        // it here would drop the parcel out of the DENOMINATOR, which is the
+        // Dallas defect from 2026-08-12 exactly: the share went UP because the
+        // parcel left the bottom of the fraction.
+        r.outcome === 'BASIS_UNAVAILABLE' ||
         r.outcome === 'GAP',
     )
     const dev = answered.filter((r) => r.developable === true)
@@ -950,6 +975,7 @@ export function aggregateEnvelopeSample(rows: RunRow[], sampledOn: string): Reco
       resolved: dev.filter((r) => r.outcome === 'RESOLVED').length,
       unconstrained: dev.filter((r) => r.outcome === 'UNCONSTRAINED').length,
       plannedDevelopment: dev.filter((r) => r.outcome === 'PLANNED_DEVELOPMENT').length,
+      basisUnavailable: dev.filter((r) => r.outcome === 'BASIS_UNAVAILABLE').length,
       gap: dev.filter((r) => r.outcome === 'GAP').length,
       indeterminate: dev.filter((r) => r.verdict === 'INDETERMINATE').length,
       sampledOn,

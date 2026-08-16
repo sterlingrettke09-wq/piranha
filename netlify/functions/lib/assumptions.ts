@@ -46,7 +46,12 @@ export function assumptionsSummary(
   // stand-in — an unsourced assumption that drives cost, unit counts and impact
   // fees. It has to be visible: an undisclosed guess is indistinguishable from
   // a code-derived figure, which is the whole defect.
-  gfaBasis?: 'envelope' | 'assumed-unconstrained' | 'assumed-planned-development' | 'assumed-far-1.0',
+  gfaBasis?:
+    | 'envelope'
+    | 'assumed-unconstrained'
+    | 'assumed-planned-development'
+    | 'assumed-basis-unavailable'
+    | 'assumed-far-1.0',
 ): Record<string, string> {
   const idx = cityCostIndex[city] ?? 1.0
   const rate = (n: number) => `$${Math.round(n * idx)}/sf`
@@ -67,6 +72,16 @@ export function assumptionsSummary(
               floorAreaBasis:
                 'This is a planned-development district: floor area is set by the ordinance that created it, not by a district table. Lot area is used as a placeholder here; the binding figure is in that ordinance.',
             }
+          : gfaBasis === 'assumed-basis-unavailable'
+            ? {
+                // Must NOT say "publishes no floor-area ratio" — this district
+                // publishes one and we have it. What is missing is the area the
+                // ratio multiplies. Saying otherwise here would be the
+                // disclosure-copy failure CLAUDE.md names: a sentence true of
+                // one branch, false of the branch it was copied to.
+                floorAreaBasis:
+                  'This district DOES publish a floor-area ratio, but the code applies it to buildable area — the lot minus its required yards — rather than to the lot. Required yards here depend on the setbacks of neighbouring built lots, which no public layer carries, so the ratio cannot be turned into a floor area. Lot area is used as a placeholder; it is neither the code limit nor a stand-in for one.',
+              }
           : gfaBasis === 'envelope'
             ? { floorAreaBasis: 'Derived from the published zoning limit for this district' }
             : {}),

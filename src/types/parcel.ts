@@ -59,6 +59,37 @@ export interface ParcelInfo {
      *  (floor area is governed by height/setbacks/coverage instead) from
      *  "we don't know the FAR", which `maxFAR: null` alone conflates. */
     farUnconstrained?: boolean
+    /** The area the code's FAR multiplies, where that is NOT the lot.
+     *
+     *  A FOURTH STATE, and the one the other three could not express: the ratio
+     *  is KNOWN and correct, and the quantity it applies to is unavailable, so
+     *  the product cannot be computed. Not a resolved figure, not a known
+     *  absence, not an ordinance elsewhere — we have the input and cannot
+     *  safely use it.
+     *
+     *  LA is the case. LAMC § 12.21.1 A.1 caps floor area at "three times the
+     *  Buildable Area of the Lot", and § 12.03 defines FAR as a ratio "of the
+     *  Buildable Area OR Lot size" — so the basis is per-provision and this
+     *  provision picks the one we do not have. Buildable Area is the lot minus
+     *  its required yards, and LA's required front yard is the PREVAILING
+     *  setback: "the average depth of the Front Yards" of neighbouring
+     *  developed lots comprising 40% or more of the frontage. That is a
+     *  function of what is already built on the street. No parcel layer carries
+     *  it, and no amount of reading the zoning code produces it.
+     *
+     *  So `maxFAR` stays populated — it is a true fact about the district and
+     *  the feasibility check still uses it — while the ENVELOPE withholds floor
+     *  area rather than multiplying by the wrong area. Publishing lot × FAR
+     *  here is an upper bound that overstates by the yard fraction and can only
+     *  be disclosed, never corrected (CLAUDE.md rule 4: a conversion factor we
+     *  cannot source is not a number, and rule 18: it would be a confident
+     *  number on the resolved side, where scrutiny does not go).
+     *
+     *  ⚠️ Set this ONLY where the code names a basis that is not the lot AND
+     *  that basis is unobtainable. A city whose "net lot area" turns out to BE
+     *  the lot must not set it — Atlanta reads exactly that way (§16-28.006)
+     *  and correctly does not. */
+    farAppliesTo?: 'buildable-area'
     /** Max stories where the CODE regulates in stories rather than feet (Miami
      *  21, Denver). When set, the envelope uses it directly instead of deriving
      *  a story count from height — deriving round-trips through two different
@@ -103,8 +134,25 @@ export interface ParcelInfo {
      *  'unconstrained' vs null matters: both carry maxFloorAreaSqFt: null, but
      *  'unconstrained' means "FAR does not bind — height/setbacks/coverage do",
      *  while null means "we could not resolve a FAR". Never render them the
-     *  same; the first is an answer, the second is a gap. */
-    farBasis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null
+     *  same; the first is an answer, the second is a gap.
+     *
+     *  FOUR of these six now carry maxFloorAreaSqFt: null, and they are four
+     *  DIFFERENT facts. Rendering any of them as a gap is the rule 5 collapse:
+     *    'unconstrained'      — no FAR applies; height/setbacks govern instead.
+     *    'planned-development'— a FAR exists, in this parcel's own ordinance.
+     *    'basis-unavailable'  — the FAR is KNOWN, and the area it multiplies is
+     *                           not obtainable, so the product is withheld
+     *                           rather than computed against the wrong area.
+     *                           See `farAppliesTo` above.
+     *    null                 — nobody has looked, or the lookup failed. */
+    farBasis:
+      | 'residential'
+      | 'mixed'
+      | 'district'
+      | 'planned-development'
+      | 'unconstrained'
+      | 'basis-unavailable'
+      | null
     /** Set when the headline floor area came from the code's fixed floor
      *  allowance rather than the ratio (small-lot case). Lets the UI cite the
      *  right half of a "greater of X or Y SF" rule. */

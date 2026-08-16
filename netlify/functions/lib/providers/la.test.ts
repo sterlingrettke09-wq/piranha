@@ -102,3 +102,34 @@ describe('getLaParcelInfo', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('farAppliesTo — LA states every FAR against buildable area', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  // This is the flag that makes the whole withholding chain reachable. Without
+  // it computeEnvelope has no signal and LA silently returns to publishing
+  // lot x FAR, so it is asserted on the PROVIDER's real output rather than by
+  // reading the source (rule 11 — exercise the real entry point).
+  it('is set on a parcel whose FAR resolved', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(laRoutes))
+    const res = await getLaParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.farAppliesTo).toBe('buildable-area')
+    // And the ratio is STILL PUBLISHED. Withholding the FAR itself would be a
+    // different and wrong claim: § 12.21.1 A.1 really does cap this district at
+    // 3.0, the feasibility check reads it, and only the PRODUCT is unobtainable.
+    expect(res.info.zoning.maxFAR).toBe(3.0)
+  })
+
+  it('is set on the C4-2 parcel too — it describes the code, not the zone', async () => {
+    // Unconditional by design. Every FAR in § 12.21.1 A.1 is stated against
+    // buildable area, so gating this per-zone would create districts that
+    // silently revert to the lot-area product.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(laRoutesC42))
+    const res = await getLaParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.farAppliesTo).toBe('buildable-area')
+  })
+})

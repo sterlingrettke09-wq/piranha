@@ -17,8 +17,50 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   const residFar = info.zoning.farByUse?.residential
   const mixedFar = info.zoning.farByUse?.mixed
   let far: number | null
-  let farBasis: 'residential' | 'mixed' | 'district' | 'planned-development' | 'unconstrained' | null
-  if (residFar != null) {
+  // Derived from the published type rather than restated. The two had to be
+  // edited in lockstep, and a local annotation that silently narrows is exactly
+  // how a new basis becomes unreachable without anyone noticing.
+  let farBasis: NonNullable<ParcelInfo['envelope']>['farBasis']
+  if (info.zoning.farAppliesTo === 'buildable-area') {
+    // FIRST, and that is the whole point. `maxFAR` IS populated here — LA's
+    // height district really does cap floor area at 3.0 — so every branch below
+    // would happily consume it and multiply by the lot. The ratio is right and
+    // the multiplicand is wrong: LAMC § 12.21.1 A.1 says "three times the
+    // Buildable Area of the Lot", the lot minus its required yards, and LA's
+    // required front yard is the PREVAILING setback — the average of the front
+    // yards already built on 40%+ of the frontage. It is a fact about the
+    // street, not about this parcel or its zone, and nothing we fetch carries
+    // it.
+    //
+    // So the product is withheld rather than computed against the wrong area.
+    // Deriving a lot→buildable ratio would be an invented conversion factor
+    // (rule 4), and publishing lot × FAR would put a known-high number on the
+    // RESOLVED side of the ledger, where scrutiny does not go (rule 18).
+    //
+    // Note what this also fixes, for free: `maxUnits` derives from
+    // `maxFloorAreaSqFt`, so withholding the area withholds the unit count too.
+    // LA's R3/R4/R5 published FAR 3.0 straight into a units figure with no
+    // density check, while R2/RD/RW were withheld upstream to avoid exactly
+    // that — the guard was on the quieter zones.
+    // WHEN TWO TRUE REASON CODES APPLY, THE MORE SPECIFIC ONE WINS — the one
+    // that tells the reader where to look. Both are true of an LA parcel
+    // carrying a "D" Development Limitation: the code states its FAR against
+    // buildable area (so we cannot compute it) AND the binding figure lives in
+    // the ordinance that imposed the D (so there is a document to go and read).
+    // "The limit is in that ordinance" is actionable; "the basis is
+    // unavailable" leaves the reader nothing to do.
+    //
+    // ⚠️ SCOPED INSIDE THIS BRANCH ON PURPOSE. Hoisting the PD check above the
+    // resolved-figure branches would suppress FARs other cities really do
+    // publish for PD districts — the case `never overrides a FAR the city
+    // actually resolved` already pins. Here there is no figure to suppress:
+    // this branch runs precisely when the district ratio cannot be applied.
+    far = null
+    farBasis =
+      info.zoning.planGoverned || isPlannedDevelopment(city, info.zoning.districtCode)
+        ? 'planned-development'
+        : 'basis-unavailable'
+  } else if (residFar != null) {
     far = residFar
     farBasis = 'residential'
   } else if (mixedFar != null) {

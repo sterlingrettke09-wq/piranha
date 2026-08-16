@@ -13,6 +13,7 @@
 import type { AnalysisInput, Use } from '../types/analysis'
 import type { ParcelInfo } from '../types/parcel'
 import { avgUnitGrossSqFt } from '../config/estimates'
+import { gfaBasisForFarBasis } from './gfaBasis'
 
 // The smallest and largest DEFAULT PROGRAM this module will propose. Neither is
 // a fact about any city's code — they bound what the tool volunteers on a
@@ -107,7 +108,7 @@ export function buildDefaultSpec(parcel: ParcelInfo, city: string): AnalysisInpu
   // the permissive direction, and the reason is structural: "we did not find a
   // constraint" naturally defaults to "unconstrained".
   let gfa: number | null = null
-  let gfaBasis: 'envelope' | 'assumed-unconstrained' | 'assumed-planned-development' | 'assumed-far-1.0' | null = null
+  let gfaBasis: NonNullable<AnalysisInput['gfaBasis']> | null = null
   if (env && env.maxFloorAreaSqFt != null && env.maxFloorAreaSqFt > 0) {
     // The envelope is the constraint, so it bounds the proposal — a default that
     // does not fit inside it is not a default, it is a program we invented and
@@ -130,16 +131,9 @@ export function buildDefaultSpec(parcel: ParcelInfo, city: string): AnalysisInpu
     // The code SAYS no FAR binds here, so a lot-area stand-in is a stated
     // absence with a placeholder size — weaker than an envelope, stronger than
     // a guess made in ignorance.
-    gfaBasis =
-      env?.farBasis === 'unconstrained'
-        ? 'assumed-unconstrained'
-        : // A planned-development parcel HAS a floor-area limit; it is in the
-          // ordinance that created the district. The stand-in is just as much a
-          // placeholder as the other two, but the reason is different and the
-          // reader can act on it — there is a specific document to go and read.
-          env?.farBasis === 'planned-development'
-          ? 'assumed-planned-development'
-          : 'assumed-far-1.0'
+    // The reason half of the shared derivation. This used to be a third copy of
+    // the same chain; see src/lib/gfaBasis.ts for why there is now exactly one.
+    gfaBasis = gfaBasisForFarBasis(env?.farBasis)
   }
   if (gfa === null || gfaBasis === null) return null
 
