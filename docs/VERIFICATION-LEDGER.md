@@ -5958,3 +5958,84 @@ asymmetry: a falling total looks like progress and needs the most scrutiny, whil
 a rising one is nearly always the instrument admitting it had been generous. Rule
 26 says to report the composition and say whether the system changed or the
 counting did — and after nine movements, the counting has changed eight times.
+
+### San Diego's planned districts: read before enrolling, and the reading said don't
+
+The 68 codes flagged as likely plan-governed were read against Chapter 15 of the
+Municipal Code before anything was enrolled. Both halves of the triage were wrong.
+
+**They are not plan-governed.** The hypothesis was the Denver-PUD / Dallas-PD
+shape — a limit existing in an ordinance outside any district table, where the
+honest output is `planGoverned`. But San Diego's "planned-district ordinances"
+ARE Chapter 15 of this Municipal Code: each article publishes Property
+Development Regulations as tables, in the code, for named zones, and all ten
+carry height and floor-area provisions (Centre City mentions floor area 109
+times). Enrolling them would have asserted "go read another document" about
+figures inside a chapter already read for this city — a fabricated known absence,
+the most expensive error class here. They are curatable gaps.
+
+Worth noting what invited the error: the module's own scope note described these
+as districts "whose FARs are set by their own planned-district ordinances." That
+sentence is true in a sense and misleading in the sense that matters, and it is
+where the hypothesis came from. The note was the source, not an innocent
+bystander.
+
+**And there are 83, not 68.** Old Town's fifteen codes were bucketed as ordinary
+gaps because their names carry no "PD". Old Town is Article 16 of the same
+chapter and all fifteen are named in it — including `OTOP 1-1`, printed with a
+SPACE where the layer uses a hyphen. Their shape matches the Chapter 13 base
+zones instead (`OTRS-1-1` beside `RS-1-1`), which is exactly what made the
+misgrouping plausible: rule 27, and this time the prefix hid a family rather than
+inventing one.
+
+**`MPD-MARINA` is a live code for a repealed district.** Article 11 and its
+Division 3 both read "(Repealed 6-21-2019 by O-21086 N.S., effective 8-8-2019.)"
+and contain no standards at all, yet the zoning layer still publishes the code.
+An empty article is the shape most likely to be misread as "no FAR applies here,"
+so it is asserted NOT `farUnconstrained`. Its editor's note adds that the repeal
+does not reach the Coastal Overlay Zone until the Coastal Commission certifies a
+Local Coastal Program Amendment — so what governs such a parcel depends on a
+certification status nothing here reads.
+
+**Neither published index is complete**, which sharpens rule 8. The rule says to
+read indexes rather than guess paths; here the Table of Contents lists Article 16
+but omits Articles 2 and 11, while the Chapter 15 web page lists 2 and 11 and
+omits 16. Reading either alone yields a confident wrong answer — the ToC would
+have said Marina was repealed *and never existed as a document*, the web page
+that Old Town does not exist. Article 16 (95 pages, dated 7-2026) was confirmed
+only after the two disagreed and the section number the ToC itself gives
+(§1516.0101) was tested. **An index is a claim too.**
+
+The sweep total is unchanged at 883. The composition moved and the count did not,
+which is the reporting rule 26 asks for.
+
+### A test that calls a resolver directly tests the resolver
+
+`CMP-NWC-R → 40 ft` was green while no parcel could obtain 40 ft, because the
+test called the resolver and nothing on the parcel path did. Generalised at export
+granularity and made mechanical: `orphanExports.test.ts` scans every exported
+function in the zoning modules and fails on any that no production file reaches,
+unless declared with a reason.
+
+Three of 61 are orphans, and the check earned itself on the second one:
+
+- `isDenverProtectedDistrict` — set membership only; production asks
+  `denverProtectedDistrictRule` and then runs the spatial query.
+- **`plannedDevelopmentSource`** — builds the sentence naming WHICH ordinance
+  governs a PD parcel and where to read it. Nothing calls it. `envelope.ts`
+  explains that this is the entire reason `planned-development` is preferred over
+  `basis-unavailable` — "the limit is in that ordinance" is actionable — and the
+  panel instead renders a hardcoded paragraph with the general claim and no
+  citation. So the actionable half is computed and discarded, and one claim now
+  has two sources that can disagree. Not wired: it returns a sentence only for
+  Dallas and Chicago, and Dallas's runs past 400 characters including a quoted
+  excerpt of § 51A-4.702. That is a copy decision, not a wiring fix.
+- `sanDiegoPlannedDistrict` — inventory for the Chapter 15 triage; resolves no
+  limit.
+
+The first version of the scan reported **fourteen** orphans, eleven of which were
+internal helpers like `sanDiegoZoneKey` that their own resolver calls one line
+down — it excluded same-file callers. That is rule 11 inside the check written to
+enforce it, for the second time in this repo. The committed version counts uses
+anywhere in production including the defining module, and is verified by adding an
+undeclared export and watching it go red.
