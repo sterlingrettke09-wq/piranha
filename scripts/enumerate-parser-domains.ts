@@ -70,10 +70,21 @@ interface Target {
    *  genuinely explains a handful of codes silently excuses the rest. It did
    *  exactly that here: a note added to Denver to declare the nine CMP campus
    *  districts took all 58 of its unhandled codes out of the total, dropping it
-   *  753 → 695 with no code change and no visible cause. Use it only where the
-   *  parser's whole domain is narrower than the field — Austin really is
-   *  Subchapter F only. For a scope that covers PART of a target, use
-   *  `partiallyScoped` below, which keeps the remainder counted. */
+   *  753 → 695 with no code change and no visible cause.
+   *
+   *  Use it ONLY where the parser's whole domain is narrower than the field, and
+   *  verify that rather than asserting it. Auditing all six coarse declarations
+   *  on 2026-08-17 found three accurate and three not: seattle (NC/C only),
+   *  chicago (residential only) and nyc (PLUTO supplies FAR numerically) each
+   *  account for every unhandled value on their target, while atlanta left 10,
+   *  austin 5 and sandiego 139 excused by sentences that do not describe them.
+   *  Those three are now `partiallyScoped`, which raised the total 729 → 883.
+   *
+   *  An earlier version of this note offered Austin as the example of a
+   *  legitimately target-wide scope. It is not one: its scope reads
+   *  "single-family zones only" and five single-family zones were unhandled, so
+   *  the sentence could not excuse them. For a scope covering PART of a target,
+   *  use `partiallyScoped` below, which keeps the remainder counted. */
   scopedTo?: string
   /** A scope covering SOME of a target's values. Returns a reason when this
    *  specific value is out of scope, null when it is a genuine gap. Only the
@@ -125,13 +136,31 @@ export const TARGETS: Target[] = [
     // than curated quickly", because each publishes a per-subarea grid that runs
     // together when flattened, the shape that produced DC's MU column off-by-one.
     // A documented refusal to curate is not a parse surprise.
-    scopedTo: 'SPI / HC-20 / NC / Poncey-Highland / LD deliberately uncurated — see zoning/atlanta.ts',
+    // PARTIAL, converted 2026-08-17. The stated scope names five families and
+    // accounts for 169 of the 179 unhandled values — the other TEN are outside
+    // every family it names and were being excused by a declaration that does
+    // not mention them. LW/LW-C (Live-Work), MRC-1/-2 and their -C conditional
+    // variants, MR-3A-C and MR-4-C (conditional forms of curated districts), and
+    // PD-H1/PD-H2 are real gaps.
+    partiallyScoped: {
+      label: 'SPI / HC-20 / NC / Poncey-Highland / LD deliberately uncurated — see zoning/atlanta.ts',
+      explains: (v) => /^(SPI-|HC-20|NC-\d|Poncey-Highland|LD )/.test(v.trim()),
+    },
     handled: (v) => { if (isPlannedDevelopment('atlanta', v)) return true; const r = resolveAtlanta(v); return r.heightFt != null || r.heightUnconstrained === true },
   },
   {
     city: 'austin', what: 'base zone → Subchapter F limits',
     url: 'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/Current_Zoning_gdb/FeatureServer/0', field: 'BASE_ZONE',
-    scopedTo: 'Subchapter F single-family zones only',
+    // PARTIAL, converted 2026-08-17. A scope reading "single-family zones only"
+    // cannot excuse a SINGLE-FAMILY zone, and five of the 41 unhandled values are
+    // exactly that: SF-4A, SF-4B, SF-5, SF-6 and SF2. Whether Subchapter F
+    // reaches them is an open question against § 25-2 Subchapter F and is NOT
+    // assumed here either way — they count as gaps until someone reads it, which
+    // is the state a declaration should leave an unread question in.
+    partiallyScoped: {
+      label: 'non-single-family zones are outside Subchapter F',
+      explains: (v) => !/^SF/i.test(v.trim()),
+    },
     handled: (v) => austinSfLimits(v, true) != null,
   },
   {
@@ -200,7 +229,25 @@ export const TARGETS: Target[] = [
     // FAR is a lot-area band and its industrial FAR needs the community plan, so
     // passing null is honest: this measures the code-only domain, not the
     // resolver's full capability.
-    scopedTo: 'code-only; RS lot-area bands and industrial community-plan rules need parcel facts',
+    // ⚠️ PARTIAL, converted 2026-08-17, and the worst offender by a wide margin.
+    // The stated scope names RS lot-area bands and industrial community-plan
+    // rules — which accounts for SIXTEEN of the 155 unhandled values. The other
+    // 139 were excused by a sentence that does not describe them.
+    //
+    // Reconciled before the total was moved (rule 25). The 139 split in two:
+    //   · 68 Planned District Ordinances — CCPD, CSPD, CUPD, CVPD, GQPD, LJPD,
+    //     LJSPD, MBPD, MPD. These are very likely the planned-development ANSWER
+    //     shape (a limit exists, in its own ordinance), and `isPlannedDevelopment`
+    //     returns false for all 68 today. That is a piece of work with a known
+    //     shape, NOT something to assume — asserting it here would be a mechanism
+    //     argued aloud earning a direction (rule 1), so they count as gaps until
+    //     the ordinances are read.
+    //   · 71 commercial, office, mixed-use and Old Town districts — CC, CN, CO,
+    //     CP, CR, CV, EMX, RMX, OC, OF, OP, OR, OT*, plus UNZONED. Plain gaps.
+    partiallyScoped: {
+      label: 'RS lot-area bands and industrial community-plan rules need parcel facts',
+      explains: (v) => /^(RS-|I[A-Z]?-\d|IBT-)/.test(v.trim()),
+    },
     handled: (v) => { const r = resolveSanDiego(v, null); return r.maxFAR != null || r.farUnconstrained === true },
   },
 

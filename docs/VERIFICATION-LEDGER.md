@@ -5864,3 +5864,55 @@ audited and corrected, and the audit stopped at the instrument. When a fix
 consists of passing a flag, the question is not "did I pass it here" but "who
 else calls this, and can they know what to pass?" — and where the answer is no,
 the fix is to remove the caller, not to document the requirement.
+
+### An audit's scope is itself a claim, and both of tonight's audits were narrower than they read
+
+Two follow-ups to the `resolveZoningLimits` defect, and they are the same lesson
+twice.
+
+**"I checked all callers" meant "all callers in the instrument."** The parser-domain
+sweep and production were two callers of `resolveDenver`. The audit that caught
+the missing `formerChapter59` flag enumerated the sweep's call sites and stopped,
+so the identical bare call in `resolveZoningLimits` survived being looked for. The
+durable fix is not a better audit: `denverResolverWiring.test.ts` now asserts
+Denver's table has exactly ONE production caller, pinned by filename, and that
+that caller passes the flag. Verified by reintroducing the second caller and
+watching it go red. A third caller would otherwise arrive the way the second did —
+someone needing a Denver figure, reaching for the resolver, with no way to know an
+argument carries the correctness.
+
+**And the coarse-scope audit had the same shape.** `partiallyScoped` fixed the
+MECHANISM after a Denver scope note erased 46 gaps, but the six declarations
+already in the file were never re-examined. Auditing all six: three are accurate
+and three were doing exactly what the Denver note had done.
+
+| target | unhandled | the scope actually names | excused with no basis |
+|---|---|---|---|
+| seattle (NC/C only) | 105 | 105 | — |
+| chicago (residential only) | 1,462 | 1,462 | — |
+| nyc (PLUTO supplies FAR) | 168 | 168 | — |
+| atlanta | 179 | 169 | **10** |
+| austin | 41 | 36 | **5** |
+| sandiego | 155 | 16 | **139** |
+
+Austin is the sharpest: its scope reads "Subchapter F single-family zones only"
+while five SINGLE-FAMILY zones sat unhandled beneath it — SF-4A, SF-4B, SF-5,
+SF-6, SF2. A sentence cannot excuse the very thing it names. Whether § 25-2
+Subchapter F reaches those four is unread, and is deliberately not assumed either
+way; they count as gaps until someone looks, which is where a declaration should
+leave an open question rather than closing it by omission.
+
+San Diego was reconciled before the total moved (rule 25). Of its 139, sixty-eight
+are Planned District Ordinances — CCPD, CSPD, CUPD, CVPD, GQPD, LJPD, LJSPD,
+MBPD, MPD — which are very likely the planned-development answer shape and for
+which `isPlannedDevelopment` currently returns false on all sixty-eight. That is
+identified work with a known shape, not a conclusion: writing it in as an answer
+would be a mechanism argued aloud earning a direction (rule 1). The other
+seventy-one are plain gaps in the commercial, office, mixed-use and Old Town
+families.
+
+The total moved **729 → 883**, and the rise is the whole point. Every scope now
+prints its split, and each of the six is pinned by BOTH numbers — what it names
+and what it leaves — so a predicate cannot widen and quietly resume excusing the
+remainder. A note in the `scopedTo` doc offering Austin as the model of a
+legitimate target-wide scope has been corrected; it was the counter-example.

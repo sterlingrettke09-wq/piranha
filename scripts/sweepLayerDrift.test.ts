@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { ZONE_SOURCES } from './zoneRegistry'
-import { TARGETS } from './enumerate-parser-domains'
+import { TARGETS, unhandledFor } from './enumerate-parser-domains'
 import { readEnumeration } from './enumerate-zones'
 import { resolveSeattle } from '../netlify/functions/lib/zoning/seattle'
 import { resolveChicago } from '../netlify/functions/lib/zoning/chicago'
@@ -270,5 +270,61 @@ describe('PRODUCTION passes the arguments its resolvers need', () => {
   it('and zoningLimits resolves nothing for denver', () => {
     const src = readFileSync(join(ROOT, 'netlify/functions/lib/zoningLimits.ts'), 'utf8')
     expect(src, 'zoningLimits must not import the Denver resolver').not.toMatch(/from '\.\/zoning\/denver'/)
+  })
+})
+
+describe('every declared scope accounts for what it excuses', () => {
+  // ⚠️ A COARSE `scopedTo` REMOVES A WHOLE TARGET FROM THE TOTAL, so a sentence
+  // naming three families silently excuses everything else on that field. All
+  // six coarse declarations were audited 2026-08-17 and three were doing exactly
+  // that: atlanta excused 10 values outside every family it names, austin 5
+  // SINGLE-FAMILY zones under a scope reading "single-family zones only", and
+  // sandiego 139 of 155 under a sentence describing 16.
+  //
+  // The three that remain target-wide were VERIFIED to account for every
+  // unhandled value on their field, not assumed to.
+  const byCity = (c: string) => TARGETS.find((t) => t.city === c)!
+
+  it.each(['seattle', 'chicago', 'nyc'])(
+    '%s: a target-wide scope is legitimate only if it explains ALL of them',
+    (city) => {
+      const t = byCity(city)
+      expect(t.scopedTo, `${city} lost its scope declaration`).toBeDefined()
+      const g = unhandledFor(city).find((x) => x.field === t.field)!
+      // The parser's domain really is narrower than the field here, so every
+      // unhandled value is out of scope by construction. Pinned as a floor so
+      // this cannot pass by the target going empty.
+      expect(g.codes.length).toBeGreaterThan(50)
+    },
+  )
+
+  it.each([
+    ['atlanta', 169, 10],
+    ['austin', 36, 5],
+    ['sandiego', 16, 139],
+    ['denver', 9, 34],
+  ] as const)('%s: partial scope names %i and leaves %i counted', (city, named, gaps) => {
+    const t = byCity(city)
+    expect(t.scopedTo, `${city} must not carry a target-wide scope`).toBeUndefined()
+    const ps = t.partiallyScoped
+    expect(ps, `${city} has no partial scope`).toBeDefined()
+    const codes = unhandledFor(city).find((x) => x.field === t.field)!.codes
+    const excused = codes.filter((c) => ps!.explains(c))
+    // BOTH numbers pinned. Only the first would let the predicate widen and
+    // quietly excuse the remainder — which is the defect being guarded.
+    expect(excused.length, `${city}: scope now names ${excused.length}, expected ${named}`).toBe(named)
+    expect(codes.length - excused.length, `${city}: ${gaps} gaps expected`).toBe(gaps)
+  })
+
+  it('austin: a scope about single-family zones cannot excuse a single-family zone', () => {
+    // The sharpest of the three, because the sentence contradicts itself on its
+    // own terms. Whether § 25-2 Subchapter F reaches SF-4A/4B/5/6 is unread and
+    // is NOT assumed either way — they count as gaps until someone looks, which
+    // is where a declaration should leave an open question.
+    const ps = byCity('austin').partiallyScoped!
+    for (const c of ['SF-4A', 'SF-4B', 'SF-5', 'SF-6', 'SF2']) {
+      expect(ps.explains(c), `${c} is single-family and must not be excused`).toBe(false)
+    }
+    expect(ps.explains('CBD'), 'a non-single-family zone IS out of scope').toBe(true)
   })
 })
