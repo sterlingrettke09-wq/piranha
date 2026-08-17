@@ -7,7 +7,7 @@ import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelR
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'
 import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredUpstream'
-import { resolveDenver, DENVER_FT_PER_STORY } from '../zoning/denver'
+import { resolveDenver, DENVER_FT_PER_STORY, DENVER_PROTECTED_DISTRICTS, denverProtectedDistrictRule, denverHeightNearProtected } from '../zoning/denver'
 import { recordAddress } from '../address'
 
 const PARCELS = 'https://denvergov.org/maps/data/Zoning/MapServer/0'
@@ -129,6 +129,71 @@ export function isFormerChapter59(zone?: unknown, description?: unknown, useForm
   return /^[A-Z]{1,3}-[0-9A-Z]+$/.test(z)
 }
 
+/**
+ * Is any Protected District within the given distance of this parcel?
+ *
+ * THREE-STATE, and the third state is the point:
+ *   true  — the layer answered and at least one Protected District polygon is
+ *           within `withinFt` of the parcel.
+ *   false — the layer answered and none is.
+ *   null  — the query FAILED, or the parcel geometry was unavailable.
+ *
+ * ⚠️ A FAILED QUERY MUST NEVER RETURN false. The two answers produce different
+ * heights — CMP-H is 75 ft inside the buffer and 200 ft outside — so collapsing
+ * an unknown into "no protected district nearby" publishes the taller figure on
+ * a parcel that may be capped at a third of it. That is the exact shape of the
+ * defect this file already documents for `farUnconstrained`: an unknown wearing
+ * the appearance of an established absence.
+ *
+ * Measured from the PARCEL GEOMETRY, not the query point. DZC Article 13
+ * § 13.1-13.B caps "all portions of a Structure … within 175 feet of a Protected
+ * District", so a point test on a large campus lot would miss a boundary the
+ * rule reaches — under-detection, which is the flattering direction.
+ *
+ * MODULE-PRIVATE ON PURPOSE. It was exported briefly to verify both directions
+ * against live parcels, and that is the only thing it was ever needed for from
+ * outside. Every test of this behaviour goes through `getDenverParcelInfo` — a
+ * reachable helper invites a test that calls it directly, which is precisely how
+ * `CMP-NWC-R resolves to 40 ft` stayed green while no parcel could obtain it.
+ */
+async function protectedDistrictWithin(
+  parcelGeometry: unknown,
+  /** The FEATURE SET's spatial reference — the geometry object does not carry
+   *  one. Denver returns Web Mercator (wkid 102100) unless outSR is requested,
+   *  and declaring 4326 against those coordinates makes the query fail. It
+   *  failed CLOSED, returning null rather than false, so no height was published
+   *  off a broken query — but the answer was unobtainable until this was passed. */
+  inSR: number | null | undefined,
+  withinFt: number,
+  timeoutMs?: number,
+): Promise<boolean | null> {
+  if (parcelGeometry == null || inSR == null) return null
+  const codes = [...DENVER_PROTECTED_DISTRICTS].map((c) => `'${c.replace(/'/g, "''")}'`).join(',')
+  const base = ZONING.endsWith('/') ? ZONING.slice(0, -1) : ZONING
+  const u = new URL(base + '/query')
+  u.searchParams.set('geometry', JSON.stringify(parcelGeometry))
+  u.searchParams.set('geometryType', 'esriGeometryPolygon')
+  u.searchParams.set('inSR', String(inSR))
+  u.searchParams.set('spatialRel', 'esriSpatialRelIntersects')
+  u.searchParams.set('distance', String(withinFt))
+  u.searchParams.set('units', 'esriSRUnit_Foot')
+  u.searchParams.set('where', `ZONE_DISTRICT IN (${codes})`)
+  u.searchParams.set('returnCountOnly', 'true')
+  u.searchParams.set('f', 'json')
+  try {
+    const res = await fetch(u.toString(), {
+      signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
+      headers: { accept: 'application/json' },
+    })
+    if (!res.ok) return null
+    const j = (await res.json()) as { count?: number; error?: unknown }
+    if (j.error || typeof j.count !== 'number') return null
+    return j.count > 0
+  } catch {
+    return null
+  }
+}
+
 function denverMaxHeightFt(
   zone: string | null,
   heightStories: unknown,
@@ -225,7 +290,11 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
             'RES_ORIG_YEAR_BUILT',
             'OWNER_NAME',
           ],
-          false,
+          // GEOMETRY, for the Protected District buffer. DZC § 13.1-13.B caps
+          // "all portions of a Structure … within 175 feet", so the distance is
+          // measured from the PARCEL — a point test would miss a boundary the
+          // rule reaches, which is the flattering direction.
+          true,
           undefined,
           30,
           t,
@@ -286,7 +355,45 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
   const address = parcel.SITUS_ADDRESS_LINE1 ? String(parcel.SITUS_ADDRESS_LINE1).replace(/\s+/g, ' ').trim() : 'Selected location'
   const land = Number(parcel.LAND_AREA)
   const code = zoning?.ZONE_DISTRICT ? String(zoning.ZONE_DISTRICT) : null
-  const maxHeightFt = denverMaxHeightFt(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM)
+  let maxHeightFt = denverMaxHeightFt(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM)
+
+  // ── PROTECTED DISTRICT BUFFER ─────────────────────────────────────────────
+  //
+  // A handful of districts publish a general maximum AND a lower cap within a
+  // stated distance of a Protected District (CMP-H: 200 ft, but 75 ft within
+  // 125 ft). Until that distance is known the height is not determinable, which
+  // is why those districts resolved to nothing before this.
+  //
+  // The query runs ONLY for districts that carry such a rule — one extra request
+  // on a small minority of Denver parcels, none on the rest.
+  const bufferRule = denverProtectedDistrictRule(code)
+  // The QUERY is gated on the rule — no rule, no reason to spend a request.
+  const near = bufferRule
+    ? await protectedDistrictWithin(
+        (parcelR.value.features?.[0] as { geometry?: unknown } | undefined)?.geometry,
+        (parcelR.value as { spatialReference?: { wkid?: number } }).spatialReference?.wkid,
+        bufferRule.withinFt,
+        4000,
+      )
+    : null
+  // ⚠️ THE RESOLVER IS NOT GATED ON IT, and that distinction is the bug this
+  // shape had. CMP-NWC-R is 40 ft flat — the only campus district with no
+  // reduction — so its height does not depend on the distance at all. Running
+  // the resolver only inside `if (bufferRule)` withheld a figure the code states
+  // unconditionally, and the unit test asserting 40 ft passed the whole time
+  // because it called this helper directly, which nothing on this path did
+  // (rule 11: the test measured the layer, not the pipeline).
+  //
+  // ⚠️ `true` COLLAPSES TO `null` ON PURPOSE — it is not a missing case.
+  // § 13.1-13.B caps "all portions of a Structure … within" the buffer, so on a
+  // parcel that only partly overlaps it the limit VARIES ACROSS THE SITE and a
+  // single maxHeightFt cannot express that. Publishing the reduced cap would
+  // understate the far side; publishing the general one would overstate the near
+  // side. Only the clean case — the whole parcel outside the buffer — yields a
+  // figure this field can honestly carry, so a known-near parcel is routed to
+  // the same refusal as an unresolved one.
+  const resolved = denverHeightNearProtected(code, near === false ? false : null)
+  if (resolved?.heightFt != null) maxHeightFt = resolved.heightFt
 
   // Existing structure: improvement (building) value > 0 means a building stands
   // here. D_CLASS_CN is a human-readable use; COM/RES_ORIG_YEAR_BUILT the year.

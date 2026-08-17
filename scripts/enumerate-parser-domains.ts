@@ -205,6 +205,19 @@ export const TARGETS: Target[] = [
     // The bare call is DESCRIBED rather than quoted above, because the guard in
     // sweepLayerDrift.test.ts scans this file for it — reproducing the faulty
     // call inside its own correction is rule 21's shape.
+    // ⚠️ CODE-ONLY, AND THE CMP FAMILY IS WHY. Nine campus districts publish a
+    // height CONDITIONED ON DISTANCE — CMP-H is 200 ft generally and 75 ft
+    // within 125 ft of a Protected District — so a height exists for them on a
+    // real parcel and cannot exist for a bare string. The provider resolves it
+    // with a live buffer query; the sweep has no parcel to query from, so it
+    // counts them unhandled.
+    //
+    // That is the SAFE direction, and it is declared rather than left silent:
+    // Denver's unhandled figure UNDERSTATES what production resolves, and the
+    // opposite arrangement — crediting a height the sweep cannot actually
+    // establish — is the exact defect the legacy flag above was added to fix.
+    // Read the number as "codes with no answer from the string alone".
+    scopedTo: 'code-only; CMP campus heights are conditioned on a per-parcel distance the sweep cannot measure',
     handled: (v) =>
       isPlannedDevelopment('denver', v) ||
       resolveDenver(v, { formerChapter59: isFormerChapter59(v) }).heightFt != null,

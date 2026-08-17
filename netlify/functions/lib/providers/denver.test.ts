@@ -370,3 +370,107 @@ describe('the legacy SHAPE fallback misclassifies current DZC districts', () => 
     }
   })
 })
+
+describe('campus heights and the Protected District buffer', () => {
+  // ⚠️ THE SPATIAL REFERENCE LIVES ON THE FEATURE SET, NOT ON THE GEOMETRY, and
+  // the fixture is built by hand here for exactly that reason. Denver returns
+  // Web Mercator (102100) unless outSR is asked for; the first wiring hardcoded
+  // inSR=4326 against those coordinates and every buffer query failed. It failed
+  // CLOSED — null, not false — so no height shipped off a broken query, but the
+  // shape is invisible unless a fixture carries the SR where the service does.
+  const campusParcel = (sr: number | null = 102100) => ({
+    features: [
+      {
+        attributes: DENVER_PARCEL,
+        geometry: { rings: [[[-11681849, 4827736], [-11681800, 4827736], [-11681800, 4827700], [-11681849, 4827700], [-11681849, 4827736]]] },
+      },
+    ],
+    ...(sr == null ? {} : { spatialReference: { wkid: sr } }),
+  })
+  const campusZoning = (code: string) =>
+    denverZoning({ ZONE_DISTRICT: code, ZONE_DESCRIPTION: 'Campus', HEIGHT_STORIES: null, ZONE_USE_FORM: '999' })
+  // The buffer query is the only Denver request carrying returnCountOnly — it
+  // hits the SAME layer as the zoning lookup, so routing must split them on a
+  // parameter rather than on the layer number.
+  const withBuffer = (count: number | Response) => ({
+    'returnCountOnly=true':
+      count instanceof Response
+        ? count
+        : new Response(JSON.stringify({ count }), { headers: { 'Content-Type': 'application/json' } }),
+    'MapServer/0': campusParcel(),
+    'MapServer/1': campusZoning('CMP-H'),
+    ODC_HIST_LANDMARKDISTRICT_A: featureSet(),
+    NFHL: featureSet({ FLD_ZONE: 'X' }),
+    EHA_WebService: featureSet({ MarketArea: 'High' }),
+  })
+
+  it('publishes the general height when the parcel is OUTSIDE the buffer', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(withBuffer(0)))
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.maxHeightFt).toBe(200) // DZC § 13.1-13.B, CMP-H
+  })
+
+  it('WITHHOLDS a height when the parcel is inside the buffer', async () => {
+    // Not 75. § 13.1-13.B caps "all portions of a Structure … within" the
+    // buffer, so a partly-overlapping parcel has two limits and maxHeightFt can
+    // carry one number. 75 would understate the far side, 200 the near side.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(withBuffer(3)))
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.maxHeightFt).toBeNull()
+  })
+
+  it('WITHHOLDS a height when the buffer query fails — a failure is not an absence', async () => {
+    // The whole reason the helper is three-state. Reading a failed query as
+    // "nothing nearby" would publish 200 ft on a parcel the code may cap at 75.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch(withBuffer(new Response('boom', { status: 500 }))),
+    )
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.maxHeightFt).toBeNull()
+  })
+
+  it('WITHHOLDS a height when the parcel feature set carries no spatial reference', async () => {
+    // The live failure, pinned. Without an SR the query cannot be formed, and
+    // the honest output is the same refusal as a failed one.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      mockArcgisFetch({ ...withBuffer(0), 'MapServer/0': campusParcel(null) }),
+    )
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.maxHeightFt).toBeNull()
+  })
+
+  it('CMP-NWC-R resolves to 40 ft with NO buffer query at all', async () => {
+    // ⚠️ THE REGRESSION THIS PINS. CMP-NWC-R is the one campus district with no
+    // reduction — 40 ft flat, whatever is next door — so its height does not
+    // depend on the distance. The first wiring ran the resolver only inside
+    // `if (bufferRule)`, so this district, having no rule, was never resolved at
+    // all and published nothing. The unit test asserting 40 ft passed throughout,
+    // because it called the resolver directly and nothing on this path did.
+    //
+    // The unrouted-URL throw is what carries the second half: if a buffer query
+    // is ever issued for this district, mockArcgisFetch has no route for it and
+    // the test fails rather than quietly spending a request.
+    const routes = {
+      'MapServer/0': campusParcel(),
+      'MapServer/1': campusZoning('CMP-NWC-R'),
+      ODC_HIST_LANDMARKDISTRICT_A: featureSet(),
+      NFHL: featureSet({ FLD_ZONE: 'X' }),
+      EHA_WebService: featureSet({ MarketArea: 'High' }),
+    }
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(routes))
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.maxHeightFt).toBe(40)
+    const urls = spy.mock.calls.map((c) => String(c[0]))
+    expect(urls.some((u) => u.includes('returnCountOnly=true'))).toBe(false)
+  })
+})

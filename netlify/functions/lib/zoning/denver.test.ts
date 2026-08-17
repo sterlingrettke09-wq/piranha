@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY, DENVER_PROTECTED_DISTRICTS, isDenverProtectedDistrict, denverProtectedDistrictRule } from './denver'
+import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY, DENVER_PROTECTED_DISTRICTS, isDenverProtectedDistrict, denverProtectedDistrictRule, denverHeightNearProtected } from './denver'
 import { isPlannedDevelopment } from './plannedDevelopment'
 
 // Denver is a FORM-BASED code: the common districts are height-governed (stories
@@ -424,6 +424,52 @@ describe('Protected Districts — enumerated from two codes', () => {
   it('districts with no such rule return null rather than a default', () => {
     for (const c of ['S-MX-3', 'U-SU-A', 'MHC', 'OS-B', 'D-C']) {
       expect(denverProtectedDistrictRule(c), c).toBeNull()
+    }
+  })
+})
+
+describe('height conditioned on Protected District proximity', () => {
+  // The three-state contract. `nearProtected` is true / false / null, and the
+  // third is not a formality: CMP-H is 75 ft inside the buffer and 200 ft
+  // outside, so collapsing "we could not find out" into "not nearby" publishes
+  // the taller figure on a parcel that may be capped at a third of it.
+
+  it('resolves BOTH directions when the distance is known', () => {
+    expect(denverHeightNearProtected('CMP-H', false)?.heightFt).toBe(200)
+    expect(denverHeightNearProtected('CMP-H', true)?.heightFt).toBe(75)
+    expect(denverHeightNearProtected('CMP-H2', false)?.heightFt).toBe(140)
+    expect(denverHeightNearProtected('CMP-EI', false)?.heightFt).toBe(150)
+    expect(denverHeightNearProtected('CMP-EI', true)?.heightFt).toBe(75)
+  })
+
+  it('REFUSES when the distance is unknown — null is not "not nearby"', () => {
+    for (const c of ['CMP-H', 'CMP-H2', 'CMP-EI', 'CMP-EI2', 'CMP-NWC']) {
+      expect(denverHeightNearProtected(c, null)?.heightFt, c).toBeNull()
+      expect(denverHeightNearProtected(c, undefined)?.heightFt, c).toBeNull()
+    }
+  })
+
+  it('and says WHY it refused, naming both figures', () => {
+    const r = denverHeightNearProtected('CMP-H', null)!
+    expect(r.source).toMatch(/200 ft generally/)
+    expect(r.source).toMatch(/75 ft within 125 ft/)
+    expect(r.source).toMatch(/unresolved/)
+  })
+
+  it('CMP-NWC-R resolves to 40 ft WITHOUT the distance, because it has no reduction', () => {
+    // ⚠️ THE POSITIVE HALF of excluding it from the reduction rule. Asserting
+    // only that it is absent from the rule would still pass if someone later
+    // added it — this pins the figure the code actually states, 40 ft both
+    // generally and within the buffer. Handing it the family's 75 ft cap would
+    // RAISE a district the code holds at 40.
+    expect(denverHeightNearProtected('CMP-NWC-R', null)?.heightFt).toBe(40)
+    expect(denverHeightNearProtected('CMP-NWC-R', true)?.heightFt).toBe(40)
+    expect(denverHeightNearProtected('CMP-NWC-R', false)?.heightFt).toBe(40)
+  })
+
+  it('is null for districts with no such conditional at all', () => {
+    for (const c of ['S-MX-3', 'OS-B', 'MHC', 'D-C', 'R-2']) {
+      expect(denverHeightNearProtected(c, false), c).toBeNull()
     }
   })
 })

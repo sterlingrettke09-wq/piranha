@@ -166,6 +166,57 @@ export function isDenverProtectedDistrict(code: string | null | undefined): bool
   return DENVER_PROTECTED_DISTRICTS.has(String(code).trim().toUpperCase())
 }
 
+/** The GENERAL maximum height for districts whose figure is conditioned on
+ *  Protected District proximity. Article 9, read 2026-08-17.
+ *
+ *  Kept OUT of DENVER_LIMITS deliberately: an entry there is an unconditional
+ *  answer, and publishing 200' for a CMP-H parcel that is actually capped at 75'
+ *  would be a 2.7x overstatement — the Seattle MIO magnitude. These resolve only
+ *  once the proximity is known. */
+const CMP_GENERAL_HEIGHT_FT: Readonly<Record<string, number>> = Object.freeze({
+  'CMP-H': 200,      // § 9.2.3
+  'CMP-H2': 140,     // § 9.2.3
+  'CMP-EI': 150,     // § 9.2.4
+  'CMP-EI2': 150,    // § 9.2.4
+  'CMP-NWC': 150,    // § 9.2.6
+  'CMP-NWC-C': 150,  // § 9.2.6
+  'CMP-NWC-G': 150,  // § 9.2.6
+  'CMP-NWC-F': 150,  // § 9.2.6
+  'CMP-NWC-R': 40,   // § 9.2.6 — 40' generally AND within the buffer.
+})
+
+/**
+ * The height for a district whose figure depends on Protected District
+ * proximity, in feet — or null where that proximity is not known.
+ *
+ * `nearProtected` is deliberately THREE-STATE:
+ *   true      — a Protected District lies within the district's buffer.
+ *   false     — the layer ANSWERED and none does.
+ *   null/undefined — nobody asked, or the query FAILED.
+ *
+ * ⚠️ A FAILED SPATIAL QUERY MUST NOT READ AS "false". The two produce
+ * different heights — 75' versus up to 200' — so collapsing them would turn an
+ * unknown into a confident number in the flattering direction, which is the
+ * Phoenix shape this repo already carries a warning about. Hence null, not a
+ * boolean default.
+ */
+export function denverHeightNearProtected(
+  code: string | null | undefined,
+  nearProtected: boolean | null | undefined,
+): { heightFt: number | null; source: string } | null {
+  const z = String(code ?? '').trim().toUpperCase()
+  const general = CMP_GENERAL_HEIGHT_FT[z]
+  if (general == null) return null
+  const rule = denverProtectedDistrictRule(z)
+  // CMP-NWC-R has no reduction: its figure is 40' either way, so it resolves
+  // WITHOUT the proximity being known. Anything else needs the answer.
+  if (rule == null) return { heightFt: general, source: `DZC Article 9 § 9.2.6 — ${z} is ${general} ft, with no Protected District reduction` }
+  if (nearProtected == null) return { heightFt: null, source: `${z} is ${general} ft generally and ${rule.maxFt} ft within ${rule.withinFt} ft of a Protected District; that distance is unresolved` }
+  return nearProtected
+    ? { heightFt: rule.maxFt, source: `${rule.source} — within ${rule.withinFt} ft of a Protected District` }
+    : { heightFt: general, source: `DZC Article 9 — ${z} general maximum; no Protected District within ${rule.withinFt} ft` }
+}
+
 /** How far a Protected District reduces this district's height, and to what.
  *  Null where the district carries no such rule. Figures read from Article 9. */
 export function denverProtectedDistrictRule(

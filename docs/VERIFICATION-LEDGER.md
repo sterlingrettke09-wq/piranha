@@ -5662,3 +5662,62 @@ who meets the sentence before the frame around it.
 Precision about a retracted claim means being exact about WHAT IT ASSERTED, not
 exact in its words. The rule now says so, because four repetitions by four
 different authors is a design problem rather than four lapses.
+
+### The Denver Protected District buffer: two reads that had to agree, and a green test guarding a figure no parcel could obtain
+
+Nine Denver campus districts publish a height conditioned on DISTANCE — CMP-H is
+200 ft generally and 75 ft within 125 ft of a Protected District (DZC
+§ 13.1-13.B). None of them resolved to anything, because the distance is a fact
+about where the parcel sits and nothing we fetched carried it. Closing that meant
+a second live query, buffered off the parcel geometry, against a set of 39
+Protected District codes enumerated from both the current DZC and the frozen
+former Chapter 59.
+
+**The spatial reference lives on the FeatureSet, not on the geometry.** Denver
+returns Web Mercator (wkid 102100) unless `outSR` is asked for; the first wiring
+declared `inSR=4326` against those coordinates and every buffer query failed.
+Worth recording is how it failed: `protectedDistrictWithin` is three-state, and a
+failed query returns `null`, never `false`. Both live parcels came back with no
+height rather than the taller figure. **The guard did the only job it exists for
+— an unresolved distance never became "no Protected District nearby"** — and the
+answer was simply unobtainable until the SR was threaded through.
+
+Verified afterwards in both directions on live parcels through `getParcelInfo`,
+which is the only place the disagreement would have shown: CMP-H outside its
+buffer publishes 200 ft, CMP-EI inside its 175 ft buffer publishes nothing. The
+inside case is deliberate and is not a missing branch. § 13.1-13.B caps "all
+portions of a Structure … within" the buffer, so on a partly-overlapping parcel
+the limit VARIES ACROSS THE SITE; 75 would understate the far side and 200 the
+near side, and `maxHeightFt` can carry one number. A known-near parcel is routed
+to the same refusal as an unresolved one.
+
+**Then the instructive part.** `CMP-NWC-R` is the one campus district with no
+reduction — 40 ft flat, whatever is next door — and it was excluded from the
+buffer rule for that reason. A unit test pinned the positive half: the resolver
+returns 40 ft at all three states of the distance flag. It passed, and it had
+been passing the whole time, while **no live parcel in that district could obtain
+40 ft from anywhere.** The provider ran the resolver only inside
+`if (bufferRule)`, so a district with no rule was never resolved at all.
+
+That is rule 11 for the fifth time, in its cheapest disguise. The test called the
+resolver directly; nothing on the parcel path did. It reads as coverage of the
+behaviour and is coverage of a function — and it was written *in the same hour*
+as the rule-11 fixes to three probes, by someone who had just been bitten by it.
+Both halves of the assertion were correct in isolation; only the caller was
+missing, which is exactly the shape that survives review.
+
+Two things changed as a result, and only the second is a fix:
+
+1. `protectedDistrictWithin` is **module-private again**. It was exported to run
+   the live both-directions check and nothing outside ever needed it. A reachable
+   helper invites a test that bypasses the pipeline, which is the mechanism above.
+2. Every test of this behaviour now goes through `getDenverParcelInfo`, including
+   the CMP-NWC-R case — which additionally asserts **no buffer query is issued**,
+   so the district cannot start silently spending a request it has no use for.
+
+The sweep still counts all nine campus districts unhandled and now says why:
+`scopedTo: code-only`. Proximity is a per-parcel fact and the sweep has no
+parcel, so Denver's 58 UNDERSTATES what production resolves. That is the safe
+direction, and it is declared rather than left silent — the opposite arrangement,
+crediting a height the sweep cannot establish, is the defect the legacy
+`formerChapter59` flag was added to fix.
