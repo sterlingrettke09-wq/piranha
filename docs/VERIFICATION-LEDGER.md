@@ -6083,3 +6083,62 @@ recorded.
 That is the argument for parcel-weighting the sweep. Among Austin's fourteen,
 `SF2` at 715 parcels and `PUD` at 986 dwarf `TND` at 2 and `AG` at 4 — and the
 code-weighted total treats them identically.
+
+### The composition check, and the reflex that survives the fix
+
+Three variants of one shape had each been found by investigating a city: Denver
+(the sweep omitted a flag), Minneapolis (the sweep hardcodes a parcel fact),
+Austin (the sweep called one branch of a two-branch resolution). Austin was the
+expensive one — a too-clean number pointing at the city, cause in the instrument —
+and finding these one city at a time costs a source read per discovery.
+
+The mechanical form: every parameter beyond the zone string is a PARCEL FACT, so
+any parameter the sweep supplies as a constant or omits is something production
+measures and the sweep is guessing. That is extractable from the declared
+signatures. `sweepComposition.test.ts` now asserts all eleven such call sites are
+declared with a reason, reconciling first against the three known cases.
+
+**It found one nobody had looked for.** `resolveDallas(longCode, zoneDist)` tries
+its second candidate when the first misses, and the provider passes both fields
+while the sweep enumerates `LONG_ZONE_DIST` alone. Measured against the live 1,081
+`LONG_ZONE_DIST`/`ZONE_DIST` pairs: exactly ONE of Dallas's 31 changes — `MU=1`, a
+typo in the city's own field, an equals sign where a hyphen belongs, whose
+`ZONE_DIST` reads `MU-1`. Rescuing that typo is precisely why the second candidate
+exists. The `… Chap 51` holdovers correctly do not change: their `ZONE_DIST` reads
+GR / MF-2 / O-2, Chapter 51 districts under Dallas's superseded code, which a
+Chapter 51A module is not meant to cover.
+
+Two failures of my own instruments are worth recording, because both were the
+shapes this ledger already names.
+
+**The namespace came from the wrong side.** The first version built its function
+namespace from the SWEEP's imports, making it structurally unable to see a function
+the provider calls and the sweep does not — so Denver, the motivating case, came
+back clean. Third time a probe here has measured itself. The guard that caught it
+was reconciling against known-good cases before believing the total, which is now
+a test in its own right.
+
+**And the declaration keyed on an address, not a claim.** With entries keyed
+`city:function:argN`, changing `resolveSeattle(v)` to `resolveSeattle(v, 'inside')`
+reused the existing declaration and stayed green — an OMITTED parameter and a
+hardcoded WRONG VALUE are different facts at the same address, and the reason on
+file ("omitting center understates in every one of 24 measured differences") says
+nothing whatever about hardcoding one centre. Verified by planting both shapes and
+watching them fail only after the argument itself became part of the key. This is
+rule 20's lesson in a new place: pin the membership, not the slot.
+
+### The mechanism was fixed and the reflex was not
+
+Austin's scope had to be rewritten twice in one sitting. The first rewrite replaced
+a self-contradicting scope with a predicate excusing anything not starting with
+`SF` — which would have excused eight codes on no basis, reintroducing the exact
+defect `partiallyScoped` was built for **four commits after** it was built, by the
+author who had just fixed it for three other cities.
+
+The mechanism now makes the error visible: the split prints, both numbers are
+pinned. It does not make the error unavailable. Writing a families-based regex is
+what reaching for a scope FEELS like, and that reflex was untouched by fixing the
+counting. The pattern generalises past this file — a mechanism that reports
+honestly still lets an author supply a dishonest input, so the check has to bind
+the input too, which is why the excused set is now the module's own documented
+absences rather than a shape I chose.
