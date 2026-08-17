@@ -351,6 +351,41 @@ imposes no X, state which titles or chapters were read and why those are the one
 that would carry X. An absence is only an answer once someone has looked in the
 place it would be.
 
+**24. A reason code is a CLAIM, and a claim can be true of the jurisdiction
+and false of the parcel.** LA's `farAppliesTo: 'buildable-area'` is correct and
+cited: LAMC § 12.21.1 A.1 states every FAR against Buildable Area, and that is a
+fact about the CODE, so the flag is set unconditionally for the city. The bug was
+running the branch without checking that a ratio had actually resolved — so a
+parcel whose district string the parser cannot read reported
+`farBasis: 'basis-unavailable'`, which asserts "the ratio is known and its basis
+is unobtainable" about a district that was never resolved at all.
+
+Both halves were right in isolation. The city-level statement is true; the
+parcel-level statement had an unmet precondition. **A reason code carries an
+implicit "given that we resolved X" — state it as a guard, not as an assumption**,
+because the flag's own correctness makes the misapplication invisible: nothing
+about the claim looks wrong until you find the parcel it is wrong about.
+
+Found by the enumeration sweep on a live parcel (`[LN1-MU2-5][P2-FA][CPIO]`),
+never by a test — the tests exercised parcels whose FAR resolved, which is
+precisely the case where the precondition holds.
+
+**25. When a sweep reports a number that implies a lot of work, the first
+hypothesis is that the sweep is wrong.** Four for four in one session:
+Chicago 1,528 unhandled (the resolver was called with the wrong property),
+Dallas 1,031 of 1,077 (1,000 were `PD ###`, which are answers), San Jose
+LAYER UNREACHABLE (the sweep declared a service the provider never read), and a
+2,294 grand total that reconciled to 717 without a single parser being fixed.
+
+Every reduction came from reconciling against something already known — a
+module's own documented scope, a reason code that already existed, a provider's
+actual layer. The one INCREASE came from measuring something previously skipped,
+which is the honest direction.
+
+This is rule 16 specialised to this instrument, and it now has a hit rate.
+Reconcile the largest contributor against a known-good BEFORE reporting a total,
+every time.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
