@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { ZONE_SOURCES } from './zoneRegistry'
+import { TARGETS } from './enumerate-parser-domains'
+import { readEnumeration } from './enumerate-zones'
 
 // EVERY LAYER THE SWEEP READS MUST BE ONE A PROVIDER ACTUALLY READS.
 //
@@ -166,5 +168,51 @@ describe('the sweep passes the arguments production passes', () => {
     // `resolveDenver(v)` with no options is the exact call that produced the
     // fabricated storey counts.
     expect(src).not.toMatch(/resolveDenver\(v\)/)
+  })
+})
+
+describe('a partial scope subtracts only what it names', () => {
+  // ⚠️ THE DEFECT THIS PINS. `scopedTo` is all-or-nothing: setting it removes
+  // EVERY unhandled value on a target from the total. A note added to Denver to
+  // declare its nine CMP campus districts — whose heights depend on a per-parcel
+  // distance the sweep cannot measure — took all 58 of Denver's unhandled codes
+  // out of the count, moving the total 753 → 695 with no code change.
+  //
+  // A falling total is the one to distrust (rule 26), and this is why: the drop
+  // was produced by the act of DECLARING something, which feels like the honest
+  // move. `partiallyScoped` keeps the remainder counted, so the composition is
+  // visible instead of the target disappearing.
+  const denver = TARGETS.find((t) => t.city === 'denver')!
+  const codes = readEnumeration('denver')!.codes
+
+  it('denver declares a partial scope, never a target-wide one', () => {
+    expect(denver.scopedTo, 'a target-wide scope here erases 46 real gaps').toBeUndefined()
+    expect(denver.partiallyScoped).toBeDefined()
+  })
+
+  it('and it matches exactly the nine CMP campus districts (rule 20)', () => {
+    // Pinned by MEMBERSHIP, not by count alone. A predicate that silently stopped
+    // matching would return Denver to its full count and read as a regression
+    // that never happened; one that widened would excuse real gaps.
+    const excused = codes.filter((c) => denver.partiallyScoped!.explains(c))
+    expect(excused.sort()).toEqual([
+      'CMP-EI', 'CMP-EI2', 'CMP-H', 'CMP-H2', 'CMP-NWC',
+      'CMP-NWC-C', 'CMP-NWC-F', 'CMP-NWC-G', 'CMP-NWC-R',
+    ])
+  })
+
+  it('no target sets both — they would mean different things about the same values', () => {
+    for (const t of TARGETS) {
+      if (t.scopedTo) expect(t.partiallyScoped, `${t.city} sets both scopes`).toBeUndefined()
+    }
+  })
+
+  it('a FAR or a plan-governed flag counts as an answer, not a gap', () => {
+    // I-A and I-B resolve at FAR 2.0 and OS-A is plan-governed; testing heightFt
+    // alone called all three unresolved. Denver is height-governed, which is
+    // exactly why the narrower predicate looked right.
+    for (const c of ['I-A', 'I-B', 'OS-A']) {
+      expect(denver.handled(c), `${c} resolves a value but is counted as a gap`).toBe(true)
+    }
   })
 })

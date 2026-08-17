@@ -5721,3 +5721,40 @@ parcel, so Denver's 58 UNDERSTATES what production resolves. That is the safe
 direction, and it is declared rather than left silent — the opposite arrangement,
 crediting a height the sweep cannot establish, is the defect the legacy
 `formerChapter59` flag was added to fix.
+
+### The act of declaring a scope erased forty-six real gaps
+
+One commit after the Denver buffer work, the sweep total fell 753 → 695 with no
+code change. The cause was the declaration added in that commit: `scopedTo` is
+**all-or-nothing**, so a note explaining Denver's nine CMP campus districts
+removed all fifty-eight of its unhandled codes from the total.
+
+Worth being precise about what went wrong, because the intent was correct. Rule
+26 says report the composition and say whether the system changed or the counting
+did; the note existed to satisfy exactly that, and the mechanism it reached for
+could not express "part of this target". The remaining forty-six — twenty-four
+former Chapter 59, twelve downtown, and ten others — are genuine gaps and were
+silently excused alongside the nine that were not.
+
+**A falling total is the one to distrust, and this is the reason.** The drop was
+produced by an act that feels like honesty. Nothing about adding a scope note
+resembles hiding something, which is why it needs a mechanism that cannot do it
+by accident rather than a reader who remembers to check.
+
+`partiallyScoped` now subtracts only the values its predicate names and prints
+the split — `55 unhandled · 9 declared out of scope · 46 count as gaps`. It also
+FAILS when the predicate matches nothing, because a scope that quietly stops
+matching returns the target to its full count and reads as a regression that
+never happened (rule 20). The nine CMP codes are pinned by membership, not by
+count.
+
+The same reconciliation surfaced a second miscount in the opposite direction.
+Denver's `handled` predicate tested `heightFt != null` alone, so `I-A` and `I-B`
+were counted as gaps while the module resolves both at FAR 2.0, and `OS-A` while
+it is flagged plan-governed. Denver is height-governed, which is precisely why
+the narrow test looked right — the sweep was applying to itself the error rule 5
+exists to prevent, rendering a resolved answer as a missing one.
+
+Both corrections reconcile exactly: 753 − 3 answers wrongly counted as gaps − 9
+genuinely out of scope = **741**. Neither is a parser fix, so the system has not
+moved; the counting has, twice, in opposite directions.

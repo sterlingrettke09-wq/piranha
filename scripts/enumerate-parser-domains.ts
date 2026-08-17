@@ -63,8 +63,23 @@ interface Target {
   url: string
   field: string
   /** True when the parser is EXPECTED to reject some values (e.g. a FAR module
-   *  scoped to one zone family). Those are reported separately from surprises. */
+   *  scoped to one zone family). Those are reported separately from surprises.
+   *
+   *  ⚠️ ALL-OR-NOTHING, and that is a trap worth naming. Setting this removes
+   *  EVERY unhandled value on the target from the total, so a scope that
+   *  genuinely explains a handful of codes silently excuses the rest. It did
+   *  exactly that here: a note added to Denver to declare the nine CMP campus
+   *  districts took all 58 of its unhandled codes out of the total, dropping it
+   *  753 → 695 with no code change and no visible cause. Use it only where the
+   *  parser's whole domain is narrower than the field — Austin really is
+   *  Subchapter F only. For a scope that covers PART of a target, use
+   *  `partiallyScoped` below, which keeps the remainder counted. */
   scopedTo?: string
+  /** A scope covering SOME of a target's values. Returns a reason when this
+   *  specific value is out of scope, null when it is a genuine gap. Only the
+   *  values it names drop out of the total — the rest keep counting, which is
+   *  the difference between declaring a scope and erasing a target. */
+  partiallyScoped?: { label: string; explains: (v: string) => boolean }
   /** Returns true when the parser produced a usable answer for this value. */
   handled: (v: string) => boolean
 }
@@ -217,10 +232,25 @@ export const TARGETS: Target[] = [
     // opposite arrangement — crediting a height the sweep cannot actually
     // establish — is the exact defect the legacy flag above was added to fix.
     // Read the number as "codes with no answer from the string alone".
-    scopedTo: 'code-only; CMP campus heights are conditioned on a per-parcel distance the sweep cannot measure',
-    handled: (v) =>
-      isPlannedDevelopment('denver', v) ||
-      resolveDenver(v, { formerChapter59: isFormerChapter59(v) }).heightFt != null,
+    // PARTIAL, not target-wide. The nine CMP campus districts publish heights
+    // conditioned on a per-parcel distance, so no answer exists for a bare
+    // string. The other 46 unhandled codes are real gaps and keep counting — a
+    // target-wide `scopedTo` here removed all 58 from the total at once.
+    partiallyScoped: {
+      label: 'CMP campus heights are conditioned on a per-parcel distance the sweep cannot measure',
+      explains: (v) => /^CMP-/.test(v.trim().toUpperCase()),
+    },
+    // ⚠️ A FAR IS AN ANSWER TOO. Testing heightFt alone counted I-A and I-B as
+    // gaps while the module resolves both at FAR 2.0, and OS-A while it is
+    // flagged plan-governed. Denver is height-governed so height is the usual
+    // carrier, but "this district resolved nothing" was false for three codes
+    // that had resolved something — the sweep's own rule-5 distinction, applied
+    // to the sweep.
+    handled: (v) => {
+      if (isPlannedDevelopment('denver', v)) return true
+      const r = resolveDenver(v, { formerChapter59: isFormerChapter59(v) })
+      return r.heightFt != null || r.far != null || r.planGoverned === true
+    },
   },
   {
     city: 'miami', what: 'transect code → height/stories',
@@ -348,7 +378,27 @@ async function distinctValues(url: string, field: string): Promise<string[] | nu
     console.log(`  ${vals.length} distinct values · ${unhandled.length} unhandled (${pct.toFixed(1)}%)${t.scopedTo ? `  [scoped: ${t.scopedTo}]` : ''}`)
     if (unhandled.length) {
       console.log(`  unhandled: ${unhandled.slice(0, 24).join(' · ')}${unhandled.length > 24 ? ` …+${unhandled.length - 24}` : ''}`)
-      if (!t.scopedTo) surprises += unhandled.length
+      if (!t.scopedTo) {
+        // A PARTIAL scope subtracts only the values it names, and SAYS how many
+        // — the composition, never a quietly smaller number (rule 26). A whole
+        // target vanishing from the total is what the coarse flag above did.
+        const ps = t.partiallyScoped
+        const excused = ps ? unhandled.filter((v) => ps.explains(v)) : []
+        if (ps) {
+          console.log(
+            `  of which ${excused.length} are declared out of scope (${ps.label}); ${unhandled.length - excused.length} count as gaps`,
+          )
+          // rule 20: a partial scope that stops matching would silently return
+          // the target to its full count, which reads as a regression that never
+          // happened. An empty exclusion means the predicate broke or the field
+          // changed — either way it is not something to pass over in silence.
+          if (excused.length === 0) {
+            console.log(`  ⚠️ that partial scope matched NOTHING — the predicate or the field has drifted`)
+            process.exitCode = 1
+          }
+        }
+        surprises += unhandled.length - excused.length
+      }
     }
   }
   console.log(`\n${'='.repeat(70)}`)
