@@ -6322,3 +6322,63 @@ restoring the catch-all and watching it go red. The lesson generalises past this
 file — **a guard on the output of a function cannot see a fault in its domain**,
 so where the thing being declared is a rule rather than a value, the check has to
 exercise the rule.
+
+### The derived-table exposure, measured: Philadelphia was the only one
+
+RM-1's `MaxFAR` is null in the city's `ZoningCodeCharacteristics` table where the
+ordinance says "No Limit". A derived table cannot distinguish an established
+absence from an unfilled cell, and Philadelphia's whole module was built on that
+table — so the question is how many other cities read a derived layer as their
+source of truth.
+
+Seven providers take a limit from a live field: Philadelphia (MaxFAR/MaxHeight),
+NYC (ResidFAR/CommFAR/FacilFAR from MapPLUTO), Denver (HEIGHT_STORIES), Miami
+(Bldg_Height), San Jose (HEIGHTLIMIT), Raleigh (HEIGHT), Columbus
+(HEIGHT_DISTRICT).
+
+**The dangerous direction is clean.** No provider converts a null or absent
+derived field into an unconstrained claim. NYC's `num()` returns null for anything
+≤ 0, so PLUTO's "not applicable" zeros become gaps rather than ratios, and
+`Math.max(...) || null` collapses the rest. Every `farUnconstrained: true` in every
+provider comes from an ordinance-sourced module — checked by grep across all of
+them — never from a live field. A missing derived value always degrades to a gap.
+
+**The remaining exposure runs the honest way**, and is structural only where a
+module has no ordinance-sourced table behind the derived field. Philadelphia was
+the only such module: Denver, Miami, Columbus, Raleigh and San Jose each fall
+through to a curated table cited to their code, and NYC's PLUTO figures are
+numeric readings rather than an absence claim. Austin, DC and LA have no
+`zoning/<city>.ts` at all, but that is file organisation — `AUSTIN_LIMITS` is cited
+value-by-value to § 25-2-492(D).
+
+So the answer to "how much of the remaining total is provisional" is: the one city
+whose module was derived-only has now been read, and no other city can inherit the
+RM-1 shape without first losing its curated table.
+
+### Atlanta: all ten were already read, and four of them do not exist
+
+Reconciling before reading was right — no document was needed.
+
+**Six were credited by fixing the predicate.** LW, LW-C, MRC-1, MRC-1-C, MRC-2 and
+MRC-2-C resolve a cited FAR (§16-33.009(1)(a), §16-34.026(1)(a), §16-34.027(1)(a),
+sub-capped by §16-34.010 Table A) and were counted as gaps because their HEIGHT
+returns as `heightTiers` rather than a scalar. The tiers are Atlanta's
+protected-district rule — 35 ft within 150 ft of a protected district, 52 ft to
+300 ft, 225 ft beyond — which is Denver's CMP shape exactly, and
+`providers/atlanta.ts` already discloses every tier while withholding the scalar.
+
+This target is named for height AND FAR, so a resolved FAR answers half of what it
+asks. That is the distinction from Miami, whose target is height and stories only
+and whose `farUnconstrained` therefore answers nothing it asks.
+
+**Four are not uncurated — Part 16 never established them.** PD-H1 (37.2 ac),
+MR-4-C (16.1), PD-H2 (10.1) and MR-3A-C (3.6) are mapped by the city and absent
+from the ordinance: Chapter 35 establishes MR-1, MR-2, MR-3, MR-4A, MR-4B, MR-5A,
+MR-5B, MR-6 and MR-MU — no MR-4, no MR-3A — and Chapter 19 establishes PD-H,
+PD-MU, PD-OC, PD-BP and PD-CS, with no PD-H1 or PD-H2. The code's own district
+roster is the positive evidence, which is the slot test applied to a list rather
+than to a table row. They stay UNRESOLVED and specifically not
+`farUnconstrained`: a code the ordinance never created says nothing about whether
+a limit applies.
+
+Atlanta closes to 0 gaps. Total 819 → 809.

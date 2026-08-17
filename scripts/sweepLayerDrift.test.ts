@@ -302,7 +302,9 @@ describe('every declared scope accounts for what it excuses', () => {
   )
 
   it.each([
-    ['atlanta', 169, 10],
+    // 173/0: six codes credited once the predicate read FAR (this target is named
+    // for height AND FAR), and four declared as codes Part 16 never established.
+    ['atlanta', 173, 0],
     ['austin', 6, 8],
     ['sandiego', 16, 139],
     ['denver', 9, 34],
@@ -323,6 +325,31 @@ describe('every declared scope accounts for what it excuses', () => {
     // quietly excuse the remainder — which is the defect being guarded.
     expect(excused.length, `${city}: scope now names ${excused.length}, expected ${named}`).toBe(named)
     expect(codes.length - excused.length, `${city}: ${gaps} gaps expected`).toBe(gaps)
+  })
+
+  it('atlanta: the four are codes Part 16 does not establish, not uncurated ones', () => {
+    // A different kind of declaration from the SPI families beside them. Those
+    // are chapters deliberately not read; these are district codes the ordinance
+    // never created — Chapter 35 has no MR-4 and no MR-3A, Chapter 19 has no
+    // PD-H1 and no PD-H2. The code's own district roster is the evidence.
+    const ps = byCity('atlanta').partiallyScoped!
+    for (const c of ['MR-3A-C', 'MR-4-C', 'PD-H1', 'PD-H2']) {
+      expect(ps.explains(c), `${c} is absent from Part 16`).toBe(true)
+    }
+    // The codes Chapter 35 DOES establish must not be swept up by a loose match.
+    for (const c of ['MR-1', 'MR-2', 'MR-3', 'MR-4A', 'MR-5B', 'MR-MU']) {
+      expect(ps.explains(c), `${c} IS established and must not be excused`).toBe(false)
+    }
+  })
+
+  it('atlanta: a cited FAR counts even when the height is tiered', () => {
+    // LW and the MRC family resolve FAR under §16-33.009(1)(a) / §16-34.026(1)(a)
+    // / §16-34.027(1)(a) while their heights are stated as protected-district
+    // tiers — Denver's CMP shape, needing a per-parcel distance. The FAR is half
+    // of what this target is named for, so it answers.
+    for (const c of ['LW', 'LW-C', 'MRC-1', 'MRC-1-C', 'MRC-2', 'MRC-2-C']) {
+      expect(byCity('atlanta').handled(c), `${c} resolves a cited FAR`).toBe(true)
+    }
   })
 
   it('austin: only the module\'s own documented absences are excused', () => {

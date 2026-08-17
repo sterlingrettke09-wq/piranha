@@ -143,10 +143,45 @@ export const TARGETS: Target[] = [
     // variants, MR-3A-C and MR-4-C (conditional forms of curated districts), and
     // PD-H1/PD-H2 are real gaps.
     partiallyScoped: {
-      label: 'SPI / HC-20 / NC / Poncey-Highland / LD deliberately uncurated — see zoning/atlanta.ts',
-      explains: (v) => /^(SPI-|HC-20|NC-\d|Poncey-Highland|LD )/.test(v.trim()),
+      label: 'SPI / HC-20 / NC / Poncey-Highland / LD deliberately uncurated, plus four codes Part 16 does not establish at all — see zoning/atlanta.ts',
+      // ⚠️ THE FOUR ARE NOT UNCURATED — THEY DO NOT EXIST IN THE CODE. Read and
+      // recorded in zoning/atlanta.ts with their acreages: PD-H1 (37.2 ac),
+      // MR-4-C (16.1), PD-H2 (10.1), MR-3A-C (3.6). Chapter 35 establishes MR-1,
+      // MR-2, MR-3, MR-4A, MR-4B, MR-5A, MR-5B, MR-6 and MR-MU — there is no
+      // MR-4 and no MR-3A. Chapter 19 establishes PD-H, PD-MU, PD-OC, PD-BP and
+      // PD-CS, with no PD-H1 or PD-H2. The code's own district lists are the
+      // positive evidence, which is the slot test applied to a district roster
+      // rather than to a table row.
+      //
+      // They stay UNRESOLVED and specifically not `farUnconstrained`: a code the
+      // ordinance never established says nothing about whether a limit applies.
+      explains: (v) =>
+        /^(SPI-|HC-20|NC-\d|Poncey-Highland|LD )/.test(v.trim()) ||
+        ['MR-3A-C', 'MR-4-C', 'PD-H1', 'PD-H2'].includes(v.trim().toUpperCase()),
     },
-    handled: (v) => { if (isPlannedDevelopment('atlanta', v)) return true; const r = resolveAtlanta(v); return r.heightFt != null || r.heightUnconstrained === true },
+    // ⚠️ THIS TARGET MEASURES HEIGHT *AND* FAR, and the predicate read only
+    // height. Six codes — LW, LW-C, MRC-1, MRC-1-C, MRC-2, MRC-2-C — resolve a
+    // cited FAR (§16-33.009(1)(a), §16-34.026(1)(a), §16-34.027(1)(a) with the
+    // §16-34.010 Table A sub-caps) and were counted as gaps because their HEIGHT
+    // comes back as `heightTiers` rather than a scalar.
+    //
+    // The tiers are Atlanta's protected-district shape, identical to Denver's CMP
+    // buffer: §16-33.010(2) and §16-34.026(2)b state 35 ft within 150 ft of a
+    // protected district (R-1…R-5, R-G 1, R-G 2, MR-1, MR-2, PD-H), 52 ft between
+    // 150 and 300, 225 ft beyond. providers/atlanta.ts discloses every tier and
+    // correctly withholds a scalar, because the binding figure needs a per-parcel
+    // distance. So the height half is out of a code-only sweep's reach; the FAR
+    // half is a real answer and now counts.
+    //
+    // ⚠️ NOT the Miami move. Miami's target measures height and stories ONLY, so
+    // its `farUnconstrained` answers a question that target does not ask. Here
+    // FAR is half of what the target is named for.
+    handled: (v) => {
+      if (isPlannedDevelopment('atlanta', v)) return true
+      const r = resolveAtlanta(v)
+      if (r.heightFt != null || r.heightUnconstrained === true) return true
+      return r.farNonresidential != null || r.farResidential != null || r.farCombined != null
+    },
   },
   {
     city: 'austin', what: 'base zone → height/FAR (§ 25-2-492(D) base table, Subchapter F where it applies)',
