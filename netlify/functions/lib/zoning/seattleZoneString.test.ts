@@ -43,10 +43,12 @@ describe('the fixture is pinned to the live layer (rule 20)', () => {
   })
 
   it('pins both directions separately, and both are non-empty', () => {
-    // ⚠️ THE ASSERTION THAT STOPS A HALF-FIX. 22 codes overstated and 11
-    // understated. A fix that corrected only the overstating family — the
-    // flattering direction, and the one anybody would notice first — would sail
-    // through a test that only counted "is it lower now".
+    // ⚠️ THE ASSERTION THAT STOPS A HALF-FIX. A fix that corrected only the
+    // overstating family — the flattering direction, and the one anybody would
+    // notice first — would sail through a test that only counted "is it lower
+    // now". The counts below are the pin; they are deliberately NOT restated in
+    // prose, because the previous version of this comment named the pre-23.45.514
+    // figures and kept asserting them after the numbers moved.
     const by = (d: Row['direction']) => FIXTURE.divergent.filter((r) => r.direction === d)
     expect(by('overstated').length).toBe(25)
     expect(by('understated').length).toBe(16)
@@ -109,7 +111,8 @@ describe('every divergent code now returns the corrected value', () => {
 
 describe('the 224 non-divergent codes are unchanged', () => {
   // The control. A "fix" that moved every code would also make the divergent
-  // assertions pass, and would be a different bug. Pins that only the 39 moved.
+  // assertions pass, and would be a different bug. Pins that only the divergent
+  // set moved — the count lives in the assertion, not in this sentence.
   const unchanged = FIXTURE.allCodes.filter(
     (c) => !FIXTURE.divergent.some((r) => r.code === c),
   )
