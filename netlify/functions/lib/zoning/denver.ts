@@ -331,6 +331,102 @@ export const DENVER_LIMITS: Record<string, DistrictLimits> = {
   // rather than a reader failing to find one.
   'MHC': { far: null, heightFt: 20, heightBasis: 'code-stated', farUnconstrained: true },
 
+  // ── Article 8 DOWNTOWN (D-) — all twelve live codes ───────────────────────
+  //
+  // Read from Article 8 of the current code (June 25, 2010 | Republished
+  // February 25, 2025), plus § 9.5.2 for DIA. Every "Feet (max)" below is the
+  // BY-RIGHT row. Article 8 prints an incentive row beside most of them
+  // (D-AS-12+ reaches 150' and D-AS-20+ 250' under § 8.8.5.3; D-CPV-T/C reach
+  // 12/150' under § 8.9.5.5; D-GT reaches FAR 15.0 under § 8.6.5.1) and none of
+  // those is carried: an incentive is a program the user has not chosen, and
+  // reporting it as the ceiling is rule 6.
+  //
+  // ⚠️ THE TRAILING NUMBER IN A DOWNTOWN NAME IS NOT A STORY COUNT. D-AS-12+ is
+  // EIGHT storeys and D-AS-20+ is TWELVE — the "12+"/"20+" name the district, not
+  // its height. Denver's own suffix convention (C-MX-5 → 5 storeys) makes the
+  // misreading almost automatic, which is why both are pinned by test. Rule 27:
+  // test membership against the source, not the string.
+
+  // D-C / D-TD — Division 8.3, shared. § 8.3.1.4.D.1: "The total floor area
+  // ratio of all existing and proposed Structures on a Zone Lot shall not exceed
+  // 10.0 FAR unless eligible for one or more floor area premiums".
+  //
+  // ⚠️ HEIGHT DELIBERATELY WITHHELD, and NOT as `heightUnconstrained`.
+  // § 8.3.1.4.B.2 reads "The maximum heights of buildings are not limited except
+  // in the following height areas as shown on Exhibit 8.1" — Sunlight
+  // Preservation Area 1, Height Area 1 at 200 feet, Height Area 2 at 400 feet.
+  // So the absence is real for most of the district and false inside three
+  // mapped areas, and Exhibit 8.1 is a figure in the code: Denver's zoning
+  // service publishes four layers (Parcels, Zoning, County Boundary, Quarter
+  // Sections) and none carries it, nor does OVERLAY_DISTRICT, whose 45 live
+  // values are use/design/conservation overlays. Publishing "no height limit"
+  // would be wrong by 2x for a Height Area 1 parcel, in the flattering
+  // direction. The FAR is the binding by-right figure and it resolves.
+  'D-C': { far: 10.0, heightFt: null },
+  'D-TD': { far: 10.0, heightFt: null },
+
+  // D-LD — Division 8.4. § 8.4.1.3.B, "DZC Building Form Standards Do Not
+  // Apply": new development "is exempt from application of the primary and
+  // detached accessory building form standards in this Code", and § 8.4.1.3.A
+  // sends it to DRMC Chapter 30 instead. The slot exists and the code fills it
+  // by pointing elsewhere — the OS-A/DIA shape, an answer that names the
+  // document to read rather than a failure to find a table.
+  'D-LD': { far: null, heightFt: null, planGoverned: true },
+
+  // D-CV — Division 8.5, GENERAL (its only primary building form):
+  //     Stories (max) 16 · Feet (max) 200'
+  'D-CV': coded(16, 200),
+
+  // D-GT — Division 8.6. GENERAL, all three zone-lot-width columns identical:
+  //     FAR per Zone Lot / FAR with incentives per Zone Lot (max)  8.0 / 15.0
+  //     Zone Lot with FAR of 8.0 or less / more than 8.0 (max)   200' / 250'
+  // 250' requires exceeding FAR 8.0, which requires the incentives of
+  // § 8.6.5.1 — an alternative, not a ceiling. The POINT TOWER form reaches
+  // 250'/325' and additionally requires a 150' minimum zone lot width, so it is
+  // a second alternative and likewise not carried. No storeys row is printed.
+  'D-GT': { far: 8.0, heightFt: 200, heightBasis: 'code-stated' },
+
+  // D-AS — Division 8.7, stated as prose rather than a table.
+  //   § 8.7.1.3.C: "In the D-AS district, the maximum height of structures shall
+  //     not exceed 80 feet."
+  //   § 8.7.1.3.D.1: total FAR "shall not exceed 4.0 FAR without meeting the
+  //     requirements of this Section 8.7.1.3.D" (the premiums).
+  // No storeys figure is stated.
+  'D-AS': { far: 4.0, heightFt: 80, heightBasis: 'code-stated' },
+
+  // D-AS-12+ / D-AS-20+ — Division 8.8. GENERAL and POINT TOWER print the SAME
+  // pair for each district, so no form-dependence to resolve:
+  //     Stories (max)   8      12
+  //     Feet (max)    110'    150'
+  'D-AS-12+': coded(8, 110),
+  'D-AS-20+': coded(12, 150),
+
+  // D-CPV-R / D-CPV-T / D-CPV-C — Division 8.9, GENERAL:
+  //     Stories (max) 5 · Feet (min/max) 25' / 70'   (all three columns)
+  // POINT TOWER (D-CPV-R and D-CPV-C) prints the same 5 / 25'-70', so the height
+  // does not depend on which form is built.
+  'D-CPV-R': coded(5, 70),
+  'D-CPV-T': coded(5, 70),
+  // ⚠️ D-CPV-C IS NOT far-unconstrained, and it is the reason `coded()` is not
+  // used here. It has a third building form the other two lack — STANDARD TOWER,
+  // headed "HEIGHT & FLOOR AREA RATIO", carrying "Floor Area Ratio (max) 20.0".
+  // A FAR therefore exists for this district in one form and not in others, and
+  // nothing we read tells us which form a project will use, so the honest state
+  // is UNRESOLVED rather than the positive claim that no FAR applies.
+  //
+  // That distinction is the whole of the slot test (rule 5) and Article 8 makes
+  // it legible: tables where a ratio applies are headed "HEIGHT AND FLOOR AREA",
+  // tables where none does are headed "HEIGHT". D-CV, D-AS-12+/20+ and the
+  // D-CPV GENERAL table carry the bare heading; D-GT and this one do not.
+  'D-CPV-C': { ...FAR_UNRESOLVED, heightFt: 70, stories: 5, heightBasis: 'code-stated' },
+
+  // DIA — § 9.5.2.1 Building Forms, in full: "The Denver Manager of Aviation
+  // shall determine all applicable building form standards in the DIA zone
+  // district." § 9.5.2.2.B extends that to all other design and development
+  // standards. An authority-set limit, not a missing table — same standing as
+  // OS-A and D-LD.
+  'DIA': { far: null, heightFt: null, planGoverned: true },
+
   // ── Articles 3-6 (Suburban S-, Urban Edge E-, Urban U-, General Urban G-) ──
   // Story counts are code-stated; printed "Feet (max)" NOT yet read. See
   // storiesOnlyFeetUnverified(). These heights are estimates, flagged as such.

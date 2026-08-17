@@ -23,7 +23,8 @@ const EHA = 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/
 // curated table in netlify/functions/lib/zoning/denver.ts (WO-8.8) derives the
 // height from the code's trailing stories token — with the "Former Chapter 59"
 // guard preserved so a legacy class-code number isn't misread as stories.
-// maxFAR stays null (Denver's form-based code has no FAR — see that module).
+// FAR comes from that module too. It was hardcoded null here under a claim true
+// only of Articles 3-7 — see denverMaxFAR() for what that cost.
 // A current DZC code always carries a neighborhood-context prefix AND a form
 // segment — `C-MX-5`, `G-MU-3`, `U-SU-A`, `S-MX-3`, `E-TU-B`, `I-MX-3` — so it
 // has at least two hyphens. Former Chapter 59 legacy codes are a bare letter
@@ -107,12 +108,19 @@ const CURRENT_NON_FORM_FAMILIES = /^(D-|DIA$|CMP-|PUD(\b|-)|I-A$|I-B$|MHC$|OS-[A
  * every district it caught; it is not, and the figure it named was never
  * measured against the layer.
  *
- * LATENT, NOT LIVE. Those fourteen resolve to nothing on either path today, so
- * nothing is currently misreported — ZONE_USE_FORM is present on the live layer
- * and wins. The cost arrives the moment anyone curates them: a correct entry
- * would be silently suppressed for any parcel whose use-form field is missing,
- * and `farUnconstrained` is exactly the claim the legacy path is designed to
- * withhold. Pinned by a test so the suppression cannot happen quietly.
+ * ⚠️ NO LONGER LATENT — updated 2026-08-17. This paragraph used to say the cost
+ * was hypothetical because none of the fourteen was curated. Twelve of them now
+ * are: Article 8's downtown districts and Article 9's I-A/I-B carry real
+ * figures, so a parcel misrouted to the legacy path would have a correct entry
+ * SUPPRESSED, and `farUnconstrained` — the claim that path is designed to
+ * withhold — is exactly what several of them assert.
+ *
+ * What keeps that from happening is CURRENT_NON_FORM_FAMILIES above, tested
+ * FIRST and short-circuiting before either the use-form field or the shape
+ * fallback is consulted, so the fourteen never reach this heuristic at all. That
+ * is the whole protection, it is one regex, and it is pinned by a test — which
+ * is why the regex is written against families verified in the current code
+ * rather than against the shape of their names (rule 27).
  */
 export function isFormerChapter59(zone?: unknown, description?: unknown, useForm?: unknown): boolean {
   const z0 = String(zone ?? '').trim().toUpperCase()
@@ -234,6 +242,27 @@ function denverMaxStories(
   const s = Number(heightStories)
   if (Number.isFinite(s) && s > 0) return s
   return resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description, useForm) }).stories ?? null
+}
+
+/**
+ * The FAR the DZC states for this district, where it states one.
+ *
+ * ⚠️ THIS WAS HARDCODED `null` UNTIL 2026-08-17, on a claim that read as settled:
+ * "Denver's form-based code has no FAR". True of Articles 3-7, which was the
+ * whole curated table when the line was written, and false the moment anything
+ * outside them was encoded. `I-A` and `I-B` have carried FAR 2.0 in the zoning
+ * module since Article 9 was read, and every live industrial parcel published
+ * nothing — the module resolved a figure the provider then discarded.
+ *
+ * The Article 8 downtown work made it four more: D-C and D-TD at 10.0
+ * (§ 8.3.1.4.D.1), D-GT at 8.0 (§ 8.6.3), D-AS at 4.0 (§ 8.7.1.3.D.1).
+ *
+ * Rule 11 in its quietest form. Nothing failed, no null was suspicious, and the
+ * module's own tests were green throughout because they asserted the resolver's
+ * return value — which was correct. The defect lived entirely in the caller.
+ */
+function denverMaxFAR(zone: string | null, description?: unknown, useForm?: unknown): number | null {
+  return resolveDenver(zone, { formerChapter59: isFormerChapter59(zone, description, useForm) }).far
 }
 
 // Whether the DZC imposes NO FAR on this district (a known absence) as opposed
@@ -426,7 +455,7 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       subdistrict: zoning?.OVERLAY_DISTRICT ? String(zoning.OVERLAY_DISTRICT) : null,
       article: zoning?.ZONE_DESCRIPTION ? String(zoning.ZONE_DESCRIPTION) : null,
       maxHeightFt,
-      maxFAR: null,
+      maxFAR: denverMaxFAR(code, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM),
       allowedUses: usesForZone(code),
       ...(denverFarUnconstrained(code, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM) ? { farUnconstrained: true } : {}),
       // OS-A's form standards are set by City Council / the Manager of Parks

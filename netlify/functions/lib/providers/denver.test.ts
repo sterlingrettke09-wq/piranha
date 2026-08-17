@@ -474,3 +474,53 @@ describe('campus heights and the Protected District buffer', () => {
     expect(urls.some((u) => u.includes('returnCountOnly=true'))).toBe(false)
   })
 })
+
+describe('the FAR the module resolves reaches the parcel', () => {
+  // ⚠️ THE DEFECT THIS PINS, and it is the quietest one this file has carried.
+  // `maxFAR` was hardcoded null here under a comment reading "Denver's
+  // form-based code has no FAR". True of Articles 3-7 — the entire curated table
+  // when it was written — and false from the moment Article 9 was read. I-A and
+  // I-B have resolved FAR 2.0 in the zoning module since then, and every live
+  // industrial parcel published nothing.
+  //
+  // Nothing failed. No null looked suspicious, because null IS the right answer
+  // for most Denver districts. The zoning module's tests were green throughout
+  // and were correct — they asserted the resolver's return value, and the
+  // resolver was right. The loss happened entirely in the caller (rule 11).
+  const zoned = (code: string) =>
+    denverZoning({ ZONE_DISTRICT: code, ZONE_DESCRIPTION: 'x', HEIGHT_STORIES: null, ZONE_USE_FORM: '999' })
+  const routes = (code: string) => ({
+    'MapServer/0': denverParcel(),
+    'MapServer/1': zoned(code),
+    ODC_HIST_LANDMARKDISTRICT_A: featureSet(),
+    NFHL: featureSet({ FLD_ZONE: 'X' }),
+    EHA_WebService: featureSet({ MarketArea: 'High' }),
+  })
+
+  it.each([
+    ['I-A', 2.0], // Article 9 Div 9.1 siting table — the pre-existing loss
+    ['I-B', 2.0],
+    ['D-C', 10.0], // § 8.3.1.4.D.1
+    ['D-TD', 10.0],
+    ['D-GT', 8.0], // § 8.6.3, by-right column
+    ['D-AS', 4.0], // § 8.7.1.3.D.1
+  ])('%s publishes maxFAR %s', async (code, far) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(routes(code as string)))
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.maxFAR).toBe(far)
+  })
+
+  it('and still publishes null where the DZC states no ratio', async () => {
+    // The other half. Wiring the FAR through must not turn "no FAR applies" into
+    // a number — C-MX-5 is form-based and its null is an ANSWER, carried by
+    // farUnconstrained rather than by the ratio.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockArcgisFetch(routes('C-MX-5')))
+    const res = await getDenverParcelInfo(LAT, LNG)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.info.zoning.maxFAR).toBeNull()
+    expect(res.info.zoning.farUnconstrained).toBe(true)
+  })
+})

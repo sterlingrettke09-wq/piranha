@@ -122,7 +122,10 @@ describe('resolveDenver — Former Chapter 59 guard', () => {
 })
 
 describe('resolveDenver — unknown / empty → null', () => {
-  it.each([null, undefined, '', 'not-a-zone', 'D-C'])('%s → both null', (zone) => {
+  // 'D-C' sat in this list as the example of a real district the table did not
+  // cover. Article 8 is now read, so it resolves FAR 10.0 and would fail here —
+  // the list is back to inputs that name nothing.
+  it.each([null, undefined, '', 'not-a-zone', 'D-NOT-A-DISTRICT'])('%s → both null', (zone) => {
     // "D-C" (Downtown Core) has no trailing stories token → height not derivable.
     expect(resolveDenver(zone)).toEqual({ far: null, heightFt: null })
   })
@@ -146,10 +149,23 @@ describe('DENVER_LIMITS static table', () => {
     // green until a district outside the scope was encoded.
     // OS-A joins them: § 9.3.3.1 leaves its form standards to City Council /
     // the Manager of Parks, so it carries no height, no storeys and no FAR claim.
+    //
+    // ⚠️ NARROWED AGAIN 2026-08-17 for Article 8. Downtown is organised
+    // differently (DZC § 2.3.2 says so), and six of its districts break the
+    // pattern in three distinct ways: D-C/D-TD state a FAR of 10.0 and withhold
+    // height (§ 8.3.1.4.B.2 leaves it unlimited except in three mapped areas we
+    // cannot resolve); D-GT and D-AS state BOTH a FAR and a height; D-LD and DIA
+    // state neither, because § 8.4.1.3.B and § 9.5.2.1 assign their standards to
+    // DRMC Chapter 30 and the Manager of Aviation.
+    //
+    // The remaining downtown entries — D-CV, D-AS-12+/20+, D-CPV-R/T/C — do fit
+    // the form-based shape and are deliberately NOT excepted, so the assertion
+    // still covers them.
     const ARTICLE_9_EXCEPTIONS = new Set(['I-A', 'I-B', 'MHC', 'OS-A'])
+    const ARTICLE_8_EXCEPTIONS = new Set(['D-C', 'D-TD', 'D-GT', 'D-AS', 'D-LD', 'DIA'])
     let formBased = 0
     for (const [district, limits] of Object.entries(DENVER_LIMITS)) {
-      if (ARTICLE_9_EXCEPTIONS.has(district)) continue
+      if (ARTICLE_9_EXCEPTIONS.has(district) || ARTICLE_8_EXCEPTIONS.has(district)) continue
       formBased++
       expect(limits.far, district).toBeNull()
       expect(limits.heightFt, district).not.toBeNull()
@@ -220,36 +236,27 @@ describe('special-purpose suffix variants resolve to the base tier', () => {
 })
 
 describe('Downtown: the number in the district name is NOT a story count', () => {
-  // ⚠️ THE TRAP THIS PINS. Articles 3–7 name the maximum building height in the
+  // ⚠️ THE TRAP THIS PINS. Articles 3-7 name the maximum building height in the
   // third number — S-MX-2A is 2 storeys — and the suffix-variant fix above
   // relies on that. DOWNTOWN DOES NOT WORK THAT WAY, and DZC Article 2 § 2.3.2
   // says so outright: "The Downtown Neighborhood Context is organized
   // differently than Articles 3 through 7… The first letter is 'D'… The second
   // letters are abbreviations for the specific neighborhood within Downtown."
   //
-  // Read from Article 8 (June 25, 2010 | Republished February 25, 2025),
-  // Division 8.8, GENERAL building form:
-  //     HEIGHT              D-AS-12+     D-AS-20+
-  //     Stories (max)          8            12
-  //     Feet (max)           110'         150'
+  // SUPERSEDED 2026-08-17, and worth recording as a supersession rather than an
+  // edit. This block formerly asserted that all twelve downtown codes resolve to
+  // nothing, on a stated rationale: each district carries several building forms
+  // with different heights, the wide-grid shape that produced DC's MU-column
+  // off-by-one. That was a deliberate stopping point, not an error — but it was
+  // an INTERPRETATION held by a green test, and rule 15 says to check the
+  // interpretation against the source before trusting the assertion.
   //
-  // So D-AS-12+ is an EIGHT storey district. Anyone extending the story-number
-  // heuristic to downtown would publish 12 — a 50% overstatement — and it would
-  // look right, because every other Denver context reads that way.
-  //
-  // These must stay UNRESOLVED until Article 8's per-building-form tables are
-  // curated. Each district carries several forms with different heights, which
-  // is the wide-grid shape that produced DC's MU-column off-by-one and the
-  // reason zoning/atlanta.ts left SPI uncurated rather than curating it quickly.
-
-  it.each(['D-AS-12+', 'D-AS-20+', 'D-AS', 'D-C', 'D-CV', 'D-GT', 'D-LD', 'D-TD', 'DIA', 'D-CPV-C', 'D-CPV-R', 'D-CPV-T'])(
-    '%s resolves to nothing rather than guessing',
-    (code) => {
-      const r = resolveDenver(code)
-      expect(r.stories ?? null, `${code} invented a story count`).toBeNull()
-      expect(r.heightFt ?? null, `${code} invented a height`).toBeNull()
-    },
-  )
+  // Reading Article 8 settled it in both directions. For D-AS-12+/20+ the
+  // GENERAL and POINT TOWER tables print the SAME pair, so there was no grid to
+  // flatten; for D-CPV-C the concern was real — its STANDARD TOWER form carries
+  // a FAR the other two lack — and that district alone is left FAR-unresolved.
+  // The figures now live in zoning/denver.ts and are pinned by the Article 8
+  // suite below.
 
   it('specifically: D-AS-12+ must never report 12 storeys', () => {
     // The single assertion that would catch the plausible wrong fix.
@@ -470,6 +477,91 @@ describe('height conditioned on Protected District proximity', () => {
   it('is null for districts with no such conditional at all', () => {
     for (const c of ['S-MX-3', 'OS-B', 'MHC', 'D-C', 'R-2']) {
       expect(denverHeightNearProtected(c, false), c).toBeNull()
+    }
+  })
+})
+
+describe('Article 8 Downtown districts', () => {
+  const r = (c: string) => resolveDenver(c, { formerChapter59: false })
+
+  it('⚠️ the trailing number in a downtown name is NOT a story count', () => {
+    // D-AS-12+ is EIGHT storeys at 110 ft; D-AS-20+ is TWELVE at 150 ft
+    // (DZC § 8.8.3, GENERAL and POINT TOWER print the same pair). Denver's own
+    // convention makes 12 and 20 the intuitive readings — C-MX-5 really is five
+    // storeys — so the collision is guaranteed rather than unlucky (rule 27).
+    expect(r('D-AS-12+').stories).toBe(8)
+    expect(r('D-AS-12+').heightFt).toBe(110)
+    expect(r('D-AS-20+').stories).toBe(12)
+    expect(r('D-AS-20+').heightFt).toBe(150)
+  })
+
+  it('carries the by-right row, never the incentive row', () => {
+    // Article 8 prints an incentive figure beside most of these. Reporting it
+    // assumes a program the user has not chosen (rule 6).
+    expect(r('D-AS-12+').heightFt).not.toBe(150) // § 8.8.5.3 incentive
+    expect(r('D-AS-20+').heightFt).not.toBe(250) // § 8.8.5.3 incentive
+    expect(r('D-GT').far).toBe(8.0) // not 15.0, § 8.6.5.1 incentive
+    expect(r('D-GT').heightFt).toBe(200) // not 250' (FAR > 8.0) or 325' (point tower)
+    expect(r('D-CPV-T').heightFt).toBe(70) // not 150', § 8.9.5.5 incentive
+  })
+
+  it('states the FAR where Article 8 states one', () => {
+    expect(r('D-C').far).toBe(10.0) // § 8.3.1.4.D.1
+    expect(r('D-TD').far).toBe(10.0)
+    expect(r('D-AS').far).toBe(4.0) // § 8.7.1.3.D.1
+  })
+
+  it('WITHHOLDS a height for D-C/D-TD rather than calling it unlimited', () => {
+    // § 8.3.1.4.B.2 removes the limit EXCEPT in three mapped areas (Height Area
+    // 1 at 200 ft, Height Area 2 at 400 ft, Sunlight Preservation Area 1), and
+    // Exhibit 8.1 is not published on any layer we read. "No height limit" would
+    // be wrong by 2x inside Height Area 1, in the flattering direction — so this
+    // is a refusal, and specifically NOT the unconstrained answer.
+    for (const c of ['D-C', 'D-TD']) {
+      expect(r(c).heightFt, c).toBeNull()
+      // and specifically not the far-unconstrained answer either — D-C/D-TD
+      // carry a real FAR of 10.0, so neither limit is absent here.
+      expect(r(c).farUnconstrained, `${c} must not claim a limit is absent`).toBeUndefined()
+    }
+  })
+
+  it('D-LD and DIA are plan-governed, not gaps', () => {
+    // Both have a slot that the code fills by naming another authority:
+    // § 8.4.1.3.B sends D-LD to DRMC Chapter 30, § 9.5.2.1 gives DIA to the
+    // Manager of Aviation. An answer that says where to look (rule 5).
+    for (const c of ['D-LD', 'DIA']) {
+      expect(r(c).planGoverned, c).toBe(true)
+      expect(r(c).heightFt, c).toBeNull()
+    }
+  })
+
+  it('D-CPV-C is FAR-unresolved while its siblings are FAR-unconstrained', () => {
+    // ⚠️ THE ONE ASYMMETRY IN THE FAMILY, and it is a real difference rather
+    // than an oversight. D-CPV-C has a STANDARD TOWER form the others lack,
+    // headed "HEIGHT & FLOOR AREA RATIO" and carrying FAR 20.0, so a ratio
+    // exists here in one form. Nothing we read says which form a project uses,
+    // so the positive claim "no FAR applies" would be false.
+    expect(r('D-CPV-C').farUnconstrained).toBeUndefined()
+    expect(r('D-CPV-C').far).toBeNull()
+    expect(r('D-CPV-R').farUnconstrained).toBe(true)
+    expect(r('D-CPV-T').farUnconstrained).toBe(true)
+    // The height is the same across all three and across every form.
+    for (const c of ['D-CPV-R', 'D-CPV-T', 'D-CPV-C']) {
+      expect(r(c).heightFt, c).toBe(70)
+      expect(r(c).stories, c).toBe(5)
+    }
+  })
+
+  it('every downtown code the live layer publishes now resolves to something', () => {
+    // rule 20: pinned by membership so this cannot pass by looking at nothing.
+    const DOWNTOWN = ['D-AS', 'D-AS-12+', 'D-AS-20+', 'D-C', 'D-CPV-C', 'D-CPV-R',
+      'D-CPV-T', 'D-CV', 'D-GT', 'D-LD', 'D-TD', 'DIA']
+    for (const c of DOWNTOWN) {
+      const v = r(c)
+      expect(
+        v.heightFt != null || v.far != null || v.planGoverned === true,
+        `${c} resolves nothing`,
+      ).toBe(true)
     }
   })
 })

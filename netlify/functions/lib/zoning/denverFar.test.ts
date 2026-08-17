@@ -23,16 +23,56 @@ import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY } from './denver'
 //               height, no storeys and no FAR to be unconstrained about.
 const ARTICLE_9_EXCEPTIONS = new Set(['I-A', 'I-B', 'MHC', 'OS-A'])
 
+// Article 8 DOWNTOWN, added 2026-08-17. DZC § 2.3.2 states outright that this
+// context "is organized differently than Articles 3 through 7", and the table
+// entries show it — these six break the form-based pattern, each for a reason
+// printed in the code:
+//   D-C, D-TD — § 8.3.1.4.D.1 states a real FAR (10.0), so they are neither
+//               unconstrained nor storey-bearing; § 8.3.1.4.B.2 leaves height
+//               unlimited except in three mapped areas, so no height either.
+//   D-GT      — § 8.6.3 states FAR 8.0 AND a 200' height, and prints no storeys
+//               row at all.
+//   D-AS      — § 8.7.1.3.C/.D.1 state 80 feet and FAR 4.0 in prose, again with
+//               no storeys figure.
+//   D-LD, DIA — § 8.4.1.3.B and § 9.5.2.1 assign their standards to DRMC
+//               Chapter 30 and the Manager of Aviation, so there is no height,
+//               no storeys and no FAR here to be unconstrained about.
+// The other six downtown entries (D-CV, D-AS-12+/20+, D-CPV-R/T/C) DO fit the
+// form-based shape and are deliberately not excepted.
+const ARTICLE_8_EXCEPTIONS = new Set(['D-C', 'D-TD', 'D-GT', 'D-AS', 'D-LD', 'DIA'])
+const NOT_FORM_BASED = new Set([...ARTICLE_9_EXCEPTIONS, ...ARTICLE_8_EXCEPTIONS])
+
+// ⚠️ A THIRD CATEGORY, and deliberately NOT folded into the set above. D-CPV-C
+// is form-based in HEIGHT — 5 storeys at 70 ft, same as its two siblings — but
+// it is not FAR-unconstrained, because it has a STANDARD TOWER building form the
+// others lack, headed "HEIGHT & FLOOR AREA RATIO" and carrying "Floor Area Ratio
+// (max) 20.0". A ratio therefore exists here in one form, and nothing we read
+// says which form a project will use, so the honest state is unresolved.
+//
+// Kept separate so the storeys half of the guard below still covers it: adding
+// it to NOT_FORM_BASED would assert it carries NO storey count, and it carries
+// five. The unconstrained claim and the storey claim fail for different entries,
+// which is exactly why one combined exception set would hide a dropped figure.
+const FAR_UNRESOLVED_DISTRICTS = new Set(['D-CPV-C'])
+
 describe('Denver — form-based districts are UNCONSTRAINED (known absence)', () => {
   it('marks every curated district unconstrained', () => {
     // NARROWED: I-A / I-B publish FAR 2.0, so "every curated district is
     // unconstrained" is false of the table as a whole. It remains true — and is
     // still the point — for the form-based districts.
-    const codes = Object.keys(DENVER_LIMITS).filter((c) => !ARTICLE_9_EXCEPTIONS.has(c))
+    const codes = Object.keys(DENVER_LIMITS).filter((c) => !NOT_FORM_BASED.has(c))
     expect(codes.length).toBeGreaterThan(20)
     for (const code of codes) {
+      if (FAR_UNRESOLVED_DISTRICTS.has(code)) continue
       expect(DENVER_LIMITS[code].farUnconstrained, code).toBe(true)
       expect(DENVER_LIMITS[code].far, code).toBeNull()
+    }
+    // Asserted rather than skipped: unresolved means BOTH no ratio and no claim
+    // that none applies. Either half alone would let the other drift.
+    for (const code of FAR_UNRESOLVED_DISTRICTS) {
+      expect(DENVER_LIMITS[code].far, code).toBeNull()
+      expect(DENVER_LIMITS[code].farUnconstrained, code).toBeUndefined()
+      expect(DENVER_LIMITS[code].heightFt, code).not.toBeNull()
     }
     // The exceptions, asserted rather than merely skipped.
     expect(DENVER_LIMITS['I-A'].far).toBe(2.0)
@@ -132,12 +172,14 @@ describe('Denver — stories are stated, not re-derived', () => {
     // ("Stories (max) na" for I-A/I-B; MHC's height table has no stories row).
     // Asserting they carry one would demand a figure the DZC does not print.
     for (const [code, lim] of Object.entries(DENVER_LIMITS)) {
-      if (ARTICLE_9_EXCEPTIONS.has(code)) continue
+      if (NOT_FORM_BASED.has(code)) continue
       expect(lim.stories, code).toBeGreaterThan(0)
     }
     // And the exceptions must carry NO story count — so a later edit cannot
-    // quietly invent one for them either.
-    for (const code of ARTICLE_9_EXCEPTIONS) {
+    // quietly invent one for them either. This half is what keeps the exception
+    // set from becoming a place to hide a dropped figure: D-AS-12+ is NOT in it,
+    // so its 8 storeys stay pinned by the loop above.
+    for (const code of NOT_FORM_BASED) {
       expect(DENVER_LIMITS[code].stories ?? null, code).toBeNull()
     }
   })

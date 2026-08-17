@@ -5758,3 +5758,60 @@ exists to prevent, rendering a resolved answer as a missing one.
 Both corrections reconcile exactly: 753 − 3 answers wrongly counted as gaps − 9
 genuinely out of scope = **741**. Neither is a parser fix, so the system has not
 moved; the counting has, twice, in opposite directions.
+
+### Article 8 Downtown: twelve districts read, and a FAR the provider had been discarding
+
+Denver's twelve downtown codes were the family left uncurated when Chapter 59 was
+stopped, on a stated rationale: each district carries several building forms with
+different heights, the wide-grid shape that produced DC's MU-column off-by-one.
+Reading Article 8 (republished February 25, 2025) settled it in both directions —
+for D-AS-12+/20+ the GENERAL and POINT TOWER tables print the SAME pair, so there
+was no grid to flatten, and where the concern was real it was real about exactly
+one district.
+
+**The naming trap held.** D-AS-12+ is EIGHT storeys at 110 ft and D-AS-20+ is
+TWELVE at 150 ft. Denver's own convention makes 12 and 20 the intuitive readings
+— C-MX-5 really is five storeys — so this is rule 27's collision-by-construction
+rather than bad luck, and both are pinned.
+
+**The slot test worked at the level of a table heading.** Article 8 heads a
+building-form table "HEIGHT AND FLOOR AREA" where a ratio applies and "HEIGHT"
+where none does. That is the document distinguishing the two states itself, and
+it is what makes D-CPV-C the one district in its family that is FAR-*unresolved*
+rather than FAR-*unconstrained*: it has a STANDARD TOWER form its siblings lack,
+headed "HEIGHT & FLOOR AREA RATIO", carrying 20.0. A ratio exists there in one
+form, nothing we read says which form a project will use, so the positive claim
+that no FAR applies would be false.
+
+Two districts refuse a height and it is not a gap. § 8.3.1.4.B.2 leaves D-C and
+D-TD unlimited "except in the following height areas as shown on Exhibit 8.1" —
+200 ft and 400 ft areas plus a sunlight preservation area. Denver's zoning
+service publishes four layers and none carries that exhibit, nor does
+OVERLAY_DISTRICT, whose 45 live values are use/design/conservation overlays. "No
+height limit" would be wrong by 2x inside Height Area 1, in the flattering
+direction, so the height is withheld while the FAR — the binding by-right figure
+— resolves. D-LD and DIA refuse everything and name where to look instead
+(§ 8.4.1.3.B sends D-LD to DRMC Chapter 30; § 9.5.2.1 gives DIA to the Manager of
+Aviation).
+
+**Then the find that had nothing to do with downtown.** `maxFAR` was hardcoded
+`null` in `providers/denver.ts` beneath a comment reading that Denver's
+form-based code has no FAR. That was true of Articles 3-7 — the entire curated
+table when the line was written — and false from the moment Article 9 was read.
+`I-A` and `I-B` have resolved FAR 2.0 in the zoning module since then, and **every
+live industrial parcel published nothing.**
+
+Nothing failed. No null looked suspicious, because null is the correct answer for
+most Denver districts and this one was indistinguishable from the rest (rule 18
+inverted — a plausible ABSENCE gets no more scrutiny than a plausible answer).
+The zoning module's tests were green throughout and were right: they asserted the
+resolver's return value, and the resolver was correct. The loss was entirely in
+the caller, which is rule 11 at its quietest — no probe, no sweep, no wrong
+number, just a figure computed and dropped one call frame later. It surfaced only
+because a live parcel was checked end-to-end after the curation, and the number
+that should have appeared did not.
+
+Denver now resolves 141 of 184 live codes. Of the remaining 43: nine CMP campus
+districts declared out of scope, twenty-four former Chapter 59 still deliberately
+uncurated, ten others. The sweep total moved 741 → 729, and this is the first
+movement tonight that a code change produced.
