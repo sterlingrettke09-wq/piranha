@@ -21,7 +21,21 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   // edited in lockstep, and a local annotation that silently narrows is exactly
   // how a new basis becomes unreachable without anyone noticing.
   let farBasis: NonNullable<ParcelInfo['envelope']>['farBasis']
-  if (info.zoning.farAppliesTo === 'buildable-area') {
+  // ⚠️ REQUIRES A RESOLVED RATIO. `farAppliesTo` says "the FAR this district
+  // publishes is stated against buildable area" — a claim that presupposes we
+  // HAVE the ratio. LA sets the flag unconditionally (it describes the code, not
+  // the parcel), so without this guard a code the parser cannot read at all
+  // reported 'basis-unavailable' and disclosed "this district DOES publish a
+  // floor-area ratio, but…" about a district we had not resolved.
+  //
+  // Found by the enumeration sweep on a live parcel: [LN1-MU2-5][P2-FA][CPIO],
+  // one of 151 distinct codes in LA's new bracketed format covering ~869
+  // parcels, returned basis-unavailable with maxFAR null. An unread code and a
+  // known-but-inapplicable ratio are different facts and must not render the
+  // same (rule 5) — the unread one belongs in the gap.
+  const ratioResolved =
+    limits.maxFAR != null || residFar != null || mixedFar != null
+  if (info.zoning.farAppliesTo === 'buildable-area' && ratioResolved) {
     // FIRST, and that is the whole point. `maxFAR` IS populated here — LA's
     // height district really does cap floor area at 3.0 — so every branch below
     // would happily consume it and multiply by the lot. The ratio is right and

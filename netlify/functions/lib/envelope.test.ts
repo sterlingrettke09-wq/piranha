@@ -413,3 +413,51 @@ describe('specificity: when two true reason codes apply, the more actionable win
     expect(env.farBasis).toBe('planned-development')
   })
 })
+
+describe('an unreadable code must not claim a known ratio', () => {
+  // FOUND BY THE ENUMERATION SWEEP, on a live parcel. LA sets
+  // `farAppliesTo: 'buildable-area'` unconditionally because it describes the
+  // CODE, not the parcel — so a district string the parser cannot read at all
+  // was taking the basis-unavailable branch and disclosing "this district DOES
+  // publish a floor-area ratio, but the code applies it to buildable area".
+  // That is false about a district we never resolved.
+  //
+  // LA's new bracketed format is the live instance: 151 distinct codes like
+  // [LN1-MU2-5][P2-FA][CPIO] over roughly 869 parcels.
+
+  it('falls to a GAP when the flag is set but no ratio resolved', () => {
+    const env = computeEnvelope(
+      info({ districtCode: '[LN1-MU2-5][P2-FA][CPIO]', maxFAR: null, farAppliesTo: 'buildable-area', lotSqFt: 10_000 }),
+      'la',
+    )
+    expect(env.farBasis).toBeNull()
+    expect(env.maxFloorAreaSqFt).toBeNull()
+  })
+
+  it('still reports basis-unavailable when a ratio DID resolve', () => {
+    // The discriminator. If this flips, the guard has been widened past its
+    // justification and LA stops disclosing the buildable-area problem at all.
+    const env = computeEnvelope(
+      info({ districtCode: 'C2-1', maxFAR: 1.5, farAppliesTo: 'buildable-area', lotSqFt: 10_000 }),
+      'la',
+    )
+    expect(env.farBasis).toBe('basis-unavailable')
+  })
+
+  it('a D-limitation parcel still reports planned-development either way', () => {
+    // With a resolved ratio it takes the specificity branch; without one it
+    // falls through to the later planned-development branch. Both must answer
+    // the same, or the reason a reader sees would depend on whether the FAR
+    // happened to parse.
+    const withRatio = computeEnvelope(
+      info({ districtCode: 'C2-2D', maxFAR: 3.0, farAppliesTo: 'buildable-area', lotSqFt: 10_000 }),
+      'la',
+    )
+    const withoutRatio = computeEnvelope(
+      info({ districtCode: '(Q)C2-1VLD', maxFAR: null, farAppliesTo: 'buildable-area', lotSqFt: 10_000 }),
+      'la',
+    )
+    expect(withRatio.farBasis).toBe('planned-development')
+    expect(withoutRatio.farBasis).toBe('planned-development')
+  })
+})
