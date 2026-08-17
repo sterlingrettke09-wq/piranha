@@ -6195,3 +6195,68 @@ the same error the Milwaukee PK note refuses to make one paragraph above.
 Total 886 → 881. Both movements are counting corrections and both are falls, which
 is the direction to distrust — justified here only because every code removed was
 verified to carry a citation in the module already.
+
+### `handled` tested for a figure, so a documented refusal read as a gap
+
+Milwaukee and Nashville both closed without a source read because both had
+already been read — the sweep simply could not see a declaration. That is not a
+property of those two cities, so it was checked across all of them.
+
+**91 of the 870 counted gaps were already named in their own module.** Naming is
+not citing, so each was inspected rather than credited by family, and they split
+three ways.
+
+**Credited — 52 codes, every one carrying its own citation.** Las Vegas's C-V,
+P-C, PD, R-PD, T-C and T-D families (36 moved of 37 that exist) and Phoenix's
+PUD, PCD and PAD-2…PAD-15 (16). Each is cited to a subsection with the quoted
+text — LVMC 19.10.020(E)(1), 19.10.030(E)(2), 19.10.040(F), 19.10.050(B)(1),
+19.10.060(B)(2); Phoenix §671.A, §671.B.2, §636.D.3, §636.E.1.b, §635. The
+sweep's own header had said this all along — "`farUnconstrained` /
+`heightUnconstrained` / `planGoverned` are answers under rule 5, not gaps" — and
+it credits exactly that for Dallas and Chicago through `isPlannedDevelopment`.
+Las Vegas and Phoenix establish it PER DISTRICT in their own modules, which
+`envelope.ts` describes as the intended arrangement, so the registry check missed
+all 52.
+
+**The credit is bound to the citation, not to the boolean.** A `planGoverned:
+true` with nothing saying which instrument governs is not the sweep-finished
+state — it asserts a limit exists somewhere, which is what `basis-unavailable`
+already says and is the weaker of the two reason codes by `envelope.ts`'s own
+argument. The predicate requires a source string; the test checks it per code.
+
+**Refused — Miami's 10, and refusing them is the finding.** Ten of Miami's
+thirteen resolve `farUnconstrained: true`, established properly by the slot test
+on Article 4 Table 2's FLR row plus Illustrations 5.3–5.10 each reading "Floor Lot
+Ratio (FLR) N/A", re-verified by rendering the primary document. Crediting them
+would have closed the city. But that target measures HEIGHT and stories, and
+`zoning/miami.ts` says outright that "HEIGHT is untouched and stays a gap: Table 2
+states T4/T5/D heights in STORIES and the GIS layer populates `Bldg_Height` only
+for T6". **An answer to a different question is not an answer.** The same
+reasoning withholds Las Vegas's five `farUnconstrained` codes from its height
+target. Miami's remaining three are cited gaps of a different kind: CI and CS
+defer to the ABUTTING transect zone (§ 5.7.2.4(b)), which is rule 13.
+
+Two instrument errors on the way, both mine, both familiar shapes. The first
+audit script built its namespace from the sweep's own imports and so could not
+see a function the provider calls and the sweep does not — Denver came back clean.
+The second guessed `heightSource` for Las Vegas's citation field when the module
+calls it `planSource`, so the credit silently did nothing and Las Vegas did not
+move; caught only because the expected total did not appear.
+
+Total 881 → **829**. The largest single-session fall, and every code removed was
+verified to carry its own citation individually.
+
+### Refinement to rule 5: a source with no table fails the slot test's precondition
+
+Milwaukee's PK note is the sharpest statement of the slot test's limit in this
+repo and belongs in the rule. The DC and Philadelphia absences worked because a
+TABLE existed whose row structure lacked the row — the document's own structure
+was positive evidence. Milwaukee's Parks district has no dimensional table at all:
+s. 295-903-3 gives setbacks only.
+
+So there is nothing whose emptiness could be evidence. "The code sets no height in
+a park" would be a conclusion drawn from a reader not finding something, which
+rule 8 forbids. **A source with no table does not pass the slot test; it fails the
+test's precondition** — the test asks whether a slot exists and is unfilled, and a
+document with no slots at all cannot answer it either way. The honest output is a
+gap, which is what the module publishes.

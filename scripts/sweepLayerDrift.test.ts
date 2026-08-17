@@ -7,6 +7,9 @@ import { readEnumeration } from './enumerate-zones'
 import { resolveSeattle } from '../netlify/functions/lib/zoning/seattle'
 import { resolveChicago } from '../netlify/functions/lib/zoning/chicago'
 import { resolveNyc } from '../netlify/functions/lib/zoning/nyc'
+import { resolveLasVegas } from '../netlify/functions/lib/zoning/lasvegas'
+import { resolvePhoenix } from '../netlify/functions/lib/zoning/phoenix'
+import { resolveMiami } from '../netlify/functions/lib/zoning/miami'
 
 // EVERY LAYER THE SWEEP READS MUST BE ONE A PROVIDER ACTUALLY READS.
 //
@@ -349,6 +352,64 @@ describe('every declared scope accounts for what it excuses', () => {
     // for a module carrying 37 cited districts.
     for (const c of ['SF-4A', 'SF-4B', 'SF-5', 'SF-6', 'RR', 'MH', 'CBD']) {
       expect(byCity('austin').handled(c), `${c} resolves in production`).toBe(true)
+    }
+  })
+})
+
+describe('a plan-governed answer counts, but only with its citation', () => {
+  // ⚠️ `handled` TESTS FOR A RESOLVED FIGURE, so a documented refusal produces
+  // none and reads as a gap. The sweep's own header already states the
+  // convention — "farUnconstrained / heightUnconstrained / planGoverned are
+  // answers under rule 5, not gaps" — and it credits exactly that for Dallas and
+  // Chicago via `isPlannedDevelopment`. Las Vegas and Phoenix establish it PER
+  // DISTRICT in their own modules, which envelope.ts describes as the intended
+  // arrangement, so the registry check missed all 52 of them.
+  //
+  // The credit is bound to a SOURCE STRING rather than to the boolean. A
+  // `planGoverned: true` with nothing saying which instrument governs is not the
+  // sweep-finished state — it is an assertion that a limit exists somewhere,
+  // which is what `basis-unavailable` already says and what envelope.ts explains
+  // is the weaker of the two reason codes.
+  const byCity = (c: string) => TARGETS.find((t) => t.city === c)!
+
+  // ⚠️ 37, NOT THE 36 THAT MOVED, and the difference is the point. Las Vegas has
+  // 37 plan-governed codes across all 91; only 36 were being counted as gaps,
+  // because `PD` is ALSO in the planned-development registry and
+  // `isPlannedDevelopment` already credited it. Pinning the number that moved
+  // would pin a coincidence of two mechanisms overlapping on one code.
+  it.each([
+    ['lasvegas', 37, (c: string) => resolveLasVegas(c)],
+    ['phoenix', 16, (c: string) => resolvePhoenix(c)],
+  ] as const)('%s: %i plan-governed codes, every one carrying a citation', (city, expected, resolve) => {
+    const codes = readEnumeration(city)!.codes
+    const pg = codes.filter((c) => (resolve(c) as { planGoverned?: boolean }).planGoverned === true)
+    expect(pg.length, `${city} plan-governed count moved`).toBe(expected)
+    // VERIFIED ONE CODE AT A TIME, not by family — the failure mode being
+    // crediting a whole prefix because some of its members are cited.
+    for (const c of pg) {
+      const r = resolve(c) as { planSource?: string | null; source?: string | null }
+      const src = r.planSource ?? r.source ?? ''
+      expect(src.length, `${c} is plan-governed with no citation`).toBeGreaterThan(20)
+    }
+    // And each is actually credited by the predicate.
+    for (const c of pg) expect(byCity(city).handled(c), `${c} should count as answered`).toBe(true)
+  })
+
+  it('Miami keeps its 13 — a FAR answer does not answer a height target', () => {
+    // ⚠️ THE DISTINCTION THAT KEPT THIS HONEST. Ten of Miami's thirteen resolve
+    // `farUnconstrained: true`, established by the slot test on Article 4 Table
+    // 2's FLR row and Illustrations 5.3–5.10 each reading "Floor Lot Ratio (FLR)
+    // N/A". Crediting them here would have closed the city — but the target
+    // measures HEIGHT and stories, and zoning/miami.ts says outright that
+    // "HEIGHT is untouched and stays a gap: Table 2 states T4/T5/D heights in
+    // STORIES and the GIS layer populates Bldg_Height only for T6".
+    //
+    // An answer to a different question is not an answer. The same reasoning
+    // withholds Las Vegas's five `farUnconstrained` codes from its height target.
+    const t = byCity('miami')
+    for (const c of ['T4-L', 'T5-O', 'D1', 'D2', 'D3', 'T1']) {
+      expect(resolveMiami(c, null).farUnconstrained, `${c} does resolve a FAR absence`).toBe(true)
+      expect(t.handled(c), `${c} must still count — its HEIGHT is unread`).toBe(false)
     }
   })
 })

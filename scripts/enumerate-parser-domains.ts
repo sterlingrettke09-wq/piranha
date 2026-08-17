@@ -237,7 +237,30 @@ export const TARGETS: Target[] = [
   {
     city: 'lasvegas', what: 'zone code → height/stories',
     url: 'https://mapdata.lasvegasnevada.gov/clvgis/rest/services/DevelopmentServices/Zoning/MapServer/0', field: 'ZONE',
-    handled: (v) => { if (isPlannedDevelopment('lasvegas', v)) return true; const r = resolveLasVegas(v); return r.maxHeightFt != null || r.maxStories != null },
+    // ⚠️ `planGoverned` IS AN ANSWER, and this predicate could not see it. The
+    // sweep's own header says so — "farUnconstrained / heightUnconstrained /
+    // planGoverned are answers under rule 5, not gaps" — and it already credits
+    // exactly this for Dallas and Chicago through `isPlannedDevelopment`. Las
+    // Vegas and Phoenix establish it PER DISTRICT in their own modules instead,
+    // which envelope.ts describes as the intended arrangement, so the registry
+    // check misses them entirely.
+    //
+    // 36 of Las Vegas's 47 — the C-V, P-C, PD, R-PD, T-C and T-D families. Each
+    // is cited to its own LVMC subsection with the quoted text: 19.10.020(E)(1),
+    // 19.10.030(E)(2), 19.10.040(F), 19.10.050(B)(1), 19.10.060(B)(2). Verified
+    // one code at a time — all 36 carry their own source string — rather than by
+    // crediting the family.
+    //
+    // ⚠️ `farUnconstrained` is NOT credited here, and the distinction matters:
+    // this target measures HEIGHT and stories, and "Title 19 imposes no FAR"
+    // (FACT 1) answers a different question. Crediting it would claim a height we
+    // do not have.
+    handled: (v) => {
+      if (isPlannedDevelopment('lasvegas', v)) return true
+      const r = resolveLasVegas(v)
+      if (r.planGoverned && (r.planSource ?? '').length > 20) return true
+      return r.maxHeightFt != null || r.maxStories != null
+    },
   },
   {
     city: 'milwaukee', what: 'zoning code → height/FAR',
@@ -312,7 +335,17 @@ export const TARGETS: Target[] = [
   {
     city: 'phoenix', what: 'zoning code → height',
     url: 'https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0', field: 'ZONING',
-    handled: (v) => resolvePhoenix(v).height != null,
+    // Same shape as Las Vegas: 16 of Phoenix's 41 are plan-governed and cited —
+    // PUD (§671.A, §671.B.2), PCD (§636.D.3, §636.E.1.b) and PAD-2…PAD-15 (§635),
+    // the PAD entries generated rather than hand-written so a new PAD number
+    // cannot arrive as a silent gap while looking curated. All 16 verified to
+    // carry their own source string. `farUnconstrained` is again NOT credited —
+    // this target measures height.
+    handled: (v) => {
+      const r = resolvePhoenix(v)
+      if (r.planGoverned && (r.source ?? '').length > 20) return true
+      return r.height != null
+    },
   },
   {
     city: 'raleigh', what: 'zoning string → height/stories',
