@@ -288,6 +288,78 @@ const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
   'RX-1-1': { far: 0.7, source: DEV_REGS },
   'RX-1-2': { far: 0.8, source: DEV_REGS },
 
+  // ── CHAPTER 15 PLANNED DISTRICTS, read 2026-08-17 ────────────────────────
+  //
+  // Each article's Division 3 was fetched from the Chapter 15 page with its byte
+  // count verified against Content-Length, and each carries its own amendment
+  // vintage in the document header — recorded per entry, because these articles
+  // are revised independently and one stamped 2014 is a stable article rather
+  // than a stale copy.
+  //
+  // Only the FAR is encoded: SanDiegoLimits carries no height field, and this
+  // module's target is the FAR column.
+
+  // CSPD — Cass Street (Ch 15 Art 4, doc vintage 8-2018), § 154.0303(c):
+  //   (1) "The maximum floor area ratio (FAR) shall be 1.0 for any exclusively
+  //       commercial use building. The floor area ratio may be increased to 2.0
+  //       for mixed use projects combining commercial and residential
+  //       development, provided that the residential component shall be a
+  //       minimum of 1.0 FAR and shall not exceed 1.5 FAR."
+  //   (2) "The maximum floor area ratio for exclusively residential development
+  //       shall be 1.5."
+  // The 1.0 is the base: the other two require choosing a use programme, and
+  // reporting 2.0 as the ceiling would assume one (rule 6).
+  'CSPD-CASS-STREET': {
+    far: 1.0,
+    alternatives: [
+      { label: 'exclusively residential', far: 1.5 },
+      { label: 'mixed use (residential component 1.0–1.5)', far: 2.0 },
+    ],
+    source: 'SDMC § 154.0303(c) (Cass Street Planned District, Ch 15 Art 4 Div 3)',
+  },
+
+  // MBPD — Mission Beach (Ch 15 Art 13, doc vintage 2-2025).
+  // Residential subdistricts, § 1513.0304(g)(1): "The basic maximum floor area
+  // ratio shall be 1.1 for 1 to 7 dwelling units. The maximum floor area ratio
+  // shall be 1.25. for 8 to 10 dwelling units." Unit count is the applicant's
+  // choice, so 1.1 is the base and 1.25 the alternative — the same treatment the
+  // RM entries below give San Diego's base-zone unit bands.
+  'MBPD-R-N': { far: 1.1, alternatives: [{ label: '8–10 dwelling units', far: 1.25 }], source: 'SDMC § 1513.0304(g)(1) (Mission Beach, Ch 15 Art 13 Div 3)' },
+  'MBPD-R-S': { far: 1.1, alternatives: [{ label: '8–10 dwelling units', far: 1.25 }], source: 'SDMC § 1513.0304(g)(1) (Mission Beach, Ch 15 Art 13 Div 3)' },
+
+  // Commercial subdistricts, § 1513.0307(d): residential development is sent
+  // back to § 1513.0304(g), so the 1.1/1.25 pair applies unchanged; (d)(2)
+  // states nonresidential at "basic floor area ratio shall be 1.25", raisable to
+  // 1.75 on an off-street parking condition. Base stays the lowest figure any
+  // permitted programme can reach.
+  'MBPD-VC-N': { far: 1.1, alternatives: [{ label: '8–10 dwelling units', far: 1.25 }, { label: 'exclusively nonresidential', far: 1.25 }, { label: 'nonresidential with the § 1513.0307(d)(2)(B) parking provision', far: 1.75 }], source: 'SDMC § 1513.0307(d) with § 1513.0304(g)(1) (Mission Beach, Ch 15 Art 13 Div 3)' },
+  'MBPD-VC-S': { far: 1.1, alternatives: [{ label: '8–10 dwelling units', far: 1.25 }, { label: 'exclusively nonresidential', far: 1.25 }, { label: 'nonresidential with the § 1513.0307(d)(2)(B) parking provision', far: 1.75 }], source: 'SDMC § 1513.0307(d) with § 1513.0304(g)(1) (Mission Beach, Ch 15 Art 13 Div 3)' },
+  'MBPD-NC-N': { far: 1.1, alternatives: [{ label: '8–10 dwelling units', far: 1.25 }, { label: 'exclusively nonresidential', far: 1.25 }, { label: 'nonresidential with the § 1513.0307(d)(2)(B) parking provision', far: 1.75 }], source: 'SDMC § 1513.0307(d) with § 1513.0304(g)(1) (Mission Beach, Ch 15 Art 13 Div 3)' },
+  'MBPD-NC-S': { far: 1.1, alternatives: [{ label: '8–10 dwelling units', far: 1.25 }, { label: 'exclusively nonresidential', far: 1.25 }, { label: 'nonresidential with the § 1513.0307(d)(2)(B) parking provision', far: 1.75 }], source: 'SDMC § 1513.0307(d) with § 1513.0304(g)(1) (Mission Beach, Ch 15 Art 13 Div 3)' },
+
+  // LJSPD — La Jolla Shores (Ch 15 Art 10, doc vintage 4-2024).
+  //
+  // § 1510.0304(i)(1)(A): the single-family zone's "maximum permitted floor area
+  // ratio is based on the lot area in accordance with Table 131-04J" — the SAME
+  // table RS_FAR_BY_LOT_AREA above already implements for the RS base zones.
+  // Verified band by band against the article's own printed table: 0.70 / 0.65 /
+  // 0.60 / 0.59 … 0.45, identical. Reused rather than re-transcribed.
+  'LJSPD-SF': { far: null, farByLotArea: true, source: 'SDMC § 1510.0304(i)(1)(A) → Table 131-04J (La Jolla Shores, Ch 15 Art 10 Div 3)' },
+
+  // ⚠️ THE SLOT TEST, on two parallel sections of one article. § 1510.0304
+  // (Single-Family Zone – Development Regulations) lists nine lettered items and
+  // the ninth is "(i) Maximum Floor Area Ratio". § 1510.0306 (Multi Family
+  // Zones – Development Regulations) lists seven, in the same order and the same
+  // categories — density, siting, building heights, lot coverage, off-street
+  // parking, signs, landscape — and has NO floor-area item.
+  //
+  // That is the document's own structure as positive evidence, not a reader
+  // failing to find something: the item is present exactly where the instrument
+  // applies. It is the Milwaukee PK distinction passing rather than failing —
+  // there IS a structure here whose emptiness can be read.
+  'LJSPD-MF1': { far: null, farUnconstrained: true, source: 'SDMC § 1510.0306 (La Jolla Shores multi-family, Ch 15 Art 10 Div 3) — the development-regulation list carries no floor-area item, where § 1510.0304(i) does for the single-family zone' },
+  'LJSPD-MF2': { far: null, farUnconstrained: true, source: 'SDMC § 1510.0306 (La Jolla Shores multi-family, Ch 15 Art 10 Div 3) — the development-regulation list carries no floor-area item, where § 1510.0304(i) does for the single-family zone' },
+
   // ── RT, townhouse. Two FAR rows: "1 and 2 story buildings" and "3 story
   // buildings". The storey count is the applicant's choice, so the 1–2 storey
   // figure is the base case and the 3-storey figure is an alternative.

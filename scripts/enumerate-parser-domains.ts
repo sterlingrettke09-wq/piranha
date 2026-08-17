@@ -423,8 +423,12 @@ export const TARGETS: Target[] = [
     //      Article 16 of this same chapter and every one of its fifteen codes is
     //      named in it. That is rule 27, and the count was 83.
     partiallyScoped: {
-      label: 'RS lot-area bands and industrial community-plan rules need parcel facts',
-      explains: (v) => /^(RS-|I[A-Z]?-\d|IBT-)/.test(v.trim()),
+      label: 'RS lot-area bands and industrial community-plan rules need parcel facts; LJSPD-SF is the same Table 131-04J band lookup',
+      // LJSPD-SF resolves — § 1510.0304(i)(1)(A) sends it to Table 131-04J, the
+      // same band table as the RS zones — but the band is chosen by LOT AREA, and
+      // the sweep has no parcel. Confirmed live: with a 5,000 sf lot it returns
+      // 0.60. Declared for the reason already declared for RS, not as a new one.
+      explains: (v) => /^(RS-|I[A-Z]?-\d|IBT-)/.test(v.trim()) || v.trim().toUpperCase() === 'LJSPD-SF',
     },
     handled: (v) => { const r = resolveSanDiego(v, null); return r.maxFAR != null || r.farUnconstrained === true },
   },

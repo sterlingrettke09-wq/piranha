@@ -6382,3 +6382,49 @@ than to a table row. They stay UNRESOLVED and specifically not
 a limit applies.
 
 Atlanta closes to 0 gaps. Total 819 → 809.
+
+### San Diego Chapter 15: ten codes read, and the slot test passing where Milwaukee's failed
+
+Three of the six small articles are done — Cass Street (1 code), Mission Beach (6)
+and La Jolla Shores' single- and multi-family zones (3). Each Division 3 was
+fetched from the Chapter 15 page with its byte count checked against
+Content-Length, and each carries its own amendment vintage, recorded per entry:
+Cass Street 8-2018, Centre City 7-2026, Gaslamp 7-2026, La Jolla 1-2014, La Jolla
+Shores 4-2024, Mission Beach 2-2025. These articles are revised independently, so
+a 2014 stamp is a stable article rather than a stale copy — but it is recorded
+either way, because that is the difference between knowing and assuming.
+
+**La Jolla Shores reuses a table already implemented.** § 1510.0304(i)(1)(A) sends
+the single-family zone to Table 131-04J — the same lot-area band table
+`RS_FAR_BY_LOT_AREA` holds for the RS base zones. Verified band by band against
+the article's own printed table (0.70 / 0.65 / 0.60 / 0.59 … 0.45): identical.
+Reused rather than re-transcribed, which is one fewer place for the bands to drift.
+
+**And the slot test passes here, on the strength of the same distinction that made
+it fail for Milwaukee's parks.** § 1510.0304 (Single-Family Zone – Development
+Regulations) lists nine lettered items, the ninth being "(i) Maximum Floor Area
+Ratio". § 1510.0306 (Multi Family Zones – Development Regulations) lists seven —
+density, siting, building heights, lot coverage, off-street parking, signs,
+landscape — in the same order and the same categories, with NO floor-area item.
+
+Two parallel structures in one article, one carrying the item and one not. That is
+the document's own structure as positive evidence. Milwaukee's PK failed the test
+because s. 295-903-3 has no dimensional structure at all, so there was nothing
+whose emptiness could be read; here there is a structure, and it is empty in a way
+the neighbouring section proves is meaningful. Same rule, opposite outcome, and
+the difference is whether a slot exists to be unfilled.
+
+The FAR figures carry their programme labels rather than a maximum: Cass Street is
+1.0 for exclusively commercial with 1.5 residential and 2.0 mixed as alternatives;
+Mission Beach is 1.1 for 1–7 dwelling units with 1.25 for 8–10, and its commercial
+subdistricts add nonresidential 1.25 raisable to 1.75 on a parking condition. In
+every case the base is the lowest figure any permitted programme can reach, since
+reporting the highest would assume a programme the user has not chosen (rule 6).
+
+`LJSPD-SF` resolves but is declared rather than counted: the band is selected by
+LOT AREA and the sweep has no parcel — confirmed live, a 5,000 sf lot returns
+0.60. Declared for the reason already on file for the RS zones, not as a new one.
+
+San Diego 139 → 129 gaps. Total 809 → 799. The pinned zone inventory moved 75 → 85
+and the guard caught it, which is what a pinned inventory is for: a curated table
+growing quietly is how an unsourced entry gets in.

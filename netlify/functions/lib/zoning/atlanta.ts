@@ -181,6 +181,20 @@
 // MR-5A, MR-5B, MR-6 and MR-MU — there is no MR-4 and no MR-3A — and Chapter 19
 // establishes PD-H, PD-MU, PD-OC, PD-BP and PD-CS, with no PD-H1 or PD-H2.
 //
+// ⚠️ THAT IS A FINDING ABOUT THE CITY, NOT ABOUT THIS PARSER. Atlanta maps 67.0
+// acres under four district codes its own Part 16 never created. The gap is in
+// the city's instrument: a property owner on one of those parcels cannot look up
+// their district in the ordinance either, because the chapter that would define
+// it does not exist. We therefore cannot close this by reading harder — there is
+// nothing to read — and any figure published for them would have to come from
+// somewhere other than the code.
+//
+// The likely explanations (a site-specific ordinance never folded into Part 16, a
+// legacy code surviving a renumbering) are NOT recorded as facts here, because
+// neither has been checked. What is recorded is what was measured: these four
+// values are mapped, and Chapter 35's and Chapter 19's district rosters do not
+// contain them.
+//
 // All 173 resolve to UNRESOLVED, which asserts nothing: no height, no FAR, and
 // specifically NOT `farUnconstrained`. A gap must never render as FACT 3's or
 // FCR-3's known absence.
