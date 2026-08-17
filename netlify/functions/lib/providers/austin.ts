@@ -215,6 +215,55 @@ export function austinSfLimits(base: string | null, insideSubchapterF: boolean):
 }
 
 /**
+ * The limits Austin actually publishes for a base zone — the COMPOSITION, not
+ * either half of it.
+ *
+ * ⚠️ THE SWEEP WAS MEASURING ONE BRANCH. Austin resolves in two: the Subchapter
+ * F / HOME resolver applies to SF-1/2/3 only and returns null for everything
+ * else, and the provider then falls back to the § 25-2-492(D) base table. The
+ * parser-domain sweep called `austinSfLimits` alone and read its null as "no
+ * answer", so it reported 41 of 44 live codes unhandled and its scope note said
+ * "Subchapter F single-family zones only" — while production publishes a height
+ * for most of the 37 districts in that table, SF-4A at 35 ft (§ 25-2-779(D)(3))
+ * and SF-4B at 2 storeys (§ 25-2-558(G)) among them.
+ *
+ * That is rule 11: the sweep measured a layer, and the answer depended on which
+ * one it called. `austinLimits` was module-private, so the sweep could not have
+ * called the real path even had it tried.
+ *
+ * Exported and used by BOTH the provider and the sweep, deliberately. Having the
+ * sweep re-implement `sf ?? lim` would put the composition in two places, which
+ * is the duplicate-parse shape that let Seattle's MIO overlay height drift out
+ * of agreement with itself.
+ */
+export function austinResolvedLimits(
+  base: string | null,
+  insideSubchapterF: boolean,
+  /** False when the Subchapter F fetch FAILED. A failed fetch must not read as
+   *  "outside the boundary" — that flips the parcel into the unconstrained
+   *  branch and reports "no FAR limit" on the strength of a network error. */
+  subchapterFResolved = true,
+): { maxHeightFt: number | null; maxFAR: number | null; maxStories?: number; farFloorSqFt: number | null; farUnconstrained: boolean } {
+  const sf = subchapterFResolved ? austinSfLimits(base, insideSubchapterF) : null
+  if (sf) {
+    return {
+      maxHeightFt: sf.maxHeightFt,
+      maxFAR: sf.maxFAR,
+      farFloorSqFt: sf.farFloorSqFt,
+      farUnconstrained: sf.farUnconstrained,
+    }
+  }
+  const lim = austinLimits(base)
+  return {
+    maxHeightFt: lim.h,
+    maxFAR: lim.f,
+    ...(lim.s != null ? { maxStories: lim.s } : {}),
+    farFloorSqFt: null,
+    farUnconstrained: false,
+  }
+}
+
+/**
  * The HOME programs available ALONGSIDE the single-family base case, as
  * floor-area alternatives. Only inside the Subchapter F boundary, where the
  * gradient applies; outside it there is no FAR limit and no alternative to
@@ -306,8 +355,6 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
   const addressed = geocodedAddress(geocodeR.status === 'fulfilled' ? geocodeR.value : null)
   const areaSqFt = Number(parcel.Shape__Area) // already in square feet
   const base = parcel != null && zoning?.BASE_ZONE ? String(zoning.BASE_ZONE) : null
-  const lim = austinLimits(base)
-
   // Subchapter F applicability. A FAILED fetch is NOT treated as "outside" —
   // that would silently flip a parcel into the unconstrained branch and report
   // "no FAR limit" on the strength of a network error. On failure we fall back
@@ -315,6 +362,9 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
   // farUnconstrained), which reads as a gap rather than an answer.
   const subFOk = subFR.status === 'fulfilled'
   const insideSubchapterF = subFOk && (subFR.value.features ?? []).length > 0
+  // ONE composition, shared with the parser-domain sweep — see
+  // austinResolvedLimits() for what measuring only half of it cost.
+  const res = austinResolvedLimits(base, insideSubchapterF, subFOk)
   const sf = subFOk ? austinSfLimits(base, insideSubchapterF) : null
 
   const info: ParcelInfo = {
@@ -325,13 +375,13 @@ export async function getAustinParcelInfo(lat: number, lng: number): Promise<Par
       districtCode: base ?? 'Unknown',
       subdistrict: zoning?.ZONING_ZTYPE ? String(zoning.ZONING_ZTYPE) : null,
       article: zoning?.ZONE_NAME ? String(zoning.ZONE_NAME) : null,
-      maxHeightFt: sf ? sf.maxHeightFt : lim.h,
-      maxFAR: sf ? sf.maxFAR : lim.f,
+      maxHeightFt: res.maxHeightFt,
+      maxFAR: res.maxFAR,
       allowedUses: usesForZone(base),
       // Only where the CODE states a story count (SF-4B, § 25-2-558(G)). The
       // envelope prefers a stated count over one derived by dividing a height by
       // a floor-to-floor convention, and labels which it used.
-      ...(!sf && lim.s != null ? { maxStories: lim.s } : {}),
+      ...(res.maxStories != null ? { maxStories: res.maxStories } : {}),
       ...(sf?.farFloorSqFt != null ? { farFloorSqFt: sf.farFloorSqFt } : {}),
       ...(sf?.farUnconstrained ? { farUnconstrained: true } : {}),
       ...(subFOk && austinHomeAlternatives(base, insideSubchapterF)

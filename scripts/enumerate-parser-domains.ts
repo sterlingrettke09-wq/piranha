@@ -48,7 +48,7 @@ import { resolveNashville } from '../netlify/functions/lib/zoning/nashville'
 import { resolvePhoenix } from '../netlify/functions/lib/zoning/phoenix'
 import { resolveRaleigh } from '../netlify/functions/lib/zoning/raleigh'
 import { resolveSanDiego } from '../netlify/functions/lib/zoning/sandiego'
-import { austinSfLimits } from '../netlify/functions/lib/providers/austin'
+import { austinResolvedLimits } from '../netlify/functions/lib/providers/austin'
 import { laLimits } from '../netlify/functions/lib/providers/la'
 import { isPlannedDevelopment } from '../netlify/functions/lib/zoning/plannedDevelopment'
 import { isFormerChapter59 } from '../netlify/functions/lib/providers/denver'
@@ -149,19 +149,56 @@ export const TARGETS: Target[] = [
     handled: (v) => { if (isPlannedDevelopment('atlanta', v)) return true; const r = resolveAtlanta(v); return r.heightFt != null || r.heightUnconstrained === true },
   },
   {
-    city: 'austin', what: 'base zone → Subchapter F limits',
+    city: 'austin', what: 'base zone → height/FAR (§ 25-2-492(D) base table, Subchapter F where it applies)',
     url: 'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/Current_Zoning_gdb/FeatureServer/0', field: 'BASE_ZONE',
-    // PARTIAL, converted 2026-08-17. A scope reading "single-family zones only"
-    // cannot excuse a SINGLE-FAMILY zone, and five of the 41 unhandled values are
-    // exactly that: SF-4A, SF-4B, SF-5, SF-6 and SF2. Whether Subchapter F
-    // reaches them is an open question against § 25-2 Subchapter F and is NOT
-    // assumed here either way — they count as gaps until someone reads it, which
-    // is the state a declaration should leave an unread question in.
+    // ⚠️ REWRITTEN TWICE ON 2026-08-17, and the second time is the instructive one.
+    //
+    // First pass: the scope read "Subchapter F single-family zones only" while
+    // five single-family zones sat unhandled beneath it, so it was converted to a
+    // partial scope excusing non-SF zones and SF-4A/4B/5/6 and SF2 were recorded
+    // as gaps pending a read of § 25-2.
+    //
+    // Second pass: § 25-2 had ALREADY been read — value-by-value on 2026-08-05
+    // against § 25-2-492(D), with SF-4A at 35 ft (§ 25-2-779(D)(3)) and SF-4B at
+    // 2 storeys (§ 25-2-558(G)) encoded and cited. The gap was never in the code;
+    // it was that this predicate called `austinSfLimits` alone, which serves
+    // SF-1/2/3 and returns null for everything else, while production falls
+    // through to the base table. 41 of 44 reported unhandled; 14 actually are.
+    //
+    // So the excused set is now the module's OWN documented absences, quoted from
+    // AUSTIN_LIMITS: "PUD/DR/AV/P vary case-by-case → absent. W/LO and CH are
+    // deliberately absent: their table cells are footnote pointers to regulations
+    // we have not resolved (CH's height is a function of impervious cover,
+    // § 25-2-582(B)), and a gap is the honest state."
+    //
+    // The other eight — AG, ERC, LA, NBG, SF2, TND, TOD, UNZ — are NOT documented
+    // anywhere and count. Excusing them with a families-based regex would repeat
+    // the defect this comment is about. AG and LA are named as columns of the
+    // § 25-2-492(D) table in AUSTIN_LIMITS' own header and are simply not encoded.
+    //
+    // ⚠️ SF2 IS 715 LIVE PARCELS AND IS INTERIM SF-2. Measured against the layer:
+    // its ZONE_NAME is "Single Family Residence - Standard Lot", identical to
+    // SF-2's, and its ZONING_ZTYPE is `I-SF-2` / `I-SF-2-NP` — Austin's interim
+    // designation, for which the layer drops the hyphen in BASE_ZONE. Deliberately
+    // NOT aliased to SF-2: that the DISTRICT is SF-2 is established, but whether
+    // interim status changes the site development regulations is not, and an alias
+    // would publish 35 ft on 715 parcels on the strength of a naming pattern
+    // (rule 27). It counts as a gap until § 25-2's interim provisions are read.
     partiallyScoped: {
-      label: 'non-single-family zones are outside Subchapter F',
-      explains: (v) => !/^SF/i.test(v.trim()),
+      label: "the module's own documented absences — W/LO and CH are footnote pointers, PUD/DR/AV/P vary case-by-case",
+      explains: (v) => ['W/LO', 'CH', 'PUD', 'DR', 'AV', 'P'].includes(v.trim().toUpperCase()),
     },
-    handled: (v) => austinSfLimits(v, true) != null,
+    // ⚠️ THE COMPOSITION, NOT ONE BRANCH. This called the Subchapter F resolver
+    // alone, which returns null for anything outside SF-1/2/3, and read that null
+    // as "no answer" — so it reported 41 of 44 codes unhandled while production
+    // publishes a height for most of the 37 districts in the § 25-2-492(D) base
+    // table. `austinLimits` was module-private, so the real path was unreachable
+    // from here; `austinResolvedLimits` is now the single function both the
+    // provider and this sweep call. Rule 11.
+    handled: (v) => {
+      const r = austinResolvedLimits(v, true)
+      return r.maxHeightFt != null || r.maxFAR != null || r.maxStories != null || r.farUnconstrained
+    },
   },
   {
     city: 'charlotte', what: 'zone description → height',

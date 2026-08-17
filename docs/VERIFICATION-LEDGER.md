@@ -6039,3 +6039,47 @@ down — it excluded same-file callers. That is rule 11 inside the check written
 enforce it, for the second time in this repo. The committed version counts uses
 anywhere in production including the defining module, and is verified by adding an
 undeclared export and watching it go red.
+
+### Austin: the declaration contradicted itself, and the cause was not the one the contradiction implied
+
+The scope read "Subchapter F single-family zones only" while five single-family
+zones sat unhandled beneath it. That contradiction was real and the diagnosis
+drawn from it was wrong: it implied § 25-2 had not been read.
+
+§ 25-2 had been read — value-by-value on 2026-08-05 against § 25-2-492(D), with
+SF-4A at 35 ft (§ 25-2-779(D)(3)) and SF-4B at two storeys (§ 25-2-558(G))
+encoded and cited in `AUSTIN_LIMITS`. **SF-4A publishes 35 ft on a live parcel
+today.** The sweep's predicate called `austinSfLimits`, which serves SF-1/2/3 and
+returns null for everything else, while the provider falls through to the base
+table at `maxHeightFt: sf ? sf.maxHeightFt : lim.h`. So it reported 41 of 44 codes
+unhandled for a module carrying 37 cited districts. Fourteen actually are.
+
+Rule 11 again, with a detail worth keeping: `austinLimits` was **module-private**,
+so the sweep could not have called the real path even had it tried. The fix is not
+a better predicate but one shared function — `austinResolvedLimits` now holds the
+`sf ?? lim` composition and both the provider and the sweep call it. Letting the
+sweep re-implement that composition would have put it in two places, which is the
+duplicate-parse shape that let Seattle's MIO height drift out of agreement with
+itself.
+
+Then the scope had to be rewritten a second time, because the first rewrite's
+predicate (`excuse anything not starting with SF`) would have excused eight codes
+with no basis — reintroducing, four commits later, the exact defect that motivated
+`partiallyScoped`. The excused set is now the six absences the module documents
+itself: W/LO and CH are footnote pointers to unresolved regulations, PUD/DR/AV/P
+vary case-by-case. Austin's gap contribution went 5 → **8** while its unhandled
+count went 41 → 14.
+
+**And the parcel counts found the substantive item, which the code counts had
+hidden.** `SF2` — no hyphen — is 715 live parcels. Its ZONE_NAME is "Single Family
+Residence - Standard Lot", identical to SF-2's, and its ZONING_ZTYPE is `I-SF-2` /
+`I-SF-2-NP`: Austin's INTERIM designation, for which the layer drops the hyphen in
+BASE_ZONE. Not aliased to SF-2. That the district is SF-2 is established from the
+layer's own descriptive fields; whether interim status changes the site
+development regulations is not, and an alias would publish 35 ft on 715 parcels on
+the strength of a naming pattern (rule 27). It stays a gap with its evidence
+recorded.
+
+That is the argument for parcel-weighting the sweep. Among Austin's fourteen,
+`SF2` at 715 parcels and `PUD` at 986 dwarf `TND` at 2 and `AG` at 4 — and the
+code-weighted total treats them identically.

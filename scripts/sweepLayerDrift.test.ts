@@ -300,7 +300,7 @@ describe('every declared scope accounts for what it excuses', () => {
 
   it.each([
     ['atlanta', 169, 10],
-    ['austin', 36, 5],
+    ['austin', 6, 8],
     ['sandiego', 16, 139],
     ['denver', 9, 34],
   ] as const)('%s: partial scope names %i and leaves %i counted', (city, named, gaps) => {
@@ -316,15 +316,33 @@ describe('every declared scope accounts for what it excuses', () => {
     expect(codes.length - excused.length, `${city}: ${gaps} gaps expected`).toBe(gaps)
   })
 
-  it('austin: a scope about single-family zones cannot excuse a single-family zone', () => {
-    // The sharpest of the three, because the sentence contradicts itself on its
-    // own terms. Whether § 25-2 Subchapter F reaches SF-4A/4B/5/6 is unread and
-    // is NOT assumed either way — they count as gaps until someone looks, which
-    // is where a declaration should leave an open question.
+  it('austin: only the module\'s own documented absences are excused', () => {
+    // SUPERSEDED THE SAME DAY. This asserted that five single-family zones must
+    // not be excused by a scope naming single-family zones — true, and it missed
+    // the cause. § 25-2 had already been read: SF-4A/4B/5/6 are encoded with
+    // citations, and the sweep was calling `austinSfLimits` alone, which serves
+    // SF-1/2/3 and returns null for the rest while production falls through to
+    // the § 25-2-492(D) base table.
+    //
+    // The excused set is now the six absences AUSTIN_LIMITS documents itself.
     const ps = byCity('austin').partiallyScoped!
-    for (const c of ['SF-4A', 'SF-4B', 'SF-5', 'SF-6', 'SF2']) {
-      expect(ps.explains(c), `${c} is single-family and must not be excused`).toBe(false)
+    for (const c of ['W/LO', 'CH', 'PUD', 'DR', 'AV', 'P']) {
+      expect(ps.explains(c), `${c} is a documented absence`).toBe(true)
     }
-    expect(ps.explains('CBD'), 'a non-single-family zone IS out of scope').toBe(true)
+    // AG and LA are named as columns of the § 25-2-492(D) table in the module's
+    // own header and simply are not encoded — nothing documents their absence.
+    for (const c of ['AG', 'LA', 'ERC', 'NBG', 'SF2', 'TND', 'TOD', 'UNZ']) {
+      expect(ps.explains(c), `${c} has no documented absence and must count`).toBe(false)
+    }
+  })
+
+  it('austin: the sweep exercises the COMPOSITION, not one branch', () => {
+    // SF-4A publishes 35 ft on a live parcel (§ 25-2-779(D)(3)) and SF-4B two
+    // storeys (§ 25-2-558(G)). A predicate that consults only the Subchapter F
+    // resolver reports them unhandled, which is how 41 of 44 came to be claimed
+    // for a module carrying 37 cited districts.
+    for (const c of ['SF-4A', 'SF-4B', 'SF-5', 'SF-6', 'RR', 'MH', 'CBD']) {
+      expect(byCity('austin').handled(c), `${c} resolves in production`).toBe(true)
+    }
   })
 })
