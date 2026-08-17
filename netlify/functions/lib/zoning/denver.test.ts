@@ -190,3 +190,50 @@ describe('special-purpose suffix variants resolve to the base tier', () => {
     expect(resolveDenver('D-C').stories ?? null).toBeNull()
   })
 })
+
+describe('Downtown: the number in the district name is NOT a story count', () => {
+  // ⚠️ THE TRAP THIS PINS. Articles 3–7 name the maximum building height in the
+  // third number — S-MX-2A is 2 storeys — and the suffix-variant fix above
+  // relies on that. DOWNTOWN DOES NOT WORK THAT WAY, and DZC Article 2 § 2.3.2
+  // says so outright: "The Downtown Neighborhood Context is organized
+  // differently than Articles 3 through 7… The first letter is 'D'… The second
+  // letters are abbreviations for the specific neighborhood within Downtown."
+  //
+  // Read from Article 8 (June 25, 2010 | Republished February 25, 2025),
+  // Division 8.8, GENERAL building form:
+  //     HEIGHT              D-AS-12+     D-AS-20+
+  //     Stories (max)          8            12
+  //     Feet (max)           110'         150'
+  //
+  // So D-AS-12+ is an EIGHT storey district. Anyone extending the story-number
+  // heuristic to downtown would publish 12 — a 50% overstatement — and it would
+  // look right, because every other Denver context reads that way.
+  //
+  // These must stay UNRESOLVED until Article 8's per-building-form tables are
+  // curated. Each district carries several forms with different heights, which
+  // is the wide-grid shape that produced DC's MU-column off-by-one and the
+  // reason zoning/atlanta.ts left SPI uncurated rather than curating it quickly.
+
+  it.each(['D-AS-12+', 'D-AS-20+', 'D-AS', 'D-C', 'D-CV', 'D-GT', 'D-LD', 'D-TD', 'DIA', 'D-CPV-C', 'D-CPV-R', 'D-CPV-T'])(
+    '%s resolves to nothing rather than guessing',
+    (code) => {
+      const r = resolveDenver(code)
+      expect(r.stories ?? null, `${code} invented a story count`).toBeNull()
+      expect(r.heightFt ?? null, `${code} invented a height`).toBeNull()
+    },
+  )
+
+  it('specifically: D-AS-12+ must never report 12 storeys', () => {
+    // The single assertion that would catch the plausible wrong fix.
+    expect(resolveDenver('D-AS-12+').stories ?? null).not.toBe(12)
+    expect(resolveDenver('D-AS-20+').stories ?? null).not.toBe(20)
+  })
+
+  it('and the trailing "+" is what keeps them out of the story parse', () => {
+    // The widened suffix pattern accepts an optional trailing LETTER. A trailing
+    // "+" is not a letter, so downtown cannot fall into it by accident — but the
+    // protection is incidental, which is why it is pinned here.
+    expect(/-(\d+(?:\.\d+)?)[A-Z]?$/.test('D-AS-12+')).toBe(false)
+    expect(/-(\d+(?:\.\d+)?)[A-Z]?$/.test('S-MX-12A')).toBe(true)
+  })
+})
