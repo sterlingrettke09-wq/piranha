@@ -234,16 +234,29 @@ export const TARGETS: Target[] = [
     // rules — which accounts for SIXTEEN of the 155 unhandled values. The other
     // 139 were excused by a sentence that does not describe them.
     //
-    // Reconciled before the total was moved (rule 25). The 139 split in two:
-    //   · 68 Planned District Ordinances — CCPD, CSPD, CUPD, CVPD, GQPD, LJPD,
-    //     LJSPD, MBPD, MPD. These are very likely the planned-development ANSWER
-    //     shape (a limit exists, in its own ordinance), and `isPlannedDevelopment`
-    //     returns false for all 68 today. That is a piece of work with a known
-    //     shape, NOT something to assume — asserting it here would be a mechanism
-    //     argued aloud earning a direction (rule 1), so they count as gaps until
-    //     the ordinances are read.
-    //   · 71 commercial, office, mixed-use and Old Town districts — CC, CN, CO,
-    //     CP, CR, CV, EMX, RMX, OC, OF, OP, OR, OT*, plus UNZONED. Plain gaps.
+    // Reconciled before the total was moved (rule 25), then READ 2026-08-17 and
+    // the reconciliation was itself corrected. The 139 split as:
+    //   · 83 Chapter 15 PLANNED DISTRICTS across 10 articles — the largest block
+    //     in the city. See SAN_DIEGO_PLANNED_DISTRICTS in zoning/sandiego.ts for
+    //     the article map and the two corrections the reading produced.
+    //   · 56 commercial, office and mixed-use base zones — CC, CN, CO, CP, CR,
+    //     CV, EMX, RMX, OC, OF, OP, OR, plus UNZONED. Plain gaps.
+    //
+    // ⚠️ TWO CLAIMS WRITTEN HERE WERE DISPROVEN BY READING THE SOURCE, and both
+    // were stated with hedges that made them feel safe.
+    //   1. This note said the PD-suffixed codes were VERY LIKELY the
+    //      planned-development answer shape — a limit existing in its own
+    //      ordinance. They are not. Chapter 15's articles publish Property
+    //      Development Regulations as tables in the code, for named zones; all
+    //      ten carry height and floor-area provisions. They are curatable gaps,
+    //      and enrolling them as answers would have asserted "go read another
+    //      document" about figures already inside a chapter we read for this
+    //      city. "Very likely" is still a direction earned without a measurement
+    //      (rule 1).
+    //   2. It counted 68 and put Old Town's fifteen OT* codes in the plain-gap
+    //      bucket, on the strength of their names lacking "PD". Old Town is
+    //      Article 16 of this same chapter and every one of its fifteen codes is
+    //      named in it. That is rule 27, and the count was 83.
     partiallyScoped: {
       label: 'RS lot-area bands and industrial community-plan rules need parcel facts',
       explains: (v) => /^(RS-|I[A-Z]?-\d|IBT-)/.test(v.trim()),

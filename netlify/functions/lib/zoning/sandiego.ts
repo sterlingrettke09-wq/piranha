@@ -43,10 +43,64 @@
 //     13 — the value resolves only from the base zone AND the community plan
 //     area jointly, and no community-plan layer is wired.
 //   · Chapter 13 Article 2 overlay zones, including the Coastal Height Limit
-//   · Planned districts (Little Italy, Barrio Logan, Centre City, …), whose
-//     FARs are set by their own planned-district ordinances
+//   · Chapter 15 PLANNED DISTRICTS — 83 of the 183 live ZONE_NAME values, the
+//     single largest block. Enumerated and mapped to their articles below.
 // A parcel in any of those resolves to null here and must keep reading as a
 // GAP. Absence within a scope is not absence.
+//
+// ── CHAPTER 15 PLANNED DISTRICTS: READ 2026-08-17, AND NOT WHAT WAS ASSUMED ──
+//
+// ⚠️ THIS NOTE PREVIOUSLY DESCRIBED THESE AS DISTRICTS WHOSE FARS ARE SET BY
+// THEIR OWN ORDINANCES — the Denver-PUD / Dallas-PD shape, where a limit exists
+// outside any district table and the honest output is `planGoverned`. That was
+// the reading the phrase invited and it is wrong in the way that matters: the
+// "planned-district ordinances" ARE Chapter 15 of this Municipal Code, and each
+// article publishes Property Development Regulations in tables, in the code, for
+// named zones. All ten articles read below carry height and floor-area
+// provisions; Centre City alone mentions floor area 109 times.
+//
+// So these are CURATABLE GAPS, not answers. Enrolling them in
+// `isPlannedDevelopment` would assert "the limit is in a document you must go
+// and read" about figures that are in the code we already read for this city —
+// a fabricated known absence, which is the error the header of this file exists
+// to warn about.
+//
+// The article map, from the live enumeration (83 codes / 10 articles):
+//   Art  3  Carmel Valley            20  CVPD-*
+//   Art  4  Cass Street               1  CSPD-CASS-STREET
+//   Art  5  Central Urbanized        13  CUPD-*
+//   Art  6  Centre City              10  CCPD-*
+//   Art  7  Gaslamp Quarter           1  GQPD-GASLAMP-QTR
+//   Art  9  La Jolla                  9  LJPD-1 … LJPD-6A
+//   Art 10  La Jolla Shores           7  LJSPD-*
+//   Art 11  Marina                    1  MPD-MARINA   ⚠️ see below
+//   Art 13  Mission Beach             6  MBPD-*
+//   Art 16  Old Town San Diego       15  OTCC-* OTMCR-* OTOP-* OTRM-* OTRS-*
+//
+// ⚠️ A PREFIX IS NOT A FAMILY (rule 27), TWICE OVER.
+//   · Old Town's fifteen codes carry no "PD" in their names and were triaged
+//     into a different bucket for that reason alone. They are Article 16 of this
+//     very chapter, and all fifteen are named verbatim in it — including
+//     `OTOP 1-1`, printed with a SPACE where the layer uses a hyphen.
+//   · Their shape instead matches the Chapter 13 base zones (`OTRS-1-1` beside
+//     `RS-1-1`), which is what made the misgrouping plausible.
+//
+// ⚠️ MPD-MARINA IS A LIVE CODE FOR A REPEALED DISTRICT. Article 11 and its
+// Division 3 both read "(Repealed 6-21-2019 by O-21086 N.S., effective
+// 8-8-2019.)" and contain no standards at all — yet the zoning layer still
+// publishes MPD-MARINA. Its editor's note adds that the repealing amendments
+// "will not apply within the Coastal Overlay Zone until the California Coastal
+// Commission certifies it as a Local Coastal Program Amendment", so what governs
+// such a parcel depends on a certification status nothing here reads. It stays a
+// gap, and it is not the same kind of gap as the other 82.
+//
+// NEITHER PUBLISHED INDEX IS COMPLETE, which is worth recording because rule 8
+// says to read indexes rather than guess paths. The Municipal Code Table of
+// Contents lists Article 16 but omits Articles 2 (Barrio Logan) and 11 (Marina);
+// the Chapter 15 web page lists 2 and 11 but omits 16. Article 16 was confirmed
+// to exist — 95 pages, dated 7-2026 — only after the two indexes disagreed and
+// the section number the ToC itself gives (§1516.0101) was tested directly. Two
+// indexes, each authoritative-looking, each missing something the other had.
 
 /** One entry per residential base zone. `far` is a flat ratio; `farByLotArea`
  *  marks the six zones whose ratio is a function of lot size; `alternatives`
@@ -307,6 +361,54 @@ const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
   // them from CC_FAR and footnote 4.
   ...Object.fromEntries(Object.keys(CC_FAR).map((z) => [z, { far: null, commercial: true, source: CC_TABLE }])),
 })
+
+/**
+ * Chapter 15 planned-district families, each mapped to the article that
+ * publishes its Property Development Regulations.
+ *
+ * EXPORTED SO IT CAN BE PINNED. The inventory is a measurement against the live
+ * layer (183 distinct ZONE_NAME values on 2026-08-17, of which these match 83),
+ * and a regex that silently stopped matching would return the group to the
+ * undifferentiated gap pile — green, and reading as though nothing had changed
+ * (rule 20). The test asserts the exact membership, not just a count.
+ *
+ * `repealed` marks a family whose article carries no standards at all. It is NOT
+ * a licence to publish anything: the parcel is still a gap, and a narrower one,
+ * because the repeal's reach into the Coastal Overlay Zone depends on a Coastal
+ * Commission certification nothing here reads.
+ */
+export const SAN_DIEGO_PLANNED_DISTRICTS: readonly {
+  match: RegExp
+  article: string
+  name: string
+  repealed?: string
+}[] = Object.freeze([
+  { match: /^CVPD-/, article: 'Ch 15 Art 3', name: 'Carmel Valley' },
+  { match: /^CSPD-/, article: 'Ch 15 Art 4', name: 'Cass Street' },
+  { match: /^CUPD-/, article: 'Ch 15 Art 5', name: 'Central Urbanized' },
+  { match: /^CCPD-/, article: 'Ch 15 Art 6', name: 'Centre City' },
+  { match: /^GQPD-/, article: 'Ch 15 Art 7', name: 'Gaslamp Quarter' },
+  { match: /^LJPD-/, article: 'Ch 15 Art 9', name: 'La Jolla' },
+  { match: /^LJSPD-/, article: 'Ch 15 Art 10', name: 'La Jolla Shores' },
+  { match: /^MPD-/, article: 'Ch 15 Art 11', name: 'Marina', repealed: 'O-21086 N.S., effective 8-8-2019' },
+  { match: /^MBPD-/, article: 'Ch 15 Art 13', name: 'Mission Beach' },
+  // No "PD" in these names, and they are Article 16 of this same chapter. Their
+  // shape matches the Chapter 13 base zones instead (OTRS-1-1 beside RS-1-1),
+  // which is exactly why they were grouped elsewhere first (rule 27).
+  { match: /^OT(CC|MCR|OP|RM|RS)-/, article: 'Ch 15 Art 16', name: 'Old Town San Diego' },
+])
+
+/** True where this code belongs to a Chapter 15 planned district. Says nothing
+ *  about whether a limit is obtainable — every one of these is currently a GAP,
+ *  and deliberately not `planGoverned`: the standards are published tables in
+ *  Chapter 15, so the honest state is "not yet curated", not "look elsewhere". */
+export function sanDiegoPlannedDistrict(
+  code: string | null | undefined,
+): (typeof SAN_DIEGO_PLANNED_DISTRICTS)[number] | null {
+  const z = String(code ?? '').trim().toUpperCase()
+  if (!z) return null
+  return SAN_DIEGO_PLANNED_DISTRICTS.find((d) => d.match.test(z)) ?? null
+}
 
 export const SAN_DIEGO_ZONE_CODES: readonly string[] = Object.freeze(Object.keys(ZONES))
 

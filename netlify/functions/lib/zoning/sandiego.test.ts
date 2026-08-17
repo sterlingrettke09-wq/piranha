@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
+import { readEnumeration } from '../../../../scripts/enumerate-zones'
+import { isPlannedDevelopment } from './plannedDevelopment'
 import {
+  SAN_DIEGO_PLANNED_DISTRICTS,
+  sanDiegoPlannedDistrict,
   CC_OTAY_MESA_FAR,
   CP_KEARNY_MESA,
   CP_OTAY_MESA,
@@ -305,5 +309,84 @@ describe('CC commercial — Table 131-05E, read from rendered page images', () =
     for (const z of ['CC-1-4', 'CC-1-5', 'CC-2-6', 'CC-2-11', 'CC-9-9']) {
       expect(resolveSanDiego(z, 40_000, 'SAN YSIDRO').maxFAR, z).toBeNull()
     }
+  })
+})
+
+describe('Chapter 15 planned districts are gaps, not plan-governed answers', () => {
+  // ⚠️ THE DISPROVEN HYPOTHESIS THIS PINS. These 83 codes were first triaged as
+  // the Denver-PUD / Dallas-PD shape — "a limit exists, in its own ordinance" —
+  // which would make them ANSWERS and would have enrolled them in
+  // isPlannedDevelopment. Reading Chapter 15 on 2026-08-17 disproved it: each
+  // article publishes Property Development Regulations as tables IN the code for
+  // named zones, and all ten carry height and floor-area provisions.
+  //
+  // So the assertion runs the other way. Enrolling them would claim "go read
+  // another document" about figures inside a chapter already read for this city
+  // — a fabricated known absence, the error this module's header exists to warn
+  // about.
+  const codes = readEnumeration('sandiego')!.codes
+  const matched = codes.filter((c) => sanDiegoPlannedDistrict(c) != null)
+
+  it('pins the inventory by membership, not by count (rule 20)', () => {
+    // A regex that silently stopped matching would fold the group back into the
+    // undifferentiated gap pile and read as though nothing had changed.
+    expect(codes.length).toBe(183)
+    expect(matched.length).toBe(83)
+    const byArticle = new Map<string, number>()
+    for (const c of matched) {
+      const d = sanDiegoPlannedDistrict(c)!
+      byArticle.set(d.article, (byArticle.get(d.article) ?? 0) + 1)
+    }
+    expect(Object.fromEntries([...byArticle].sort())).toEqual({
+      'Ch 15 Art 10': 7, // La Jolla Shores
+      'Ch 15 Art 11': 1, // Marina — repealed
+      'Ch 15 Art 13': 6, // Mission Beach
+      'Ch 15 Art 16': 15, // Old Town San Diego
+      'Ch 15 Art 3': 20, // Carmel Valley
+      'Ch 15 Art 4': 1, // Cass Street
+      'Ch 15 Art 5': 13, // Central Urbanized
+      'Ch 15 Art 6': 10, // Centre City
+      'Ch 15 Art 7': 1, // Gaslamp Quarter
+      'Ch 15 Art 9': 9, // La Jolla
+    })
+  })
+
+  it('NONE of them is enrolled as planned-development', () => {
+    // The positive half of the disproof. If a later change enrolls them, this
+    // goes red and the reader lands on the reason.
+    for (const c of matched) {
+      expect(isPlannedDevelopment('sandiego', c), `${c} must not read as plan-governed`).toBe(false)
+    }
+  })
+
+  it('Old Town is Article 16, not a base zone (rule 27)', () => {
+    // Fifteen codes with no "PD" in their names, grouped elsewhere for exactly
+    // that reason. Their shape matches the Chapter 13 base zones — OTRS-1-1
+    // beside RS-1-1 — which is what made the misgrouping plausible.
+    for (const c of ['OTCC-1-1', 'OTMCR-1-3', 'OTOP-2-1', 'OTRM-2-2', 'OTRS-1-1']) {
+      expect(sanDiegoPlannedDistrict(c)?.article, c).toBe('Ch 15 Art 16')
+    }
+    // And the base zones they resemble are NOT planned districts.
+    for (const c of ['RS-1-1', 'CC-1-1', 'RM-1-1']) {
+      expect(sanDiegoPlannedDistrict(c), c).toBeNull()
+    }
+  })
+
+  it('Marina is marked repealed, and is still a gap', () => {
+    // Article 11 and its Division 3 both read "(Repealed 6-21-2019 by O-21086
+    // N.S., effective 8-8-2019.)" and contain no standards — yet the layer still
+    // publishes MPD-MARINA. Recording the repeal is not permission to publish a
+    // figure: the repeal's reach into the Coastal Overlay Zone depends on a
+    // Coastal Commission certification nothing here reads.
+    const d = sanDiegoPlannedDistrict('MPD-MARINA')!
+    expect(d.repealed).toBe('O-21086 N.S., effective 8-8-2019')
+    const r = resolveSanDiego('MPD-MARINA', null)
+    expect(r.maxFAR).toBeNull()
+    // ⚠️ AND NOT far-unconstrained. A repealed article contains no standards,
+    // which is the shape most likely to be misread as "no FAR applies here" —
+    // the fabricated known absence this module's header was written about.
+    expect(r.farUnconstrained).toBe(false)
+    // Exactly one family is repealed — so this cannot pass by the flag spreading.
+    expect(SAN_DIEGO_PLANNED_DISTRICTS.filter((x) => x.repealed).length).toBe(1)
   })
 })
