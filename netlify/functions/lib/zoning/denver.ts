@@ -119,6 +119,43 @@ function storiesOnlyFeetUnverified(stories: number): DistrictLimits {
   }
 }
 
+// ── CAMPUS (CMP) — READ, AND DELIBERATELY NOT RESOLVED ───────────────────────
+//
+// The hypothesis was that CMP districts are plan-governed, which would make them
+// a planned-development registry entry. WRONG, and Article 9 settled it: Division
+// 9.2 gives each campus district its own SECTION with a published height table.
+// They are a curation job, not a reason code.
+//
+// DZC Article 9, Division 9.2 (June 25, 2010 | Republished February 25, 2025),
+// read from the complete PDF with Content-Length verified against bytes received:
+//
+//   district      Feet (max)    within a Protected District
+//   CMP-H            200'        75'  (within 125')   § 9.2.3
+//   CMP-H2           140'        75'  (within 125')   § 9.2.3
+//   CMP-EI           150'        75'  (within 175')   § 9.2.4
+//   CMP-EI2          150'        75'  (within 175')   § 9.2.4
+//   CMP-NWC          150'        75'  (within 175')   § 9.2.6
+//   CMP-NWC-C        150'        75'                  § 9.2.6
+//   CMP-NWC-G        150'        75'                  § 9.2.6
+//   CMP-NWC-F        150'        75'                  § 9.2.6
+//   CMP-NWC-R         40'        40'                  § 9.2.6
+//
+// ⚠️ NOT ENCODED, AND THE REASON IS THE POINT. The reduction is a LOCATIONAL
+// fact — is this parcel within 125'/175' of a Protected District — and we do not
+// hold it. Publishing 200' for a CMP-H parcel that is actually capped at 75'
+// would overstate by 2.7x, which is the Seattle MIO magnitude, and it would be a
+// NEW error: these districts resolve to nothing today, so encoding the base max
+// naively makes the tool worse for the parcels nearest the reduction.
+//
+// Same choice zoning/seattle.ts makes for LR3 when the urban-centre boundary is
+// unresolved — "Refuse rather than pick one" — because the code answers
+// differently depending on a fact nobody has read.
+//
+// TO CLOSE IT: "Protected District" is a defined term in the DZC and the
+// reduction is a distance from a mapped boundary, so this is resolvable with a
+// spatial query against Denver's own zoning layer rather than by reading more
+// code. That is the work, and the table above means the reading is already done.
+
 export const DENVER_LIMITS: Record<string, DistrictLimits> = {
   // ── Articles 3-6 (Suburban S-, Urban Edge E-, Urban U-, General Urban G-) ──
   // Story counts are code-stated; printed "Feet (max)" NOT yet read. See

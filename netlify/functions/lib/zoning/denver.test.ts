@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY } from './denver'
+import { isPlannedDevelopment } from './plannedDevelopment'
 
 // Denver is a FORM-BASED code: the common districts are height-governed (stories
 // × ft/story) with NO floor-area ratio. So every assertion checks far === null
@@ -235,5 +236,40 @@ describe('Downtown: the number in the district name is NOT a story count', () =>
     // protection is incidental, which is why it is pinned here.
     expect(/-(\d+(?:\.\d+)?)[A-Z]?$/.test('D-AS-12+')).toBe(false)
     expect(/-(\d+(?:\.\d+)?)[A-Z]?$/.test('S-MX-12A')).toBe(true)
+  })
+})
+
+describe('Campus (CMP) is read but deliberately unresolved', () => {
+  // The hypothesis — that CMP is plan-governed and belongs in the
+  // planned-development registry — was tested against Article 9 and REJECTED:
+  // Division 9.2 gives each campus district a published height table. So it is a
+  // curation job, and the blocker is not the code but a locational fact.
+  //
+  // CMP-H is 200' generally and 75' within 125' of a Protected District. We do
+  // not know which applies to a given parcel, and these districts resolve to
+  // NOTHING today — so encoding the base max would introduce a fresh 2.7x
+  // overstatement exactly where the reduction bites. Refusing is the same call
+  // zoning/seattle.ts makes for LR3 without a resolved urban-centre boundary.
+
+  it.each(['CMP-H', 'CMP-H2', 'CMP-EI', 'CMP-EI2', 'CMP-NWC', 'CMP-NWC-C', 'CMP-NWC-G', 'CMP-NWC-F', 'CMP-NWC-R'])(
+    '%s stays unresolved rather than publishing its unconditioned maximum',
+    (code) => {
+      const r = resolveDenver(code)
+      expect(r.heightFt ?? null, `${code} published a height without knowing the Protected District distance`).toBeNull()
+      expect(r.stories ?? null).toBeNull()
+    },
+  )
+
+  it('specifically: CMP-H must not publish 200 feet', () => {
+    // The number a naive curation would take straight from the table.
+    expect(resolveDenver('CMP-H').heightFt ?? null).not.toBe(200)
+    expect(resolveDenver('CMP-EI').heightFt ?? null).not.toBe(150)
+  })
+
+  it('and CMP is NOT in the planned-development registry', () => {
+    // The rejected hypothesis, pinned — so nobody re-adds it on the intuition
+    // that "campus" sounds plan-governed. Article 9 § 9.2 publishes the tables.
+    expect(isPlannedDevelopment('denver', 'CMP-H')).toBe(false)
+    expect(isPlannedDevelopment('denver', 'CMP-NWC')).toBe(false)
   })
 })
