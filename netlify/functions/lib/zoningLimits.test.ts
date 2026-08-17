@@ -79,18 +79,33 @@ describe('resolveZoningLimits — per-city curated tables (WO-8.8)', () => {
     expect(r.maxFAR).toBe(9)
   })
 
-  // Was `derives 60 ft` (5 stories × an unsourced 12 ft/story). DZC Art. 7
-  // § 7.3.3.3.D prints C-MX-5 at 70 ft, and this expectation was pinning the
-  // derived number in place across cities — rule 15, in the shared test no
-  // single city owned.
-  it('Denver: a C-MX-5 stays null FAR (form-based) and carries the code-stated 70 ft', () => {
+  // SUPERSEDED 2026-08-17 — see the Denver block at the end of this file.
+  //
+  // This asserted that a C-MX-5 arriving with no height picks up 70 ft HERE. It
+  // did, and the figure was right, but the path was the problem: reaching it
+  // meant calling resolveDenver a second time without the `formerChapter59`
+  // flag, which for a legacy code re-derived a height from a district CLASS
+  // number and published it over the provider's deliberate refusal. Measured
+  // live: C-MU-20 at 240 ft.
+  //
+  // The 70 ft itself is not lost and was never at risk — providers/denver.ts
+  // resolves it from the same table WITH the flag, and its own test pins a
+  // C-MX-5 parcel at 70 ft. What changed is that Denver now has exactly one
+  // caller of that table instead of two, so the guard cannot be bypassed by
+  // whichever caller forgets the argument.
+  //
+  // (The companion case, "provider height always wins over the table", is now
+  // structurally true for Denver rather than merely asserted — the table
+  // contributes nothing for this city. It is kept for the cities that still use
+  // the fallback, in the Chicago assertion below.)
+  it('Denver: the provider is the only source, so this layer adds nothing', () => {
     const r = resolveZoningLimits(z('C-MX-5'), 'denver')
     expect(r.maxFAR).toBeNull()
-    expect(r.maxHeightFt).toBe(70)
+    expect(r.maxHeightFt).toBeNull()
   })
 
-  it('Denver: provider height always wins over the table', () => {
-    const r = resolveZoningLimits(z('C-MX-5', { maxHeightFt: 999 }), 'denver')
+  it('Chicago: a provider-supplied height still wins over the table', () => {
+    const r = resolveZoningLimits(z('B1-1', { maxHeightFt: 999 }), 'chicago')
     expect(r.maxHeightFt).toBe(999)
   })
 
@@ -160,5 +175,66 @@ describe('resolveZoningLimits — per-city curated tables (WO-8.8)', () => {
 
   it('the Seattle table does not leak into Chicago', () => {
     expect(resolveZoningLimits(z('NC3-65'), 'chicago').maxFAR).toBeNull()
+  })
+})
+
+describe('Denver resolves its table in ONE place — the provider', () => {
+  // ⚠️ THE LIVE DEFECT THIS PINS, measured 2026-08-17 end-to-end through
+  // getParcelInfo + computeEnvelope on real parcels:
+  //
+  //   R-2      provider withheld → envelope published  24 ft /  2 storeys
+  //   B-3      provider withheld → envelope published  36 ft /  3 storeys
+  //   C-MU-20  provider withheld → envelope published 240 ft / 21 storeys
+  //
+  // Former Chapter 59 district codes carry a CLASS number, not a storey count.
+  // providers/denver.ts knows this and refuses, because it derives the
+  // `formerChapter59` flag from ZONE_USE_FORM and ZONE_DESCRIPTION — fields only
+  // it can see. This fallback then called the same resolver a SECOND time with
+  // no flag, and filled in exactly the figures the provider had just refused.
+  //
+  // Note what makes it hard to see: the provider is correct, its tests are
+  // correct, and `maxHeightFt: null` reaching this function is the NORMAL case
+  // for most Denver districts. The bug is that null was read as "nothing known"
+  // when it meant "known to be unobtainable" — rule 5, one layer down.
+  //
+  // The same defect was fixed in the parser-domain sweep first. The fix went to
+  // the instrument; this call site kept it. A guard that lives in an argument is
+  // only as strong as its callers, so the durable fix is to have one caller.
+  const LEGACY = ['R-2', 'B-3', 'R-4', 'O-1', 'OS-1', 'C-MU-20', 'B-8', 'R-3-X']
+
+  it.each(LEGACY)('%s gets NO height from this layer', (code) => {
+    const r = resolveZoningLimits(z(code), 'denver')
+    expect(r.maxHeightFt, `${code} republished a fabricated height`).toBeNull()
+    expect(r.maxFAR, code).toBeNull()
+  })
+
+  it('and neither does a CURRENT district — the provider is the only source', () => {
+    // Not a narrower fix. Every Denver figure now arrives on the ParcelInfo the
+    // provider builds, so this layer contributes nothing for the city at all;
+    // asserting only the legacy half would let the second call site creep back
+    // for current codes, where it would be silently right until it wasn't.
+    for (const c of ['C-MX-5', 'D-CV', 'D-C', 'I-A', 'MHC', 'CMP-H']) {
+      const r = resolveZoningLimits(z(c), 'denver')
+      expect(r.maxHeightFt, c).toBeNull()
+      expect(r.maxFAR, c).toBeNull()
+    }
+  })
+
+  it('while the provider-supplied values still pass through untouched', () => {
+    // The other direction: this layer must not start suppressing what the
+    // provider DID resolve. D-CV is 16 storeys at 200 ft; D-C carries FAR 10.0.
+    const withValues: Zoning = { districtCode: 'D-CV', maxFAR: null, maxHeightFt: 200, allowedUses: null }
+    expect(resolveZoningLimits(withValues, 'denver').maxHeightFt).toBe(200)
+    const withFar: Zoning = { districtCode: 'D-C', maxFAR: 10.0, maxHeightFt: null, allowedUses: null }
+    expect(resolveZoningLimits(withFar, 'denver').maxFAR).toBe(10.0)
+  })
+
+  it('other cities keep their table fallback', () => {
+    // rule 20: this must not pass by Denver having broken the mechanism for
+    // everyone. Chicago genuinely relies on it — providers/chicago.ts leaves
+    // maxHeightFt null and §17-3-0408-A's flat 38 ft for Dash 1/1.5 arrives
+    // here.
+    expect(resolveZoningLimits(z('B1-1'), 'chicago').maxHeightFt).toBe(38)
+    expect(resolveZoningLimits(z('RM-5'), 'chicago').maxFAR).not.toBeNull()
   })
 })

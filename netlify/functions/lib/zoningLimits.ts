@@ -4,7 +4,6 @@
 // FAR and allowed uses. Unknowns return null -> feasibility INDETERMINATE.
 import type { Use } from '../../../src/types/analysis'
 import { resolveChicago } from './zoning/chicago'
-import { resolveDenver } from './zoning/denver'
 import { resolveNyc } from './zoning/nyc'
 import { resolveSeattle } from './zoning/seattle'
 
@@ -88,7 +87,28 @@ function cityTableLimits(
     case 'chicago':
       return resolveChicago(districtCode)
     case 'denver':
-      return resolveDenver(districtCode)
+      // ⚠️ DELIBERATELY RESOLVES NOTHING. providers/denver.ts already consults
+      // this exact table for FAR, height, storeys, farUnconstrained and
+      // planGoverned, and it does so with the `formerChapter59` flag derived
+      // from fields only it can see (ZONE_USE_FORM, ZONE_DESCRIPTION). Calling
+      // the resolver AGAIN here — with no flag, because a district code alone
+      // cannot establish the fact — re-derived heights from what are district
+      // CLASS numbers, and this fallback then published them over the
+      // provider's correct refusal.
+      //
+      // Measured live 2026-08-17 through getParcelInfo + computeEnvelope:
+      //   R-2      provider null → envelope published  24 ft /  2 storeys
+      //   B-3      provider null → envelope published  36 ft /  3 storeys
+      //   C-MU-20  provider null → envelope published 240 ft / 21 storeys
+      // with `farUnconstrained: true` alongside — the claim that no FAR applies
+      // to districts this repo elsewhere records as ones that DID impose it.
+      //
+      // This is the same defect the parser-domain sweep was fixed for, at a
+      // SECOND call site: the fix went to the instrument while the production
+      // path kept the bug. A guard that lives in an argument is only as good as
+      // the callers who pass it, so the durable fix is to have one caller
+      // (rule 14 — make the bad state unreachable rather than documenting it).
+      return { far: null, heightFt: null }
     case 'nyc':
       // NYC: provider farByUse (MapPLUTO) wins for FAR; this only fills the
       // height left null by PLUTO, and only for contextual districts (ZR 23-662).

@@ -5815,3 +5815,52 @@ Denver now resolves 141 of 184 live codes. Of the remaining 43: nine CMP campus
 districts declared out of scope, twenty-four former Chapter 59 still deliberately
 uncurated, ten others. The sweep total moved 741 → 729, and this is the first
 movement tonight that a code change produced.
+
+### The guard was fixed in the instrument and left broken in production
+
+Denver's former Chapter 59 district codes carry a CLASS number, not a storey
+count: `R-2` is the second business class, `B-3` the third, `C-MU-20` the
+twentieth. Reading those trailing numbers as storeys and multiplying was the
+defect that produced this session's earlier sweep correction, and it was fixed
+there — `resolveDenver` refuses them when handed `{ formerChapter59: true }`, and
+`providers/denver.ts` derives that flag from `ZONE_USE_FORM` and
+`ZONE_DESCRIPTION`, fields only the provider can see.
+
+`resolveZoningLimits` called the same resolver a **second time**, with the
+district code alone and therefore no flag, as a fallback for anything the
+provider left null. Measured live through `getParcelInfo` + `computeEnvelope` on
+real parcels:
+
+| district | provider | published envelope |
+|---|---|---|
+| R-2 | withheld | 24 ft / 2 storeys |
+| B-3 | withheld | 36 ft / 3 storeys |
+| C-MU-20 | withheld | **240 ft / 21 storeys** |
+
+with `farUnconstrained: true` alongside — asserting no FAR applies to districts
+this repo elsewhere records as ones that DID impose it. C-MU-20 also shows the
+round-trip compounding: 20 class → 240 ft at 12 ft/storey → 21 storeys at 11.
+
+**Every component was correct.** The provider refuses correctly and its tests
+prove it. The resolver refuses correctly when told. The curated figures are right.
+The defect existed only in a second caller that could not know what the first one
+knew, and `maxHeightFt: null` arriving at that caller is the NORMAL case for most
+Denver districts — so nothing looked wrong. That is rule 5 one layer down: null
+meant "known to be unobtainable" and was read as "nothing known yet."
+
+Three things worth keeping from how it was found. It was **not** found by looking
+for it: the search was for the Denver FAR-dropped-in-the-caller shape in other
+cities, and this turned up while reading the file that would have answered that
+question. The cross-city audit itself came back clean — five providers hardcode
+`maxFAR: null` and their Limits types carry no FAR field at all, and Chicago's
+hardcoded `maxHeightFt: null` is by design, since §17-3-0408-A's flat 38 ft
+arrives through this very fallback. And the fix is structural rather than
+another argument: Denver's entry now resolves nothing, so the city has **one**
+caller of its table instead of two.
+
+**A guard that lives in an argument is only as strong as the callers who pass
+it.** The sweep and production were two callers of one resolver; the sweep was
+audited and corrected, and the audit stopped at the instrument. When a fix
+consists of passing a flag, the question is not "did I pass it here" but "who
+else calls this, and can they know what to pass?" — and where the answer is no,
+the fix is to remove the caller, not to document the requirement.
