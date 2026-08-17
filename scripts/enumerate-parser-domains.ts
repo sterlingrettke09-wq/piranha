@@ -102,6 +102,13 @@ const TARGETS: Target[] = [
   {
     city: 'atlanta', what: 'zone class → height/FAR',
     url: 'https://gis.atlantaga.gov/dpcd/rest/services/LandUsePlanning/LandUsePlanning/MapServer/0', field: 'ZONECLASS',
+    // zoning/atlanta.ts records this gap by family and by ACREAGE — "SPI 6,566
+    // ac · HC-20 884 ac · NC 298 ac · Poncey-Highland 184 ac · LD 38 ac" — and
+    // states why: "The SPI chapters were deliberately NOT curated here rather
+    // than curated quickly", because each publishes a per-subarea grid that runs
+    // together when flattened, the shape that produced DC's MU column off-by-one.
+    // A documented refusal to curate is not a parse surprise.
+    scopedTo: 'SPI / HC-20 / NC / Poncey-Highland / LD deliberately uncurated — see zoning/atlanta.ts',
     handled: (v) => { if (isPlannedDevelopment('atlanta', v)) return true; const r = resolveAtlanta(v); return r.heightFt != null || r.heightUnconstrained === true },
   },
   {
@@ -113,7 +120,21 @@ const TARGETS: Target[] = [
   {
     city: 'charlotte', what: 'zone description → height',
     url: 'https://gis.charlottenc.gov/arcgis/rest/services/PLN/Zoning/MapServer/0', field: 'ZoneDes',
-    handled: (v) => { const r = resolveCharlotte(v); return r.residentialFt != null || r.nonresidentialFt != null || r.heightUnconstrained === true },
+    // `basis: 'site-plan'` IS AN ANSWER. Charlotte's (CD)/SPA/EX districts are
+    // conditional or legacy: UDO Sec. 1.4.C leaves them governed by the
+    // ordinances in force when approved plus their approved conditional-zoning
+    // site plan, and the provider already emits that sentence. Counting them as
+    // unhandled reported 114 of 218 — the Dallas shape, where a whole family is
+    // out of scope by design rather than broken.
+    handled: (v) => {
+      const r = resolveCharlotte(v)
+      return (
+        r.basis === 'site-plan' ||
+        r.residentialFt != null ||
+        r.nonresidentialFt != null ||
+        r.heightUnconstrained === true
+      )
+    },
   },
   {
     city: 'columbus', what: 'classification → height/FAR',
