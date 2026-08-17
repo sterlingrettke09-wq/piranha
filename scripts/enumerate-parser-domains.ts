@@ -223,7 +223,13 @@ const TARGETS: Target[] = [
   },
   {
     city: 'sanjose', what: 'free-text HEIGHTLIMIT',
-    url: 'https://geo.sanjoseca.gov/server/rest/services/PLN/PLN_Zoning_Height_Limit/MapServer/0',
+    // ⚠️ CORRECTED 2026-08-17. This pointed at PLN_Zoning_Height_Limit/MapServer/0,
+    // which now returns 404 "Service not found" — and the sweep reported San Jose
+    // UNREACHABLE for it. The PROVIDER never read that service: it reads
+    // ${PLN}/84 "Specific Height Restriction", which is live. So the failure was
+    // this file's stale declaration, not the city. Verified end-to-end: a live
+    // downtown parcel returns districtCode DC and the layer answers at that point.
+    url: 'https://geo.sanjoseca.gov/server/rest/services/PLN/PLN_Geocortex_Public_PRD/MapServer/84',
     field: 'HEIGHTLIMIT',
     handled: (v) => parseSanJoseHeightFt(v) != null,
   },
