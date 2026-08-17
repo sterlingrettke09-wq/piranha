@@ -43,7 +43,28 @@ const CONDITIONAL = /\bif\b|\botherwise\b|\bvaries\b|\bbased on\b|\bdetermined b
  *
  *  `district area` and `excluding streets` stay rejected and are NOT the same
  *  thing: RMX-1/RMX-2 measure across a whole district, which cannot be applied
- *  to a single parcel. `lot coverage` stays rejected — footprint, not floor area. */
+ *  to a single parcel. `lot coverage` stays rejected — footprint, not floor area.
+ *
+ *  ⚠️ CONFIRMED AT THE PRIMARY SOURCE 2026-08-17, which this module had never
+ *  read — every figure here came from the city's derived ZoningCodeCharacteristics
+ *  table. Philadelphia Code Title 14 via American Legal, current through
+ *  May 25 2026 with amendments through June 23 2026, § 14-701(2) Table 14-701-2:
+ *
+ *    Maximum Floor Area (% of lot area, except as otherwise provided)
+ *    RM-1  RM-2  RM-3  RM-4  RMX-1                              RMX-2                              RMX-3
+ *    No    70    150   350   150 of district area,              250 of district area,              500
+ *    Limit                   excluding streets                  excluding streets
+ *
+ *  The row header states the denominator ONCE, as lot area, "except as otherwise
+ *  provided" — and RMX-1/RMX-2 are the two cells that provide otherwise, in the
+ *  code's own words. That is the source distinguishing the two denominators
+ *  inside a single row, which is the same species of structural evidence as the
+ *  slot test rather than an inference from the phrasing.
+ *
+ *  The same table's "Min. District Area (acres)" row reads 2 for RMX-1 and 1 for
+ *  RMX-2 and is empty for every other column — so these really are minimum-area
+ *  districts whose ratio is measured across the district. Independent
+ *  confirmation of the rejection from a second row. */
 const OTHER_DENOMINATOR = /of\s+district\s+area|excluding\s+streets|lot\s+coverage/i
 
 function clean(raw: string | null | undefined): string | null {
@@ -146,7 +167,17 @@ export const PHL_NO_FAR_DISTRICTS: Record<string, string> = {
   'RSA-5': 'Table 14-701-1 — no FAR row; 75%/80% occupied area, 38 ft',
   'RTA-1': 'Table 14-701-1 — no FAR row; 50% occupied area, 38 ft',
   'RTA-2': 'Table 14-701-1 — no FAR row; 75%/80% occupied area, 35 ft / 3 stories',
-  'RM-1': 'Table 14-701-2 — "Max. Height / FAR" cell holds 38 ft only; density by occupied area + dwelling-unit density',
+  // ⚠️ CITATION CORRECTED 2026-08-17 — right conclusion, wrong reasoning. This
+  // read: the "Max. Height / FAR" cell holds 38 ft only, i.e. an absence INFERRED
+  // from a combined cell. Table 14-701-2 has no such combined cell. It carries a
+  // "Height / Maximum (ft.)" row where RM-1 reads 38 [5], and a separate "Floor
+  // Area Ratio / Maximum Floor Area (% of lot area, except as otherwise
+  // provided)" row where RM-1 reads **"No Limit"** in words.
+  //
+  // A STATED absence outranks an inferred one, and the distinction is not
+  // cosmetic: a reader sent looking for a combined cell would not find one and
+  // might doubt the entry. 3,768 polygons.
+  'RM-1': 'Table 14-701-2, Floor Area Ratio row: RM-1 reads "No Limit" — a stated absence, not an inferred one',
 }
 
 /** True when the code affirmatively imposes no FAR on this district. */

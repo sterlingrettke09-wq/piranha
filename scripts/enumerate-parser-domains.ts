@@ -486,11 +486,77 @@ export const TARGETS: Target[] = [
     city: 'philadelphia', what: 'free-text MaxFAR',
     url: `${ORG_PHL}/ZoningCodeCharacteristics/FeatureServer/0`, field: 'MaxFAR',
     handled: (v) => parseMaxFAR(v) != null,
+    // A FREE-TEXT TARGET ASKS A DIFFERENT QUESTION from a district table. Not
+    // "does the source have a slot" but "does the parser's input domain cover
+    // what the field emits" — the LA qualifier shape. All three rejections were
+    // checked against the ORDINANCE on 2026-08-17 (Philadelphia Code Title 14 via
+    // American Legal, current through May 25 2026, amendments through June 23
+    // 2026), which this module had never read: every figure in it came from the
+    // city's derived ZoningCodeCharacteristics table.
+    //
+    //   RMX-1 "150% of District Area (excluding streets)"   8 polygons
+    //   RMX-2 "250% of District Area (excluding streets)"  13 polygons
+    //     § 14-701(2) Table 14-701-2 states the denominator once, in the row
+    //     header — "Maximum Floor Area (% of lot area, except as otherwise
+    //     provided)" — and these two cells are the ones providing otherwise, in
+    //     the code's own words. The same table's "Min. District Area (acres)" row
+    //     reads 2 and 1 for exactly these two columns and is empty for every
+    //     other, so the ratio really is measured across a district. A per-parcel
+    //     FAR cannot be derived from it.
+    //   CMX-1  prose deferring to adjacent residential districts
+    //     Table 14-701-3's Floor Area cell for CMX-1 is a bracketed footnote
+    //     marker, not a figure — the characteristics table renders that footnote
+    //     as the paragraph seen here.
+    //
+    // ⚠️ NOT the same as the retracted "70% of Lot Area = lot coverage" reading
+    // (rule 15). That string IS a FAR and parses to 0.70; these say DISTRICT area.
+    partiallyScoped: {
+      label: 'RMX-1/RMX-2 state a district-wide denominator (Table 14-701-2, confirmed at the ordinance); CMX-1 is a footnote rendered as prose',
+      explains: (v) => /district\s+area|excluding\s+streets|CMX-1 Occupied Area/i.test(v),
+    },
   },
   {
     city: 'philadelphia', what: 'free-text MaxHeight',
     url: `${ORG_PHL}/ZoningCodeCharacteristics/FeatureServer/0`, field: 'MaxHeight',
     handled: (v) => parseMaxHeightFt(v) != null,
+    // Seven strings, each rejected because the FIGURE is conditional on a fact
+    // the field does not carry — not because the parser is narrow:
+    //   I-1/I-2/I-3  "60 if abutting a Residential or SP-PO district; otherwise
+    //                no limit;"  — depends on the NEIGHBOUR's zoning (rule 13)
+    //   I-P          the same sentence WITHOUT the trailing semicolon. Two
+    //                distinct values differing only in punctuation; both
+    //                rejected, so the artifact costs nothing but it does inflate
+    //                the distinct-value count by one.
+    //   SP-INS       "N/A or 20 ft. above max. height of adjacent residential
+    //                within 50 ft." — also the neighbour's zoning
+    //   SP-STA       "38 ft. to 150 ft. depending on use" — a range by use
+    //   SP-AIR       "Varies under the Airport Hazard Control Overlay"
+    //   CMX-1        prose, see the MaxFAR target above
+    //   SP-ENT       "300 feet or 30 stories", 2 polygons. ⚠️ THE ONLY ONE WHOSE
+    //                FIGURES ARE UNAMBIGUOUS — 300 and 30 are both stated, and
+    //                rule 12 says carry what the code states. It is still
+    //                refused, because the CONNECTIVE is not: "or" may mean the
+    //                lesser of the two, or the applicant's choice. Publishing
+    //                300 assumes the first reading, and 30 storeys at Miami's
+    //                14 ft would be 420 — so the assumption is not even reliably
+    //                conservative. § 14-406 (SP-ENT) would settle it and has not
+    //                been read.
+    partiallyScoped: {
+      label: 'every string states a figure conditional on a fact the field does not carry — abutting zoning, use, or an overlay; SP-ENT alone is figure-clear but connective-ambiguous',
+      // ⚠️ WRITTEN FIRST AS `() => true`, WHICH IS A TARGET-WIDE SCOPE WEARING
+      // THE PARTIAL MECHANISM'S NAME. Every one of the seven is enumerated above
+      // with its reason, so excusing them all happened to be correct today — and
+      // a NEW unparseable string would have been excused silently tomorrow, which
+      // is precisely the defect `partiallyScoped` exists to prevent. Matching the
+      // known forms instead means an eighth string counts until someone reads it.
+      explains: (v) =>
+        /^60 if abutting/i.test(v.trim()) ||
+        /^N\/A or 20 ft\. above/i.test(v.trim()) ||
+        /^300 feet or 30 stories$/i.test(v.trim()) ||
+        /^38 ft\. to 150 ft\. depending on use$/i.test(v.trim()) ||
+        /Airport Hazard Control Overlay/i.test(v) ||
+        /CMX-1 Occupied Area/i.test(v),
+    },
   },
   {
     city: 'sanjose', what: 'free-text HEIGHTLIMIT',

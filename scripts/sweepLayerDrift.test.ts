@@ -413,3 +413,39 @@ describe('a plan-governed answer counts, but only with its citation', () => {
     }
   })
 })
+
+describe('a partial scope must DISCRIMINATE, not just excuse', () => {
+  // ⚠️ `explains: () => true` IS A TARGET-WIDE SCOPE WEARING THE PARTIAL
+  // MECHANISM'S NAME, and it was written here — into Philadelphia's MaxHeight
+  // target, four commits after `partiallyScoped` was built to stop exactly that.
+  // Every one of its seven strings was enumerated with a reason, so excusing all
+  // of them was correct on the day; an eighth string arriving next month would
+  // have been excused silently, which is the whole defect.
+  //
+  // Neither existing guard caught it. The rule-20 check fails when a scope
+  // matches NOTHING; the pinned split fails when the numbers move. A predicate
+  // that matches everything trips neither, because both are counts and this is a
+  // property of the function.
+  //
+  // So the check is behavioural: feed the predicate a value that is not in the
+  // enumeration and require it to say no.
+  const scoped = TARGETS.filter((t) => t.partiallyScoped)
+
+  it('there are partial scopes to check (rule 20)', () => {
+    expect(scoped.length).toBeGreaterThanOrEqual(7)
+  })
+
+  it.each(scoped.map((t) => [`${t.city}/${t.field}`, t] as const))(
+    '%s rejects a value it has never seen',
+    (_label, t) => {
+      // Deliberately absurd, and deliberately several shapes — a predicate keyed
+      // on a substring might accept one of them by accident.
+      for (const alien of ['ZZ-NOT-A-REAL-DISTRICT-9', '999 zorbles per fortnight', '']) {
+        expect(
+          t.partiallyScoped!.explains(alien),
+          `${t.city} excuses "${alien}" — this scope cannot distinguish a declared code from a new one`,
+        ).toBe(false)
+      }
+    },
+  )
+})

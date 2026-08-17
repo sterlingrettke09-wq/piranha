@@ -6260,3 +6260,65 @@ rule 8 forbids. **A source with no table does not pass the slot test; it fails t
 test's precondition** — the test asks whether a slot exists and is unfilled, and a
 document with no slots at all cannot answer it either way. The honest output is a
 gap, which is what the module publishes.
+
+### Philadelphia: the first primary-source read this module has had
+
+`zoning/philadelphia.ts` had never read Title 14. Every figure in it came from the
+city's derived `ZoningCodeCharacteristics` table, which is the module's stated
+source. Reading the ordinance (American Legal, current through May 25 2026 with
+amendments through June 23 2026) confirmed two things and corrected a third.
+
+**The RMX rejection is right, and now for a structural reason rather than a
+reading of the phrasing.** § 14-701(2) Table 14-701-2 states the denominator ONCE,
+in the row header — "Maximum Floor Area (% of lot area, except as otherwise
+provided)" — and RMX-1 and RMX-2 are the two cells providing otherwise, in the
+code's own words: "150 of district area, excluding streets" and "250 of district
+area, excluding streets". The source distinguishes the two denominators inside a
+single row, which is the same species of evidence as the slot test. Independent
+confirmation from a second row: "Min. District Area (acres)" reads 2 for RMX-1 and
+1 for RMX-2 and is empty in every other column, so these really are minimum-area
+districts whose ratio is measured across the district. 8 and 13 polygons.
+
+**The ten Table 14-701-1 slot-test citations hold.** All four dimensional tables
+were checked for a Floor Area row: 14-701-1 has NONE, while 14-701-2, -3 and -4
+each have one. The row is present exactly where the instrument applies, which is
+what makes 14-701-1's absence evidence rather than a reader's failure to find.
+
+**RM-1's citation was wrong while its conclusion was right — 3,768 polygons.** The
+module read: the "Max. Height / FAR" cell holds 38 ft only, an absence INFERRED
+from a combined cell. There is no combined cell. Table 14-701-2 has a separate
+"Height / Maximum (ft.)" row where RM-1 reads 38, and a separate Floor Area row
+where RM-1 reads **"No Limit"** in words. A stated absence outranks an inferred
+one, and the difference is not cosmetic: a reader sent looking for a combined cell
+would not find one and might doubt a correct entry.
+
+Worth noting what the derived table loses. RM-1's `MaxFAR` in
+`ZoningCodeCharacteristics` is **null** where the ordinance says "No Limit" — the
+city's own derived artifact renders an established absence as a missing value.
+That is rule 5 at the data layer, and it is invisible to anyone reading only the
+table. It cost nothing here because the module already carried RM-1 in its
+no-FAR list, but the general lesson is that a derived table cannot distinguish
+"the code says no limit" from "nobody filled this in".
+
+Ten strings declared, Philadelphia closes to 0 gaps. Total 829 → 819.
+
+### `explains: () => true` is a target-wide scope wearing the partial mechanism's name
+
+Declaring Philadelphia's seven height strings, the predicate was written as
+`() => true`. All seven are enumerated with reasons, so excusing all of them was
+correct on the day — and an eighth string arriving next month would have been
+excused silently. That is precisely the defect `partiallyScoped` was built to
+prevent, reintroduced four commits later, by the author who built it. Second
+instance of this exact reflex tonight; the first was Austin's `!/^SF/` predicate.
+
+**Neither existing guard caught it.** The rule-20 check fails when a scope matches
+NOTHING. The pinned split fails when the numbers move. A predicate matching
+EVERYTHING trips neither, because both are assertions about counts and this is a
+property of the function.
+
+The new check is behavioural rather than numeric: every partial scope is fed
+values that are not in its enumeration and must reject them. Verified by
+restoring the catch-all and watching it go red. The lesson generalises past this
+file — **a guard on the output of a function cannot see a fault in its domain**,
+so where the thing being declared is a rule rather than a value, the check has to
+exercise the rule.
