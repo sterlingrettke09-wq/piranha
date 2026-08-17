@@ -4,6 +4,9 @@ import { resolve, join } from 'node:path'
 import { ZONE_SOURCES } from './zoneRegistry'
 import { TARGETS } from './enumerate-parser-domains'
 import { readEnumeration } from './enumerate-zones'
+import { resolveSeattle } from '../netlify/functions/lib/zoning/seattle'
+import { resolveChicago } from '../netlify/functions/lib/zoning/chicago'
+import { resolveNyc } from '../netlify/functions/lib/zoning/nyc'
 
 // EVERY LAYER THE SWEEP READS MUST BE ONE A PROVIDER ACTUALLY READS.
 //
@@ -214,5 +217,58 @@ describe('a partial scope subtracts only what it names', () => {
     for (const c of ['I-A', 'I-B', 'OS-A']) {
       expect(denver.handled(c), `${c} resolves a value but is counted as a gap`).toBe(true)
     }
+  })
+})
+
+describe('PRODUCTION passes the arguments its resolvers need', () => {
+  // ⚠️ THE AUDIT ABOVE CHECKED THE SWEEP AND STOPPED THERE. `resolveZoningLimits`
+  // is a second caller of the same per-city resolvers, and it has only a district
+  // code to pass. For Denver that was a live defect: the resolver refuses former
+  // Chapter 59 codes only when handed `formerChapter59`, a fact derived from
+  // layer fields this caller cannot see, so it re-derived heights from district
+  // CLASS numbers and published them over the provider's refusal — C-MU-20 at
+  // 240 ft on a live parcel. Fixed structurally: Denver's entry now resolves
+  // nothing, leaving one caller of that table.
+  //
+  // Of the three cities that still use the fallback, only Seattle's resolver
+  // takes an optional argument, so only Seattle can have the same shape.
+
+  it('Seattle: omitting `center` never yields a HIGHER figure', () => {
+    // MEASURED, not argued (rule 1). Omitting the centre was previously called
+    // "the safe direction" on reasoning alone; across all 285 live codes it
+    // produces 24 value differences and NOT ONE of them is higher than the
+    // centre-specific answer. That is what makes the omission acceptable, and if
+    // a future tier makes it false this goes red rather than quietly
+    // overstating.
+    const codes = readEnumeration('seattle')!.codes
+    expect(codes.length).toBeGreaterThan(200)
+    let differences = 0
+    for (const c of codes) {
+      const bare = resolveSeattle(c)
+      for (const center of ['inside', 'outside'] as const) {
+        const withCenter = resolveSeattle(c, center)
+        for (const k of ['far', 'heightFt'] as const) {
+          if (bare[k] === withCenter[k]) continue
+          differences++
+          const over = bare[k] != null && (withCenter[k] == null || (bare[k] as number) > (withCenter[k] as number))
+          expect(over, `${c}.${k}: omitting center gives ${bare[k]}, ${center} gives ${withCenter[k]}`).toBe(false)
+        }
+      }
+    }
+    // rule 20: pinned so the loop cannot pass by comparing nothing.
+    expect(differences, 'the center argument stopped mattering — verify before relaxing').toBe(24)
+  })
+
+  it('Chicago and NYC resolvers take the district code and nothing else', () => {
+    // Their signatures are single-argument, so the fallback cannot omit a guard.
+    // Asserted rather than assumed: adding a second parameter to either would
+    // silently recreate the Denver shape at this caller.
+    expect(resolveChicago.length).toBe(1)
+    expect(resolveNyc.length).toBe(1)
+  })
+
+  it('and zoningLimits resolves nothing for denver', () => {
+    const src = readFileSync(join(ROOT, 'netlify/functions/lib/zoningLimits.ts'), 'utf8')
+    expect(src, 'zoningLimits must not import the Denver resolver').not.toMatch(/from '\.\/zoning\/denver'/)
   })
 })
