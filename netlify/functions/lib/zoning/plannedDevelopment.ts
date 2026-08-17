@@ -147,10 +147,24 @@ const RULES: Readonly<Record<string, PlannedDevelopmentRule>> = Object.freeze({
   // on top of figures that still bind. Here the district figure does not bind
   // at all once a D limitation exists.
   la: {
-    // Anchored to the height-district token so it cannot catch a stray D:
-    // "-1D", "-2D", "-3D", "-4D" only, optionally followed by another suffix.
-    match: (c) => /-[1-4]D(?=$|-)/.test(norm(c)),
-    alwaysMatch: ['C2-2D', 'C2-2D-CPIO', 'R3-1D', '[Q]C4-2D-O', 'C4-3D-SN'],
+    // Anchored to the height-district token so it cannot catch a stray D.
+    //
+    // ⚠️ WIDENED 2026-08-17, found by the enumeration sweep. The first version
+    // was `-[1-4]D`, requiring the D immediately after the height-district
+    // digit — which misses the RESTRICTIVE districts, where LA writes the D
+    // after the qualifier: "1VL"+D, "1L"+D, "1XL"+D, "1SS"+D. Measured against
+    // the live layer: 71 of 2,128 distinct ZONE_CMPLT values are 1VLD/1LD/
+    // 1XLD/1SSD, and every one was falling through to a GAP instead of
+    // reporting that its limit is in the ordinance that imposed the D.
+    //
+    // The optional group cannot loosen the match: a D is still required, so
+    // "C2-1VL", "R1-1XL", "C4-1L" and "R3-1SS" — all in neverMatch — stay out.
+    match: (c) => /-[1-4](VL|L|XL|SS)?D(?=$|-)/.test(norm(c)),
+    alwaysMatch: [
+      'C2-2D', 'C2-2D-CPIO', 'R3-1D', '[Q]C4-2D-O', 'C4-3D-SN',
+      // The restrictive-district forms, taken from the live enumeration.
+      '(Q)C2-1VLD', '(Q)C2-1LD', '(Q)C1-1VLD-RIO', '(Q)A1-1VLD', '(Q)C1.5-1VLD',
+    ],
     neverMatch: [
       'C2-2', 'C2-1', 'C4-2', 'R3-1', 'R1-1', 'R1-1-CUGU', 'RS-1', 'RA-1', 'M1-1',
       // The restrictive height-district variants end in letters too and must
