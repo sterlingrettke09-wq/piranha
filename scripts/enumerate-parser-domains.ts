@@ -190,7 +190,7 @@ const TARGETS: Target[] = [
   {
     city: 'denver', what: 'zone string → FAR/height/stories',
     url: 'https://denvergov.org/maps/data/Zoning/MapServer/1', field: 'ZONE_DISTRICT',
-    handled: (v) => resolveDenver(v).heightFt != null,
+    handled: (v) => isPlannedDevelopment('denver', v) || resolveDenver(v).heightFt != null,
   },
   {
     city: 'miami', what: 'transect code → height/stories',

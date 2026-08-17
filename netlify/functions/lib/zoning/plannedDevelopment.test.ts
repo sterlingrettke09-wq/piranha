@@ -9,9 +9,9 @@ import { CITIES } from '../../../../src/config/cities'
 
 describe('inventory (rule 20)', () => {
   it('pins the cities with an established rule', () => {
-    expect(PD_CITIES.length).toBe(9)
+    expect(PD_CITIES.length).toBe(10)
     expect([...PD_CITIES].sort()).toEqual(
-      ['atlanta', 'austin', 'chicago', 'columbus', 'dallas', 'la', 'lasvegas', 'nashville', 'sanjose'].sort(),
+      ['atlanta', 'austin', 'chicago', 'columbus', 'dallas', 'denver', 'la', 'lasvegas', 'nashville', 'sanjose'].sort(),
     )
   })
 
@@ -71,7 +71,7 @@ describe('cities without an established rule', () => {
   // An absence is only an answer once someone has looked (rule 23). A city with
   // no rule must report false, and those parcels keep reading as ordinary gaps
   // rather than being quietly reclassified.
-  it.each(['nyc', 'boston', 'philadelphia', 'seattle', 'denver', 'sf', 'dc', 'miami', 'minneapolis'])(
+  it.each(['nyc', 'boston', 'philadelphia', 'seattle', 'sf', 'dc', 'miami', 'minneapolis'])(
     '%s returns false rather than guessing',
     (city) => {
       expect(plannedDevelopmentRule(city)).toBeNull()

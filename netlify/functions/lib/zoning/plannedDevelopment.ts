@@ -176,6 +176,32 @@ const RULES: Readonly<Record<string, PlannedDevelopmentRule>> = Object.freeze({
       'LAMC § 12.32: a "D" Development Limitation is adopted on a property or neighbourhood to impose further restrictions on the height, floor area and setbacks of a building, and appears after the height district designation. It reduces the floor-area ratio the height district would otherwise permit — e.g. a C2 lot in Height District 2 from 6:1 to 3:1 — so the binding figure is in that ordinance rather than in § 12.21.1.',
   },
 
+  // Denver — PUD and PUD-G. DZC § 9.6.1.C.1 requires every PUD District Plan to
+  // include "Building form standards, including building height, siting, and
+  // design element standards formatted similarly to the Primary Building Form
+  // Standards found in Articles 3 through 7" — so the height a PUD parcel is
+  // held to is in its own plan, not in any district table.
+  //
+  // Read from Article 9 of the CURRENT code: "DENVER ZONING CODE, June 25, 2010
+  // | Republished February 25, 2025", the republication carrying the 2024 text
+  // amendment bundle. Two earlier documents were rejected on vintage before this
+  // one — a redline amendment, and the original 2010 Article 9 with no
+  // republication line (CLAUDE.md rule 7: a cited-but-stale figure is worse than
+  // an uncited one, because the citation stops the next reader re-checking).
+  //
+  // ⚠️ P-1 IS THE NEAR-MISS. Denver publishes exactly three P-prefixed codes —
+  // P-1, PUD, PUD-G — and P-1 is an ordinary parking district with its own
+  // published standards. Anchoring on `^PUD` keeps it out; it is in neverMatch
+  // for that reason.
+  denver: {
+    match: (c) => /^PUD(\b|-)/.test(norm(c)),
+    alwaysMatch: ['PUD', 'PUD-G'],
+    neverMatch: ['P-1', 'C-MX-5', 'G-MU-3', 'U-SU-A', 'S-MX-2A', 'D-C', 'CMP-H', 'R-2-A', 'B-8-A', 'OS-A'],
+    governedBy: 'the approved PUD District Plan for this site',
+    citation:
+      'Denver Zoning Code § 9.6.1.C.1 (Required PUD District Plan Elements): "all PUD District Plans shall include or address the following elements… c. Building form standards, including building height, siting, and design element standards formatted similarly to the Primary Building Form Standards found in Articles 3 through 7." Article 9, June 25 2010 | Republished February 25 2025.',
+  },
+
   // Nashville — SP, the Specific Plan district. Named differently, same shape.
   nashville: {
     match: (c) => /^SP\b|^SP-/.test(norm(c)),
