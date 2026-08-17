@@ -323,11 +323,20 @@ both ends reported success:
 | `String.replace(anchor, block)` | `$$` in a replacement string escapes to one `$`, so two currency figures published as bare numbers |
 | unquoted shell expansion under zsh | no word-splitting, so a probe returned a plausible zero for every city |
 | `wc -l` on a CSV | counted newlines embedded in a 1,000-char field, inflating the row count |
+| a 37 MB PDF fetch | stopped at 30 MB with **HTTP 200**, and `pdftotext` blamed a corrupt xref |
 
 None was detectable from the sending side. The slice logged four successful
 agents; `replace` returned a well-formed string; the shell command exited 0;
 `wc -l` returned a number in the right units. **The destination is the only place
 the corruption exists**, so that is the only place worth checking.
+
+The PDF case adds a mechanism worth naming separately: the transport reported
+success, the payload was SHORT, and the downstream tool's error pointed at the
+wrong cause — "Invalid XRef entry" reads as a bad source document, not an
+incomplete transfer. Two more attempts at a different URL would have been the
+natural next move. **Check the byte count against `Content-Length`, not the exit
+code**; the size mismatch is the only signal that distinguishes a truncated
+download from a broken file.
 
 `$&`, `` $` `` and `$'` in a `String.replace` replacement are the same hazard and
 equally silent — prefer index splicing, or `replace(a, () => b)` where the

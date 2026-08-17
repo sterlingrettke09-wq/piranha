@@ -210,7 +210,27 @@ export function resolveDenver(
   // Trailing numeric stories token (e.g. G-MU-3, C-MX-5, U-RH-2.5). A parseable
   // stories suffix identifies a post-2010 form-based district: height-governed,
   // no FAR (DZC Arts. 3–9).
-  const m = z.match(/-(\d+(?:\.\d+)?)$/)
+  //
+  // ⚠️ THE OPTIONAL TRAILING LETTER IS LOAD-BEARING. This was anchored to
+  // end-of-string, so `S-MX-2` resolved and `S-MX-2A` did not — 23 of Denver's
+  // 184 live codes are special-purpose variants (S-MX-2A, E-MX-2X, S-CC-5X,
+  // M-RX-5A…) and every one fell through to unresolved.
+  //
+  // DZC Article 2 § 2.3.1.2.B gives the naming convention: the third number is
+  // "Maximum Building Height in stories", and an "OCCASIONAL LAST NUMBER OR
+  // LETTER" is "an indicator of special regulations… x = Special provisions
+  // tailored to that zone district. A = Special provisions, especially design
+  // standards or allowed building forms".
+  //
+  // NOT TAKEN ON THAT INFERENCE. Article 3's own tables were read, because
+  // "allowed building forms" could plausibly move height and 23 plausible wrong
+  // heights is the expensive direction:
+  //     S-MX-2x  2 st / 30'     S-MX-2   2 st / 30'     S-MX-2A   2 st / 30'
+  //     S-MX-3A  3 st / 45'     S-MX-5A  5 st / 70'     S-MX-8A   8 st / 110'
+  //     S-MX-12A 12 st / 150'
+  // The suffixed rows carry the SAME stories and feet as the base at every
+  // tier. (Feet are still not claimed here — see the note below.)
+  const m = z.match(/-(\d+(?:\.\d+)?)[A-Z]?$/)
   if (m) {
     const n = Number(m[1])
     // Stories are code-stated; feet are NOT — this branch cannot know which

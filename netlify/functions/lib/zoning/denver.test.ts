@@ -143,3 +143,50 @@ describe('DENVER_LIMITS static table', () => {
     }
   })
 })
+
+describe('special-purpose suffix variants resolve to the base tier', () => {
+  // DZC Article 2 § 2.3.1.2.B: the third number is "Maximum Building Height in
+  // stories"; a trailing letter is "an indicator of special regulations —
+  // x = Special provisions tailored to that zone district. A = Special
+  // provisions, especially design standards or allowed building forms".
+  //
+  // ⚠️ VERIFIED AGAINST ARTICLE 3's TABLES, not inferred from that sentence.
+  // "Allowed building forms" could plausibly move height, and 23 plausible wrong
+  // heights is the expensive direction. The suffixed rows carry the SAME stories
+  // and feet as the base at every tier.
+
+  it.each([
+    ['S-MX-2A', 2], ['S-MX-3A', 3], ['S-MX-5A', 5], ['S-MX-8A', 8], ['S-MX-12A', 12],
+    ['E-MX-2A', 2], ['E-MX-3A', 3], ['M-RX-5A', 5],
+    ['E-MX-2X', 2], ['E-MS-2X', 2], ['U-MX-2X', 2], ['U-MS-2X', 2],
+    ['E-CC-3X', 3], ['S-CC-3X', 3], ['S-CC-5X', 5],
+  ])('%s resolves to %i stories', (code, stories) => {
+    expect(resolveDenver(code).stories).toBe(stories)
+  })
+
+  it('a suffixed code matches its unsuffixed base exactly', () => {
+    // Article 3, HEIGHT rows: S-MX-2x 2 st/30', S-MX-2 2 st/30', S-MX-2A 2 st/30'.
+    for (const [suffixed, base] of [['S-MX-2A', 'S-MX-2'], ['S-MX-5A', 'S-MX-5'], ['E-MX-3A', 'E-MX-3']]) {
+      expect(resolveDenver(suffixed).stories, `${suffixed} vs ${base}`).toBe(resolveDenver(base).stories)
+    }
+  })
+
+  it('does NOT invent a height for a former Chapter 59 letter code', () => {
+    // THE OVER-MATCH GUARD. `R-2-A`, `B-8-A`, `R-3-X` end in a letter too, but
+    // their trailing segment carries no digits, so the widened pattern cannot
+    // reach them. Chapter 59 numbers are CLASS codes, never story counts —
+    // reading one as a height is the defect this module already carries a
+    // warning about.
+    for (const legacy of ['R-2-A', 'R-2-B', 'B-8-A', 'B-8-G', 'R-3-X', 'R-4-X', 'R-X', 'OS-A']) {
+      // `?? null` because an unresolved DistrictLimits omits `stories`
+      // entirely — undefined and null both mean 'no story count', and the
+      // assertion is about the absence, not which flavour of empty it is.
+      expect(resolveDenver(legacy).stories ?? null, legacy).toBeNull()
+    }
+  })
+
+  it('still refuses a bare unrecognised code', () => {
+    expect(resolveDenver('CMP-H').stories ?? null).toBeNull()
+    expect(resolveDenver('D-C').stories ?? null).toBeNull()
+  })
+})

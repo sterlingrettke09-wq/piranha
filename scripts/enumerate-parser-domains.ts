@@ -278,10 +278,12 @@ async function distinctValues(url: string, field: string): Promise<string[] | nu
 
 ;(async () => {
   let surprises = 0
+  let unreachable = 0
   for (const t of TARGETS) {
     const vals = await distinctValues(t.url, t.field)
     if (vals == null) {
       console.log(`\n${t.city}/${t.field}  — LAYER UNREACHABLE (not a pass; re-run)`)
+      unreachable++
       continue
     }
     const unhandled = vals.filter((v) => !t.handled(v))
@@ -294,7 +296,25 @@ async function distinctValues(url: string, field: string): Promise<string[] | nu
     }
   }
   console.log(`\n${'='.repeat(70)}`)
-  console.log(`UNSCOPED unhandled values (genuine surprises): ${surprises}`)
+  // ⚠️ A TOTAL OVER A PARTIAL SET READS AS COMPLETE. Charlotte hit a transient
+  // UNREACHABLE on one run and was silently dropped, so the total printed 715
+  // instead of 751 — and the next run, with Charlotte back and Denver 16 codes
+  // BETTER, printed 735. The number appeared to go UP after a fix. Nothing was
+  // wrong except that a partial total wore the same format as a full one.
+  //
+  // Refuse to print it rather than footnote it: a figure that is only sometimes
+  // the whole thing is worse than no figure, because the reader cannot tell
+  // which run they are looking at (rule 20 — an empty or partial result and a
+  // clean one must not render the same).
+  if (unreachable > 0) {
+    console.log(
+      `NO TOTAL — ${unreachable} target(s) were unreachable this run, so any sum would be over a PARTIAL set.`,
+    )
+    console.log(`Re-probe those in isolation (rule 10) and re-run; transients have twice looked like findings.`)
+    process.exitCode = 1
+  } else {
+    console.log(`UNSCOPED unhandled values (genuine surprises): ${surprises}`)
+  }
   console.log('Scoped parsers are EXPECTED to reject out-of-scope values — those')
   console.log('are gaps the null inventory already discloses, not parse failures.')
 })()
