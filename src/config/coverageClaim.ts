@@ -184,10 +184,27 @@ export function citiesSentence(claims: CityClaim[] = CITY_CLAIMS): string {
  */
 export function rangeSentence(claims: CityClaim[] = CITY_CLAIMS): string {
   const f = coverageFacts(claims)
+  const measured = claims.filter((c) => c.sample.kind === 'measured')
   if (f.minPct === null || f.maxPct === null)
     return 'No city has been sampled yet, so there is no measured rate to report.'
+  // ⚠️ THE EXTREMES CARRY THEIR DENOMINATORS, because the extremes are exactly
+  // where a small sample distorts. `minPct`/`maxPct` are min/max over per-city
+  // SHARES, so a city sampled at n=25 weighs the same as one at n=97 — and a
+  // degraded run does exactly that: NYC came back attempted 32 / developable 25
+  // after grid cells timed out, showing a perfect 100%, and every artifact guard
+  // passed because they only catch attempted===0 and developable===0.
+  //
+  // Same shape as the sweep printing a total over a partial set: an aggregate
+  // computed on a varying denominator is uninterpretable unless the denominator
+  // is stated. Stating it costs four characters and removes the ambiguity.
+  const lo = measured.find((c) => c.sample.kind === 'measured' && pct(c.sample.share) === f.minPct)
+  const hi = measured.find((c) => c.sample.kind === 'measured' && pct(c.sample.share) === f.maxPct)
+  const n = (c: CityClaim | undefined) =>
+    c && c.sample.kind === 'measured' ? ` (n=${c.sample.n})` : ''
   const spread =
-    f.minPct === f.maxPct ? `${f.minPct}% in every city` : `${f.minPct}% to ${f.maxPct}%`
+    f.minPct === f.maxPct
+      ? `${f.minPct}% in every city`
+      : `${f.minPct}%${n(lo)} to ${f.maxPct}%${n(hi)}`
   // Voice: the number and what it is over. No sentence about how we obtained it
   // — that belongs on /math, one click away, not in front of someone trying to
   // find out what they can build.

@@ -356,3 +356,41 @@ function counts0(): EnvelopeSampleCounts {
     sampledOn: '2026-08-11',
   }
 }
+
+describe('the range sentence states its denominators', () => {
+  // ⚠️ AN AGGREGATE ON A VARYING DENOMINATOR IS UNINTERPRETABLE WITHOUT IT.
+  // minPct/maxPct are min/max over per-city SHARES, so a city sampled at n=25
+  // weighs the same as one at n=97. NYC's degraded run did exactly that —
+  // attempted 32, developable 25, a perfect 100% — and every artifact guard
+  // passed, because they only catch attempted===0 and developable===0.
+  //
+  // Same shape as the parser sweep printing a total over a partial set: there,
+  // Denver improved by 16 codes and the total went UP, because a transiently
+  // unreachable city had been dropped from an earlier run's sum.
+
+  it('names n beside both extremes', () => {
+    const s = rangeSentence()
+    expect(s).toMatch(/\d+% \(n=\d+\) to \d+% \(n=\d+\)/)
+  })
+
+  it('a small-sample extreme is visible as small', () => {
+    // The case that motivated this. A city resolving 100% on a handful of
+    // parcels must not present the same as one resolving 100% on a hundred.
+    const mk = (slug: string, resolved: number, n: number): CityClaim => ({
+      slug, name: slug, stateLabel: 'XX',
+      sample: {
+        kind: 'measured', n, resolved, plannedDevelopment: 0, basisUnavailable: 0,
+        gap: n - resolved, indeterminate: n - resolved, share: resolved / n,
+        counts: {
+          attempted: n, outOfCity: 0, noParcel: 0, upstreamError: 0, exception: 0, noSpec: 0,
+          nonDevelopable: 0, developable: n, resolved, unconstrained: 0, plannedDevelopment: 0,
+          basisUnavailable: 0, gap: n - resolved, indeterminate: n - resolved, sampledOn: '2026-08-17',
+        },
+      },
+      verdict: 'answering', rateLabel: '', detail: '',
+    })
+    const s = rangeSentence([mk('alpha', 5, 5), mk('beta', 40, 80)])
+    expect(s, 'the 100% extreme must carry its tiny n').toContain('(n=5)')
+    expect(s).toContain('(n=80)')
+  })
+})
