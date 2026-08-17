@@ -6142,3 +6142,56 @@ counting. The pattern generalises past this file — a mechanism that reports
 honestly still lets an author supply a dishonest input, so the check has to bind
 the input too, which is why the excused set is now the module's own documented
 absences rather than a shape I chose.
+
+### Sweep-finished is "read or declared with a citation", and the first two cities were already there
+
+Milwaukee and Nashville were the two smallest remaining, and neither needed a
+source read. Both had already been read; the sweep simply could not see the
+declarations, because `handled` tests for a resolved figure and a documented
+refusal produces none.
+
+**Milwaukee closed completely — 0 gaps.**
+
+- `X`, 11 parcels, is not a district. The layer's own `ZoningType` reads "A
+  problem has been identified with the zoning assigned to this parcel. Check with
+  the City of Milwaukee's Department of City Development", under `ZoningCategory`
+  TEMPORARY. `zoning/milwaukee.ts` carries it as `dataDefect` and
+  `providers/milwaukee.ts` quotes that sentence to the user. **A data defect the
+  city declares about its own data is an answer**, and a better one than a
+  number — counting it as a parse gap says we failed to read something the city
+  has said is unreadable.
+- `PK`, 488 parcels, was read and deliberately left unresolved, with the sharpest
+  statement of the slot test's limit in this repo: s. 295-903-3 gives the Parks
+  district setbacks only, with no dimensional table. The DC and Philadelphia
+  absences worked because a TABLE existed whose row structure lacked the row — the
+  document's own structure was the evidence. Here there is no table whose
+  emptiness could be evidence, so "the code sets no height in a park" would be a
+  reader's failure to find something (rule 8). A gap, honestly rendered.
+
+**Nashville: three of four declared, one held open.** DTC (23 polygons) and MHP
+(1) carry the code's own words about where their standards live — § 17.12.020
+Tables B and C read "See Chapter 17.37" and "See Ch. 17.16". Satellite City (5) is
+not a district at all: those are the independent municipalities inside Davidson
+County, which Metro's Title 17 does not govern, and the provider already refuses
+them as a jurisdiction question. DTC additionally needs two fields jointly — its
+17 sub-districts arrive in the layer's NAME field — which is rule 13 and the
+per-subarea grid shape that produced DC's MU-column off-by-one.
+
+**`I` is held open, and the reason is worth recording.** Its single polygon is 138
+acres, zoned by Ordinance BL2000-303 in 2000, and `I` is not among the current
+table's industrial districts (IWD, IR, IG) — which points at a legacy code. But
+the module also quotes "Table C Note 1: the I district becomes 1.50 inside the
+UZO", which would make it current. Both cannot be true.
+
+The source could not settle it: `nashville-tn.elaws.us`, the publisher this module
+cites, timed out on two isolated probes at 45s and 90s; Municode answers HTTP 200
+with a 6 kB JavaScript shell and no ordinance text; amlegal returns 403; and the
+browser pane was denied the host. **A host that will not answer is not evidence
+about a district.** Recording the unreachability and leaving `I` a gap is the only
+honest option — the alternative, reasoning from "it is not in the current table"
+to "it is legacy", is a conclusion from a reader not finding something, which is
+the same error the Milwaukee PK note refuses to make one paragraph above.
+
+Total 886 → 881. Both movements are counting corrections and both are falls, which
+is the direction to distrust — justified here only because every code removed was
+verified to carry a citation in the module already.

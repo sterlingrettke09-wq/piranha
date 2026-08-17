@@ -242,12 +242,72 @@ export const TARGETS: Target[] = [
   {
     city: 'milwaukee', what: 'zoning code → height/FAR',
     url: 'https://milwaukeemaps.milwaukee.gov/arcgis/rest/services/planning/zoning/MapServer/12', field: 'Zoning',
-    handled: (v) => { const r = resolveMilwaukee(v); return r.heightFt != null || r.heightUnconstrained === true || r.planGoverned === true },
+    // ⚠️ A DATA DEFECT THE CITY DECLARES IS AN ANSWER, and a better one than
+    // most. `X` is not a district: the layer's own ZoningType reads "A problem
+    // has been identified with the zoning assigned to this parcel. Check with
+    // the City of Milwaukee's Department of City Development for details", under
+    // ZoningCategory TEMPORARY, across 11 parcels. The module carries it as
+    // `dataDefect` and providers/milwaukee.ts quotes that sentence to the user.
+    // Counting it as a parse gap says we failed to read something the city has
+    // told us is unreadable.
+    handled: (v) => {
+      const r = resolveMilwaukee(v)
+      return (
+        r.heightFt != null ||
+        r.heightUnconstrained === true ||
+        r.planGoverned === true ||
+        r.dataDefect === true
+      )
+    },
+    // PK is the other half, and it is READ rather than missed. s. 295-903-3
+    // gives the Parks district principal-building standards consisting of
+    // setbacks only — no dimensional table, no height paragraph — and
+    // zoning/milwaukee.ts states why that is NOT a slot test: the DC and
+    // Philadelphia absences worked because a table existed whose row structure
+    // lacked the row, so the document's own structure was the evidence. Here
+    // there is no table whose emptiness could be evidence, and "the code sets no
+    // height in a park" would be a conclusion from a reader not finding
+    // something (rule 8). 488 parcels, deliberately unresolved.
+    partiallyScoped: {
+      label: 'PK (Parks) is read and deliberately unresolved — s. 295-903-3 states setbacks only, with no dimensional table to slot-test',
+      explains: (v) => v.trim().toUpperCase() === 'PK',
+    },
   },
   {
     city: 'nashville', what: 'zone description → FAR',
     url: 'https://maps.nashville.gov/arcgis/rest/services/Zoning_Landuse/Zoning/MapServer/14', field: 'ZONE_DESC',
     handled: (v) => { if (isPlannedDevelopment('nashville', v)) return true; const r = resolveNashville(v); return r.maxFAR != null || r.farUnconstrained === true },
+    // THREE OF THE FOUR ARE READ AND CITED IN zoning/nashville.ts, each carrying
+    // the code's own words about where its standards live:
+    //   DTC  23 polygons · § 17.12.020 Tables B and C both read "See Chapter
+    //        17.37" — the Downtown Code, a separate form-based chapter not read.
+    //        Its 17 sub-districts (CORE, SOBRO, EAST BANK, GULCH NORTH/SOUTH …)
+    //        arrive in the layer's NAME field, so DTC also needs two fields
+    //        jointly (rule 13) — the wide-per-subarea grid that produced DC's
+    //        MU-column off-by-one, and the reason Atlanta's SPI stayed uncurated.
+    //   MHP   1 polygon  · Table 17.12.020B: "See Ch. 17.16".
+    //   Satellite City  5 polygons · not a district at all. These are the
+    //        independent municipalities inside Davidson County, which Metro's
+    //        Title 17 does not govern; providers/nashville.ts refuses them
+    //        upstream as a jurisdiction question.
+    //
+    // ⚠️ `I` IS NOT DECLARED AND STAYS A GAP. Its single polygon is 138 acres,
+    // zoned by Ordinance BL2000-303 in 2000, and `I` is not among the current
+    // table's industrial districts (IWD, IR, IG). That points at a legacy code —
+    // the Denver former-Chapter-59 shape — but zoning/nashville.ts also quotes
+    // "Table C Note 1: the I district becomes 1.50 inside the UZO", which would
+    // make it current. Those cannot both be right and the source settles it.
+    //
+    // THE SOURCE WAS UNREACHABLE ON 2026-08-17, and that is recorded rather than
+    // resolved by inference: nashville-tn.elaws.us (the publisher this module
+    // cites) timed out on two isolated probes at 45s and 90s; Municode answers
+    // 200 with a 6 kB JavaScript shell and no ordinance text; amlegal returns
+    // 403. A host that will not answer is not evidence about a district (rule 8),
+    // so `I` counts as a gap until § 17.12.020 Table C can be read again.
+    partiallyScoped: {
+      label: 'DTC and MHP are read and point elsewhere in the code (§ 17.37, Ch. 17.16); Satellite City is another jurisdiction',
+      explains: (v) => ['DTC', 'MHP', 'SATELLITE CITY'].includes(v.trim().toUpperCase()),
+    },
   },
   {
     city: 'phoenix', what: 'zoning code → height',

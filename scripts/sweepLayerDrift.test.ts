@@ -303,6 +303,12 @@ describe('every declared scope accounts for what it excuses', () => {
     ['austin', 6, 8],
     ['sandiego', 16, 139],
     ['denver', 9, 34],
+    // First city closed completely: both codes read, both cited, one surfaced to
+    // the user with the City's own sentence about its own data.
+    ['milwaukee', 1, 0],
+    // DTC/MHP point elsewhere in the code with citations; Satellite City is a
+    // different jurisdiction. `I` stays a gap — the publisher was unreachable.
+    ['nashville', 3, 1],
   ] as const)('%s: partial scope names %i and leaves %i counted', (city, named, gaps) => {
     const t = byCity(city)
     expect(t.scopedTo, `${city} must not carry a target-wide scope`).toBeUndefined()
