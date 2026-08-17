@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY } from './denver'
+import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY, DENVER_PROTECTED_DISTRICTS, isDenverProtectedDistrict, denverProtectedDistrictRule } from './denver'
 import { isPlannedDevelopment } from './plannedDevelopment'
 
 // Denver is a FORM-BASED code: the common districts are height-governed (stories
@@ -380,5 +380,50 @@ describe('Open Space (Article 9 Division 9.3) is current, not former Chapter 59'
     // flag — which is the sweep bug this test also pins.
     expect(resolveDenver('OS-1', { formerChapter59: true }).stories ?? null).toBeNull()
     expect(resolveDenver('OS-1', { formerChapter59: true }).heightFt).toBeNull()
+  })
+})
+
+describe('Protected Districts — enumerated from two codes', () => {
+  // DZC Article 13 § 13.3 lists 31 districts by name, then item 32 defers to
+  // Former Chapter 59 § 59-96(a), which names seven more: "RS-4, R-X, R-0, R-1,
+  // R-2, R-2-A or R-2-B (hereinafter called the protected districts)".
+  // The set therefore spans both codes — 38 in total.
+
+  it('carries all 38, from both sources', () => {
+    expect(DENVER_PROTECTED_DISTRICTS.size).toBe(38)
+    // One from each half, so a partial edit cannot pass.
+    expect(isDenverProtectedDistrict('U-SU-A')).toBe(true)   // Art 13 item 18
+    expect(isDenverProtectedDistrict('R-2-A')).toBe(true)    // FC59 § 59-96(a)
+  })
+
+  it('is ENUMERATED, so a near-miss is not protected', () => {
+    // ⚠️ The reason this is a list and not a regex. U-SU-A is protected;
+    // U-SU-A1 is not. E-SU-Dx is; E-MX-2x is not. A pattern over "SU" or "RH"
+    // would be a guess wearing a citation — rule 27's shape exactly.
+    expect(isDenverProtectedDistrict('U-SU-A1')).toBe(false)
+    expect(isDenverProtectedDistrict('E-MX-2X')).toBe(false)
+    expect(isDenverProtectedDistrict('S-MX-3')).toBe(false)
+    expect(isDenverProtectedDistrict('R-3')).toBe(false)
+  })
+
+  it('the reduction rule carries the right distance per district', () => {
+    // Article 9: CMP-H/H2 are 125 feet; CMP-EI/EI2 and the NWC family 175.
+    expect(denverProtectedDistrictRule('CMP-H')).toMatchObject({ withinFt: 125, maxFt: 75 })
+    expect(denverProtectedDistrictRule('CMP-H2')).toMatchObject({ withinFt: 125, maxFt: 75 })
+    expect(denverProtectedDistrictRule('CMP-EI')).toMatchObject({ withinFt: 175, maxFt: 75 })
+    expect(denverProtectedDistrictRule('I-A')).toMatchObject({ withinFt: 175, maxFt: 75 })
+  })
+
+  it('CMP-NWC-R has NO reduction, and must not be given one', () => {
+    // Its table reads 40' generally AND 40' within the buffer. Handing it a 75'
+    // cap would RAISE a district the code holds at 40 — the flattering
+    // direction, produced by generalising the family.
+    expect(denverProtectedDistrictRule('CMP-NWC-R')).toBeNull()
+  })
+
+  it('districts with no such rule return null rather than a default', () => {
+    for (const c of ['S-MX-3', 'U-SU-A', 'MHC', 'OS-B', 'D-C']) {
+      expect(denverProtectedDistrictRule(c), c).toBeNull()
+    }
   })
 })

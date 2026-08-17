@@ -125,6 +125,65 @@ function storiesOnlyFeetUnverified(stories: number): DistrictLimits {
   }
 }
 
+// ── PROTECTED DISTRICTS, and the distance that reduces a height ──────────────
+//
+// Several Denver height tables publish a general maximum and a LOWER cap within
+// a stated distance of a "Protected District" — CMP-H 200' but 75' within 125';
+// CMP-EI/EI2 and the CMP-NWC family 150' but 75' within 175'; I-A/I-B no general
+// maximum at all but 75' within 175'. Without knowing that distance the answer
+// is not determinable, which is why those districts refuse rather than publish
+// their unconditioned figure.
+//
+// The term is DEFINED, and by enumeration rather than description — DZC Article
+// 13 § 13.3 (June 25, 2010 | Republished February 25, 2025): "Protected
+// District: Any one of the following zone districts:" followed by 31 named
+// districts, then item 32 — "Any zone district retained from Former Chapter 59,
+// mapped on the Official Map, and considered a 'protected Zone District' under
+// Section 59-96 of the Former Chapter 59."
+//
+// So the set spans BOTH codes. Former Chapter 59 § 59-96(a) supplies the rest:
+// "Within one hundred seventy-five (175) feet of any zone lot designated as
+// RS-4, R-X, R-0, R-1, R-2, R-2-A or R-2-B (hereinafter called the protected
+// districts)…". Read from Supplement 103, May 2010.
+//
+// ⚠️ ENUMERATED, NOT PATTERNED. Every entry is listed because the code lists
+// them: U-SU-A is protected and U-SU-A1 is not; E-SU-Dx is and E-MX-2x is not.
+// A regex over "SU" or "RH" would be a guess wearing a citation, and this list
+// is exactly the kind that a prefix rule gets wrong (rule 27).
+export const DENVER_PROTECTED_DISTRICTS: ReadonlySet<string> = new Set([
+  // DZC Article 13 § 13.3, items 1-31.
+  'S-SU-A', 'S-SU-D', 'S-SU-F', 'S-SU-FX', 'S-SU-FA', 'S-SU-I', 'S-SU-IX', 'S-RH-2.5',
+  'E-SU-A', 'E-SU-B', 'E-SU-D', 'E-SU-DX', 'E-SU-G', 'E-TU-B', 'E-TU-C', 'E-RH-2.5', 'E-MU-2.5',
+  'U-SU-A', 'U-SU-A2', 'U-SU-B', 'U-SU-B2', 'U-SU-C', 'U-SU-C2', 'U-SU-E', 'U-SU-H',
+  'U-TU-B', 'U-TU-B2', 'U-TU-C', 'U-RH-2.5', 'U-RH-3A', 'G-RH-3',
+  // Item 32, resolved through Former Chapter 59 § 59-96(a).
+  'RS-4', 'R-X', 'R-0', 'R-1', 'R-2', 'R-2-A', 'R-2-B',
+])
+
+/** TRUE when a zone code is a Protected District, case- and space-insensitively. */
+export function isDenverProtectedDistrict(code: string | null | undefined): boolean {
+  if (!code) return false
+  return DENVER_PROTECTED_DISTRICTS.has(String(code).trim().toUpperCase())
+}
+
+/** How far a Protected District reduces this district's height, and to what.
+ *  Null where the district carries no such rule. Figures read from Article 9. */
+export function denverProtectedDistrictRule(
+  code: string | null | undefined,
+): { withinFt: number; maxFt: number; source: string } | null {
+  const z = String(code ?? '').trim().toUpperCase()
+  const SRC13 = 'DZC Article 13 § 13.3 (Protected District) with Former Chapter 59 § 59-96(a); distance and cap from Article 9'
+  if (z === 'CMP-H' || z === 'CMP-H2') return { withinFt: 125, maxFt: 75, source: `${SRC13}, Division 9.2 § 9.2.3` }
+  if (/^CMP-(EI2?|NWC(-[CGFR])?)$/.test(z)) {
+    // CMP-NWC-R is 40' generally AND 40' near a Protected District — no
+    // reduction, so it is excluded rather than given a 75' cap it never has.
+    if (z === 'CMP-NWC-R') return null
+    return { withinFt: 175, maxFt: 75, source: `${SRC13}, Division 9.2 §§ 9.2.4, 9.2.6` }
+  }
+  if (z === 'I-A' || z === 'I-B') return { withinFt: 175, maxFt: 75, source: `${SRC13}, Division 9.1` }
+  return null
+}
+
 // ── CAMPUS (CMP) — READ, AND DELIBERATELY NOT RESOLVED ───────────────────────
 //
 // The hypothesis was that CMP districts are plan-governed, which would make them

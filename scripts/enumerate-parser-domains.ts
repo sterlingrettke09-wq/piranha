@@ -52,6 +52,7 @@ import { austinSfLimits } from '../netlify/functions/lib/providers/austin'
 import { laLimits } from '../netlify/functions/lib/providers/la'
 import { isPlannedDevelopment } from '../netlify/functions/lib/zoning/plannedDevelopment'
 import { isFormerChapter59 } from '../netlify/functions/lib/providers/denver'
+import { readEnumeration } from './enumerate-zones'
 import { dcLimits } from '../netlify/functions/lib/providers/dc'
 
 interface Target {
@@ -70,7 +71,7 @@ interface Target {
 
 const ORG_PHL = 'https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services'
 
-const TARGETS: Target[] = [
+export const TARGETS: Target[] = [
   // ── THE THIRTEEN CITIES THAT WERE NEVER IN THIS SWEEP (added 2026-08-17) ──
   //
   // Layers and fields taken from scripts/zoneRegistry.ts, every one CONFIRMED
@@ -272,6 +273,32 @@ const TARGETS: Target[] = [
   },
 ]
 
+/**
+ * The unhandled values for a city, using THE SWEEP'S OWN predicate over the
+ * committed enumeration.
+ *
+ * ⚠️ EXISTS BECAUSE HAND-WRITTEN PROBES KEPT BEING WRONG. Three times in one
+ * session a throwaway probe reimplemented a target's `handled` test and got it
+ * wrong in a way that produced a confident answer: one read `.far` off a
+ * resolver returning `.maxFAR` — the exact defect this script is in the ledger
+ * for — and one fed Land_Use_Code values to a function that takes built-form
+ * codes. Both were caught only by disbelieving a result that contradicted the
+ * sweep, which works only while there IS a sweep to contradict.
+ *
+ * So: call the entry point, never an approximation of it. If a question cannot
+ * be answered through this helper, that is a missing capability on the sweep
+ * rather than a reason to write a probe.
+ */
+export function unhandledFor(city: string): Array<{ field: string; codes: string[] }> {
+  const out: Array<{ field: string; codes: string[] }> = []
+  for (const t of TARGETS.filter((x) => x.city === city)) {
+    const e = readEnumeration(city)
+    if (!e || e.field !== t.field) continue
+    out.push({ field: t.field, codes: e.codes.filter((c) => !t.handled(c)) })
+  }
+  return out
+}
+
 async function distinctValues(url: string, field: string): Promise<string[] | null> {
   const qs = new URLSearchParams({
     where: '1=1', outFields: field, returnDistinctValues: 'true',
@@ -329,7 +356,13 @@ async function distinctValues(url: string, field: string): Promise<string[] | nu
     console.log(`Re-probe those in isolation (rule 10) and re-run; transients have twice looked like findings.`)
     process.exitCode = 1
   } else {
-    console.log(`UNSCOPED unhandled values (genuine surprises): ${surprises}`)
+    // ⚠️ NOT A DEFECT COUNT. It counts values the sweep cannot presently EXPLAIN,
+  // which is a different quantity. This total has moved 2,294 → 1,009 → 1,010 →
+  // 717 → 734 → 753 and NOT ONE movement was a code change — every one corrected
+  // how the sweep counts. Until a parser fix moves it, the number measures the
+  // instrument's correctness rather than the system's (rule 26).
+  console.log(`UNEXPLAINED values (NOT a defect count — rule 26): ${surprises}`)
+  console.log(`Reconcile the largest contributor against a known-good before acting on it.`)
   }
   console.log('Scoped parsers are EXPECTED to reject out-of-scope values — those')
   console.log('are gaps the null inventory already discloses, not parse failures.')
