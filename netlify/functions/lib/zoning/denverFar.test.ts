@@ -18,7 +18,10 @@ import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY } from './denver'
 //               "Feet (max) 20'" with no stories row. Its siting table has no
 //               ZONE LOT section at all, which is the slot test's positive
 //               evidence for farUnconstrained.
-const ARTICLE_9_EXCEPTIONS = new Set(['I-A', 'I-B', 'MHC'])
+//   OS-A      — § 9.3.3.1 gives City Council and the Manager of Parks final
+//               authority over building form, so the district publishes no
+//               height, no storeys and no FAR to be unconstrained about.
+const ARTICLE_9_EXCEPTIONS = new Set(['I-A', 'I-B', 'MHC', 'OS-A'])
 
 describe('Denver — form-based districts are UNCONSTRAINED (known absence)', () => {
   it('marks every curated district unconstrained', () => {
@@ -35,6 +38,10 @@ describe('Denver — form-based districts are UNCONSTRAINED (known absence)', ()
     expect(DENVER_LIMITS['I-A'].far).toBe(2.0)
     expect(DENVER_LIMITS['I-B'].far).toBe(2.0)
     expect(DENVER_LIMITS['MHC'].farUnconstrained).toBe(true)
+    expect(DENVER_LIMITS['OS-A'].planGoverned).toBe(true)
+    // OS-B / OS-C are ordinary form-based entries and are NOT exceptions.
+    expect(DENVER_LIMITS['OS-B'].farUnconstrained).toBe(true)
+    expect(DENVER_LIMITS['OS-C'].stories).toBe(3)
   })
 
   it('marks a parseable stories suffix unconstrained', () => {

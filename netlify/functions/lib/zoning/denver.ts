@@ -69,6 +69,12 @@ export interface DistrictLimits {
    *  both states collapse and `defaultSpec` falls back to an unsourced FAR-1.0
    *  assumption on every Denver parcel. See docs/plans/2026-08-04-far-unconstrained-sweep.md */
   farUnconstrained?: boolean
+  /** TRUE where the district's building form standards are set by an authority
+   *  rather than published in a table — OS-A, where DZC § 9.3.3.1 gives City
+   *  Council and the Manager of Parks and Recreation that role. Same standing as
+   *  Phoenix's `planGoverned`: a limit EXISTS and is not in any district table,
+   *  which is an answer rather than a failure to look. */
+  planGoverned?: boolean
 }
 
 // The form-based districts below are height/setback/bulk-plane governed with no
@@ -157,6 +163,32 @@ function storiesOnlyFeetUnverified(stories: number): DistrictLimits {
 // code. That is the work, and the table above means the reading is already done.
 
 export const DENVER_LIMITS: Record<string, DistrictLimits> = {
+  // ── Article 9, Division 9.3 OPEN SPACE (OS-A, OS-B, OS-C) ──────────────────
+  //
+  // ⚠️ THESE ARE CURRENT DZC DISTRICTS, NOT FORMER CHAPTER 59. They have ZERO
+  // occurrences in the Former Chapter 59 document (Supplement 103, May 2010) —
+  // the legacy open-space district is OS-1. They were triaged into the legacy
+  // family on the strength of the "OS-" prefix, and reading the former code is
+  // what disproved it.
+  //
+  // OS-B / OS-C — Division 9.3, GENERAL building form:
+  //     Stories (max) 3 · Feet, pitched or Low-Slope Roof (max) 40'
+  // Unconditional: no Protected District row, no incentive row.
+  'OS-B': { far: null, heightFt: 40, stories: 3, heightBasis: 'code-stated', farUnconstrained: true },
+  'OS-C': { far: null, heightFt: 40, stories: 3, heightBasis: 'code-stated', farUnconstrained: true },
+
+  // OS-A — no published form standards at all. § 9.3.3.1: "In the OS-A zone
+  // district, the City Council shall have final approval authority over the form
+  // of certain building according to D.R.M.C., Chapter 39 (Parks). For all other
+  // buildings or structures, the Manager of Parks and Recreation shall determine
+  // all applicable building form standards." Subsection B extends that to
+  // landscaping, parking and signage.
+  //
+  // So a limit EXISTS and is set by an authority rather than a table — the
+  // planned-development shape with a different decision-maker. `planGoverned`
+  // rather than a fabricated height.
+  'OS-A': { far: null, heightFt: null, planGoverned: true },
+
   // ── Article 9, Division 9.1 INDUSTRIAL (I-A, I-B) and Division 9.? MHC ──────
   //
   // Read from Article 9 of the current code (June 25, 2010 | Republished

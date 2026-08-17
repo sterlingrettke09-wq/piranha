@@ -144,7 +144,9 @@ describe('DENVER_LIMITS static table', () => {
     //
     // A scope-limited truth asserted universally is rule 15's shape, and it was
     // green until a district outside the scope was encoded.
-    const ARTICLE_9_EXCEPTIONS = new Set(['I-A', 'I-B', 'MHC'])
+    // OS-A joins them: § 9.3.3.1 leaves its form standards to City Council /
+    // the Manager of Parks, so it carries no height, no storeys and no FAR claim.
+    const ARTICLE_9_EXCEPTIONS = new Set(['I-A', 'I-B', 'MHC', 'OS-A'])
     let formBased = 0
     for (const [district, limits] of Object.entries(DENVER_LIMITS)) {
       if (ARTICLE_9_EXCEPTIONS.has(district)) continue
@@ -157,6 +159,7 @@ describe('DENVER_LIMITS static table', () => {
   })
 
   it('and the Article 9 exceptions are exactly what the code says', () => {
+    expect(DENVER_LIMITS['OS-A']).toEqual({ far: null, heightFt: null, planGoverned: true })
     expect(DENVER_LIMITS['I-A']).toEqual({ far: 2.0, heightFt: null })
     expect(DENVER_LIMITS['I-B']).toEqual({ far: 2.0, heightFt: null })
     expect(DENVER_LIMITS['MHC'].heightFt).toBe(20)
@@ -340,4 +343,42 @@ describe('Article 9 industrial and manufactured-home districts', () => {
   // The companion assertion — that these are not read as former Chapter 59
   // despite carrying the 999 sentinel — lives in providers/denver.test.ts,
   // where isFormerChapter59 is defined.
+})
+
+describe('Open Space (Article 9 Division 9.3) is current, not former Chapter 59', () => {
+  // ⚠️ TRIAGED WRONG ON THE PREFIX. OS-A/OS-B/OS-C were grouped with the legacy
+  // family because they start "OS-". Reading the Former Chapter 59 document
+  // (Supplement 103, May 2010) disproved it: they have ZERO occurrences there.
+  // The legacy open-space district is OS-1, which does appear.
+
+  it('OS-B and OS-C are 3 storeys / 40 feet, code-stated', () => {
+    // Division 9.3 GENERAL form: "Stories (max) 3 · Feet, pitched or Low-Slope
+    // Roof (max) 40'". No Protected District row, no incentive row.
+    for (const c of ['OS-B', 'OS-C']) {
+      expect(resolveDenver(c).stories, c).toBe(3)
+      expect(resolveDenver(c).heightFt, c).toBe(40)
+      expect(resolveDenver(c).heightBasis, c).toBe('code-stated')
+    }
+  })
+
+  it('OS-A publishes no form standards — an authority sets them', () => {
+    // § 9.3.3.1: "In the OS-A zone district, the City Council shall have final
+    // approval authority over the form of certain building according to
+    // D.R.M.C., Chapter 39 (Parks). For all other buildings or structures, the
+    // Manager of Parks and Recreation shall determine all applicable building
+    // form standards." A limit EXISTS and is not in a table — an answer.
+    const r = resolveDenver('OS-A')
+    expect(r.planGoverned).toBe(true)
+    expect(r.heightFt).toBeNull()
+    // And specifically NOT a fabricated height from the "A" suffix.
+    expect(r.stories ?? null).toBeNull()
+  })
+
+  it('OS-1 IS legacy and must not take a storey count from its class code', () => {
+    // The discriminator, and the trap: OS-1's trailing "1" is a class code. The
+    // stories parse reads it as one storey unless the caller passes the legacy
+    // flag — which is the sweep bug this test also pins.
+    expect(resolveDenver('OS-1', { formerChapter59: true }).stories ?? null).toBeNull()
+    expect(resolveDenver('OS-1', { formerChapter59: true }).heightFt).toBeNull()
+  })
 })

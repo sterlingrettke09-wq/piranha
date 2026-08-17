@@ -58,6 +58,8 @@ const EHA = 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/
 //   · Industrial I-A, I-B                                Article 9 Div 9.1
 //   · PUD       PUD, PUD-G                               Article 9 Div 9.6
 //   · MHC       Manufactured Home Community                Article 9
+//   · OpenSpace OS-A, OS-B, OS-C                        Article 9 Div 9.3
+//     (the LEGACY open-space district is OS-1, which IS former Chapter 59)
 //
 // 1,452 of 3,775 polygons (38%) carry 999. Reading all of them as former
 // Chapter 59 is an INTERPRETATION, it was recorded as a fix, and it is wrong —
@@ -71,7 +73,7 @@ const NO_BUILDING_FORM = '999'
 
 /** Current DZC families that also carry the 999 sentinel. Verified in Articles 8
  *  and 9 of the republished-2025 code, not inferred from the code's shape. */
-const CURRENT_NON_FORM_FAMILIES = /^(D-|DIA$|CMP-|PUD(\b|-)|I-A$|I-B$|MHC$)/
+const CURRENT_NON_FORM_FAMILIES = /^(D-|DIA$|CMP-|PUD(\b|-)|I-A$|I-B$|MHC$|OS-[ABC]$)/
 
 /**
  * ⚠️ THE HYPHEN RULE MISSES 31 OF THE 76 LEGACY DISTRICTS, and the miss is not
@@ -320,6 +322,13 @@ export async function getDenverParcelInfo(lat: number, lng: number): Promise<Par
       maxFAR: null,
       allowedUses: usesForZone(code),
       ...(denverFarUnconstrained(code, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM) ? { farUnconstrained: true } : {}),
+      // OS-A's form standards are set by City Council / the Manager of Parks
+      // (DZC § 9.3.3.1), not published in a table — an answer, not a gap.
+      ...(resolveDenver(code, {
+        formerChapter59: isFormerChapter59(code, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM),
+      }).planGoverned
+        ? { planGoverned: true }
+        : {}),
       ...(denverMaxStories(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM) != null
         ? { maxStories: denverMaxStories(code, zoning?.HEIGHT_STORIES, zoning?.ZONE_DESCRIPTION, zoning?.ZONE_USE_FORM) }
         : {}),
