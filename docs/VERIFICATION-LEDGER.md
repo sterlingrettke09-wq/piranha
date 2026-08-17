@@ -5916,3 +5916,45 @@ prints its split, and each of the six is pinned by BOTH numbers — what it name
 and what it leaves — so a predicate cannot widen and quietly resume excusing the
 remainder. A note in the `scopedTo` doc offering Austin as the model of a
 legitimate target-wide scope has been corrected; it was the counter-example.
+
+### Fixing the mechanism is not auditing its existing users
+
+Twice in one evening a fix landed where the defect was noticed rather than
+everywhere it lived, and the second time was in the correction to the first.
+
+`resolveZoningLimits` published fabricated Denver heights because it was a second
+caller of a resolver whose guard lives in an argument. The audit that had found
+that guard missing enumerated the SWEEP's call sites — its scope was itself a
+claim, and "I checked every caller" meant "every caller in the instrument."
+
+Then `partiallyScoped` was written because a coarse `scopedTo` had erased 46 real
+gaps. The mechanism was corrected and **the six declarations already using the
+broken mechanism were not re-examined.** Three of them were doing exactly what the
+note that motivated the fix had done, and the largest was excusing 139 of 155
+values under a sentence describing 16.
+
+The distinction worth holding: correcting a mechanism and auditing its existing
+users are two pieces of work, and finishing the first feels like finishing both.
+It reads as done because the thing that produced the defect can no longer produce
+it — while every artifact built with the old mechanism still carries it.
+
+### The total has been wrong in the reassuring direction more often than the alarming one
+
+The parser-domain total has moved 2,294 → 1,009 → 1,010 → 717 → 734 → 753 → 741 →
+729 → 883. Only one of those movements was a code change (741 → 729, the Article 8
+curation). The rest are corrections to how the sweep counts, and they divide
+cleanly by direction:
+
+- **Reductions were reconciliation.** Planned-development codes are answers, not
+  gaps (Dallas 1,031 → 31); Atlanta's SPI exclusion was documented; Charlotte's
+  site-plan basis was already a reason code. Each removed something that had been
+  miscounted as broken.
+- **Rises were things that had stopped being counted at all.** San Jose was being
+  skipped; nineteen Denver legacy codes were credited with storey counts the code
+  never states; three coarse scopes were excusing 154 values they never named.
+
+Four rises now, and every one of them honest. The pattern that matters is the
+asymmetry: a falling total looks like progress and needs the most scrutiny, while
+a rising one is nearly always the instrument admitting it had been generous. Rule
+26 says to report the composition and say whether the system changed or the
+counting did — and after nine movements, the counting has changed eight times.
