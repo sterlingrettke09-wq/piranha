@@ -132,11 +132,35 @@ describe('DENVER_LIMITS static table', () => {
   it('covers ≥20 common districts', () => {
     expect(Object.keys(DENVER_LIMITS).length).toBeGreaterThanOrEqual(20)
   })
-  it('every entry has a null FAR and a known height (height-governed depth)', () => {
-    for (const limits of Object.values(DENVER_LIMITS)) {
-      expect(limits.far).toBeNull()
-      expect(limits.heightFt).not.toBeNull()
+  it('the FORM-BASED entries are height-governed with no FAR', () => {
+    // ⚠️ NARROWED 2026-08-17. This asserted `far === null` and `heightFt !== null`
+    // for EVERY entry, under the heading "height-governed depth" — true of the
+    // Articles 3-7 context-and-form districts, and asserted of the whole table.
+    //
+    // Article 9 disproves the universal: the INDUSTRIAL siting table carries
+    // "Floor Area Ratio (FAR) (max) … I-A 2.0 · I-B 2.0", and their HEIGHT rows
+    // read "na" with a 75' cap only near a Protected District. So I-A/I-B are
+    // the exact inverse of the claim — a FAR and no usable height.
+    //
+    // A scope-limited truth asserted universally is rule 15's shape, and it was
+    // green until a district outside the scope was encoded.
+    const ARTICLE_9_EXCEPTIONS = new Set(['I-A', 'I-B', 'MHC'])
+    let formBased = 0
+    for (const [district, limits] of Object.entries(DENVER_LIMITS)) {
+      if (ARTICLE_9_EXCEPTIONS.has(district)) continue
+      formBased++
+      expect(limits.far, district).toBeNull()
+      expect(limits.heightFt, district).not.toBeNull()
     }
+    // Pinned so the exception set cannot quietly swallow the whole table.
+    expect(formBased).toBeGreaterThanOrEqual(20)
+  })
+
+  it('and the Article 9 exceptions are exactly what the code says', () => {
+    expect(DENVER_LIMITS['I-A']).toEqual({ far: 2.0, heightFt: null })
+    expect(DENVER_LIMITS['I-B']).toEqual({ far: 2.0, heightFt: null })
+    expect(DENVER_LIMITS['MHC'].heightFt).toBe(20)
+    expect(DENVER_LIMITS['MHC'].farUnconstrained).toBe(true)
   })
   it('table entries match the resolver exactly', () => {
     for (const [district, limits] of Object.entries(DENVER_LIMITS)) {
@@ -272,4 +296,48 @@ describe('Campus (CMP) is read but deliberately unresolved', () => {
     expect(isPlannedDevelopment('denver', 'CMP-H')).toBe(false)
     expect(isPlannedDevelopment('denver', 'CMP-NWC')).toBe(false)
   })
+})
+
+describe('Article 9 industrial and manufactured-home districts', () => {
+  // I-A / I-B carry a published FAR that was never encoded; MHC carries a single
+  // unconditional height. Both read from Article 9 of the republished-2025 code.
+
+  it('I-A and I-B publish FAR 2.0 from the ZONE LOT row', () => {
+    // "Floor Area Ratio (FAR) (max)  I-MX-3 na · I-MX-5 na · I-MX-8 na ·
+    //  I-MX-12 na · I-A 2.0 · I-B 2.0" — the I-MX columns are the slot filled
+    // with an explicit absence, which is what makes the 2.0 a figure and not a
+    // guess about a blank.
+    expect(resolveDenver('I-A').far).toBe(2.0)
+    expect(resolveDenver('I-B').far).toBe(2.0)
+  })
+
+  it('but I-A and I-B publish NO height, because it depends on a distance', () => {
+    // HEIGHT: Stories na, Feet na — no general maximum — then "Feet within 175'
+    // of a Protected District (max) 75'". Publishing "unlimited" would be wrong
+    // for any industrial parcel near one, and these resolved to nothing before,
+    // so it would be a NEW error rather than an inherited one.
+    expect(resolveDenver('I-A').heightFt).toBeNull()
+    expect(resolveDenver('I-B').heightFt).toBeNull()
+    // And specifically NOT claimed as an established absence of a height limit.
+    expect(resolveDenver('I-A').farUnconstrained ?? false).toBe(false)
+  })
+
+  it('MHC is 20 feet, code-stated', () => {
+    const r = resolveDenver('MHC')
+    expect(r.heightFt).toBe(20)
+    expect(r.heightBasis).toBe('code-stated')
+  })
+
+  it('MHC has no FAR — established by the SLOT TEST, not by a blank', () => {
+    // The industrial siting table carries a "ZONE LOT / Floor Area Ratio" row;
+    // the MHC siting table has no ZONE LOT section at all. The document's own
+    // structure is the evidence (rule 5), which is why this may be asserted as
+    // an absence rather than left unresolved.
+    expect(resolveDenver('MHC').farUnconstrained).toBe(true)
+    expect(resolveDenver('MHC').far).toBeNull()
+  })
+
+  // The companion assertion — that these are not read as former Chapter 59
+  // despite carrying the 999 sentinel — lives in providers/denver.test.ts,
+  // where isFormerChapter59 is defined.
 })

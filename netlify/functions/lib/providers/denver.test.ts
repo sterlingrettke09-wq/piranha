@@ -352,6 +352,17 @@ describe('the legacy SHAPE fallback misclassifies current DZC districts', () => 
     }
   })
 
+  it('the Article 9 districts encoded tonight are not legacy either', () => {
+    // I-A / I-B carry a published FAR 2.0 and MHC a 20' height, all from
+    // Article 9 — and all three carry ZONE_USE_FORM 999 on the live layer. If
+    // the sentinel were still read as "former Chapter 59" those entries would
+    // be suppressed the moment a use-form field went missing.
+    for (const c of ['I-A', 'I-B', 'MHC']) {
+      expect(isFormerChapter59(c, undefined, '999'), c).toBe(false)
+      expect(isFormerChapter59(c, undefined, undefined), c).toBe(false)
+    }
+  })
+
   it('a form-bearing district is never legacy', () => {
     // The other side of the sentinel: these carry a real building form.
     for (const [code, form] of [['S-MX-3', 'MX'], ['G-MU-3', 'MU'], ['U-SU-A', 'SU'], ['E-TU-B', 'TU']]) {

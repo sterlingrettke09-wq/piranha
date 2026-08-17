@@ -57,6 +57,7 @@ const EHA = 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/
 //   · Campus    CMP-H, CMP-H2, CMP-EI, CMP-EI2, CMP-NWC  Article 9 Div 9.2
 //   · Industrial I-A, I-B                                Article 9 Div 9.1
 //   · PUD       PUD, PUD-G                               Article 9 Div 9.6
+//   · MHC       Manufactured Home Community                Article 9
 //
 // 1,452 of 3,775 polygons (38%) carry 999. Reading all of them as former
 // Chapter 59 is an INTERPRETATION, it was recorded as a fix, and it is wrong —
@@ -70,7 +71,7 @@ const NO_BUILDING_FORM = '999'
 
 /** Current DZC families that also carry the 999 sentinel. Verified in Articles 8
  *  and 9 of the republished-2025 code, not inferred from the code's shape. */
-const CURRENT_NON_FORM_FAMILIES = /^(D-|DIA$|CMP-|PUD(\b|-)|I-A$|I-B$)/
+const CURRENT_NON_FORM_FAMILIES = /^(D-|DIA$|CMP-|PUD(\b|-)|I-A$|I-B$|MHC$)/
 
 /**
  * ⚠️ THE HYPHEN RULE MISSES 31 OF THE 76 LEGACY DISTRICTS, and the miss is not

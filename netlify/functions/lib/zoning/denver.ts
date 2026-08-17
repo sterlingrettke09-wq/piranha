@@ -157,6 +157,38 @@ function storiesOnlyFeetUnverified(stories: number): DistrictLimits {
 // code. That is the work, and the table above means the reading is already done.
 
 export const DENVER_LIMITS: Record<string, DistrictLimits> = {
+  // ── Article 9, Division 9.1 INDUSTRIAL (I-A, I-B) and Division 9.? MHC ──────
+  //
+  // Read from Article 9 of the current code (June 25, 2010 | Republished
+  // February 25, 2025), Content-Length verified against bytes received.
+  //
+  // I-A / I-B — SITING table, ZONE LOT row:
+  //     Floor Area Ratio (FAR) (max)   I-MX-3  I-MX-5  I-MX-8  I-MX-12  I-A  I-B
+  //                                      na      na      na      na     2.0  2.0
+  // An unconditional, published ratio. The I-MX columns read "na" in the SAME
+  // row, which is the slot filled with an explicit absence rather than a blank.
+  //
+  // ⚠️ HEIGHT IS DELIBERATELY NOT CARRIED FOR I-A / I-B. The HEIGHT table gives
+  // "na" for both Stories and Feet — no general maximum — but the next row is
+  // "Feet within 175' of a Protected District (max) = 75'". Publishing "no height
+  // limit" would be wrong for any industrial parcel near a protected district,
+  // and these resolve to nothing today, so it would be a NEW error rather than
+  // an inherited one. Same refusal as CMP above and as Seattle's LR3 without a
+  // resolved centre: the answer depends on a distance nobody has measured.
+  'I-A': { far: 2.0, heightFt: null },
+  'I-B': { far: 2.0, heightFt: null },
+
+  // MHC — Manufactured Home Community. The only primary building form allowed is
+  // the Manufactured Home, whose HEIGHT table is a single unconditional figure:
+  // "Feet (max) 20'". No stories row, no Protected District row.
+  //
+  // `farUnconstrained` by the SLOT TEST (CLAUDE.md rule 5), not by absence of a
+  // number: the INDUSTRIAL siting table carries a "ZONE LOT / Floor Area Ratio
+  // (FAR) (max)" row, and the MHC siting table has no ZONE LOT section at all.
+  // The document's own structure is positive evidence that no FAR applies here,
+  // rather than a reader failing to find one.
+  'MHC': { far: null, heightFt: 20, heightBasis: 'code-stated', farUnconstrained: true },
+
   // ── Articles 3-6 (Suburban S-, Urban Edge E-, Urban U-, General Urban G-) ──
   // Story counts are code-stated; printed "Feet (max)" NOT yet read. See
   // storiesOnlyFeetUnverified(). These heights are estimates, flagged as such.

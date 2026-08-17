@@ -7,14 +7,34 @@ import { resolveDenver, DENVER_LIMITS, DENVER_FT_PER_STORY } from './denver'
 // back to an unsourced FAR-1.0 assumption.
 // See docs/plans/2026-08-04-far-unconstrained-sweep.md
 
+// Article 9 districts encoded 2026-08-17 from tables that state neither a story
+// count nor an unconstrained FAR. They are declared here ONCE so each guard below
+// narrows for a stated reason rather than being loosened:
+//   I-A, I-B  — SITING/ZONE LOT row publishes "Floor Area Ratio (FAR) (max) 2.0",
+//               and the HEIGHT rows read "Stories na / Feet na" with a 75' cap
+//               only within 175' of a Protected District. A FAR and no usable
+//               height: the exact inverse of the form-based pattern.
+//   MHC       — the Manufactured Home form's HEIGHT table is one unconditional
+//               "Feet (max) 20'" with no stories row. Its siting table has no
+//               ZONE LOT section at all, which is the slot test's positive
+//               evidence for farUnconstrained.
+const ARTICLE_9_EXCEPTIONS = new Set(['I-A', 'I-B', 'MHC'])
+
 describe('Denver — form-based districts are UNCONSTRAINED (known absence)', () => {
   it('marks every curated district unconstrained', () => {
-    const codes = Object.keys(DENVER_LIMITS)
+    // NARROWED: I-A / I-B publish FAR 2.0, so "every curated district is
+    // unconstrained" is false of the table as a whole. It remains true — and is
+    // still the point — for the form-based districts.
+    const codes = Object.keys(DENVER_LIMITS).filter((c) => !ARTICLE_9_EXCEPTIONS.has(c))
     expect(codes.length).toBeGreaterThan(20)
     for (const code of codes) {
       expect(DENVER_LIMITS[code].farUnconstrained, code).toBe(true)
       expect(DENVER_LIMITS[code].far, code).toBeNull()
     }
+    // The exceptions, asserted rather than merely skipped.
+    expect(DENVER_LIMITS['I-A'].far).toBe(2.0)
+    expect(DENVER_LIMITS['I-B'].far).toBe(2.0)
+    expect(DENVER_LIMITS['MHC'].farUnconstrained).toBe(true)
   })
 
   it('marks a parseable stories suffix unconstrained', () => {
@@ -98,8 +118,20 @@ describe('Denver — stories are stated, not re-derived', () => {
   it('EVERY curated entry carries a story count', () => {
     // The regression that survived the first fix: pattern branches were patched
     // and the curated table was not, so exact-match codes kept drifting.
+    // ⚠️ NARROWED, NOT WEAKENED. This guard exists so a hand-written entry
+    // cannot silently DROP a story count the code states — the Denver
+    // story-count regression it was built for. The three Article 9 exceptions
+    // are not dropped counts: the code states no storeys for them at all
+    // ("Stories (max) na" for I-A/I-B; MHC's height table has no stories row).
+    // Asserting they carry one would demand a figure the DZC does not print.
     for (const [code, lim] of Object.entries(DENVER_LIMITS)) {
+      if (ARTICLE_9_EXCEPTIONS.has(code)) continue
       expect(lim.stories, code).toBeGreaterThan(0)
+    }
+    // And the exceptions must carry NO story count — so a later edit cannot
+    // quietly invent one for them either.
+    for (const code of ARTICLE_9_EXCEPTIONS) {
+      expect(DENVER_LIMITS[code].stories ?? null, code).toBeNull()
     }
   })
 
@@ -115,14 +147,27 @@ describe('Denver — stories are stated, not re-derived', () => {
   // that is actually true: every entry declares WHERE its feet came from, and
   // only the unverified ones may equal stories × 12.
   it('every curated entry declares its height basis', () => {
+    // Scoped to entries that HAVE a height. DistrictLimits documents
+    // `heightBasis` as "Absent only where heightFt is null", and I-A/I-B are
+    // exactly that case — the DZC prints "Feet (max) na" for them. The test was
+    // stricter than the contract it was checking.
     for (const [code, lim] of Object.entries(DENVER_LIMITS)) {
+      if (lim.heightFt == null) continue
       expect(['code-stated', 'derived-estimate'], code).toContain(lim.heightBasis)
+    }
+    // And an entry WITHOUT a height must not carry a basis either — a basis
+    // describes where a figure came from, so it cannot outlive the figure.
+    for (const [code, lim] of Object.entries(DENVER_LIMITS)) {
+      if (lim.heightFt == null) expect(lim.heightBasis, code).toBeUndefined()
     }
   })
 
   it('a code-stated height is NEVER stories × 12 — that is the defect signature', () => {
+    // Needs BOTH a code-stated height and a story count to compare. MHC has a
+    // code-stated 20' and no storeys (its height table prints no stories row),
+    // so it is out of this guard's scope rather than an exception to it.
     const coded = Object.entries(DENVER_LIMITS).filter(
-      ([, l]) => l.heightBasis === 'code-stated',
+      ([, l]) => l.heightBasis === 'code-stated' && l.stories != null,
     )
     expect(coded.length).toBeGreaterThanOrEqual(12) // all of Article 7
     for (const [code, lim] of coded) {
