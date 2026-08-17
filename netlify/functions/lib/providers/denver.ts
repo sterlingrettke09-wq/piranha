@@ -44,7 +44,33 @@ const EHA = 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/
  *  Former Chapter 59 district carries it and no DZC district does — measured
  *  2026-08-15 across all 184 distinct ZONE_DISTRICT values: 76 carry '999' and
  *  108 do not, and the split is exactly legacy vs DZC. */
-const LEGACY_USE_FORM = '999'
+// ⚠️ 999 IS "NO BUILDING FORM", NOT "FORMER CHAPTER 59". Measured against the
+// live layer 2026-08-17: ZONE_USE_FORM carries 12 distinct values, and eleven of
+// them are the BUILDING FORM abbreviations from DZC Article 2's "Dominant
+// Building Form" column — CC, SU, RO, RX, IMX, MHC, MS, MU, TU, MX, RH. Verified
+// directly: S-MX-3 → "MX", G-MU-3 → "MU", U-SU-A → "SU", E-TU-B → "TU".
+//
+// 999 is the sentinel for a district that has no such form, and that set is
+// WIDER than former Chapter 59. It also covers, each confirmed against the
+// current code (June 25 2010 | Republished February 25 2025):
+//   · Downtown  D-AS, D-C, D-CV, D-GT, D-LD, D-TD        Article 8
+//   · Campus    CMP-H, CMP-H2, CMP-EI, CMP-EI2, CMP-NWC  Article 9 Div 9.2
+//   · Industrial I-A, I-B                                Article 9 Div 9.1
+//   · PUD       PUD, PUD-G                               Article 9 Div 9.6
+//
+// 1,452 of 3,775 polygons (38%) carry 999. Reading all of them as former
+// Chapter 59 is an INTERPRETATION, it was recorded as a fix, and it is wrong —
+// rule 15's shape, where a well-documented reading is the hardest to overturn.
+//
+// The outcome does not change today, because none of those current families is
+// curated and both paths return unresolved. What changes is that a future
+// curation of Campus or Downtown would have been silently suppressed by a flag
+// asserting the district predates the 2010 code.
+const NO_BUILDING_FORM = '999'
+
+/** Current DZC families that also carry the 999 sentinel. Verified in Articles 8
+ *  and 9 of the republished-2025 code, not inferred from the code's shape. */
+const CURRENT_NON_FORM_FAMILIES = /^(D-|DIA$|CMP-|PUD(\b|-)|I-A$|I-B$)/
 
 /**
  * ⚠️ THE HYPHEN RULE MISSES 31 OF THE 76 LEGACY DISTRICTS, and the miss is not
@@ -61,11 +87,36 @@ const LEGACY_USE_FORM = '999'
  * The lesson is that a code's SHAPE is a proxy; the layer publishes the fact
  * itself in ZONE_USE_FORM, so read the fact.
  *
- * The shape test is kept as a fallback for a missing field — it is right about
- * the 45 districts it does catch — but the layer's own value wins.
+ * The shape test is kept as a fallback for a missing field, and the layer's own
+ * value wins whenever it is present.
+ *
+ * ⚠️ MEASURED 2026-08-17 against the live enumeration (184 distinct
+ * ZONE_DISTRICT values): the shape test flags 41 of them, and AT LEAST 14 ARE
+ * CURRENT DZC DISTRICTS, not former Chapter 59 —
+ *
+ *   CMP-EI · CMP-EI2 · CMP-H · CMP-H2 · CMP-NWC   Article 9, Division 9.2
+ *   D-AS · D-C · D-CV · D-GT · D-LD · D-TD        Article 8
+ *   I-A · I-B                                     Article 9, Division 9.1
+ *   PUD-G                                         Article 9, Division 9.6
+ *
+ * each verified in the current code (June 25, 2010 | Republished February 25,
+ * 2025). An earlier version of this comment claimed the fallback was right about
+ * every district it caught; it is not, and the figure it named was never
+ * measured against the layer.
+ *
+ * LATENT, NOT LIVE. Those fourteen resolve to nothing on either path today, so
+ * nothing is currently misreported — ZONE_USE_FORM is present on the live layer
+ * and wins. The cost arrives the moment anyone curates them: a correct entry
+ * would be silently suppressed for any parcel whose use-form field is missing,
+ * and `farUnconstrained` is exactly the claim the legacy path is designed to
+ * withhold. Pinned by a test so the suppression cannot happen quietly.
  */
-function isFormerChapter59(zone?: unknown, description?: unknown, useForm?: unknown): boolean {
-  if (useForm != null && String(useForm).trim() === LEGACY_USE_FORM) return true
+export function isFormerChapter59(zone?: unknown, description?: unknown, useForm?: unknown): boolean {
+  const z0 = String(zone ?? '').trim().toUpperCase()
+  // A current district that merely lacks a building form is NOT legacy, however
+  // the sentinel reads.
+  if (CURRENT_NON_FORM_FAMILIES.test(z0)) return false
+  if (useForm != null && String(useForm).trim() === NO_BUILDING_FORM) return true
   if (/former chapter 59/i.test(String(description ?? ''))) return true
   const z = String(zone ?? '').trim().toUpperCase()
   if (!z) return false

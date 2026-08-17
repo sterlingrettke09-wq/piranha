@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getDenverParcelInfo } from './denver'
+import { getDenverParcelInfo, isFormerChapter59 } from './denver'
 import { mockArcgisFetch, featureSet, ARCGIS_ERROR_200 } from './__fixtures__'
 import { resolveZoningLimits } from '../zoningLimits'
 
@@ -304,5 +304,58 @@ describe('Former Chapter 59 detection reads the layer, not the code shape', () =
     // The DZC figure, not a 999 refusal.
     expect(res.info.zoning.maxHeightFt).not.toBeNull()
     expect(res.info.zoning.farUnconstrained).toBe(true)
+  })
+})
+
+describe('the legacy SHAPE fallback misclassifies current DZC districts', () => {
+  // The layer's own ZONE_USE_FORM wins whenever present, so this is latent —
+  // but it is a trap laid for whoever curates Campus or Downtown next. A
+  // correct entry would be silently suppressed on any parcel missing that
+  // field, and `farUnconstrained` is precisely what the legacy path withholds.
+  //
+  // Measured against the live enumeration: the shape test flags 41 of 184
+  // codes, and these fourteen are CURRENT districts, each verified in the
+  // republished-2025 code.
+  const CURRENT_BUT_FLAGGED = [
+    ['CMP-EI', 'Article 9 Div 9.2'], ['CMP-EI2', 'Article 9 Div 9.2'],
+    ['CMP-H', 'Article 9 Div 9.2'], ['CMP-H2', 'Article 9 Div 9.2'],
+    ['CMP-NWC', 'Article 9 Div 9.2'],
+    ['D-AS', 'Article 8'], ['D-C', 'Article 8'], ['D-CV', 'Article 8'],
+    ['D-GT', 'Article 8'], ['D-LD', 'Article 8'], ['D-TD', 'Article 8'],
+    ['I-A', 'Article 9 Div 9.1'], ['I-B', 'Article 9 Div 9.1'],
+    ['PUD-G', 'Article 9 Div 9.6'],
+  ] as const
+
+  it('the misclassified set is pinned, not merely non-empty (rule 20)', () => {
+    expect(CURRENT_BUT_FLAGGED.length).toBe(14)
+  })
+
+  it.each(CURRENT_BUT_FLAGGED)('%s is current even carrying the 999 sentinel (%s)', (code) => {
+    // ⚠️ THE LIVE LAYER PUBLISHES 999 FOR ALL OF THESE. Measured: ZONE_USE_FORM
+    // is the BUILDING FORM (S-MX-3 → "MX", U-SU-A → "SU"), and 999 is its
+    // sentinel for a district with no form — which is wider than former
+    // Chapter 59. Reading 999 as "legacy" would mark every current Downtown,
+    // Campus, Industrial-A/B and PUD district as predating the 2010 code.
+    expect(isFormerChapter59(code, undefined, '999')).toBe(false)
+  })
+
+  it('and is current with the field missing too', () => {
+    for (const [code] of CURRENT_BUT_FLAGGED) {
+      expect(isFormerChapter59(code, undefined, undefined), code).toBe(false)
+    }
+  })
+
+  it('genuinely legacy codes are still caught, by sentinel and by shape', () => {
+    for (const code of ['R-2', 'B-3', 'O-1', 'R-X', 'OS-1', 'R-0', 'B-8']) {
+      expect(isFormerChapter59(code, undefined, '999'), `${code} via sentinel`).toBe(true)
+      expect(isFormerChapter59(code, undefined, undefined), `${code} via shape`).toBe(true)
+    }
+  })
+
+  it('a form-bearing district is never legacy', () => {
+    // The other side of the sentinel: these carry a real building form.
+    for (const [code, form] of [['S-MX-3', 'MX'], ['G-MU-3', 'MU'], ['U-SU-A', 'SU'], ['E-TU-B', 'TU']]) {
+      expect(isFormerChapter59(code, undefined, form), code).toBe(false)
+    }
   })
 })
