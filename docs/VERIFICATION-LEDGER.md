@@ -6540,3 +6540,37 @@ A plan-governed parcel is not.
 
 If these three ever render identically to a user, the tool is telling someone
 "nobody knows" when the truth is "the code knows, and it depends where you are".
+
+### The 56 base zones: 25 were already encoded, and the read confirmed the alignment risk was gone
+
+Chapter 13 Divisions 2, 5 and 6 were fetched (all vintage 7-2026, all byte-checked
+against Content-Length) to close the largest readable block in San Diego. The
+reconcile came first, and most of the block did not need reading.
+
+**25 of the CC commercial zones were already in `CC_FAR`**, complete with the
+Otay Mesa machinery, and were being counted as gaps for a reason already declared
+one line above them for the industrial zones. Table 131-05's footnote 3 reads
+"Within the Otay Mesa Community Plan area, the maximum floor area ratio is 0.30",
+which makes the ratio a joint function of zone AND community plan (rule 13), so
+`commercialFar` returns UNRESOLVED when the plan is `undefined` — exactly what a
+code-only sweep passes. Measured: all 25 resolve the moment any plan is supplied.
+Two families with the same joint dependency, and the declaration had been written
+for only one of them.
+
+**The recorded blocker no longer holds.** The module's scope note says Divisions 2
+and 5 were not encoded because "the four-row column header does not survive text
+extraction". With `pdftotext -layout` it does:
+
+    Zone Designator   1st & 2nd >>   CN-
+                            3rd >>   1-  1-  1-  1-  1-  1-
+                            4th >>   1   2   3   4   5   6
+    Max Floor Area Ratio            1.0 1.0 1.0 1.0 1.0 1.0   (all footnote 3)
+
+Six header columns, six values, and exactly six live CN codes — CN-1-1 through
+CN-1-6. **The column count matching the live enumeration is the external check
+against the DC MU-column off-by-one**, and it is available for every one of these
+tables without trusting the eye. The blocker was real when it was written and is
+now an artifact of the extraction flags, which is worth recording because a
+documented refusal outlives the reason for it.
+
+San Diego 140 unhandled, 84 counted gaps. Total 779 → 754.

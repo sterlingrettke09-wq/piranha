@@ -423,7 +423,7 @@ export const TARGETS: Target[] = [
     //      Article 16 of this same chapter and every one of its fifteen codes is
     //      named in it. That is rule 27, and the count was 83.
     partiallyScoped: {
-      label: 'RS/LJSPD-SF lot-area bands need a parcel; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
+      label: 'RS/LJSPD-SF lot-area bands and CC/industrial community-plan overrides need parcel facts; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
       // LJSPD-SF resolves — § 1510.0304(i)(1)(A) sends it to Table 131-04J, the
       // same band table as the RS zones — but the band is chosen by LOT AREA, and
       // the sweep has no parcel. Confirmed live: with a 5,000 sf lot it returns
@@ -431,6 +431,19 @@ export const TARGETS: Target[] = [
       explains: (v) => {
         const z = v.trim().toUpperCase()
         if (/^(RS-|I[A-Z]?-\d|IBT-)/.test(z)) return true
+        // ⚠️ THE CC COMMERCIAL ZONES ARE ENCODED, and were being counted as gaps
+        // for a reason already declared one line above for the industrial zones.
+        // CC_FAR carries all 25 with their Table 131-05 figures, and
+        // `commercialFar` applies footnote 3 — "Within the Otay Mesa Community
+        // Plan area, the maximum floor area ratio is 0.30". That override makes
+        // the ratio a joint function of zone AND community plan (rule 13), so
+        // `commercialFar` returns UNRESOLVED when the plan is `undefined`, which
+        // is exactly what this sweep passes. Measured: all 25 resolve the moment
+        // any community plan is supplied.
+        //
+        // Same declared reason, same shape, previously applied to only one of the
+        // two families that have it.
+        if (/^CC-\d/.test(z)) return true
         if (z === 'LJSPD-SF') return true
         // ⚠️ CENTRE CITY — READ 2026-08-17, and the answer is that no zone code
         // can carry it. § 156.0309(a): "The minimum and maximum base FARs for
