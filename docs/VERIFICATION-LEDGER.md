@@ -6428,3 +6428,60 @@ LOT AREA and the sweep has no parcel — confirmed live, a 5,000 sf lot returns
 San Diego 139 → 129 gaps. Total 809 → 799. The pinned zone inventory moved 75 → 85
 and the guard caught it, which is what a pinned inventory is for: a curated table
 growing quietly is how an unsourced entry gets in.
+
+### The Gaslamp near-miss: the provision was outside the phrase, not outside the article
+
+A grep for "floor area ratio" across Gaslamp's Article 7 returns NOTHING, and the
+first pass recorded that as "no FAR provision". The article states one — it just
+writes the abbreviation:
+
+  § 157.0107(a)(3) lets building height rise from 75 ft to 101 ft on parcels of
+  20,000 sq ft or more, or 125 ft on 30,000 or more, "subject to the following:
+  (A) The development shall not exceed an FAR of 6.0."
+
+Exactly the Denver D-C/D-TD shape — a provision living just outside the phrasing
+searched for, where a confident absence would have been recorded from a reader's
+failure to find. Caught only by widening to `\bFAR\b`. **Search the abbreviation
+and the phrase; a code that defines a term will then use it.**
+
+And the placement is the substance: 6.0 is a CAP CONDITIONING A HEIGHT BONUS, not
+a by-right ratio. No base FAR appears anywhere in the article's 9,471 words. So
+GQPD is declared rather than encoded — publishing 6.0 would hand every Gaslamp
+parcel a ratio the code grants only to projects taking the height increase.
+
+### Centre City: the FAR is per-site and mapped, so no zone code can carry it
+
+§ 156.0309(a) is unambiguous: "The minimum and maximum base FARs for each SITE
+within the Centre City Planned District are illustrated in Figure H." Not per
+district — per site, on a figure. CCPD-CORE and its nine siblings are therefore
+not a lookup this module could ever satisfy, which is Denver's Exhibit 8.1 height
+areas exactly. § 156.0309(c) adds one mapped exception, the Ballpark Mixed-Use
+District at FAR 6.5, likewise a Figure B area rather than a zone.
+
+The article was the most recently amended of the six (7-2026) and does carry the
+base/bonus structure that downtown articles usually do — "Bonus FAR means the
+additional floor area ratio…", § 156.0309(d) FAR Bonuses. None of it is
+resolvable from a zone code, so the base/bonus discipline never became relevant.
+
+### La Jolla: a table read straight, and "No restriction" in the code's own words
+
+Table 159-03D "Maximum Base Density", column "Maximum Base Floor Area Ratio (FAR)
+Permitted Per Lot": Zone 1 1.3, Zone 2 1.3, Zone 3 1.3, Zone 4 1.0, Zone 5 1.5,
+Zone 6 **No restriction**. Six codes encoded.
+
+Zone 6 is the Philadelphia RM-1 shape and the stronger form of it: the row exists
+and is filled with a refusal to restrict, so `farUnconstrained` rests on a stated
+absence rather than an empty cell.
+
+§ 159.0307(c)(2) "Maximum Bonus Density" raises these for mixed-use projects
+meeting a residential percentage. Base encoded, bonus NOT recorded as an
+alternative — the bonus rules are condition-heavy and were not read closely enough
+to state a figure, and a half-read bonus is worse than none.
+
+**The three sub-areas are held open rather than inherited.** § 159.0301(a) creates
+SIX zones; LJPD-1A, 5A and 6A are sub-areas "included in" their zone, identified
+for orientation and use reasons. Whether the parent zone's FAR carries into a
+sub-area is not stated in the passages read, and assuming it would be the prefix-
+is-not-a-family error with a table to make it look sourced (rule 27).
+
+San Diego 155 → 140 unhandled, 109 counted gaps. Total 809 → 779.

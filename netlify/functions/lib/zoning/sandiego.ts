@@ -360,6 +360,27 @@ const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
   'LJSPD-MF1': { far: null, farUnconstrained: true, source: 'SDMC § 1510.0306 (La Jolla Shores multi-family, Ch 15 Art 10 Div 3) — the development-regulation list carries no floor-area item, where § 1510.0304(i) does for the single-family zone' },
   'LJSPD-MF2': { far: null, farUnconstrained: true, source: 'SDMC § 1510.0306 (La Jolla Shores multi-family, Ch 15 Art 10 Div 3) — the development-regulation list carries no floor-area item, where § 1510.0304(i) does for the single-family zone' },
 
+  // LJPD — La Jolla (Ch 15 Art 9, doc vintage 1-2014). Table 159-03D "Maximum
+  // Base Density", column "Maximum Base Floor Area Ratio (FAR) Permitted Per
+  // Lot", read directly from the article:
+  //     Zone 1  1.3   Zone 2  1.3   Zone 3  1.3
+  //     Zone 4  1.0   Zone 5  1.5   Zone 6  No restriction
+  //
+  // BASE, not bonus. § 159.0307(c)(2) "Maximum Bonus Density" raises these for
+  // mixed-use projects meeting a residential percentage; that is a programme the
+  // user has not chosen, so it is not the headline (rule 6). The bonus rules are
+  // condition-heavy and are NOT encoded as alternatives here — they were not read
+  // closely enough to state a figure, and a half-read bonus is worse than none.
+  'LJPD-1': { far: 1.3, source: 'SDMC Table 159-03D (La Jolla, Ch 15 Art 9 Div 3) — maximum base FAR per lot' },
+  'LJPD-2': { far: 1.3, source: 'SDMC Table 159-03D (La Jolla, Ch 15 Art 9 Div 3) — maximum base FAR per lot' },
+  'LJPD-3': { far: 1.3, source: 'SDMC Table 159-03D (La Jolla, Ch 15 Art 9 Div 3) — maximum base FAR per lot' },
+  'LJPD-4': { far: 1.0, source: 'SDMC Table 159-03D (La Jolla, Ch 15 Art 9 Div 3) — maximum base FAR per lot' },
+  'LJPD-5': { far: 1.5, source: 'SDMC Table 159-03D (La Jolla, Ch 15 Art 9 Div 3) — maximum base FAR per lot' },
+  // ⚠️ "No restriction" IN THE TABLE'S OWN WORDS — a stated absence, the same
+  // shape as Philadelphia RM-1's "No Limit", and stronger than an empty cell.
+  // The row exists and is filled with a refusal to restrict.
+  'LJPD-6': { far: null, farUnconstrained: true, source: 'SDMC Table 159-03D (La Jolla, Ch 15 Art 9 Div 3) — the Zone 6 FAR cell reads "No restriction"' },
+
   // ── RT, townhouse. Two FAR rows: "1 and 2 story buildings" and "3 story
   // buildings". The storey count is the applicant's choice, so the 1–2 storey
   // figure is the base case and the 3-storey figure is an alternative.

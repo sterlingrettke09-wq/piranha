@@ -27,12 +27,13 @@ describe('inventory', () => {
   // Rule 20: a check that can pass by finding nothing is not a check. Pin the
   // size AND the membership, so a regex that silently stops matching goes RED
   // rather than green.
-  it('covers 33 residential, 4 agricultural, 10 industrial, 28 CC commercial and 10 planned-district zones', () => {
-    // 75 → 85 on 2026-08-17: ten Chapter 15 planned-district codes read from
-    // their own articles (Cass Street 1, Mission Beach 6, La Jolla Shores 3).
+  it('covers 33 residential, 4 agricultural, 10 industrial, 28 CC commercial and 16 planned-district zones', () => {
+    // 75 → 91 on 2026-08-17: sixteen Chapter 15 planned-district codes read from
+    // their own articles (Cass Street 1, Mission Beach 6, La Jolla Shores 3,
+    // La Jolla 6).
     // The pin moving is the guard working — a curated table growing silently is
     // how an unsourced entry gets in.
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(85)
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(91)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',
@@ -40,6 +41,7 @@ describe('inventory', () => {
         'RT-1-1', 'RT-1-5',
         'RM-1-1', 'RM-2-6', 'RM-3-7', 'RM-5-12',
         'CSPD-CASS-STREET', 'MBPD-R-N', 'MBPD-VC-S', 'LJSPD-SF', 'LJSPD-MF1',
+        'LJPD-1', 'LJPD-4', 'LJPD-5', 'LJPD-6',
       ]),
     )
   })

@@ -423,12 +423,43 @@ export const TARGETS: Target[] = [
     //      Article 16 of this same chapter and every one of its fifteen codes is
     //      named in it. That is rule 27, and the count was 83.
     partiallyScoped: {
-      label: 'RS lot-area bands and industrial community-plan rules need parcel facts; LJSPD-SF is the same Table 131-04J band lookup',
+      label: 'RS/LJSPD-SF lot-area bands need a parcel; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
       // LJSPD-SF resolves — § 1510.0304(i)(1)(A) sends it to Table 131-04J, the
       // same band table as the RS zones — but the band is chosen by LOT AREA, and
       // the sweep has no parcel. Confirmed live: with a 5,000 sf lot it returns
       // 0.60. Declared for the reason already declared for RS, not as a new one.
-      explains: (v) => /^(RS-|I[A-Z]?-\d|IBT-)/.test(v.trim()) || v.trim().toUpperCase() === 'LJSPD-SF',
+      explains: (v) => {
+        const z = v.trim().toUpperCase()
+        if (/^(RS-|I[A-Z]?-\d|IBT-)/.test(z)) return true
+        if (z === 'LJSPD-SF') return true
+        // ⚠️ CENTRE CITY — READ 2026-08-17, and the answer is that no zone code
+        // can carry it. § 156.0309(a): "The minimum and maximum base FARs for
+        // each SITE within the Centre City Planned District are illustrated in
+        // Figure H". The ratio is per-site and mapped, not stated per district,
+        // so CCPD-CORE and its nine siblings are not a lookup this module could
+        // ever satisfy — Denver's Exhibit 8.1 height areas exactly. § 156.0309(c)
+        // adds one mapped exception, the Ballpark Mixed-Use District at FAR 6.5,
+        // which is likewise a Figure B area rather than a zone.
+        if (/^CCPD-/.test(z)) return true
+        // ⚠️ GASLAMP — the article states an FAR EXACTLY ONCE, and not as a base.
+        // § 157.0107(a)(3) lets height rise from 75 ft to 101 ft on parcels
+        // ≥20,000 sf or 125 ft on ≥30,000 sf, "subject to the following: (A) The
+        // development shall not exceed an FAR of 6.0." That is a cap attached to
+        // a height bonus, not a by-right ratio, and no base FAR appears anywhere
+        // in the article's 9,471 words.
+        //
+        // Found only because the search was widened to the abbreviation: a grep
+        // for "floor area ratio" returns nothing here. That is the Denver
+        // D-C/D-TD near-miss shape — a provision living just outside the phrasing
+        // the reader searched for.
+        if (z === 'GQPD-GASLAMP-QTR') return true
+        // La Jolla sub-areas. § 159.0301(a) creates SIX zones and Table 159-03D
+        // states a base FAR for each; 1A, 5A and 6A are sub-areas "included in"
+        // their zone, identified for orientation and use reasons. Whether the
+        // parent zone's FAR carries into a sub-area is NOT stated in the passages
+        // read, so they are held open rather than inherited by assumption.
+        return ['LJPD-1A', 'LJPD-5A', 'LJPD-6A'].includes(z)
+      },
     },
     handled: (v) => { const r = resolveSanDiego(v, null); return r.maxFAR != null || r.farUnconstrained === true },
   },
