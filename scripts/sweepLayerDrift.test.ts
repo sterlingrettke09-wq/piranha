@@ -133,3 +133,38 @@ describe('the parser-domain sweep points only at layers a provider reads', () =>
     ).toBe(true)
   })
 })
+
+describe('the sweep passes the arguments production passes', () => {
+  // ⚠️ THE PROTECTION CAN LIVE IN AN ARGUMENT THE CALLER SUPPLIES. Denver's
+  // resolver refuses former Chapter 59 codes only when handed
+  // `{ formerChapter59: true }` — its trailing numbers are CLASS codes, and
+  // without the flag the stories parse read R-2 as "2 storeys", B-3 as "3",
+  // OS-1 as "1". The sweep called it bare and counted them HANDLED while
+  // production refuses them, overstating Denver's coverage by ~19 codes.
+  //
+  // AUDITED ACROSS EVERY TARGET after that (2026-08-17), comparing each
+  // resolver's signature against what the sweep supplies:
+  //   denver       formerChapter59 OMITTED    → credited codes falsely. FIXED.
+  //   minneapolis  primaryZone 'UN1' hardcoded → changes FAR VALUES (BFT20 is
+  //                7 under UN1, 7.4 otherwise) but not the handled count; all
+  //                14 resolve at every primary zone.
+  //   austin       insideSubchapterF true      → 41 of 44 unhandled either way.
+  //   seattle      center OMITTED              → LR3 refuses, which is the SAFE
+  //                direction (understates), and the target is scoped anyway.
+  //   sandiego     lotSqFt null                → already declared in scopedTo.
+  //   miami/dallas/columbus  optional args passed null or omitted; no credit.
+  // Denver was the only one crediting values production withholds.
+  const src = readFileSync(join(ROOT, 'scripts/enumerate-parser-domains.ts'), 'utf8')
+
+  it('denver hands the resolver its legacy flag', () => {
+    expect(src, 'resolveDenver called without formerChapter59 — legacy class codes will be read as storeys').toMatch(
+      /resolveDenver\(\s*v,\s*\{\s*formerChapter59:/,
+    )
+  })
+
+  it('and never calls it bare', () => {
+    // `resolveDenver(v)` with no options is the exact call that produced the
+    // fabricated storey counts.
+    expect(src).not.toMatch(/resolveDenver\(v\)/)
+  })
+})

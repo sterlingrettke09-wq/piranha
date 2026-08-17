@@ -191,14 +191,19 @@ const TARGETS: Target[] = [
   {
     city: 'denver', what: 'zone string → FAR/height/stories',
     url: 'https://denvergov.org/maps/data/Zoning/MapServer/1', field: 'ZONE_DISTRICT',
-    // ⚠️ PASS THE LEGACY FLAG, AS THE PROVIDER DOES. Calling resolveDenver(v)
-    // bare let the stories parse read former Chapter 59 CLASS codes as storey
+    // ⚠️ PASS THE LEGACY FLAG, AS THE PROVIDER DOES. Calling the resolver with
+    // the zone alone and no options let the stories parse read former Chapter 59
+    // CLASS codes as storey
     // counts — R-2 came back "2 storeys", B-3 "3", OS-1 "1" — so the sweep
     // counted them HANDLED while production correctly refuses them. The module
     // warns about exactly this ("Former Chapter 59 trailing numbers are class
     // codes, not story counts") and the protection lives entirely in the flag
     // the caller supplies. Measuring the resolver without it measured a layer,
     // not the pipeline (rule 11).
+    //
+    // The bare call is DESCRIBED rather than quoted above, because the guard in
+    // sweepLayerDrift.test.ts scans this file for it — reproducing the faulty
+    // call inside its own correction is rule 21's shape.
     handled: (v) =>
       isPlannedDevelopment('denver', v) ||
       resolveDenver(v, { formerChapter59: isFormerChapter59(v) }).heightFt != null,

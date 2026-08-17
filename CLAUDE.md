@@ -395,6 +395,38 @@ This is rule 16 specialised to this instrument, and it now has a hit rate.
 Reconcile the largest contributor against a known-good BEFORE reporting a total,
 every time.
 
+**26. A sweep's total can move for instrument reasons alone — say which.** This
+session's parser-domain total went 2,294 → 1,009 → 1,010 → 717 → 734 → 753, and
+**not one of those movements was a code change.** Every one was a correction to
+how it counts: planned-development codes were answers not gaps (Dallas 1,031 →
+31); Atlanta's SPI exclusion was documented, not broken; Charlotte's site-plan
+basis was already a reason code; San Jose rose because it stopped being skipped;
+Denver rose because nineteen legacy codes stopped being credited with storey
+counts the code never states.
+
+The two RISES are the honest direction and the more valuable signal — something
+stopped being counted as coverage it never had. A falling total is the one to
+distrust, because it is indistinguishable from progress.
+
+**Report the composition, never the bare number**, and when the total moves, say
+whether the system changed or the counting did.
+
+**27. A prefix is not a family.** `OS-A`/`OS-B`/`OS-C` were triaged into Denver's
+former-Chapter-59 group because they start "OS-", alongside the genuinely legacy
+`OS-1`. They are current DZC districts (Article 9, Division 9.3), and one query
+against the frozen former code settled it: **zero occurrences**. They had also
+been misclassified in the provider, so their heights were being suppressed as
+pre-2010.
+
+Same shape as matching a city on a name or a district on its spelling — cheap,
+plausible, and wrong exactly when the naming collides. Denver's own convention
+guarantees collisions: the legacy code and the current one both use letter
+prefixes, so `OS-` spans both eras and `I-A` (current) sits beside `I-0`
+(legacy).
+
+**Test membership against the source, not the string.** A grep of the frozen
+document is one command and it is dispositive in both directions.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
