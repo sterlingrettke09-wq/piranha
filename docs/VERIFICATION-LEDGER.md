@@ -6485,3 +6485,58 @@ sub-area is not stated in the passages read, and assuming it would be the prefix
 is-not-a-family error with a table to make it look sourced (rule 27).
 
 San Diego 155 → 140 unhandled, 109 counted gaps. Total 809 → 779.
+
+### A provision can be absent from a phrase and present in the document
+
+Gaslamp's Article 7 returns ZERO hits for "floor area ratio" across 9,471 words,
+and states an FAR. It writes the abbreviation: § 157.0107(a)(3)(A), "The
+development shall not exceed an FAR of 6.0."
+
+The sharper form of the lesson is not "widen the grep". A zero result for a
+phrase is CONSISTENT with the document having no such provision, which is exactly
+why it reads as an answer — and the reader has no way to tell the two apart from
+inside the search. Three searches are needed and only two of them depend on
+guessing the document's vocabulary:
+
+  1. the spelled form ("floor area ratio")
+  2. the ABBREVIATION the document itself defines and then uses (`\bFAR\b`)
+  3. **the section structure** — the lettered/numbered item list of the
+     development-regulation sections
+
+The third is the one that does not require knowing what the document calls the
+thing. It is how La Jolla Shores was settled (nine items with "(i) Maximum Floor
+Area Ratio" against seven parallel items without it) and how Milwaukee's PK was
+settled the other way (no dimensional structure at all). A search asks "does this
+string occur"; the structure asks "is there a place where this would live", which
+is the question rule 5 is actually about.
+
+### A limit keyed to a MAP is a third reason, distinct from uncurated and from plan-governed
+
+Three instances now, and they read alike:
+
+  · Denver D-C / D-TD — § 8.3.1.4.B.2: unlimited EXCEPT in height areas mapped on
+    Exhibit 8.1 (200 ft, 400 ft, plus a sunlight preservation area)
+  · Denver CMP campus — § 13.1-13.B: the reduced cap applies within a stated
+    distance of a mapped Protected District
+  · San Diego Centre City — § 156.0309(a): base FARs "for each SITE … are
+    illustrated in Figure H"
+
+In all three the limit is REAL, PUBLISHED and NOT A FUNCTION OF THE ZONE CODE. It
+is keyed to a map. That is a different fact from "we have not curated this
+chapter" and a different fact from "an adopted plan governs":
+
+  uncurated       — the figure is in a document nobody has read yet
+  plan-governed   — the figure is in an instrument written per project, and NO
+                    dataset will ever carry it
+  map-keyed       — the figure exists in the code and depends on WHERE the parcel
+                    is; a spatial layer would resolve it
+
+The distinction has a practical edge: the Denver CMP buffer was closed this
+session precisely because the map was queryable — the Protected District polygons
+are in the same zoning layer, and a distance query turned a refusal into 200 ft on
+a live parcel. Exhibit 8.1 and Figure H are not currently published as layers, so
+those stay refusals, but they are refusals of the kind a data source could end.
+A plan-governed parcel is not.
+
+If these three ever render identically to a user, the tool is telling someone
+"nobody knows" when the truth is "the code knows, and it depends where you are".
