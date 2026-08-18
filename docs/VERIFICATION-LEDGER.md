@@ -7316,3 +7316,55 @@ this source rather than adverse. That is why KM is undefined here — no censore
 observations means no risk set — and it is a different statement from NYC's 45%
 of filings carrying no issue date, which that feed could show. Austin's remaining
 question is the permit-class composition, not censoring.
+
+### Austin composition: every premise re-derived, and every one already satisfied
+
+Step 2 of the permit pass. The instruction was to re-derive the composition
+figures before acting on them, because the session had already found stale figures
+three times. Doing so found the work already done — in every limb.
+
+Re-derived from the live feed 2026-08-18, `permittype='BP'`, `work_class IN
+('New','Shell')`, `applieddate >= 2022-01-01`:
+
+    cohort total                                  18,409
+    building classes kept                         11,650   63.3%
+    excluded non-building                          6,759   36.7%
+      of which 329 "Structures Other Than Bldg"    5,740   31.2%
+
+Reconciles exactly to the script's own accounting (11,650 cohort + 6,759 excluded
+= 18,409, matching a server-side count of the same predicate).
+
+**`Shell` is included.** `work_class IN ('New','Shell')`, with the correction
+recorded beside it — 202 records at median 11.1 / p80 17.4, "1.7% of the count and
+the entire upper tail".
+
+**The non-building exclusion already runs.** 6,759 rows dropped by a census-code
+allowlist, and a row whose class is unknown is DROPPED rather than bucketed. The
+"23% swimming pools" figure is not reproducible as stated: this feed has no pool
+class. It has `329 Structures Other Than Bldg` at 31.2%, which contains pools and
+is not only pools.
+
+**The per-class recompute exists and reaches the user.** `byTier` publishes
+single / multi / apartment separately, and `measuredFor(city, tier)` returns the
+tier figure and FAILS CLOSED when a tier is absent from an attempted breakdown —
+a guard added after a Denver duplex was answered with a city aggregate. So the
+aggregate is not what a multifamily query renders.
+
+**And there is nothing to dedupe.** 18,409 rows against 18,409 distinct
+`permit_number`; the building cohort likewise. "Time the exclusions after dedupe"
+is moot here because the duplication it guards against does not exist in this
+feed.
+
+**Five stale premises in one brief, and one of them was mine.** Four came from
+notes describing the file as it was; the fifth — that Austin still carried NYC's
+outcome-selection blindfold — I introduced by pattern-matching and committed
+before checking the registry that already refuted it. The corrective is not "be
+more careful": it is that **a work item derived from notes is a hypothesis about
+the code, and the first action on it is measurement, not editing.** Every item
+here dissolved on measurement, and the measurements took minutes.
+
+Austin's figures stand as committed: 2.1 / p80 6.1 overall, single 1.6, multi 2.9,
+apartment 8.6, refreshing to 8.8 on today's larger cohort. Its one real limitation
+is unchanged and is a property of the source: an issued-only feed cannot show
+applications that never issued, so the issuance rate is unobservable rather than
+adverse, and Kaplan-Meier is undefined for want of a risk set.
