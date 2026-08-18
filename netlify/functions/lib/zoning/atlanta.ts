@@ -405,10 +405,61 @@
 //
 // SO THE PARSER MUST DETECT THE FORM, NOT THE POSITION. The percentages sit at
 // columns 4-5 of 6 in SPI-20 and at columns 5-6 of 10 in SPI-21. Any positional
-// rule fitted to one chapter is wrong in the other, while the label plus the '%'
-// glyph identifies both. Two instances also settles that this is a drafting
-// convention rather than a one-off, so a third chapter using it should be
-// expected rather than treated as a surprise.
+// rule fitted to one chapter is wrong in the other.
+//
+// ⚠️⚠️ AND THE LABEL IS NOT THE FORM EITHER — established by looking for the
+// NEGATIVE case rather than more positives, which is the only reason it surfaced.
+// Widening the scan from bare percentages to ANY '%' in a FAR-labelled row takes
+// the count from 2 to FIVE, under THREE different labels and FOUR different cell
+// forms:
+//
+//   SPI-20, SPI-21  "… FAR (base) or Maximum Percentage of Development"
+//                   cell: `20%` / `5%`                        (bare percentage)
+//   SPI-16          "Non-Residential FAR (times gross lot area)"
+//                   cell: `On street level & street frontage 2,500 sf,
+//                          max 5% residential floor area`     (prose + percentage)
+//   SPI-17          "Max Non-Residential FAR (times gross lot area)"
+//                   cell: `5% of the total occupied residential floor area`
+//   SPI-11          "Non-residential FAR"
+//                   cell: `Max 5% of Res. FAR`; and `N/A` in its Combined row
+//
+// Only SPI-20 and SPI-21 announce the dual quantity in the label. The other three
+// carry a plainly-named FAR row whose cells are, for some subareas, not ratios at
+// all — so "label says it holds two quantities" identifies 2 of 5.
+//
+// THE RULE THAT COVERS ALL FIVE IS CELL-LEVEL: a cell in a FAR row is a floor
+// area ratio ONLY if it parses as a bare number. Anything else — a percentage, a
+// prose constraint, `None`, `N/A` — is NOT a ratio and must be refused rather
+// than coerced, because every one of these forms would otherwise become a number
+// (`20%` -> 0.20, `Max 5% of Res. FAR` -> 5 or 0.05). The label says what the row
+// MEANS; only the cell says whether THIS subarea states a ratio.
+//
+// That is rule 5 at cell granularity: "this subarea states no non-residential FAR
+// as a ratio" is an ANSWER, and it must not render as, or be filled in from, a
+// number.
+//
+// ⚠️ AND THIS REACHES BACK INTO SPI-16, WHICH IS RECORDED ABOVE AS READ. The Max
+// FAR figures (8.2 / 6.4 / 3.2 / 5.2, bonus 10.2 / 9.4 / 6.2 / 7.0) are CONFIRMED
+// correct against the expanded grid. But that reading captured the "Max FAR" row
+// only, and Chapter 16-18P's table carries three: Non-Residential FAR, Residential
+// FAR, and Max FAR. The Non-Residential row is non-numeric in 4 of its 10 columns.
+// A reading recorded as complete was complete for one row of three — which is the
+// half-a-table shape, recorded here rather than left for the encoder to hit.
+//
+// ⚠️ THE SURVEY ALSO ONLY SEES TABLES. SPI-6 states "a maximum floor area ratio of
+// 0.348" in PROSE with no table anywhere in the chapter, so a row-based scan is
+// structurally blind to it. No live code carries SPI-6, so nothing depends on it
+// today; recorded because "27 FAR rows across 19 chapters" describes tabular FAR
+// only, and that is a property of the instrument, not of Atlanta.
+//
+// ── THE FOUR SHORT CHAPTERS ARE ANSWERS, NOT GAPS ───────────────────────────
+// SPI-8, SPI-14, SPI-24 and SPI-25 return ~6KB because they are SHORT, not
+// truncated: 4-5 complete sections each, regulating by reference to other
+// districts. Measured: zero tables, zero occurrences of "FAR" or "floor area
+// ratio", and no live zone code in the enumeration. They were recorded as UNREAD
+// on first pass, which was wrong in the cautious direction — they are read, and
+// they answer empty. A third instance of the dual-quantity form cannot hide in
+// them, because a FAR grid is exactly what they do not have.
 //
 // (SPI-21 would NOT have served as the first chapter: its row has 10 columns and
 // the enumeration carries 9 live SPI-21 codes, so one column could not have been
