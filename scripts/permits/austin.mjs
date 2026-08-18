@@ -139,28 +139,32 @@ async function pull(since) {
   // multifamily, office, hotel and parking-garage projects in the city, which is
   // exactly the cohort a feasibility tool is consulted about. Dropping them was
   // 1.7% of the count and the entire upper tail.
-  // ⚠️⚠️ THIS QUERY STILL CARRIES THE BLINDFOLD, recorded 2026-08-18 and NOT yet
-  // fixed. `AND ${ISSUED_DATE_FIELD} IS NOT NULL` selects on the OUTCOME, so this
-  // script cannot see how many matching applications never issued — and a query
-  // that selects on the outcome cannot measure how often the outcome occurs
-  // (rule 11).
+  // ⚠️ RETRACTION, 2026-08-18. A comment here asserted that this query's
+  // `issue_date IS NOT NULL` limb was selecting on the outcome and that Austin's
+  // published figure was therefore a conditional median, by analogy with the
+  // predicate nyc.mjs removed. That assertion was WRONG and is withdrawn.
   //
-  // This is the same predicate `scripts/permits/nyc.mjs` calls "THE BLINDFOLD,
-  // removed first". Removing it there took NYC's figure from a reproducible-
-  // looking 8.3 months to a WITHDRAWAL, because the denominator came back from
-  // the server and showed 45% of filings never carried an issue date. Austin's
-  // published figure is therefore a CONDITIONAL median — time to issuance GIVEN
-  // issuance — by exactly the mechanism NYC was withdrawn for.
+  // The limb is a measured NO-OP. Socrata 3syk-w9eu is an issued-only feed, so
+  // there are no un-issued rows for it to select away. Verified independently
+  // 2026-08-18, server-side, on this script's own cohort filter:
   //
-  // `feedTotal()` below does NOT close this. It counts every row the resource
-  // holds, unfiltered, which is the grew-vs-shrank instrument; it is not the
-  // denominator of this cohort and cannot yield an issuance rate for it.
+  //     without the limb   18,409
+  //     with the limb      18,409
+  //     feed-wide issue_date IS NULL   0 of ~2.37M
   //
-  // Not removed in this pass, deliberately: taking the predicate out changes what
-  // this script measures, and the honest sequence is to remove it, recompute, and
-  // then decide what survives — which is the censoring step of the permit pass,
-  // not a one-line edit. Recorded here so the next reader does not mistake the
-  // current figure for an unconditional one.
+  // which reproduces the 2026-08-09 measurement already recorded in
+  // scripts/permits/outcome-selection.ts under OUTCOME_SELECTION_EXEMPTIONS,
+  // basis 'issued-only-feed'. That registry existed, said exactly this, and was
+  // not read before the claim was written.
+  //
+  // WHAT THIS DOES AND DOES NOT SETTLE. It settles that no censoring is hidden
+  // HERE: nothing is being filtered out, so the median is not conditional in the
+  // NYC sense. It does NOT make the figure unconditional in every sense — an
+  // issued-only feed cannot show applications that never issued at all, so the
+  // issuance RATE is unobservable from this source rather than adverse. That is
+  // a property of the feed, is why Kaplan-Meier is undefined here (no censored
+  // observations means no risk set), and is a different statement from "45% of
+  // filings never carried an issue date", which is what NYC's feed could show.
   const where =
     `${PERMITTYPE_FIELD} = '${PERMITTYPE_BUILDING}' ` +
     `AND ${WORKCLASS_FIELD} IN ('New', 'Shell') ` +

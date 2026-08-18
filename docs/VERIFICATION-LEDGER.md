@@ -7195,18 +7195,8 @@ recorded in place: 202 records at median 11.1 / p80 17.4, "1.7% of the count and
 the entire upper tail". So that part of the brief was already satisfied, the same
 way NYC's dataset-choice defect was.
 
-**But the query still ends `AND issue_date IS NOT NULL`** — the predicate
-`nyc.mjs` names "THE BLINDFOLD, removed first". Selecting on the outcome makes it
-impossible to measure how often the outcome occurs. Removing it from NYC turned a
-reproducible-looking 8.3 months into a withdrawal, because the denominator came
-back and showed 45% of filings never carried an issue date. **Austin's published
-figure is a conditional median by exactly that mechanism**, and `feedTotal()` does
-not close it — that counts the whole resource, not this cohort's denominator.
-
-Not removed in this pass, deliberately. Taking the predicate out changes what the
-script measures, and the honest sequence is remove → recompute → decide what
-survives, which is the censoring step rather than a one-line edit. Recorded in the
-file so the current figure is not mistaken for an unconditional one.
+**A second claim was made here about Austin's `issue_date IS NOT NULL` limb and
+it was WRONG. See the retraction entry below.**
 
 ### A brief describes the code as of when its notes were written
 
@@ -7279,3 +7269,50 @@ not a refresh: the figures it produced are still conditional medians — the
 removes it and recomputes. Committing 11,650 in between would have re-blessed a
 figure already documented as defective, and churned the artifact twice to say the
 same thing.
+
+### RETRACTION: Austin's `issue_date` limb is a no-op, and the registry already said so
+
+Earlier in this pass I asserted that `austin.mjs` still carried the outcome-
+selection predicate `nyc.mjs` removed, and that Austin's published figure was
+therefore a conditional median by the same mechanism. **That is withdrawn.** It
+was committed to `scripts/permits/austin.mjs` and to this ledger, and both are
+corrected.
+
+Measured independently 2026-08-18, server-side, on the script's own cohort filter:
+
+    without the limb                18,409
+    with the limb                   18,409
+    feed-wide issue_date IS NULL     0 of ~2.37M
+
+The limb hides nothing. Socrata 3syk-w9eu is an issued-only feed, so there are no
+un-issued rows for it to select away.
+
+**And the repo already contained that measurement.**
+`scripts/permits/outcome-selection.ts` carries an
+`OUTCOME_SELECTION_EXEMPTIONS['austin.mjs']` entry, basis `issued-only-feed`,
+recording the same both-ways count from 2026-08-09 — and opening with "the title
+is not the evidence", because whoever wrote it refused to accept the feed's name
+and measured instead. A registry built precisely to answer this question existed,
+answered it, and was not read.
+
+**This is the standing step, violated in the same session that wrote it down.**
+Two entries above: "check what the script currently does before acting on what a
+note says it does." I read the query — the code itself, not a note — and still got
+it wrong, because reading the query only answers what the predicate SAYS. What it
+DOES depends on the data, and the measurement of what it does was one file away.
+So the step needs sharpening: **reading the code is not the same as knowing its
+effect; check whether the effect has already been measured before asserting it.**
+
+Worse, the brief that opened this pass stated Austin among four issued-only feeds
+and said Kaplan-Meier is undefined there. That was correct, it was in front of me,
+and pattern-matching a familiar predicate overrode it. **A recognised shape is a
+hypothesis, not a finding** — and the more distinctive the shape, the more it
+feels like one. NYC's blindfold was the most memorable defect in this file set,
+which is exactly what made it the easiest thing to see somewhere it was not.
+
+**What the correction does NOT change**: an issued-only feed cannot show
+applications that never issued, so Austin's issuance rate is UNOBSERVABLE from
+this source rather than adverse. That is why KM is undefined here — no censored
+observations means no risk set — and it is a different statement from NYC's 45%
+of filings carrying no issue date, which that feed could show. Austin's remaining
+question is the permit-class composition, not censoring.
