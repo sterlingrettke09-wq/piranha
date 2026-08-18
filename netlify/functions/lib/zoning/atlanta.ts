@@ -282,13 +282,38 @@
 // the only question is whether Atlanta publishes the layers — rather than the
 // basis-unavailable shape.
 //
-// ⚠️ RUN THAT CHECK BEFORE CONCLUDING IT IS UNPUBLISHABLE. Denver's Protected
-// District buffer was the same species and closed in one session because the
-// polygons were already in the zoning service. The two reason codes tell a user
-// different things and only one of them is a dead end: "the ratio's denominator
-// cannot be known" ends the conversation, while "it needs a spatial join we have
-// not wired" is a task. Asserting the first without looking would be recording a
-// dead end that is not one.
+// ⚠️ THAT CHECK WAS RUN 2026-08-17, against every folder on gis.atlantaga.gov/dpcd.
+// The answer is MAP-KEYED-BUT-UNPUBLISHED, which is neither of the two states
+// guessed at:
+//
+//   Street ROW width   ANNOTATION ONLY. `Row-Width` in LandUsePlanning/
+//                      CadastralLots is an "Annotation SubLayer" beneath
+//                      GIS.Annotation_PRD — geometryType None, capabilities Map,
+//                      and /query returns 400. It is cartographic TEXT drawn on
+//                      the cadastral map, not data. This is the dominant term:
+//                      essentially every urban parcel adjoins a street.
+//   Parks              REAL. ReferenceData/ReferenceData layer 3, polygon,
+//                      Query,Map,Data.
+//   Water              ANNOTATION ONLY (same service, same parent).
+//   Rivers/creeks      Real but a POLYLINE — no area to take half of.
+//   Cemeteries         No layer in any dpcd folder.
+//
+// So the denominator cannot be computed today, and the minor term is the only
+// one available.
+//
+// ⚠️ THAT IS STILL NOT LA'S STATE, AND THE DIFFERENCE IS THE WHOLE POINT. LA's
+// prevailing setback is an as-built fact about what neighbours have already
+// built; no layer could exist without surveying the street. Atlanta's ROW width
+// is a RECORDED, MAPPED fact — the city literally draws it on this map, as a
+// label. The obstacle is that it is published as cartography rather than as a
+// feature layer, which is a data-publication gap, not an epistemic one.
+//
+// So this is a NAMED ASK — "Atlanta ROW width as a queryable feature layer" —
+// joining Denver's Exhibit 8.1, San Diego's Figure H and Phoenix's § 1202.B/C.
+// It is the fifth of that class and the FIRST where the spatial dependency sits
+// in the DENOMINATOR rather than in the limit, which changes what to publish:
+// the ratio stays sound and stateable with its basis labelled, and only the
+// floor-area PRODUCT takes the reason code.
 //
 // The direction is the FLATTERING-FREE one for once — gross exceeds net, so
 // net * FAR understates rather than overstates — but understating is still an

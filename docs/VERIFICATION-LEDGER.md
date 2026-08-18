@@ -7044,3 +7044,37 @@ pinned exactly one duplicate pair, and removing it turned the test red — which
 the pinned-inventory guard behaving correctly. It now asserts zero, with a planted
 pair proving the detector still fires, because an empty result and a broken scan
 are otherwise the same output (rule 20).
+
+### Atlanta's geometry check: map-keyed but unpublished, and a layer name is not a layer
+
+Run against every folder on gis.atlantaga.gov/dpcd to decide whether Atlanta's
+gross-lot denominator is a spatial join (a task) or unobtainable (a dead end).
+Neither: it is **map-keyed but unpublished**.
+
+  Street ROW width   ANNOTATION ONLY — `Row-Width` is an "Annotation SubLayer"
+                     under GIS.Annotation_PRD: geometryType None, capabilities
+                     Map, and /query returns HTTP 400. Cartographic text on the
+                     cadastral map. This is the DOMINANT term; nearly every urban
+                     parcel adjoins a street.
+  Parks              Real feature layer, polygon, Query,Map,Data.
+  Water              Annotation only, same parent.
+  Rivers/creeks       Real, but a POLYLINE — no area to take half of.
+  Cemeteries         No layer anywhere in dpcd.
+
+**The near-miss worth recording: `Row-Width` matching by name looked like the
+answer.** A service listing that contains "Row-Width", "Parks" and "Water" reads
+as the whole denominator being available, and stopping there would have recorded
+"computable, needs a spatial join". Three of the four are map labels. **A layer
+name is not a layer** — `type`, `geometryType` and `capabilities` are the fields
+that answer, and the `/query` 400 is the destination check.
+
+**And it is still not LA's state.** LA's prevailing setback is an as-built fact
+about what neighbours have already built; no layer could exist without surveying
+the street. Atlanta's ROW width is a recorded, mapped fact that the city draws on
+this very map — as a label. The obstacle is publication format, not knowledge.
+
+So it is a NAMED ASK: "Atlanta ROW width as a queryable feature layer", joining
+Denver's Exhibit 8.1, San Diego's Figure H and Phoenix's § 1202.B/C. Fifth of the
+class, and the first where the spatial dependency sits in the DENOMINATOR rather
+than the limit — which decides what ships: the ratio stays sound and stateable
+with its basis labelled, and only the floor-area PRODUCT takes the reason code.
