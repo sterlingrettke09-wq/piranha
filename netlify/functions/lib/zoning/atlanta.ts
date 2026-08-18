@@ -200,11 +200,31 @@
 // FCR-3's known absence.
 //
 // The SPI chapters were deliberately NOT curated here rather than curated
-// quickly. Each publishes a wide per-subarea grid (SPI-16's Chapter 16-18P
+// quickly. Each publishes a wide per-subarea grid — SPI-16's Chapter 16-18P
 // carries base FAR / bonus FAR / max FAR / residential FAR / max height in one
-// table, one column per subarea), and flattened to text the columns run
-// together — the exact shape of the DC MU-column off-by-one. They need reading
-// against the rendered table, and an unread district is a gap.
+// table, one column per subarea — which is the exact shape of the DC MU-column
+// off-by-one. An unread district is a gap.
+//
+// ⚠️ THE ACCESS REASON EXPIRED, THE READING REASON DID NOT. Re-tested
+// 2026-08-17. This note used to add that the columns "run together when
+// flattened to text"; that is a claim about a TOOL and it no longer holds.
+// api.municode.com returns the chapter as HTML: node
+// PTIIICOORANDECO_PT16ZO_CH16-18PSPMISPPUINDIRE is 216,855 bytes carrying eight
+// <table> elements, and the FAR grid is cell-addressable — its subarea columns
+// separate cleanly into "Midtown Mixed Use (SA #1) | Midtown Residential (SA #2)
+// | Juniper East (SA #3)" with a Non-Residential FAR row of 5.0 | 5.2 | 10.2.
+//
+// A "we could not extract X" blocker asserts TWO things — that extraction failed,
+// and that X was there to extract. Both were checked here and the second HOLDS:
+// the FAR really is in that table. (Phoenix's equivalent note failed the second
+// test — its per-frontage table never contained a height at all.)
+//
+// So these are now a NORMAL READING TASK rather than a blocked one, and the task
+// is still the hard kind: the header is multi-row with merged cells and nested
+// "FAR (by right) / Max FAR (with Bonus)" sub-columns, so the column-count
+// reconciliation against the live enumeration matters more here than anywhere
+// else in this repo. Not started — and a half-read grid of this shape is exactly
+// how a neighbouring subarea's number gets published under this one's name.
 
 /** Which lot-area denominator the code's own sentence multiplies the ratio by.
  *  Never converted between (FACT 2) — recorded so the number can be labelled. */

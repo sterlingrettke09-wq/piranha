@@ -6672,3 +6672,62 @@ map is resolvable in principle and blocked only on the city publishing the layer
 Denver's CMP buffer was closed exactly that way this session. Exhibit 8.1,
 Figure H and § 1202.B are three known asks, and they are the shape of a data
 request rather than a reading task.
+
+### "We could not extract X" is two claims, and the second is the cheap one
+
+A blocker of that form asserts (1) that extraction failed and (2) that X was there
+to extract. Only the first is ever re-tested, and the second is checkable WITHOUT
+fixing the first.
+
+Phoenix failed the second test. Its note held 1,249 acres out because Chapter 12's
+per-frontage tables "run together when flattened" — and that table states setbacks
+and streetscape. It never contained a height. A successful extraction would have
+produced nothing, so the blocker could not have been right even on its own terms.
+
+Atlanta passes it. `api.municode.com` returns Chapter 16-18P as 216,855 bytes with
+eight `<table>` elements, the FAR grid is cell-addressable, and the FAR really is
+in it. Its access reason has expired; its reading reason has not.
+
+**And the fix does not generalise even though the class does.** Three instances,
+three different remedies:
+
+  San Diego  PDF     → `pdftotext -layout` recovers the columns
+  Phoenix    HTML    → the page always had real tables; no flag involved
+  Atlanta    JSON API → the payload carries HTML tables; no flag involved
+
+Two of the three never needed the tool that fixed the first. So a tool-phrased
+blocker cannot be cleared in a batch: **check the publisher before assuming the
+last fix applies.** The audit finds the candidates; each one still costs its own
+probe.
+
+### Map-keyed: a category, not a gap
+
+Four instances now, and they are one thing:
+
+  Denver   § 8.3.1.4.B.2   height areas on Exhibit 8.1        D-C, D-TD
+  Denver   § 13.1-13.B     Protected District buffer          9 CMP districts
+  San Diego § 156.0309(a)  base FARs per site on Figure H     10 CCPD districts
+  Phoenix  § 1202.B        the height map (and § 1202.C, density)  17 DTC districts
+
+In each the limit is REAL, PUBLISHED, and a function of WHERE the parcel is rather
+than of its zone code. That is not "uncurated" — there is nothing left to read.
+It is not "plan-governed" — no per-project instrument is involved. It is:
+**the instrument is spatial and the city has not published the layer.**
+
+The category earns its own name because it is the only one whose coverage can
+improve without anyone reading another document. Denver's CMP buffer proves it:
+the Protected District polygons were already in the zoning layer, a distance query
+closed it, and CMP-H went from a refusal to 200 ft on a live parcel in one
+session. Nothing was read to achieve that.
+
+So three named asks now exist, each attached to a section:
+
+  · Denver Exhibit 8.1 height areas — not in the 4-layer zoning service
+  · San Diego Figure H site FARs — not in the DSD services
+  · Phoenix § 1202.B height map and § 1202.C density map — absent from all 178
+    services on maps.phoenix.gov; the only downtown-adjacent one,
+    `Public/WalkableUrbanCode`, carries `APPLICABILITY_AREAS` alone
+
+These are data requests with names attached, not reading tasks, and they should
+not sit in the same bucket as either. A plan-governed parcel would not be helped
+by any layer; these three would be closed by one each.
