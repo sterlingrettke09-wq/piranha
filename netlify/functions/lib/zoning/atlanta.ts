@@ -265,9 +265,30 @@
 // more than 50 feet."
 //
 // The parcel polygon measures NET lot area. So 8.2 is a correct ratio against a
-// denominator nothing we fetch carries, which is the LA buildable-area shape
-// exactly (rule 24): the figure is right, the multiplicand is unobtainable, and
-// `far * lotSqFt` would be a number computed against the wrong area.
+// denominator nothing we CURRENTLY fetch, and `far * lotSqFt` would be a number
+// computed against the wrong area.
+//
+// ⚠️ BUT THIS IS NOT LA'S SHAPE, AND THE DIFFERENCE DECIDES THE REASON CODE.
+// LA's buildable area subtracts the required front yard, which is the PREVAILING
+// setback — the average of what neighbouring owners already built along 40% of
+// the frontage. That is an as-built fact about the street with no layer behind
+// it, and no spatial query can recover it. Genuinely unobtainable.
+//
+// Atlanta's gross is "all land within district boundaries plus half of adjoining
+// permanent open space such as streets, parks, lakes, cemeteries … limited to no
+// more than 50 feet". Streets, parks, lakes and cemeteries are PUBLISHED GEOMETRY
+// in most cities, and half-width-capped-at-fifty is a spatial operation, not an
+// inference. So this may be the MAP-KEYED shape — the instrument is spatial and
+// the only question is whether Atlanta publishes the layers — rather than the
+// basis-unavailable shape.
+//
+// ⚠️ RUN THAT CHECK BEFORE CONCLUDING IT IS UNPUBLISHABLE. Denver's Protected
+// District buffer was the same species and closed in one session because the
+// polygons were already in the zoning service. The two reason codes tell a user
+// different things and only one of them is a dead end: "the ratio's denominator
+// cannot be known" ends the conversation, while "it needs a spatial join we have
+// not wired" is a task. Asserting the first without looking would be recording a
+// dead end that is not one.
 //
 // The direction is the FLATTERING-FREE one for once — gross exceeds net, so
 // net * FAR understates rather than overstates — but understating is still an

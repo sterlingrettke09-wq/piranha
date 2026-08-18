@@ -6925,8 +6925,27 @@ permanent open space such as streets, parks, lakes, cemeteries … limited to no
 more than 50 feet."
 
 The parcel polygon measures NET lot area. So 8.2 is a correct ratio against a
-denominator nothing we fetch carries — LA's buildable-area shape (rule 24), where
-the figure is right and the multiplicand is unobtainable.
+denominator nothing we currently fetch.
+
+**But it is NOT LA's shape, and calling it that was too fast.** LA's buildable
+area subtracts the required front yard, and LA's required front yard is the
+PREVAILING setback — the average of what neighbouring owners already built along
+40% of the frontage. That is an as-built fact about a street, with no layer behind
+it and no spatial query that could recover it. Genuinely unobtainable.
+
+Atlanta's gross is "all land within district boundaries plus half of adjoining
+permanent open space such as streets, parks, lakes, cemeteries … limited to no
+more than 50 feet". Streets, parks, lakes and cemeteries are published geometry in
+most cities, and half-width-capped-at-fifty is a spatial operation rather than an
+inference. **So this is plausibly the MAP-KEYED shape, not the basis-unavailable
+shape** — the instrument is spatial and the open question is only whether Atlanta
+publishes the layers.
+
+That check belongs before the conclusion, because the two reason codes say
+different things to a user and only one is a dead end. "The denominator cannot be
+known" ends the conversation; "it needs a spatial join nobody has wired" is a
+task. Denver's Protected District buffer was the same species and closed in a
+single session once the polygons turned out to already be in the zoning service.
 
 **So the real decision is not which row goes in which field. It is whether a
 gross-basis ratio can be published at all**, and FACT 2 has already answered it
