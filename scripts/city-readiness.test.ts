@@ -86,9 +86,16 @@ describe('the duplicate-parse check finds pairs, it does not check a list', () =
 
   it('and the detector still fires — proven on a planted pair, not assumed', () => {
     // Without this, the zero above is indistinguishable from a broken scan.
-    const shared = regexLiterals("const t = s.split(/[()\s]+/)\n").filter((r) =>
-      regexLiterals("const u = z.split(/[()\s]+/)\n").includes(r),
+    // The fixture must contain a BACKSLASH-s, because the source lines this
+    // detector reads contain one. Written as "\s" inside a JS string it collapses
+    // to a bare "s", so the planted pair was `/[()s]+/` — the detector was being
+    // proven against a regex that appears nowhere in the codebase. It still fired,
+    // because both halves were wrong identically, which is how the fixture stayed
+    // green while modelling something that does not exist.
+    const shared = regexLiterals("const t = s.split(/[()\\s]+/)\n").filter((r) =>
+      regexLiterals("const u = z.split(/[()\\s]+/)\n").includes(r),
     )
+    expect(shared[0], 'the planted regex must be the one the providers actually use').toContain('\\s')
     expect(shared.length).toBe(1)
     expect(citiesWithBothModules().length).toBeGreaterThan(15)
   })

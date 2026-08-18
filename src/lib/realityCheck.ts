@@ -76,18 +76,39 @@ export function buildRealityCards(result: AnalysisResult): RealityCard[] {
     // from a population containing almost no duplexes. An absent measurement
     // must read as absent, and it must say which measurement is absent.
     const w = result.timeline.measuredTierWithheld
-    const sample =
-      w.n == null
-        ? `under the n=${w.minPublishableN} floor we publish (the exact count was not recorded)`
-        : `only n=${w.n}, under the n=${w.minPublishableN} floor we publish`
-    cards.push({
-      id: 'measured',
-      kicker: 'Measured permit time',
-      big: 'Not measured',
-      unit: `for ${TIER_LABEL[w.tier]}`,
-      sub: `${name} publishes permit timing by building size, but its ${TIER_LABEL[w.tier]} sample is ${sample}.`,
-      soWhat: `The city-wide median is a different population — it would answer a question about ${TIER_LABEL[w.tier]} with other buildings' numbers, so it is not shown.`,
-    })
+    // TWO KINDS OF ABSENCE, AND THE COPY BELOW IS ONLY TRUE OF ONE OF THEM.
+    // Everything here was written for Denver: a tier that was counted and came
+    // in under the publication floor. Milwaukee's apartments were never counted
+    // — the city files every 5+-unit building as commercial new construction,
+    // where the building-use field is free text — so "its sample is under the
+    // n=30 floor" would assert a measurement that does not exist, and "the
+    // city-wide median is a different population" would refer to a figure
+    // Milwaukee deliberately does not publish. Disclosure copy is code
+    // (CLAUDE.md rule 9), and this is the same sentence being true in one city
+    // and false in the next.
+    if (w.basis === 'unenumerable') {
+      cards.push({
+        id: 'measured',
+        kicker: 'Measured permit time',
+        big: 'Not measured',
+        unit: `for ${TIER_LABEL[w.tier]}`,
+        sub: `${name} publishes permit timing only for the building sizes its permit feed can separate. ${TIER_LABEL[w.tier]} cannot be separated at all: ${w.reason}`,
+        soWhat: `This is a limit of the city's data, not a small sample — no amount of additional permits would produce a figure, so nothing is shown rather than a number drawn from other building types.`,
+      })
+    } else {
+      const sample =
+        w.n == null
+          ? `under the n=${w.minPublishableN} floor we publish (the exact count was not recorded)`
+          : `only n=${w.n}, under the n=${w.minPublishableN} floor we publish`
+      cards.push({
+        id: 'measured',
+        kicker: 'Measured permit time',
+        big: 'Not measured',
+        unit: `for ${TIER_LABEL[w.tier]}`,
+        sub: `${name} publishes permit timing by building size, but its ${TIER_LABEL[w.tier]} sample is ${sample}.`,
+        soWhat: `The city-wide median is a different population — it would answer a question about ${TIER_LABEL[w.tier]} with other buildings' numbers, so it is not shown.`,
+      })
+    }
   }
 
   // 2. Relief odds — attached only on a NEEDS_RELIEF (variance-path) verdict

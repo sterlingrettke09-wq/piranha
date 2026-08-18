@@ -50,8 +50,26 @@ export interface TierBreakdown {
   /** Only when !attempted: what in the feed or query makes a split absent. */
   reason?: string
   /** Tiers computed and withheld. `n: null` means the suppressed sample size was
-   *  never recorded (the run predated this record) — an unknown, never a guess. */
-  suppressed?: Partial<Record<BuildingTier, { n: number | null; reason: string }>>
+   *  never recorded (the run predated this record) — an unknown, never a guess.
+   *
+   *  `basis` distinguishes TWO KINDS OF ABSENCE that rendered identically until
+   *  Milwaukee (rule 5, one level in — it is not enough that an absence differ
+   *  from a gap, two absences with different causes must differ from each other):
+   *    'thin-sample'  the tier WAS counted and the count is too small to publish.
+   *                   An n exists and a floor is the reason. Denver's `multi`.
+   *    'unenumerable' the tier CANNOT be counted from this feed at all, so there
+   *                   is no n and no floor. Milwaukee files every 5+-unit building
+   *                   as commercial new construction, where `Use of Building` is
+   *                   free text — apartments are not a small sample there, they
+   *                   are inseparable from parking lots and cell towers.
+   *  Absent means 'thin-sample', which is what every record written before
+   *  2026-08-18 meant. */
+  suppressed?: Partial<
+    Record<
+      BuildingTier,
+      { n: number | null; reason: string; basis?: 'thin-sample' | 'unenumerable' }
+    >
+  >
 }
 
 const PERMIT_STATS = permitStats as Record<
@@ -96,13 +114,24 @@ export interface TimelineResult {
    *  duplexes with a number computed almost entirely from other building types.
    *  The UI must render this as "not measured for this size" — never as blank,
    *  which reads as fast. */
-  measuredTierWithheld?: {
-    tier: BuildingTier
-    /** Rows the withheld tier held, or null when the run never recorded it. */
-    n: number | null
-    /** The publication floor the tier fell under. */
-    minPublishableN: number
-  }
+  measuredTierWithheld?:
+    | {
+        tier: BuildingTier
+        basis: 'thin-sample'
+        /** Rows the withheld tier held, or null when the run never recorded it. */
+        n: number | null
+        /** The publication floor the tier fell under. */
+        minPublishableN: number
+      }
+    | {
+        tier: BuildingTier
+        basis: 'unenumerable'
+        /** Why the feed cannot separate this tier. Rendered — not a vintage
+         *  string. There is deliberately no `n` and no floor on this arm: a
+         *  union rather than optional fields is what makes "sample is under the
+         *  n=30 floor" unable to render for a tier that was never counted. */
+        reason: string
+      }
 }
 
 /** The measured new-construction permit timing for a city, or undefined when the
@@ -153,12 +182,23 @@ export function measuredTierWithheldFor(
   tier: BuildingTier,
 ): TimelineResult['measuredTierWithheld'] {
   const entry = PERMIT_STATS[city]
-  if (!entry?.newConstruction) return undefined
+  // "Is this city measured at all?" — NOT "does it have an aggregate?". Those
+  // were the same question until Milwaukee, which publishes two tiers and NO
+  // city-wide figure precisely because a 1–2-family-only number wearing a
+  // city label is the fail-open this whole mechanism exists to prevent. Reading
+  // `newConstruction` as the proxy would have made the withheld-tier card vanish
+  // for the one city whose absence most needs explaining.
+  const measuredAtAll = Boolean(entry?.newConstruction) || Object.keys(entry?.byTier ?? {}).length > 0
+  if (!entry || !measuredAtAll) return undefined
   if (!entry.tierBreakdown?.attempted) return undefined
   if (entry.byTier?.[tier]) return undefined
   const record = entry.tierBreakdown.suppressed?.[tier]
+  if (record?.basis === 'unenumerable') {
+    return { tier, basis: 'unenumerable', reason: record.reason }
+  }
   return {
     tier,
+    basis: 'thin-sample',
     n: record?.n ?? null,
     minPublishableN: entry.tierBreakdown.minPublishableN ?? 30,
   }

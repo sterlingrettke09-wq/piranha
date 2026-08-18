@@ -46,6 +46,10 @@ const PERMIT_STATS = permitStatsJson as Record<
   string,
   | {
       newConstruction?: { medianMonths: number; p80Months: number; n: number }
+      // Optional on BOTH halves: a city may publish an aggregate with no tiers
+      // (Philadelphia) or tiers with no aggregate (Milwaukee). Requiring either
+      // one is what made the coverage check read Milwaukee as unmeasured.
+      byTier?: Record<string, { medianMonths: number; p80Months: number; n: number }>
       tierBreakdown?: { attempted: boolean; suppressed?: Record<string, unknown> }
     }
   | undefined
@@ -116,7 +120,17 @@ export function isCovered(slug: string, dim: CoverageDimension): boolean {
     case 'lifecycle':
       return slug in lifecycleMonths
     case 'permits':
-      return PERMIT_STATS[slug]?.newConstruction != null
+      // A CITY CAN PUBLISH TIERS AND NO AGGREGATE. Milwaukee does: its 1–2 family
+      // pair is measured and its apartment tier is unenumerable, so it withholds
+      // the city-wide figure on purpose. Reading `newConstruction` alone reported
+      // it as having no permit data at all — a false negative in the coverage
+      // table, understating what ships. Note this is the OPPOSITE call from
+      // redTapeIndex.ts, which reads `newConstruction` only and is right to: it
+      // needs a cross-city comparable, and a 1–2-family median is not one.
+      return (
+        PERMIT_STATS[slug]?.newConstruction != null ||
+        Object.keys(PERMIT_STATS[slug]?.byTier ?? {}).length > 0
+      )
     case 'relief':
       return RELIEF_STATS[slug]?.variance != null
   }
@@ -302,11 +316,6 @@ export const ABSENCE_REASONS: Partial<
   },
   milwaukee: {
     lifecycle: LIFECYCLE_NOT_BUILT,
-    permits: {
-      code: 'conservative',
-      reason:
-        'Milwaukee’s residential pair measures cleanly, but the city files all 5+-unit multifamily as commercial permits whose use column is free text, so the apartment stratum cannot be enumerated; the sound residential pair stays unpublished pending a live re-run and a product decision.',
-    },
     relief: RELIEF_SURVEYED_SCRAPE_DECLINED,
   },
   columbus: {

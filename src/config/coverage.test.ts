@@ -190,9 +190,21 @@ describe('recorded absences, spot-checked against the standing records', () => {
     expect(new Set(reasons).size).toBe(reasons.length)
   })
 
-  it('milwaukee and dallas hold measured permit data back as conservative', () => {
-    expect(ABSENCE_REASONS.milwaukee?.permits?.code).toBe('conservative')
+  // ⚠️ NARROWED 2026-08-18. This asserted that MILWAUKEE AND DALLAS both held
+  // measured permit data back. Milwaukee now publishes its 1–2 family pair, so
+  // it is derived-present and carries no absence reason at all — the XOR guard
+  // above is what caught the old reason still sitting there after the decision
+  // was taken, which is the behaviour a pinned inventory exists for (rule 20).
+  // Dallas is unchanged and still the whole membership of this code.
+  it('dallas holds measured permit data back as conservative — and is now alone in it', () => {
     expect(ABSENCE_REASONS.dallas?.permits?.code).toBe('conservative')
+    expect(ABSENCE_REASONS.milwaukee?.permits).toBeUndefined()
+    // Pin the membership, not just the member: a second city acquiring this code
+    // silently is the drift this file is meant to make loud.
+    const conservative = Object.entries(ABSENCE_REASONS)
+      .filter(([, v]) => v?.permits?.code === 'conservative')
+      .map(([slug]) => slug)
+    expect(conservative).toEqual(['dallas'])
   })
 
   it('the slot-test no-application-date cities are not-published, not not-built', () => {

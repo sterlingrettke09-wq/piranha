@@ -7507,3 +7507,76 @@ disqualifier 1, the unreproducible population, and states why it binds alone —
 of three and has no better claim than the other two.** The censoring analysis is
 not merely outranked; it rests on one arbitrary draw. The superseded frame is
 described rather than restated (rule 21).
+
+### Milwaukee publishes: the first city with tiers and no aggregate, and the five places that assumed otherwise
+
+Authorised 2026-08-18. Milwaukee ships **single 2.3 mo (n=262)** and **multi
+5.3 mo (n=83)** and **no `newConstruction` key at all**.
+
+**What released it was not new data.** The refusal on record was that the scope
+caveat would live in a `vintage` string no surface renders — the exact mechanism
+that published NYC's 8.3 as an unconditional median. That reason died when the
+tier boundary became a GUARD: `measuredFor()` fails closed for any tier absent
+from an attempted breakdown, so an apartment query cannot reach a 1-2-family
+number whatever any string says. **A guard is not a caveat**, and nothing about
+the underlying data changed.
+
+**Why there is deliberately no aggregate.** `durations(dwellings)` covers one-
+and two-family houses only. Writing it under `newConstruction` would put a
+houses-only median behind the key every other city fills with its entire
+new-construction population — the same fail-open the tier guard exists to
+prevent, re-entered one level up. The script now branches on `commercialEnumerable`
+and the aggregate returns automatically on the day the commercial side becomes a
+picklist.
+
+**TWO KINDS OF ABSENCE THAT RENDERED IDENTICALLY.** The withheld-tier card was
+written for Denver: a tier that WAS counted and came in under the n=30 floor. Its
+copy says the tier's *"sample is under the n=30 floor we publish"* and that *"the
+city-wide median is a different population"*. Both are **false of Milwaukee** —
+its apartments were never counted (they are inseparable from parking lots and
+cell towers inside a free-text column), and it publishes no city-wide median for
+the second clause to refer to. One sentence, true in one city, false in the next:
+rule 9's corollary, found before shipping only because the render was read rather
+than assumed.
+
+Fixed structurally. The result type is now a **discriminated union** —
+`{basis:'thin-sample', n, minPublishableN}` or `{basis:'unenumerable', reason}` —
+so the n-floor sentence cannot compile for a tier that has no n. The suppression
+record carries the same discriminator, and `splitTiersAtFloor` throws if a tier
+is declared unenumerable while holding rows.
+
+**THE PROXY, IN FIVE PLACES.** `newConstruction != null` was standing in for "this
+city is measured" across the codebase, and those were the same question until
+Milwaukee. I fixed the site I noticed — the resolver — and moved on; the test
+suite then found the rest, one file at a time:
+
+| site | what it got wrong |
+|---|---|
+| `measuredTierWithheldFor` | the withheld-tier card would vanish for the one city whose absence most needs explaining |
+| `coverage.ts` | Milwaukee reported as having no permit data at all — a false negative in the coverage table |
+| `ledgerFigures.ts` | `PermitEntry.newConstruction` required, making the artifact un-typeable |
+| `coverage.test.ts` | asserted Milwaukee holds data back; the XOR guard caught the stale absence reason |
+| `timeline.test.ts` | demanded Milwaukee be dropped from a list it belongs on |
+
+**This is rule 17 committed while applying it.** The mitigation for a retraction
+is to grep the claim's distinctive terms rather than fix where you noticed it —
+and a false PREMISE spreads exactly the same way a false claim does. One
+`grep -rn newConstruction` up front would have found all five.
+
+And the same expression is **correct** in a sixth place: `redTapeIndex.ts` reads
+`newConstruction` only, because it ranks cities against each other and needs one
+population per city. A houses-only median in a column other cities fill with
+their whole population would compare two things under one heading. Milwaukee
+showing null there is right. Documented in place, so it is not "fixed" later by
+someone pattern-matching on the other five.
+
+**A pre-existing fixture that modelled a regex appearing nowhere in the codebase.**
+`city-readiness.test.ts` planted `"const t = s.split(/[()\s]+/)"` to prove its
+duplicate-parse detector still fires — but `\s` inside a JS string collapses to a
+bare `s`, so the planted pair was `/[()s]+/`. **It still passed, because both
+halves were wrong identically.** A fixture can be green while modelling something
+that does not exist, and only the linter's `no-useless-escape` ever noticed. The
+assertion now pins that the planted regex contains a backslash-s.
+
+**Ends: lint 0, tsc 0, 4,108 tests.** The suite grew by 6 and every one of them
+pins a distinction rather than a value.

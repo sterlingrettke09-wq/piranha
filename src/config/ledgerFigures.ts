@@ -92,7 +92,10 @@ export type LedgerDrift = {
 type ReliefEntry = { variance: { grantRate: number; n: number } }
 type PermitFigure = { medianMonths: number; p80Months: number; n: number }
 type PermitEntry = {
-  newConstruction: PermitFigure
+  /** OPTIONAL since Milwaukee (2026-08-18): a city that publishes tiers and
+   *  withholds the city-wide figure has no aggregate to cite, and requiring one
+   *  here made the artifact un-typeable rather than making the ledger safer. */
+  newConstruction?: PermitFigure
   byTier?: Partial<Record<Exclude<PermitTier, 'aggregate'>, PermitFigure>>
 }
 
@@ -109,6 +112,7 @@ const CITY_TOKENS: Record<string, RegExp> = {
   dc: /\bDC\b|\bWashington,? D\.?C\.?\b/g,
   denver: /\bDenver\b/gi,
   miami: /\bMiami\b/gi,
+  milwaukee: /\bMilwaukee\b/gi,
   nashville: /\bNashville\b/gi,
   nyc: /\bNYC\b|\bNew York City\b/gi,
   philadelphia: /\bPhiladelphia\b/gi,
@@ -209,7 +213,20 @@ function attribute(block: Block, offset: number, eligible: readonly string[]): s
   const haystack = `${block.scopePrefix}\n${block.text.slice(0, offset)}`
   let best: { city: string; at: number } | null = null
   for (const city of eligible) {
-    const re = new RegExp(CITY_TOKENS[city].source, CITY_TOKENS[city].flags)
+    const token = CITY_TOKENS[city]
+    // CITY_TOKENS is hand-kept and `eligible` is derived from the artifacts, so
+    // the two drift apart the moment a city starts publishing. Milwaukee did,
+    // and this line threw a bare `Cannot read properties of undefined (reading
+    // 'source')` — a true failure with nothing in it that names the cause.
+    // Rule 20's other half: a guard that fires is only useful if it says what to
+    // do about it.
+    if (!token) {
+      throw new Error(
+        `ledgerFigures: ${city} appears in the permit/relief artifacts but has no CITY_TOKENS ` +
+          `entry, so no ledger citation could ever be attributed to it. Add a token regex.`,
+      )
+    }
+    const re = new RegExp(token.source, token.flags)
     let m: RegExpExecArray | null
     let last = -1
     while ((m = re.exec(haystack)) !== null) last = m.index

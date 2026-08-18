@@ -246,16 +246,32 @@ describe('measured permit timing', () => {
 // the one that bit: NYC's withdrawal has to remove it from BOTH the artifact and
 // the list, and this test is what makes a half-done withdrawal fail loudly.
 describe('the published measured-permit coverage list matches the data', () => {
-  it('equals exactly the cities carrying a newConstruction measurement', async () => {
+  // ⚠️ WIDENED 2026-08-18. This compared the list against cities carrying a
+  // `newConstruction` key, which read "has a city aggregate" as "is measured".
+  // Those were the same set until Milwaukee, which publishes two tiers and
+  // withholds the aggregate deliberately — so the old comparison would have
+  // demanded Milwaukee be dropped from a list it belongs on. Fifth site of that
+  // same proxy found in one change; the others were measuredTierWithheldFor,
+  // coverage.ts, ledgerFigures' PermitEntry type and coverage.test.ts.
+  it('equals exactly the cities publishing ANY measured figure, aggregate or tier', async () => {
     const stats = (await import('./data/permitStats.json')).default as Record<
       string,
-      { newConstruction?: unknown } | undefined
+      { newConstruction?: unknown; byTier?: Record<string, unknown> } | undefined
     >
     const measured = Object.entries(stats)
-      .filter(([, v]) => v?.newConstruction)
+      .filter(([, v]) => v?.newConstruction || Object.keys(v?.byTier ?? {}).length > 0)
       .map(([k]) => k)
       .sort()
     expect(measured).toEqual([...CITIES_WITH_MEASURED_PERMITS].sort())
+  })
+
+  it('and the aggregate-less case is real, not hypothetical', () => {
+    // Pins WHY the assertion above had to widen. If Milwaukee ever gains an
+    // aggregate, this goes red and the reader lands on the reason rather than
+    // finding a widened check with nothing left to justify it (rule 20 — a
+    // check that can pass by finding nothing is not a check).
+    expect(measuredFor('milwaukee', 'single')).toBeDefined()
+    expect(measuredFor('milwaukee')).toBeUndefined()
   })
 
   // These four publish only issue-side dates. If one of them ever appears in
@@ -340,8 +356,18 @@ describe('measuredFor prefers the tier-specific figure over the city aggregate',
     // FROM THAT RUN. A re-probe recovered it as 18 — still under the floor, so
     // the suppression was correct all along. The count changing does not change
     // the withholding, which is the property this test exists to pin.
-    expect(t.measuredTierWithheld).toEqual({ tier: 'multi', n: 18, minPublishableN: 30 })
-    expect(t.measuredTierWithheld!.n!).toBeLessThan(t.measuredTierWithheld!.minPublishableN)
+    expect(t.measuredTierWithheld).toEqual({
+      tier: 'multi',
+      basis: 'thin-sample',
+      n: 18,
+      minPublishableN: 30,
+    })
+    // Narrowed on `basis`, not asserted past it: on the 'unenumerable' arm
+    // there is no n and no floor to compare, and the union is what makes that
+    // a compile error instead of a sentence about a sample that was never taken.
+    const w = t.measuredTierWithheld!
+    expect(w.basis).toBe('thin-sample')
+    if (w.basis === 'thin-sample') expect(w.n!).toBeLessThan(w.minPublishableN)
   })
 
   it('a published tier carries no withheld record — the two are mutually exclusive', () => {
@@ -469,7 +495,14 @@ describe('every city × tier is measured, aggregate-covered, or explicitly suppr
         if (entry.byTier?.[tier]) continue
         const withheld = measuredTierWithheldFor(city, tier)
         expect(withheld, `${city}.${tier}`).toBeDefined()
-        expect(withheld!.minPublishableN).toBeGreaterThan(0)
+        // Every absence must state its KIND, and each kind must carry the
+        // field its copy depends on — a floor for a counted tier, a reason for
+        // an uncountable one. Neither arm may render the other's sentence.
+        if (withheld!.basis === 'thin-sample') {
+          expect(withheld!.minPublishableN).toBeGreaterThan(0)
+        } else {
+          expect(withheld!.reason.length, `${city}.${tier} reason`).toBeGreaterThan(20)
+        }
       }
     }
   })
@@ -534,5 +567,70 @@ describe('feed row counts in the artifact', () => {
           `provenance claim about a run that did not make it.`,
       ).toBe(computed)
     }
+  })
+})
+
+// ── MILWAUKEE: THE FIRST CITY TO PUBLISH TIERS AND NO AGGREGATE ─────────────
+// Authorised 2026-08-18. Its 1-2 family pair is measured off a controlled
+// vocabulary; its apartments are filed as commercial new construction where the
+// use column is free text and cannot be separated at all. So it publishes two
+// tiers and deliberately NO `newConstruction` — a houses-only median behind the
+// key every other city uses for its whole new-construction population would be
+// the same fail-open the tier guard exists to prevent, one level up.
+describe('a city can publish tiers with no city aggregate', () => {
+  it('milwaukee resolves its two tiers and refuses the third', () => {
+    expect(measuredFor('milwaukee', 'single')?.n).toBe(262)
+    expect(measuredFor('milwaukee', 'multi')?.n).toBe(83)
+    expect(measuredFor('milwaukee', 'apartment')).toBeUndefined()
+  })
+
+  it('and an untiered request gets nothing rather than the houses-only figure', () => {
+    // The load-bearing assertion. If a `newConstruction` key ever appears for
+    // Milwaukee while the commercial side is unenumerable, this goes red — and
+    // the thing it protects is that no caller can obtain a 1-2-family median
+    // under a city-wide name.
+    expect(measuredFor('milwaukee')).toBeUndefined()
+  })
+
+  it('the withheld apartment tier survives having no aggregate to hang off', () => {
+    // `measuredTierWithheldFor` used to gate on `newConstruction` as its proxy
+    // for "this city is measured", which would have made the explanation vanish
+    // for the one city whose absence most needs explaining.
+    const w = measuredTierWithheldFor('milwaukee', 'apartment')
+    expect(w).toBeDefined()
+    expect(w!.basis).toBe('unenumerable')
+    if (w!.basis === 'unenumerable') {
+      expect(w!.reason).toMatch(/free text/i)
+      expect(w!.reason).toMatch(/5\+ units|apartment/i)
+    }
+  })
+})
+
+// Every suppression must carry the fields ITS OWN copy depends on, and neither
+// arm may carry the other's. A thin-sample record with no n, or an unenumerable
+// one with a floor, renders a sentence about a measurement that was not taken.
+describe('suppression records are shaped by their basis', () => {
+  it('across every city in the artifact', async () => {
+    const stats = (await import('./data/permitStats.json')).default as unknown as Record<
+      string,
+      { tierBreakdown?: { suppressed?: Record<string, { n: number | null; reason: string; basis?: string }> } }
+    >
+    let checked = 0
+    for (const [city, entry] of Object.entries(stats)) {
+      for (const [tier, rec] of Object.entries(entry.tierBreakdown?.suppressed ?? {})) {
+        checked++
+        const basis = rec.basis ?? 'thin-sample'
+        expect(['thin-sample', 'unenumerable'], `${city}.${tier}`).toContain(basis)
+        if (basis === 'unenumerable') {
+          expect(rec.n, `${city}.${tier}: an uncounted tier must not carry a count`).toBeNull()
+          expect(rec.reason.length, `${city}.${tier}: reason is rendered, so it must say something`).toBeGreaterThan(40)
+        } else {
+          expect(typeof rec.n === 'number' || rec.n === null, `${city}.${tier}`).toBe(true)
+        }
+      }
+    }
+    // rule 20: an empty suppression inventory would make every assertion above
+    // vacuously true, which is exactly how a check goes green by finding nothing.
+    expect(checked, 'no suppressed tiers found at all — the scan or the artifact broke').toBeGreaterThanOrEqual(2)
   })
 })

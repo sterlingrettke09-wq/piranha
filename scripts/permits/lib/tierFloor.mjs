@@ -45,10 +45,28 @@ export const MIN_PUBLISHABLE_TIER_N = 30
  *        `byTier` in the artifact; `tierBreakdown` goes beside it and states
  *        that the breakdown was attempted plus every tier withheld and why.
  */
-export function splitTiersAtFloor(byTier, buildStats) {
+export function splitTiersAtFloor(byTier, buildStats, unenumerable = {}) {
   const tiers = {}
   const suppressed = {}
   for (const [tier, rows] of Object.entries(byTier)) {
+    // A tier the FEED CANNOT SEPARATE is not a small sample, and recording it as
+    // one publishes a false reason: "under the n=30 floor" asserts a count that
+    // was never taken. Milwaukee files every 5+-unit building as commercial new
+    // construction, where `Use of Building` is free text — its apartments are not
+    // scarce, they are inseparable. Handled in THIS call rather than patched onto
+    // the result, so the guarantee that tiers and their breakdown come out
+    // together (rule 14) covers both kinds of absence.
+    if (unenumerable[tier]) {
+      if (rows.length) {
+        throw new Error(
+          `tier ${tier} is declared unenumerable but carries ${rows.length} rows — one of the ` +
+            `two is wrong, and publishing either would be a claim the other contradicts`,
+        )
+      }
+      console.warn(`  tier ${tier}: UNENUMERABLE — recorded in tierBreakdown.suppressed.${tier}`)
+      suppressed[tier] = { n: null, reason: unenumerable[tier], basis: 'unenumerable' }
+      continue
+    }
     if (rows.length < MIN_PUBLISHABLE_TIER_N) {
       // Emit, don't just warn. The console line is for the operator; the
       // `suppressed` entry is what survives into the artifact.
@@ -59,6 +77,7 @@ export function splitTiersAtFloor(byTier, buildStats) {
       suppressed[tier] = {
         n: rows.length,
         reason: `n=${rows.length} is below minPublishableN. The city aggregate is NOT a substitute: it is a different population.`,
+        basis: 'thin-sample',
       }
       continue
     }

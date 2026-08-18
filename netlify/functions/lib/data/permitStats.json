@@ -170,5 +170,43 @@
       "attempted": true,
       "minPublishableN": 30
     }
+  },
+  "milwaukee": {
+    "byTier": {
+      "single": {
+        "medianMonths": 2.3,
+        "p80Months": 4.1,
+        "n": 262,
+        "vintage": "opened 2022-01-01 onward; computed 2026-08-18; data.milwaukee.gov buildingpermits \"Residential and Commercial Permit Work Data\" (Permit Type IN (Residential New Construction Permit, Commercial New Construction Permit), gated to building \"Use of Building\" only). SCOPE: ONE- AND TWO-FAMILY HOUSES ONLY — 5+ unit buildings are filed as commercial new construction and cannot be separated from other commercial work, so they are absent from this population rather than under-represented in it. ISSUED-ONLY FEED: the Status column's entire domain is 'Issued', so filings that never issued are absent rather than censored; the issuance rate is not computable and this is a FLOOR — a conditional median, time-to-issuance GIVEN issuance."
+      },
+      "multi": {
+        "medianMonths": 5.3,
+        "p80Months": 12.8,
+        "n": 83,
+        "vintage": "opened 2022-01-01 onward; computed 2026-08-18; data.milwaukee.gov buildingpermits \"Residential and Commercial Permit Work Data\" (Permit Type IN (Residential New Construction Permit, Commercial New Construction Permit), gated to building \"Use of Building\" only). SCOPE: ONE- AND TWO-FAMILY HOUSES ONLY — 5+ unit buildings are filed as commercial new construction and cannot be separated from other commercial work, so they are absent from this population rather than under-represented in it. ISSUED-ONLY FEED: the Status column's entire domain is 'Issued', so filings that never issued are absent rather than censored; the issuance rate is not computable and this is a FLOOR — a conditional median, time-to-issuance GIVEN issuance."
+      }
+    },
+    "tierBreakdown": {
+      "attempted": true,
+      "minPublishableN": 30,
+      "suppressed": {
+        "apartment": {
+          "n": null,
+          "reason": "Milwaukee files every building of 5+ units as a Commercial New Construction Permit, and the commercial \"Use of Building\" field is free text (123 distinct values over 354 rows (a controlled vocabulary would have <= 40); 25.7% of rows carry a value that appears exactly once (limit 5%); 15.0% of rows are blank (limit 2%)), so apartment buildings cannot be separated from parking lots, cell towers and retaining walls.",
+          "basis": "unenumerable"
+        }
+      }
+    },
+    "feed": {
+      "observedAt": "2026-08-18",
+      "totals": [
+        {
+          "endpoint": "data.milwaukee.gov datastore 828e9630-d7cb-42e4-960e-964eae916397",
+          "totalRows": 16685
+        }
+      ],
+      "cohortRows": 346,
+      "basis": "totalRows: every row the data.milwaukee.gov buildingpermits CSV datastore holds, unfiltered, as reported by the server rather than counted off this script's pager. cohortRows: Permit Type on the new-construction allowlist AND Date Opened >= 2022-01-01, gated to residential rows whose Use of Building is a known dwelling class — the commercial arm is excluded entirely (see the enumerability halt). The published n is smaller: it also drops rows without a parseable date pair."
+    }
   }
 }

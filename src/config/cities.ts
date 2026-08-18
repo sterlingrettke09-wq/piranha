@@ -518,8 +518,10 @@ export function hasCitySpecificHurdles(slug: string): boolean {
  * all. Its full 300-dataset catalogue was enumerated through the portal's own
  * OGC search API, so this is an established absence rather than a failed guess.
  *
- * Atlanta and Milwaukee are the two cases where a pipeline EXISTS and refuses —
- * see scripts/permits/milwaukee.mjs and the notes below.
+ * Atlanta is the case where a pipeline EXISTS and refuses outright. Milwaukee's
+ * refuses IN PART — it publishes two tiers and withholds the apartment tier and
+ * the city aggregate — which is a third state this list could not express before
+ * 2026-08-18. See scripts/permits/milwaukee.mjs and the notes below.
  *
  * This exists for the same reason `CITIES_WITH_SPECIFIC_HURDLES` does. Compare
  * renders cities side by side, and a city with no measured line reads as faster
@@ -577,30 +579,33 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 //     cannot separate a not-yet from a never either, and the retraction holds on
 //     the better feed rather than merely on the one that lacked the column.
 //
-// ⚠️ milwaukee is WITHHELD 2026-08-08, and it is the first city withheld for a
-// reason that is not about the data's quality. Milwaukee publishes both dates
-// with a 0.00% null rate on each, and its RESIDENTIAL `Use of Building` column
-// is a genuine controlled vocabulary (9 values, no singletons, 0.1% blank), so
-// one- and two-family dwellings measure cleanly: single 2.3 mo (n=262), multi
-// 5.3 mo (n=83), applied 2022-01-01 onward. But the city files ALL 5+-unit
-// multifamily as a Commercial New Construction Permit, and the commercial half
-// of that same column is FREE TEXT — 123 distinct strings over 354 windowed
-// rows, 25.7% of them appearing exactly once, 15.0% blank. The apartment tier
-// therefore cannot be enumerated at all.
+// ✅ milwaukee PUBLISHES 2026-08-18, in part — the first city in the artifact to
+// carry tiers with NO city aggregate. The block that stood here recorded it as
+// wholly withheld and named a live re-run plus an untaken product decision as
+// what remained; both have since happened, so the block is replaced rather than
+// annotated (rule 21 — a correction that reproduces the claim it corrects is
+// indistinguishable from the claim).
 //
-// Publishing the residential pair alone was ALSO refused, for a wiring reason
-// that is now FIXED (2026-08-09) — recorded here because the old sentence is
-// still quoted elsewhere: measuredFor() used to fall back to `newConstruction`
-// for any tier lacking an entry, so an apartment query in Milwaukee would have
-// been answered from a population containing no apartments. It no longer does.
-// permitStats.json carries a `tierBreakdown` per city, measuredFor() returns
-// undefined for a tier absent from an attempted breakdown, and realityCheck.ts
-// renders "Not measured for 5+ unit buildings" instead of a wrong figure.
-// Milwaukee stays absent for the un-enumerable commercial stratum above, and
-// because publishing its residential pair needs a live re-run plus a product
-// decision — not because the wiring would mis-serve it.
-// scripts/permits/milwaukee.mjs computes every figure, prints them, and halts
-// structurally.
+// WHAT PUBLISHES: single 2.3 mo (n=262) and multi 5.3 mo (n=83), applied
+// 2022-01-01 onward, off a genuine controlled vocabulary (9 values, no
+// singletons, 0.1% blank).
+//
+// WHAT DOES NOT, and why the aggregate is absent on purpose: Milwaukee files ALL
+// 5+-unit multifamily as a Commercial New Construction Permit, and the
+// commercial half of that same column is FREE TEXT — re-measured 2026-08-18 at
+// 123 distinct strings over 354 windowed rows, 25.7% appearing exactly once,
+// 15.0% blank. So apartments are UNENUMERABLE, not scarce, and there is no
+// city-wide population to average: writing a houses-only median under
+// `newConstruction` would put it behind the key every other city fills with its
+// whole new-construction population.
+//
+// WHAT UNBLOCKED IT was not new data. The refusal was that the scope caveat
+// would live in a `vintage` string no surface renders — the mechanism that
+// published NYC's 8.3 as an unconditional median. That is now a GUARD:
+// measuredFor() fails closed for any tier absent from an attempted breakdown, so
+// an apartment query cannot reach a 1-2-family number whatever any string says.
+// The apartment tier carries `basis: 'unenumerable'` and renders the feed's own
+// reason. A guard is not a caveat, and that difference is the whole decision.
 //
 // ⚠️ atlanta publishes an application date (`Opend` / `OrigOpened`) and NO issue
 // date. `StatusDate` is the timestamp of the CURRENT status, so it equals the
@@ -645,8 +650,12 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 // 8.3 was a CONDITIONAL median — time to issuance GIVEN issuance. The only place
 // that condition could have been stated is the `vintage` string, and
 // src/lib/realityCheck.ts never renders it: the card said "Median filing→permit
-// in New York City". Milwaukee's residential pair is sound and is still withheld
-// for exactly this reason, so NYC is not an exception for being large.
+// in New York City". Milwaukee's residential pair was withheld for exactly this
+// reason until 2026-08-18, and what released it sharpens the point rather than
+// weakening it: the caveat did not get better wording, it became a GUARD that
+// fails closed. NYC has no equivalent available — its whole figure is
+// conditional, not one tier of it, so there is no boundary to fail closed on.
+// NYC is not an exception for being large.
 //
 // WHICH LIMB BINDS (measured 2026-08-09 against w9ak-ipjd, through the script's
 // own filters, with the IS NOT NULL removed): 662 of 1,040 in-window -I1 filings
@@ -688,8 +697,10 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 // only field that could state the condition is `vintage`, which no UI surface
 // renders (src/lib/realityCheck.ts renders medianMonths/p80Months/n only). A
 // conditional figure whose condition nobody can see is the exact thing
-// Milwaukee's sound residential pair is withheld over; Seattle is not an
-// exception for having a higher share.
+// Milwaukee's residential pair was withheld over until a guard replaced the
+// string (2026-08-18); Seattle's condition applies to the whole figure, so no
+// tier boundary can carry it. Seattle is not an exception for having a higher
+// share.
 //
 // THE TWO-ARM SHAPE, so the next reader doesn't re-average it: seattle.mjs pulls
 // a 'New' arm and a detached-ADU arm gated on `description`. Both gates are
@@ -704,6 +715,10 @@ export function hasCitySpecificHurdles(slug: string): boolean {
 // at a higher aggregate share without settling that interval.
 export const CITIES_WITH_MEASURED_PERMITS = [
   'austin', 'denver', 'miami', 'nashville', 'philadelphia', 'raleigh',
+  // Tiers only, no city aggregate — see the milwaukee note above. Membership
+  // here means "publishes measured permit timing", NOT "has a city-wide median",
+  // and Milwaukee is the first city where those differ.
+  'milwaukee',
 ] as const
 
 export function hasMeasuredPermitTiming(slug: string): boolean {

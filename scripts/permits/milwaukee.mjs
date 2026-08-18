@@ -61,18 +61,32 @@
 // "Not measured for 5+ unit buildings" card rather than dropping the figure
 // silently. The named product decision has been taken.
 //
-// What is NOT closed, and is why this script still writes nothing: the
-// commercial/apartment stratum still cannot be enumerated (below), so
-// refuseUnlessEnumerable() still throws before any write. Publishing Milwaukee's
-// residential-only pair is now a WIRING-SAFE option that nobody has taken; it
-// needs a live re-run and a decision, and neither is this file's to make.
+// ⚠️ SUPERSEDED 2026-08-18 — THIS SCRIPT NOW PUBLISHES. The three paragraphs
+// that stood here described a total halt: they said the script wrote nothing,
+// that the residential-only pair was an untaken option, and that the decision
+// was not this file's to make. The decision has since been taken. They are
+// replaced rather than annotated, because a paragraph saying "this script writes
+// nothing" sitting above a script that writes is not a stale detail — it is the
+// first thing a reader learns about the file, and it is false (rule 17).
 //
-// The halt is STRUCTURAL — see refuseUnlessEnumerable() — not an incidental side
-// effect of some other failure. If Milwaukee ever converts `Use of Building` on
-// the commercial side to a picklist like the one it already uses on the
-// residential side, the gate passes and the rest of this file is correct as
-// written. Code that did not run is not code that works, so it is written to be
-// right on the day it starts running.
+// WHAT IT PUBLISHES: the 1–2 family pair, and NO city aggregate. What it still
+// refuses is unchanged — the commercial/apartment stratum cannot be enumerated,
+// so apartments are recorded as `basis: 'unenumerable'` and render as a stated
+// absence with the feed's own reason. There remains no way to talk this script
+// into publishing an unenumerable population; what changed is that declining to
+// publish apartments no longer requires declining to publish houses.
+//
+// The scope limit is STRUCTURAL, not textual, and that distinction is the whole
+// basis of the decision. `measuredFor()` fails closed for any tier absent from
+// an attempted breakdown, so an apartment query cannot reach a 1–2-family
+// number whatever any string says. The old blocker was that the caveat would
+// live in a `vintage` field nothing renders — the mechanism by which NYC
+// published 8.3 months as an unconditional median. A guard is not a caveat.
+//
+// If Milwaukee ever converts `Use of Building` on the commercial side to a
+// picklist like the one it already uses on the residential side, the aggregate
+// returns automatically — see `commercialEnumerable` in main(), which is the
+// same condition, now branched rather than thrown.
 //
 // ── A SECOND, INDEPENDENT LIMITATION (would survive the fix above) ──────────
 // The feed is ISSUED-ONLY. Established as an ANSWER, not a gap: the dataset HAS
@@ -312,7 +326,7 @@ function vocabulary(rows, field) {
  * while its filter was 58% contaminated underneath — nothing but that accident
  * stood between a bad filter and a published number.
  */
-function refuseUnlessEnumerable(vocab) {
+function enumerabilityFailures(vocab) {
   const reasons = []
   if (vocab.distinct > VOCAB_MAX_DISTINCT) {
     reasons.push(
@@ -332,6 +346,25 @@ function refuseUnlessEnumerable(vocab) {
         `${VOCAB_MAX_BLANK_SHARE * 100}%)`,
     )
   }
+  return reasons
+}
+
+/**
+ * The apartment tier's suppression reason, rendered to the user by
+ * src/lib/realityCheck.ts. It is a sentence about MILWAUKEE'S FEED, not about a
+ * sample size, because no sample was ever taken: see the 'unenumerable' arm in
+ * netlify/functions/lib/timeline.ts.
+ */
+function apartmentUnenumerableReason(reasons) {
+  return (
+    `Milwaukee files every building of 5+ units as a Commercial New Construction Permit, and ` +
+    `the commercial "${USE_FIELD}" field is free text (${reasons.join('; ')}), so apartment ` +
+    `buildings cannot be separated from parking lots, cell towers and retaining walls.`
+  )
+}
+
+/** Retained for the day the commercial side becomes a picklist. */
+function refuseUnlessEnumerable(reasons) {
   if (reasons.length === 0) return
   throw new Error(
     `Commercial "${USE_FIELD}" is FREE TEXT, so the commercial/apartment stratum cannot be ` +
@@ -450,50 +483,84 @@ async function main() {
   console.log(`\n  residential ${USE_FIELD}: ${fmt(resVocab)}  (controlled)`)
   console.log(`  commercial  ${USE_FIELD}: ${fmt(comVocab)}`)
 
-  refuseUnlessEnumerable(comVocab)
+  const enumFailures = enumerabilityFailures(comVocab)
+  const commercialEnumerable = enumFailures.length === 0
 
-  // ── Nothing below here has ever run. It is written to be correct on the day
-  //    the gate above starts passing, and it is deliberately NOT reachable by a
-  //    caveat, a flag or an env var: there is no way to talk this script into
-  //    publishing an unenumerable population.
+  // ── WHAT THIS PUBLISHES, AND WHY IT IS NOT AN AGGREGATE ────────────────────
+  // Authorised 2026-08-18 as a product decision. The refusal that stood here was
+  // NOT that the residential figures were wrong — they are measured cleanly off a
+  // controlled vocabulary. It was that the caveat distinguishing them from a
+  // city-wide figure would have lived in a `vintage` string nothing renders,
+  // which is precisely how NYC published 8.3 months as an unconditional median.
+  //
+  // That reason is now dead, and structurally rather than editorially: the tier
+  // boundary is a GUARD (measuredFor fails closed for any tier absent from an
+  // attempted breakdown), so an apartment query cannot reach a 1-2-family number
+  // no matter what any string says.
+  //
+  // ⚠️ SO THERE IS NO `newConstruction` KEY WHILE THE COMMERCIAL SIDE IS
+  // UNENUMERABLE. Milwaukee is the first city to publish tiers with no city
+  // aggregate, and that is the entire point: `durations(dwellings)` covers
+  // one- and two-family houses ONLY, so writing it under `newConstruction` would
+  // put a 1-2-family median behind a key every other city uses for its whole
+  // new-construction population — the exact fail-open the tier guard exists to
+  // prevent, re-entered one level up. The aggregate returns on the day the
+  // commercial side becomes a picklist, when it would actually span the city.
   const byTier = { single: [], multi: [], apartment: [] }
   for (const r of dwellings) byTier[RESIDENTIAL_TIER[norm(r[USE_FIELD])]].push(...durations([r]))
   const all = durations(dwellings)
   const stamp = new Date().toISOString().slice(0, 10)
+  const scope = commercialEnumerable
+    ? 'all new-construction permits'
+    : 'ONE- AND TWO-FAMILY HOUSES ONLY — 5+ unit buildings are filed as commercial new ' +
+      'construction and cannot be separated from other commercial work, so they are absent ' +
+      'from this population rather than under-represented in it'
   const vintage =
     `opened ${SINCE} onward; computed ${stamp}; ${HOST} ${DATASET} "Residential and Commercial ` +
     `Permit Work Data" (Permit Type IN (${NEW_CONSTRUCTION_TYPES.join(', ')}), gated to building ` +
-    `"${USE_FIELD}" only). ISSUED-ONLY FEED: the Status column's entire domain is 'Issued', so ` +
-    `filings that never issued are absent rather than censored; the issuance rate is not ` +
-    `computable and this is a FLOOR — a conditional median, time-to-issuance GIVEN issuance.`
+    `"${USE_FIELD}" only). SCOPE: ${scope}. ISSUED-ONLY FEED: the Status column's entire domain ` +
+    `is 'Issued', so filings that never issued are absent rather than censored; the issuance ` +
+    `rate is not computable and this is a FLOOR — a conditional median, time-to-issuance GIVEN ` +
+    `issuance.`
   // The n<30 publication floor and the RECORD of every tier it withholds come out
   // of one call, so a tier can no longer be dropped silently — see
-  // scripts/permits/lib/tierFloor.mjs. `tierBreakdown` is written beside `byTier`
-  // and is what tells measuredFor() to fail closed rather than serve the
-  // aggregate for a withheld tier.
-  const { tiers, tierBreakdown } = splitTiersAtFloor(byTier, (rows) => ({
-    medianMonths: daysToMonths(quantile(rows, 0.5)),
-    p80Months: daysToMonths(quantile(rows, 0.8)),
-    n: rows.length,
-    vintage,
-  }))
-  const stats = {
-    medianMonths: daysToMonths(quantile(all, 0.5)),
-    p80Months: daysToMonths(quantile(all, 0.8)),
-    n: all.length,
-    vintage,
-  }
+  // scripts/permits/lib/tierFloor.mjs. The third argument carries the OTHER kind
+  // of absence: a tier the feed cannot separate at all, which must not be
+  // recorded as a small sample.
+  const { tiers, tierBreakdown } = splitTiersAtFloor(
+    byTier,
+    (rows) => ({
+      medianMonths: daysToMonths(quantile(rows, 0.5)),
+      p80Months: daysToMonths(quantile(rows, 0.8)),
+      n: rows.length,
+      vintage,
+    }),
+    commercialEnumerable ? {} : { apartment: apartmentUnenumerableReason(enumFailures) },
+  )
+  const stats = commercialEnumerable
+    ? {
+        medianMonths: daysToMonths(quantile(all, 0.5)),
+        p80Months: daysToMonths(quantile(all, 0.8)),
+        n: all.length,
+        vintage,
+      }
+    : null
   let existing = {}
   try {
     existing = JSON.parse((await readFile(OUT_PATH, 'utf8')) || '{}')
   } catch (err) {
     if (err.code !== 'ENOENT') throw err
   }
+  const prior = { ...(existing.milwaukee ?? {}) }
+  // Not merely "omit the key" — DELETE it, so a future run that loses the
+  // aggregate cannot leave a previous run's behind. A stale aggregate would be
+  // indistinguishable from a current one.
+  delete prior.newConstruction
   const merged = {
     ...existing,
     milwaukee: {
-      ...(existing.milwaukee ?? {}),
-      newConstruction: stats,
+      ...prior,
+      ...(stats ? { newConstruction: stats } : {}),
       byTier: tiers,
       tierBreakdown,
       feed: feedCounts({
@@ -505,13 +572,17 @@ async function main() {
           `${TYPE_FIELD} on the new-construction allowlist AND ${OPENED_FIELD} >= ${SINCE}, ` +
           `gated to residential rows whose ${USE_FIELD} is a known dwelling class — the ` +
           `commercial arm is excluded entirely (see the enumerability halt). The published n ` +
-          `is smaller: it also drops rows without a parseable date pair. Like everything else ` +
-          `below the halt, this has never executed.`,
+          `is smaller: it also drops rows without a parseable date pair.`,
       }),
     },
   }
   await writeFile(OUT_PATH, JSON.stringify(merged, null, 2) + '\n')
-  console.log('  Wrote milwaukee.newConstruction:', stats)
+  if (stats) {
+    console.log('  Wrote milwaukee.newConstruction:', stats)
+  } else {
+    console.log('  Wrote milwaukee.byTier (NO city aggregate — 1-2 family only):', Object.keys(tiers).join(', '))
+    console.log('  apartment: suppressed as UNENUMERABLE, reason rendered to the user')
+  }
 }
 
 main().catch((err) => {

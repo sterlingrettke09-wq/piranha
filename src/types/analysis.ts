@@ -208,11 +208,22 @@ export interface AnalysisResult {
      *  city-wide aggregate is a different population, not a weaker answer to the
      *  same question. Render it as "not measured for this size"; a blank reads as
      *  fast. `n` is null when the suppressed sample size was never recorded. */
-    measuredTierWithheld?: {
-      tier: 'single' | 'multi' | 'apartment'
-      n: number | null
-      minPublishableN: number
-    }
+    measuredTierWithheld?:
+      | {
+          tier: 'single' | 'multi' | 'apartment'
+          /** The tier WAS counted; the count is too small to publish. */
+          basis: 'thin-sample'
+          n: number | null
+          minPublishableN: number
+        }
+      | {
+          tier: 'single' | 'multi' | 'apartment'
+          /** The tier CANNOT be counted from the feed — no n, no floor. The
+           *  copy for this arm must not mention either, and must not refer to a
+           *  city-wide median, which a tier-only city does not have. */
+          basis: 'unenumerable'
+          reason: string
+        }
   }
   narrative: string
   assumptions: Record<string, string>

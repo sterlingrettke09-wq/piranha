@@ -221,6 +221,12 @@ export function computeRedTapeIndex(constants: Partial<RedTapeConstants> = {}): 
 
   return scored.map((s, i) => {
     const rule = PARKING_RULES[s.slug]
+    // DELIBERATELY the aggregate only, and deliberately NOT widened to byTier
+    // the way coverage.ts was. This column ranks cities against each other, so it
+    // needs one population per city; Milwaukee publishes a 1–2-family pair and no
+    // city-wide figure, and dropping a houses-only median into a column other
+    // cities fill with their whole new-construction population would compare two
+    // different things under one heading. Milwaukee showing null here is correct.
     const measured = PERMIT_STATS[s.slug]?.newConstruction
     const relief = RELIEF_STATS[s.slug]?.variance
     return {

@@ -130,7 +130,7 @@ describe('buildRealityCards', () => {
     const cards = buildRealityCards(
       makeResult({
         city: 'nowhere',
-        measuredTierWithheld: { tier: 'multi', n: null, minPublishableN: 30 },
+        measuredTierWithheld: { tier: 'multi', basis: 'thin-sample', n: null, minPublishableN: 30 },
       }),
     )
     expect(cards.map((c) => c.id)).toEqual(['measured'])
@@ -141,11 +141,41 @@ describe('buildRealityCards', () => {
     expect(cards[0].soWhat).toContain('different population')
   })
 
+  // ── THE SECOND KIND OF ABSENCE ────────────────────────────────────────────
+  // Everything above is Denver's case: a tier that WAS counted and came in under
+  // the floor. Milwaukee's apartments were never counted at all, and the copy
+  // written for Denver would have said two false things about it — that its
+  // sample is under n=30 (asserting a measurement nobody took) and that the
+  // city-wide median is a different population (referring to a figure Milwaukee
+  // deliberately does not publish). Same sentence, true in one city, false in
+  // the next: CLAUDE.md rule 9's corollary, which is why this asserts the
+  // ABSENCE of those phrases rather than only the presence of the new one.
+  it('an unenumerable tier states the feed limit and never a sample size', () => {
+    const cards = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        measuredTierWithheld: {
+          tier: 'apartment',
+          basis: 'unenumerable',
+          reason: 'the commercial use column is free text, so apartments cannot be separated.',
+        },
+      }),
+    )
+    expect(cards[0].big).toBe('Not measured')
+    expect(cards[0].sub).toContain('free text')
+    expect(cards[0].soWhat).toContain('not a small sample')
+    // The three phrases that must NOT survive into this arm.
+    const all = `${cards[0].sub} ${cards[0].soWhat}`
+    expect(all).not.toContain('n=')
+    expect(all).not.toContain('floor')
+    expect(all).not.toContain('city-wide median')
+  })
+
   it('a withheld tier with a recorded n names it', () => {
     const cards = buildRealityCards(
       makeResult({
         city: 'nowhere',
-        measuredTierWithheld: { tier: 'apartment', n: 12, minPublishableN: 30 },
+        measuredTierWithheld: { tier: 'apartment', basis: 'thin-sample', n: 12, minPublishableN: 30 },
       }),
     )
     expect(cards[0].sub).toContain('only n=12')
@@ -185,7 +215,7 @@ describe('buildRealityCards', () => {
       makeResult({
         city: 'nowhere',
         measured: MEASURED,
-        measuredTierWithheld: { tier: 'multi', n: null, minPublishableN: 30 },
+        measuredTierWithheld: { tier: 'multi', basis: 'thin-sample', n: null, minPublishableN: 30 },
       }),
     )
     expect(cards).toHaveLength(1)
