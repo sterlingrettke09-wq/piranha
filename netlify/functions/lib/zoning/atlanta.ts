@@ -219,12 +219,46 @@
 // the FAR really is in that table. (Phoenix's equivalent note failed the second
 // test — its per-frontage table never contained a height at all.)
 //
-// So these are now a NORMAL READING TASK rather than a blocked one, and the task
-// is still the hard kind: the header is multi-row with merged cells and nested
-// "FAR (by right) / Max FAR (with Bonus)" sub-columns, so the column-count
-// reconciliation against the live enumeration matters more here than anywhere
-// else in this repo. Not started — and a half-read grid of this shape is exactly
-// how a neighbouring subarea's number gets published under this one's name.
+// So these are now a NORMAL READING TASK rather than a blocked one, and the
+// reading method is worked out: scripts/municodeGrid.py expands the merges so
+// every data cell carries its full header path.
+//
+// ⚠️ THE COLUMN-COUNT CHECK USED ON SAN DIEGO DOES NOT APPLY, and reaching for it
+// here is dangerous. There the header count, the data count and the live code
+// count were all six and their agreement was the proof. A merged header cell
+// legitimately spans several data columns, so here the counts SHOULD differ —
+// and "make the counts reconcile" can only be satisfied by misreading one side,
+// which produces a grid that passes the check while publishing a neighbouring
+// subarea's figure.
+//
+// WHAT RECONCILES INSTEAD IS THE COLUMN PATH. SPI-16 proves it: the live
+// enumeration carries `SPI-16 SA2 JSTA`, and the expanded grid resolves a column
+// whose path is (Midtown Residential SA #2 -> Juniper St. Transition -> FAR by
+// right). JSTA *is* that sub-column. The identity is the evidence; the counts
+// never had to agree.
+//
+// SPI-16 READ 2026-08-17 and NOT YET ENCODED — recorded here so the reading is
+// not lost and so the next writer starts from figures rather than from a PDF.
+// Chapter 16-18P, Table "FAR / Height" (by-right column; the bonus column is a
+// programme the user has not chosen, rule 6):
+//
+//   live code           column path                              FAR    height
+//   SPI-16 SA1          Midtown Mixed Use (SA #1)                8.2    none, except the
+//                                                                       transitional height
+//                                                                       plane adjacent to R
+//   SPI-16 SA2 JSTA     SA #2 -> Juniper St. Transition          6.4    400'
+//   SPI-16 SA2          SA #2 -> Non-Juniper St. Transition      3.2    250'
+//   SPI-16 SA3          Juniper East (SA #3)                     5.2    100' (60' east of
+//                                                                       Piedmont Ave.)
+//   SPI-16 SA1C         "-C" conditional variant of SA1          — resolves to its base
+//                        district, as the other -C codes here already do
+//
+// The with-bonus figures are 10.2 / 9.4 / 6.2 / 7.0 respectively and are NOT the
+// headline. Deliberately not encoded in this pass: the AtlantaLimits shape wants
+// farNonresidential / farResidential / farCombined with a net-or-gross basis per
+// FACT 2, and this table states Non-Residential FAR, Residential FAR and Max FAR
+// as three separate rows — mapping those three onto that shape is the next step
+// and is not a transcription.
 
 /** Which lot-area denominator the code's own sentence multiplies the ratio by.
  *  Never converted between (FACT 2) — recorded so the number can be labelled. */

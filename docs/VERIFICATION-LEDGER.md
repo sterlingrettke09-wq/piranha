@@ -6855,3 +6855,42 @@ subarea's figure.
 A check whose failure message is "these counts differ" will be satisfied by
 changing either count. Where the counts SHOULD differ, the check must know by how
 much and why, or it must not run.
+
+### Merged headers reconcile by column PATH, not column count
+
+Atlanta's SPI grids needed their own reconciliation and it turned out to be
+stronger than the one it replaces.
+
+San Diego's Table 131-05C was rectangular: six header columns, six values per
+row, six live CN codes, and the agreement of three counts was the proof. Atlanta's
+Chapter 16-18P is three header levels deep with merged cells, so a header cell
+legitimately spans several data columns and **the counts SHOULD differ**. Reaching
+for the count check there is worse than useless — "make the counts reconcile" can
+only be satisfied by misreading one side, and a grid repaired that way passes the
+check while publishing a neighbouring subarea's figure.
+
+`scripts/municodeGrid.py` expands colspan and rowspan so every data cell carries
+its full header path, and the check becomes: **do the distinct paths map onto the
+live zone codes?**
+
+SPI-16 answers yes, and the answer is an identity rather than an arithmetic
+agreement. The live enumeration carries `SPI-16 SA2 JSTA`. The expanded grid
+resolves a column whose path is (Midtown Residential SA #2 → Juniper St.
+Transition → FAR by right). **JSTA *is* that sub-column** — the name in the city's
+data and the header in the city's code are the same thing, which no count could
+have told us. Eleven grid columns, four distinct (subarea, transition) zones, five
+live codes, and the fifth is a "-C" conditional variant the module already routes
+to its base district. None of those numbers match and all of it reconciles.
+
+The general form: where a table is rectangular, count agreement is the external
+check. Where it is not, **the resolved column path must be identifiable with a
+thing the city separately publishes** — a zone code, a subarea name, a mapped
+area. That is a stronger check, because it survives the counts being unequal and
+it cannot be satisfied by adjusting a number.
+
+Read but deliberately NOT encoded this pass. The figures are recorded in
+`zoning/atlanta.ts` so the reading is not lost, and the reason for stopping is
+that mapping this table's three FAR rows (Non-Residential, Residential, Max) onto
+the module's `farNonresidential` / `farResidential` / `farCombined` shape with a
+net-or-gross basis per FACT 2 is a modelling decision, not a transcription — and
+a half-done mapping is precisely how a neighbouring subarea's figure ships.
