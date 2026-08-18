@@ -6894,3 +6894,53 @@ that mapping this table's three FAR rows (Non-Residential, Residential, Max) ont
 the module's `farNonresidential` / `farResidential` / `farCombined` shape with a
 net-or-gross basis per FACT 2 is a modelling decision, not a transcription — and
 a half-done mapping is precisely how a neighbouring subarea's figure ships.
+
+### Column path is EXTERNAL corroboration; the count check was internal arithmetic
+
+Worth stating precisely, because it is why one instrument is better than the
+other and it is the same distinction as everything else in this session.
+
+The count check compares a table's header count to its data count. Both come from
+the SAME document, so the agreement is internal arithmetic — and it can be
+satisfied by adjusting either side, which is exactly the wrong repair a merged
+header invites.
+
+The column-path check compares the CODE's header hierarchy to the CITY'S GIS
+enumeration. `SPI-16 SA2 JSTA` is published in the zoning layer; (Midtown
+Residential SA #2 → Juniper St. Transition → FAR by right) resolves in the
+ordinance. Two independent sources naming the same thing. That is rule 9 applied
+to table extraction, and it cannot be satisfied by changing a number in either.
+
+### Atlanta SPI: the mapping decision was not the one it looked like
+
+The plan was to decide how three FAR rows (Non-Residential, Residential, Max) map
+onto `farNonresidential` / `farResidential` / `farCombined`, verify on SPI-16
+where four zones have live codes, then apply it mechanically to the other
+nineteen chapters.
+
+One command before that: **both SPI-16 FAR rows are GROSS-basis.** The labels read
+"(times gross lot area)", and FACT 2 already defines gross for this city as
+§16-28.010(1) — "all land within district boundaries plus half of adjoining
+permanent open space such as streets, parks, lakes, cemeteries … limited to no
+more than 50 feet."
+
+The parcel polygon measures NET lot area. So 8.2 is a correct ratio against a
+denominator nothing we fetch carries — LA's buildable-area shape (rule 24), where
+the figure is right and the multiplicand is unobtainable.
+
+**So the real decision is not which row goes in which field. It is whether a
+gross-basis ratio can be published at all**, and FACT 2 has already answered it
+for this module: record the basis, label the number, never convert. The encoding
+is therefore the figure plus `basis: 'gross'` plus a reason code on the floor-area
+product — the `farBasis: 'basis-unavailable'` shape, not a multiplication.
+
+The direction is unusually kind: gross exceeds net, so `net * FAR` understates
+rather than overstates. That does not make it publishable. A half-street-width
+credit capped at fifty feet is precisely the sort of invented factor that reads as
+measured six months later (rule 4).
+
+**The value is entirely in the ordering.** The alternative was to decide a field
+mapping, verify it end-to-end on SPI-16, apply it mechanically across nineteen
+chapters, and meet the denominator afterwards — at which point the wrong decision
+would have been replicated everywhere and invisible, because a gross-basis FAR
+multiplied by a net lot produces a plausible number in the safe direction.

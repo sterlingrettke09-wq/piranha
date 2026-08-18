@@ -254,11 +254,36 @@
 //                        district, as the other -C codes here already do
 //
 // The with-bonus figures are 10.2 / 9.4 / 6.2 / 7.0 respectively and are NOT the
-// headline. Deliberately not encoded in this pass: the AtlantaLimits shape wants
-// farNonresidential / farResidential / farCombined with a net-or-gross basis per
-// FACT 2, and this table states Non-Residential FAR, Residential FAR and Max FAR
-// as three separate rows — mapping those three onto that shape is the next step
-// and is not a transcription.
+// headline.
+//
+// ⚠️⚠️ BOTH SPI-16 FAR ROWS ARE GROSS-BASIS, AND THAT BLOCKS ENCODING. The row
+// labels read "Non-Residential FAR (times GROSS lot area)" and "Residential FAR
+// (times GROSS lot area)". FACT 2 above defines gross for this city —
+// §16-28.010(1), "all land … within district boundaries plus half of adjoining
+// permanent open space such as streets, parks, lakes, cemeteries and the like;
+// provided that dimensions of such open space credited shall be limited to no
+// more than 50 feet."
+//
+// The parcel polygon measures NET lot area. So 8.2 is a correct ratio against a
+// denominator nothing we fetch carries, which is the LA buildable-area shape
+// exactly (rule 24): the figure is right, the multiplicand is unobtainable, and
+// `far * lotSqFt` would be a number computed against the wrong area.
+//
+// The direction is the FLATTERING-FREE one for once — gross exceeds net, so
+// net * FAR understates rather than overstates — but understating is still an
+// invented conversion (rule 4), and a half-street-width credit capped at 50 feet
+// is exactly the sort of factor that would look measured six months later.
+//
+// SO THE MAPPING DECISION IS NOT THE ONE IT LOOKED LIKE. It is not "which of the
+// three rows goes in which field"; it is whether a gross-basis ratio can be
+// published at all. FACT 2's own answer is that the basis is RECORDED so the
+// number can be labelled and never converted — so the honest encoding is the
+// figure plus `basis: 'gross'` plus a reason code on the floor-area product, the
+// same shape as LA's `farBasis: 'basis-unavailable'`.
+//
+// Found in one command BEFORE encoding, which is the whole reason to look: the
+// alternative was deciding a field mapping, applying it mechanically to twenty
+// chapters, and discovering the denominator afterwards.
 
 /** Which lot-area denominator the code's own sentence multiplies the ratio by.
  *  Never converted between (FACT 2) — recorded so the number can be labelled. */
