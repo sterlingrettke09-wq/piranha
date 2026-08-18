@@ -67,13 +67,30 @@ describe('comment and string stripping', () => {
 })
 
 describe('the duplicate-parse check finds pairs, it does not check a list', () => {
-  it('reports nothing for the current tree except the known Charlotte pair', () => {
-    const dupes = findDuplicateParses(citiesWithBothModules())
-    // Pinned, not asserted-empty: an empty result would also be produced by a
-    // detector that stopped working (rule 20).
-    expect(dupes.length).toBe(1)
-    expect(dupes[0].city).toBe('charlotte')
-    expect(dupes[0].pattern).toContain('()')
+  it('reports NOTHING for the current tree — the last pair is gone', () => {
+    // ⚠️ THIS ASSERTED ONE PAIR UNTIL 2026-08-17, and that pair was Charlotte's
+    // `/[()\s]+/`, living in providers/charlotte.ts and zoning/charlotte.ts.
+    // It has been collapsed: the provider now reads
+    // `parseCharlotteZone(zoneDes).tail` and there is one tokenizer.
+    //
+    // Measured before collapsing rather than after: the two paths agreed on all
+    // 218 live ZoneDes values, so nothing had drifted yet. That is exactly the
+    // state Seattle's two MIO strips were in before one of them changed.
+    //
+    // An empty result would ALSO be produced by a detector that stopped working
+    // (rule 20), so emptiness alone is not the assertion — the two cases below
+    // exercise the detector against a planted pair and against a fixture, and
+    // they are what make this zero meaningful.
+    expect(findDuplicateParses(citiesWithBothModules())).toEqual([])
+  })
+
+  it('and the detector still fires — proven on a planted pair, not assumed', () => {
+    // Without this, the zero above is indistinguishable from a broken scan.
+    const shared = regexLiterals("const t = s.split(/[()\s]+/)\n").filter((r) =>
+      regexLiterals("const u = z.split(/[()\s]+/)\n").includes(r),
+    )
+    expect(shared.length).toBe(1)
+    expect(citiesWithBothModules().length).toBeGreaterThan(15)
   })
 
   it('WOULD have caught Seattle before the fix', () => {

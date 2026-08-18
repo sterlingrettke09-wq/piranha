@@ -7006,3 +7006,41 @@ errors are the ones that produced plausible output. Its counterpart is that
 plausible output is produced by extracting a figure from a provision you have not
 finished reading — and the fix is available at the moment of extraction, at
 approximately zero cost, if the structure is read first.
+
+### Charlotte's duplicate parse: collapsed, and the comparison found something the refactor would not have
+
+The last known duplicate-parse in the repo. `providers/charlotte.ts` ran its own
+`zoneDes.toUpperCase().split(/[()\s]+/).filter(Boolean).slice(1)` to find overlay
+names — character-for-character the split inside `parseCharlotteZone`.
+
+**Measured across the WHOLE enumeration before touching anything**, because a
+sample is what makes this class survive: Seattle's two MIO strips agreed on every
+NC/C code and diverged on the LR/MR/HR family nobody probed, and the overlay
+shipped as a by-right height up to 6x too high. All 218 live `ZoneDes` values
+through both paths: **token splits disagree on 0**, and after the collapse the
+overlay-label output differs on 0. So nothing had drifted — which is the state
+Seattle was in, and the reason to remove the possibility rather than wait for it.
+
+Collapsed by EXTRACTION, not by making the second path match: `CharlotteZoneParts`
+now carries `tail`, every token after the leading code in string order, and the
+provider reads that. `markers` and `unknownTokens` could not be concatenated to
+reconstruct it — that reorders, and the labels are emitted in string order.
+
+**And the comparison surfaced two live tokens neither vocabulary knows: `BVO` and
+`INNOV`.** Every token the overlay table names is also a marker, so those two
+never disagree — but these fall through both and land in `unknownTokens`, which by
+design makes the whole string UNRESOLVED. That is why six live codes resolve
+nothing: `CAC-1 BVO`, `N2-B BVO`, `MX-1(INNOV)`, `MX-2 INNOV`, `MX-2(INNOV)`,
+`MX-3(INNOV)`.
+
+Not guessed at. Expanding `BVO` to "Bonus Village" or `INNOV` to "Innovative"
+would be a name invented to fit an abbreviation — rule 27 with less evidence than
+a prefix. They stay unknown until Article 14 is read for them specifically. The
+refusal is doing real work: a district whose modifiers we cannot read is not a
+district whose limits we can publish.
+
+**The readiness harness caught its own subject vanishing.** `city-readiness.test.ts`
+pinned exactly one duplicate pair, and removing it turned the test red — which is
+the pinned-inventory guard behaving correctly. It now asserts zero, with a planted
+pair proving the detector still fires, because an empty result and a broken scan
+are otherwise the same output (rule 20).

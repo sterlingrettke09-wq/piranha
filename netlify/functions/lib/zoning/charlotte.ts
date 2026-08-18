@@ -579,6 +579,20 @@ export interface CharlotteZoneParts {
   ped: boolean
   /** Tokens the parser did not recognise. Non-empty ⇒ the code is UNRESOLVED. */
   unknownTokens: string[]
+  /** EVERY token after the leading code, in the order the string carried them,
+   *  recognised or not.
+   *
+   *  ⚠️ EXISTS SO THERE IS ONE TOKENIZER. providers/charlotte.ts ran its own
+   *  `zoneDes.toUpperCase().split(/[()\s]+/).filter(Boolean).slice(1)` to find
+   *  overlay names — character-for-character the split below, in a second place.
+   *  Measured before collapsing: the two agreed on all 218 live ZoneDes values,
+   *  so nothing had drifted. That is precisely the state Seattle's two height
+   *  parsers were in before they diverged on the one family nobody probed, and
+   *  the MIO overlay shipped as a by-right height up to 6x too high.
+   *
+   *  `markers` and `unknownTokens` cannot be concatenated to reconstruct this —
+   *  that reorders, and the provider emits overlay labels in string order. */
+  tail: string[]
 }
 
 /**
@@ -603,6 +617,7 @@ export function parseCharlotteZone(zoneDes: string | null | undefined): Charlott
     exception: false,
     ped: false,
     unknownTokens: [],
+    tail: [],
   }
   if (!zoneDes) return empty
   const tokens = zoneDes
@@ -613,7 +628,7 @@ export function parseCharlotteZone(zoneDes: string | null | undefined): Charlott
   if (tokens.length === 0) return empty
 
   let code: string | null = tokens[0]
-  const parts: CharlotteZoneParts = { ...empty, code, markers: [], unknownTokens: [] }
+  const parts: CharlotteZoneParts = { ...empty, code, markers: [], unknownTokens: [], tail: tokens.slice(1) }
 
   // A trailing '-O' on the leading token is the pre-UDO "optional" suffix
   // (MUDD-O, UMUD-O). No UDO district and no Table 3-1 left-column code ends in
@@ -854,6 +869,28 @@ export const CHARLOTTE_DISTRICT_NAMES: Record<CharlotteBaseDistrict, string> = {
 
 /** The UDO Article 14 overlay codes, with the name the article gives them.
  *  None of them changes a district's maximum building height (FACT 6). */
+/**
+ * ⚠️ TWO LIVE TOKENS ARE KNOWN TO NEITHER VOCABULARY: `BVO` and `INNOV`.
+ *
+ * Found 2026-08-17 by running all 218 live ZoneDes values through both the
+ * marker table and this overlay table and asking which tokens neither claims.
+ * Every token this table names is also a MARKER, so the two never disagree —
+ * but `BVO` and `INNOV` fall through both and land in `unknownTokens`, and a
+ * non-empty `unknownTokens` makes the whole string UNRESOLVED by design.
+ *
+ * That is why these six live codes resolve nothing:
+ *   CAC-1 BVO · N2-B BVO · MX-1(INNOV) · MX-2 INNOV · MX-2(INNOV) · MX-3(INNOV)
+ *
+ * NOT guessed at. `BVO` and `INNOV` are not in UDO Article 14's overlay list as
+ * read for this table, and inventing an expansion for either — "Bonus Village",
+ * "Innovative" — would be a name invented to fit an abbreviation, which is rule
+ * 27 with less evidence than a prefix. They stay unknown until Article 14 (or
+ * the UDO's definitions) is read for them specifically.
+ *
+ * The refusal is doing real work here: an unrecognised token means we cannot
+ * account for the whole string, and a district whose modifiers we cannot read
+ * is not a district whose limits we can publish.
+ */
 export const CHARLOTTE_OVERLAY_NAMES: Record<string, string> = {
   HDO: 'Historic District Overlay',
   'HDO-S': 'Streetside Historic District Overlay',

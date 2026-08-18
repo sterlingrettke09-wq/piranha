@@ -74,6 +74,7 @@ import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredU
 import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import {
   resolveCharlotte,
+  parseCharlotteZone,
   usesForZone,
   coverageFractionFor,
   CHARLOTTE_DISTRICT_NAMES,
@@ -585,7 +586,14 @@ export async function getCharlotteParcelInfo(lat: number, lng: number): Promise<
  *  guessed at. */
 function resolveOverlayLabels(zoneDes: string | null): string[] {
   if (!zoneDes) return []
-  const tokens = zoneDes.toUpperCase().split(/[()\s]+/).filter(Boolean).slice(1)
+  // ⚠️ ONE TOKENIZER. This used to carry its own copy of the split —
+  // `zoneDes.toUpperCase().split(/[()\s]+/).filter(Boolean).slice(1)` — which is
+  // character-for-character what parseCharlotteZone does. Two parsers of one
+  // string is the shape that produced Seattle's MIO defect, where the pair
+  // agreed on every NC/C code and diverged on the family nobody probed.
+  // Measured before collapsing: the two agreed on all 218 live ZoneDes values,
+  // so this is removing the possibility rather than fixing a live divergence.
+  const tokens = parseCharlotteZone(zoneDes).tail
   const out: string[] = []
   for (const t of tokens) {
     const name = CHARLOTTE_OVERLAY_NAMES[t]
