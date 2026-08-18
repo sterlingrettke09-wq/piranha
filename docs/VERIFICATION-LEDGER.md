@@ -7415,3 +7415,95 @@ is now the expectation rather than a surprise: these scripts have each been
 through at least one correction pass, and any note describing them predates it.
 The opening move that keeps paying is the cheapest one — measure the current
 state before planning against a description of it.
+
+### The expired-withholding audit: ten cities sorted by reason type, zero expired
+
+Sorting before re-testing was the whole method — it said which of the ten were
+even candidates, and it cut the live work from ten cities to four.
+
+**Type A — a fact about the CITY. Cannot expire.** The feed does not publish the
+input, so there is no numerator to compute.
+
+    boston        no application-date column at all; ComputabilityHalt
+    dc            feed carries no application date
+    minneapolis   feed carries no application date
+    dallas        Socrata resource frozen at 2020-08-30, no application date
+    chicago       APPLICATION_START_DATE is documented by the publisher as the
+                  date review BEGAN, not the date filed — a documentation fact,
+                  so no window narrowing can reach it
+    la            RECLASSIFIED (see below)
+
+**Type B — a fact about a MEASUREMENT. Could move as a cohort matures.**
+
+    seattle · sf · nyc
+
+**Type C — a fact about a TOOL. The class that has expired three times.**
+
+    milwaukee     commercial `Use of Building` is free text, so the apartment
+                  stratum cannot be enumerated
+
+**Result: zero of ten expired.** All four candidates re-tested live 2026-08-18.
+
+**Milwaukee (Type C) — gate still holds, measured not assumed.** Commercial
+`Use of Building`: **123 distinct over 354 rows, 25.7% singletons, 15.0% blank**
+against limits of 40 / 5% / 2%. Still free text. But the run surfaced something
+that is NOT a data limitation: the residential-only pair is measured cleanly
+(n=345, median 2.7 mo, p80 5.3), and since `measuredFor()` stopped falling back
+to the aggregate, an apartment query would correctly render "not measured"
+rather than a 1-2-family number. **Publishing it is a live product decision that
+nobody has taken**, not a wiring bug. Carried to the user; this is not a decision
+a script takes unattended.
+
+**LA reclassified B → A.** Its binding halt today is not the censoring fraction
+but ISSUED-ONLY: all 14,374 in-window applications carry an issue date, so the
+share is 100% BY CONSTRUCTION. The 54.64% that put it in Type B belongs to a
+different (submitted) feed the script does not query. **Reading a reason is not
+knowing which one fires** — the same shape as this session's Austin error, where
+a recognised phrase in the source stood in for a measurement of its effect.
+
+**A PREDICTED DIRECTION THAT WAS WRONG, AND THE MECHANISM IT MISSED.** The
+prediction going in was that 9-12 days of maturation could move a censoring
+fraction by at most a fraction of a point, and only UPWARD, since applications
+only ever gain issue dates. The magnitude held. **The direction did not:**
+
+    seattle   74.71% -> 74.22%   (-0.49 pt)
+    sf        37.61% -> 37.78%   (+0.17 pt)
+
+Seattle fell, and maturation cannot do that. The cause is that **the cohort is
+OPEN, not fixed** — new filings enter it unissued (2026: 252/980 = 25.7%) and
+dilute the observed share faster than older filings mature out. An open cohort
+matures and dilutes at once, and the net direction is whichever dominates. The
+prediction was right about the size of the effect and wrong about the sign of it,
+which is worth more than being right for a reason not checked.
+
+Neither city is near its threshold: Seattle needs >80% for p80 and has 74.22%;
+SF needs >50% for p50 and has 37.78%. No plausible maturation rescues either.
+
+**SF IS A SECOND INDEPENDENT CONFIRMATION THAT THE OSCILLATION IS NYC'S DATASET.**
+Four extracts of SF over twelve days — 37.7%, 37.0%, 37.61%, 37.78% — with n
+moving **351 -> 352 filings. One row.** SF and NYC are both Socrata; SF is stable
+to a single row while NYC's unchanged query returned 4,394 / 1,040 / 8,103. Austin
+established this on one city, SF now establishes it on a second, different
+dataset. The disqualifier belongs to `w9ak-ipjd`, not to the platform, and the
+other Socrata-sourced cities are not implicated.
+
+### NYC's two disqualifiers were in the wrong order, and a superseded frame told the reader to discount the stronger one
+
+The reproducibility finding was recorded in `nyc.mjs` — 55 lines below the halt
+section a reader lands on, which stated the conditional-median problem as THE
+halt. Rule 17 says headers are read first; this is that, with an aggravation.
+
+Directly above the oscillation record stood two lines classifying what followed
+as an open instrument question and stating it was not a reason for the
+withdrawal. That framing was accurate when written on 08-09 and was falsified by
+the third extract nine days later — but it survived, so the file **instructed the
+reader to discount the paragraph immediately beneath it.** A stale frame is worse
+than a stale claim: it disarms the correction rather than merely sitting beside
+it.
+
+Fixed by ordering, not by adding text. The halt section now opens with
+disqualifier 1, the unreproducible population, and states why it binds alone —
+**every figure in disqualifier 2 was computed on the 08-09 extract, which is one
+of three and has no better claim than the other two.** The censoring analysis is
+not merely outranked; it rests on one arbitrary draw. The superseded frame is
+described rather than restated (rule 21).

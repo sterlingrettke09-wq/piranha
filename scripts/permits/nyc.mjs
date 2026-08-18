@@ -14,7 +14,26 @@
 // This is NOT a runtime dependency. The committed JSON is the only thing the
 // app reads; this script only refreshes it (re-run quarterly).
 //
-// ── THE HALT — why this script writes nothing (measured 2026-08-09) ──────────
+// ── THE HALT — TWO INDEPENDENT DISQUALIFIERS, THE STRONGER ONE FIRST ───────
+//
+// 1. THE POPULATION IS NOT REPRODUCIBLE (measured 2026-08-18). Three extracts of
+//    ONE unchanged query against ONE unchanged resource gave three populations:
+//
+//        2026-08-06   4,394 filings                    published 8.3 / 17.0
+//        2026-08-09   1,040 filings, 662 issued        63.65% issued
+//        2026-08-18   8,103 filings, 4,448 issued      54.89% issued
+//
+//    This binds FIRST and it binds ALONE. A source whose n moves in both
+//    directions cannot base a published statistic no matter how the censoring
+//    resolves — and it takes the censoring analysis down with it, because every
+//    figure in disqualifier 2 below was computed on the 08-09 extract, which is
+//    one of the three and has no better claim than the other two. Full record
+//    and the reasoning against diagnosing a cause: THIRD EXTRACT, below.
+//
+// 2. THE PUBLISHED FIGURE WAS A CONDITIONAL MEDIAN (measured 2026-08-09). This
+//    was the original and, until 08-18, the only stated reason. It remains true
+//    of the extract it was measured on; it is no longer the reason that binds.
+//
 // NYC published 8.3 mo / p80 17.0 / n=4,403 from 2026-08-06 and is WITHDRAWN
 // 2026-08-09. What makes this case worth reading is that the disqualifier was
 // already written down IN THIS FILE, three paragraphs from the query that could
@@ -34,7 +53,9 @@
 // residential pair is measured cleanly and is still withheld for exactly this
 // class of reason; being a large city is not an exemption.
 //
-// Measured 2026-08-09 against the live feed, through this script's own filters
+// Measured 2026-08-09 against the live feed — i.e. against the MIDDLE of the
+// three extracts above, a caveat that applies to every number in this paragraph
+// and to the per-year breakdown after it — through this script's own filters
 // (job_type = 'New Building' + job_filing_number LIKE '%-I1', filed since 2022):
 //
 //     1,040 filings, of which 662 carry an issue date = 63.65%
@@ -66,8 +87,13 @@
 // SHARE, not the FATE" is a rule about not asserting fate you cannot see, not a
 // licence to assert that no feed ever records it.
 //
-// ⚠️ SEPARATELY, AND NOT THE REASON FOR THE WITHDRAWAL — an unresolved
-// instrument question, recorded so a future reader does not mistake it for one.
+// ⚠️ SUPERSEDED FRAMING, 2026-08-18. The two lines that stood here classified
+// what follows as an open instrument question and told the reader it was NOT a
+// reason for the withdrawal. The third extract, nine days later, promoted it to
+// the reason that binds — see disqualifier 1 in the halt section. The framing is
+// removed rather than corrected in place, because a sentence telling a reader to
+// discount the paragraph beneath it does its damage before any correction is
+// reached (rule 17: headers and summaries are read first).
 //
 // ⚠️⚠️ THIRD EXTRACT, 2026-08-18, AND THE POPULATION OSCILLATES. Running this
 // script unchanged today returns 8,103 in-window filings of which 4,448 carry an
