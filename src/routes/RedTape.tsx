@@ -100,14 +100,13 @@ export default function RedTape() {
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-piranha-bone/70">
             Take the same 40,000 sq ft apartment building and ask every city: how long, and how
-            much, before you can build it? Rank by the answer. Tap a city for its story.
+            much, before you can build it? Rank by the answer.
           </p>
         </header>
 
         <Reveal>
           <section className="text-sm leading-relaxed text-piranha-bone/60">
             <p>
-              Computed live from the same engine as every report. No hand-typed numbers.{' '}
               <Link className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone" to="/math">
                 See the math
               </Link>
@@ -120,7 +119,8 @@ export default function RedTape() {
               <ul className="mt-4 space-y-2 text-piranha-bone/70">
                 <li>
                   <span className="font-semibold text-piranha-bone">Months</span> — by-right
-                  lifecycle plus typical variance time.
+                  lifecycle plus typical variance time. <em>By-right</em> means allowed without
+                  discretionary approval: no hearing, no board vote, no negotiation.
                 </li>
                 <li>
                   <span className="font-semibold text-piranha-bone">Fees</span> — housing or
@@ -132,7 +132,9 @@ export default function RedTape() {
                 </li>
               </ul>
               <p className="mt-3 text-xs text-piranha-bone/45">
-                Parking is shown for context, never scored.
+                Parking is not scored. Abolished minimums are a real cost fact, so each
+                city states its own in the detail below its row — but a column beside the
+                score reads as an input to it, and this one never was.
               </p>
             </details>
           </section>
@@ -147,7 +149,6 @@ export default function RedTape() {
                   <th className="px-5 py-3 font-semibold">City</th>
                   <th className="px-5 py-3 font-semibold">Months of process</th>
                   <th className="px-5 py-3 text-right font-semibold">Fee / sf</th>
-                  <th className="px-5 py-3 font-semibold">Parking mandate</th>
                   <th className="px-5 py-3 text-right font-semibold">Score</th>
                   <th className="px-5 py-3">
                     <span className="sr-only">Expand</span>
@@ -208,16 +209,6 @@ export default function RedTape() {
                             re-invents the category. So the cell WRAPS inside a
                             bounded column, and carries the full verified
                             headline in `title` for the hover/focus reader. */}
-                        <td
-                          title={r.parkingHeadline ?? undefined}
-                          className={`min-w-[11rem] max-w-[15rem] px-5 py-3 leading-snug ${
-                            r.parkingStatus === 'abolished'
-                              ? 'font-medium text-piranha-gold'
-                              : 'text-piranha-bone/75'
-                          }`}
-                        >
-                          {r.parkingLabel}
-                        </td>
                         <td className="px-5 py-3 text-right font-semibold tabular-nums text-piranha-bone">
                           {fmtScore(r.score)}
                         </td>

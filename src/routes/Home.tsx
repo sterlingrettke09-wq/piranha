@@ -4,7 +4,7 @@ import { CinematicIntro } from '../components/CinematicIntro'
 import { Reveal } from '../components/Reveal'
 import { ArrowLink } from '../components/ArrowLink'
 import { cityName } from '../config/cities'
-import { CITY_CLAIMS, coverageFacts, rangeSentence } from '../config/coverageClaim'
+import { CITY_CLAIMS, coverageFacts } from '../config/coverageClaim'
 import { listReports, removeReport, clearAll, type RecentReport } from '../lib/recentReports'
 import { VERDICT } from '../lib/verdictLabels'
 import { formatEstimate } from '../lib/format'
@@ -139,7 +139,11 @@ const STATS = [
   // rate each city delivers is one click away rather than asserted here.
   { figure: String(coverageFacts().wired), label: 'Cities wired to their own public records' },
   { figure: '9', label: 'Kinds of red tape tracked' },
-  { figure: '100%', label: 'Built from public records' },
+  // A third stat was '100% built from public records', which is a tautology
+  // dressed as a metric — it measures nothing and sat beside two figures that
+  // do. Dropped rather than replaced: the honest third number is the per-city
+  // answer rate, and that belongs on the coverage page where it can be read
+  // city by city instead of averaged into a headline.
 ]
 
 export default function Home() {
@@ -192,7 +196,7 @@ export default function Home() {
         <div className="mx-auto max-w-6xl">
           <Reveal>
             <h2 className="text-center font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight text-piranha-bone">
-              Every rule. Every fee. Every month. Counted.
+              What This Does.
             </h2>
           </Reveal>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
@@ -312,7 +316,6 @@ export default function Home() {
                 ))}
               </div>
               <p className="max-w-3xl text-sm leading-relaxed text-piranha-bone/60">
-                {rangeSentence()}{' '}
                 <Link to="/cities" className="text-piranha-gold underline underline-offset-2 hover:text-piranha-bone">
                   Per-city rates
                 </Link>

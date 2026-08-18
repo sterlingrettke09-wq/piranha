@@ -5,7 +5,6 @@ import { Reveal } from '../components/Reveal'
 import {
   CITY_CLAIMS,
   coverageFacts,
-  rangeSentence,
   silentSentence,
   WITHHELD_SENTENCE,
 } from '../config/coverageClaim'
@@ -46,7 +45,7 @@ export default function Cities() {
 
       <Reveal>
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-piranha-charcoal/65">
-          {rangeSentence()} {WITHHELD_SENTENCE}
+          {WITHHELD_SENTENCE}
           {silent ? ` ${silent}` : ''}{' '}
           <Link className="underline underline-offset-2 hover:text-piranha-burgundy" to="/math">
             How this is measured

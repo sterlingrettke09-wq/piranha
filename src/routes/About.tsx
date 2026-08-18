@@ -5,7 +5,6 @@ import { Reveal } from '../components/Reveal'
 import {
   citiesSentence,
   coverageFacts,
-  rangeSentence,
   silentSentence,
 } from '../config/coverageClaim'
 
@@ -83,7 +82,7 @@ export default function About() {
               plus local historic districts where available.
             </p>
             <p>
-              {rangeSentence()} {silentSentence()} Per-city rates are on the{' '}
+              {silentSentence()} Per-city rates are on the{' '}
               <Link className="text-piranha-burgundy underline" to="/cities">
                 coverage page
               </Link>
@@ -105,7 +104,16 @@ export default function About() {
 
           <Section n="05" title="Author’s note">
             <p>
-              Sterling Rettke is the principal consultant at Louisburg Strategies. He built The
+              Sterling Rettke is the principal consultant at{' '}
+              <a
+                className="text-piranha-burgundy underline"
+                href="https://louisburgstrategies.com"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Louisburg Strategies
+              </a>
+              . He built The
               Piranha Project after reading <em>Abundance</em> by Ezra Klein and Derek Thompson,
               and being genuinely radicalized by how hard it has become to build housing in our
               biggest cities. A lot of it is fixable; it just takes the will to actually fix it.

@@ -4,7 +4,6 @@ import { AskAssistant } from '../components/AskAssistant'
 import {
   citiesSentence,
   coverageFacts,
-  rangeSentence,
   silentSentence,
   WITHHELD_SENTENCE,
 } from '../config/coverageClaim'
@@ -60,7 +59,9 @@ const FAQ: QA[] = [
     // clause disappears rather than going stale.
     a: [
       `${coverageFacts().wired} cities: ${citiesSentence()}.`,
-      rangeSentence(),
+      // rangeSentence() removed 2026-08-18: envelope percentages are depth the
+      // assistant supplies on request; the Q&A is surface-level and the number
+      // read as a completeness claim the coverage matrix contradicts.
       silentSentence(),
       WITHHELD_SENTENCE,
       'Per-city rates are on the coverage page.',
