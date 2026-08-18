@@ -345,18 +345,38 @@
 //   residential 0.696   0.696   0.696   2.0     0.696   0.5
 //   combined    3.196   2.196   1.696   2.0     0.696   0.5     <- the disproof
 //
-// The "Combined Maximum FAR without bonuses" row equals nonres + residential in
-// subareas 1, 2, 3 and 6, and equals the RESIDENTIAL FIGURE ALONE in 4 and 5.
-// So 20% and 5% are a use-mix cap on percentage of development, not a ratio, and
-// they are not addends. Reading the row uniformly — the mechanical application
-// this chapter was chosen to test — publishes SPI-20 SA4 at a nonresidential FAR
-// of 0.20 when the code states no nonresidential FAR for it at all.
+// Within SPI-20 the "Combined Maximum FAR without bonuses" row equals nonres +
+// residential in subareas 1, 2, 3 and 6, and equals the RESIDENTIAL FIGURE ALONE
+// in 4 and 5. So 20% and 5% are a use-mix cap on percentage of development, not a
+// ratio. Reading the row uniformly — the mechanical application this chapter was
+// chosen to test — publishes SPI-20 SA4 at a nonresidential FAR of 0.20 when the
+// code states no nonresidential FAR for it at all.
 //
-// This is Philadelphia's rule-15 shape INVERTED. There, "70% of Lot Area" WAS
-// the FAR expression and a well-argued test denied it. Here a percentage sitting
-// in a FAR row is NOT a FAR. Same surface form, opposite answer, and the only
-// thing that separates them is the document's own arithmetic — which is rule 2:
-// the sum discriminates nothing, but the ratio BETWEEN the addends does.
+// ⚠️ CORRECTION, same day, from SPI-21: THAT ARITHMETIC IS CORROBORATION, NOT
+// PROOF, and the first version of this note claimed it as proof. The pattern is
+// exact across all six SPI-20 subareas, which is what made it persuasive. SPI-21
+// carries the identical row and breaks it twice with PLAIN RATIOS:
+//
+//   SA1   nonres 2.5  residential 2.0   sum 4.5   combined STATED 3.5
+//   SA8   nonres 3.0  residential 3.2   sum 6.2   combined STATED 3.2
+//
+// SA8's combined equals its residential figure alone — the very signature
+// claimed above as distinctive of the percentage columns. So "combined =
+// residential alone" does not identify a non-FAR cell, and the Combined row is
+// not a derived sum at all: it is an INDEPENDENTLY STATED CAP that is sometimes
+// below the sum. It must be read, never computed.
+//
+// WHAT ACTUALLY CARRIES THE READING is the row label, which names both
+// quantities outright — "or Maximum Percentage of Development" — together with
+// the '%' glyph marking which cells are the second one. That is the evidence;
+// the arithmetic agrees with it in SPI-20 and is silent in SPI-21.
+//
+// This is still Philadelphia's rule-15 shape INVERTED — there "70% of Lot Area"
+// WAS the FAR expression and a well-argued test denied it; here a percentage in
+// a FAR row is not a FAR. The correction is to WHICH instrument settles it: a
+// pattern that holds perfectly across one chapter's six columns is a hypothesis
+// with six confirmations, and six confirmations from inside one table are still
+// internal verification (rule 9). The second chapter was the outside check.
 //
 // ⚠️ 2. THE BONUS CAP IS EXPLICITLY GROSS. "Under no circumstances shall the
 // ratio of floor area to gross lot area of any development with bonuses exceed
@@ -371,6 +391,28 @@
 // has no correct value for this limb. Recording 'gross' would report a maximum
 // across alternatives as if it were a ceiling (rule 6), and in the overstating
 // direction, since gross >= net.
+//
+// ── HOW WIDESPREAD, measured across every SPI chapter 2026-08-18 ────────────
+// All 23 SPI chapters in the Part 16 index were fetched (23/23; an earlier pass
+// returned 403 on all 23 because urllib's default user-agent is blocked, and
+// only a fetch COUNT made that visible — an empty scan would have reported
+// "SPI-20 is unique" perfectly cleanly, rule 20). 19 are substantive; SPI-8,
+// SPI-14, SPI-24 and SPI-25 return ~6KB stubs and are UNREAD, not clean.
+//
+// Across 27 FAR-labelled rows in those 19 chapters, exactly TWO carry a bare
+// percentage cell: SPI-20 and SPI-21 — under a byte-identical label,
+// "Nonresidential FAR (base) or Maximum Percentage of Development".
+//
+// SO THE PARSER MUST DETECT THE FORM, NOT THE POSITION. The percentages sit at
+// columns 4-5 of 6 in SPI-20 and at columns 5-6 of 10 in SPI-21. Any positional
+// rule fitted to one chapter is wrong in the other, while the label plus the '%'
+// glyph identifies both. Two instances also settles that this is a drafting
+// convention rather than a one-off, so a third chapter using it should be
+// expected rather than treated as a surprise.
+//
+// (SPI-21 would NOT have served as the first chapter: its row has 10 columns and
+// the enumeration carries 9 live SPI-21 codes, so one column could not have been
+// checked against a parcel class.)
 //
 // So SPI-16's settled shape does NOT generalise, and one chapter was enough to
 // show it. That is the whole return on verifying end-to-end before applying a
