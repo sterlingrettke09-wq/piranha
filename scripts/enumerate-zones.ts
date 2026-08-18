@@ -59,6 +59,11 @@ export interface Enumeration {
 interface ArcgisResponse {
   error?: { code: number; message: string }
   fields?: Array<{ name: string }>
+  /** Feature Layer / Table / Annotation SubLayer / Group Layer. */
+  type?: string
+  geometryType?: string
+  /** Comma-separated: "Query,Map,Data" on a real layer, "Map" on annotation. */
+  capabilities?: string
   features?: Array<{ attributes?: Record<string, unknown> }>
   exceededTransferLimit?: boolean
 }
@@ -76,6 +81,30 @@ async function arcgisJson(url: string, params: Record<string, string>): Promise<
 export async function verifyField(z: ZoneSource): Promise<{ ok: boolean; detail: string }> {
   try {
     const meta = await arcgisJson(z.layer, { f: 'json' })
+
+    // ⚠️ IS IT A LAYER AT ALL, BEFORE ASKING WHAT FIELDS IT HAS.
+    //
+    // Added 2026-08-18 after Atlanta. Looking for the geometry behind that city's
+    // gross-lot denominator, its service listing offered `Row-Width`, `Parks` and
+    // `Water` — three of the four components by name, which reads as availability.
+    // Three of the four are ANNOTATION SUBLAYERS: cartographic text drawn on the
+    // cadastral map, `type: "Annotation SubLayer"`, `geometryType: None`,
+    // `capabilities: "Map"`, and /query answers HTTP 400.
+    //
+    // A field-existence check never queries anything, so an annotation sublayer
+    // sails through it — the layer publishes no fields, or publishes label
+    // fields, and nothing in the check notices it can never return a feature.
+    // "A LAYER NAME IS NOT A LAYER": `type`, `geometryType` and `capabilities`
+    // are what answer, and the /query response is the destination test.
+    const caps = String(meta.capabilities ?? '')
+    const kind = String(meta.type ?? '')
+    if (kind && !/Feature Layer|Table/i.test(kind)) {
+      return { ok: false, detail: `not a queryable layer — type "${kind}", capabilities "${caps || 'none'}"` }
+    }
+    if (caps && !/Query/i.test(caps)) {
+      return { ok: false, detail: `layer does not advertise Query — capabilities "${caps}"` }
+    }
+
     const names: string[] = (meta.fields ?? []).map((f) => String(f.name))
     if (names.length === 0) return { ok: false, detail: 'layer published no field list' }
     // CASE-INSENSITIVE, because ArcGIS is. The first version compared exactly
@@ -93,7 +122,7 @@ export async function verifyField(z: ZoneSource): Promise<{ ok: boolean; detail:
         detail: `field(s) not on layer: ${missing.join(', ')}${near.length ? ` — layer has ${near.join(', ')}` : ''}`,
       }
     }
-    return { ok: true, detail: `${names.length} fields, all declared present` }
+    return { ok: true, detail: `${kind || 'layer'}, ${caps || 'caps unstated'}, ${names.length} fields, all declared present` }
   } catch (e) {
     return { ok: false, detail: String((e as Error).message) }
   }

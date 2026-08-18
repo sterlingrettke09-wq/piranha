@@ -7078,3 +7078,37 @@ Denver's Exhibit 8.1, San Diego's Figure H and Phoenix's § 1202.B/C. Fifth of t
 class, and the first where the spatial dependency sits in the DENOMINATOR rather
 than the limit — which decides what ships: the ratio stays sound and stateable
 with its basis labelled, and only the floor-area PRODUCT takes the reason code.
+
+### A layer name is not a layer — and the verifier now asks
+
+The Atlanta geometry check nearly recorded the wrong answer. Its service listing
+offers `Row-Width`, `Parks` and `Water`: three of the four components of the
+gross-lot denominator, BY NAME. That reads as availability, and stopping at the
+names would have produced "computable, needs a spatial join" — a plausible
+conclusion in the direction that implies tractable work, which is rule 18's shape
+exactly.
+
+Three of the four are Annotation SubLayers. `type: "Annotation SubLayer"`,
+`geometryType: None`, `capabilities: "Map"`, and `/query` answers HTTP 400. They
+are cartographic text drawn on the cadastral map: the city renders the ROW width
+as a *label*, which is why the name exists and the data does not.
+
+**`enumerate-zones.ts --verify-fields` had the same blind spot.** It asked whether
+a declared field exists on a layer — and never queried anything, so an annotation
+sublayer publishing label fields would have passed. The check now asserts the
+layer is a Feature Layer or Table and advertises `Query` BEFORE looking at field
+names, and reports the type and capabilities in its success line so a reader sees
+what answered.
+
+Run live against all 22 registry entries: **all pass, 0 failing.** The registry
+was already sound on this axis — which is the point of adding the assertion while
+it is green rather than after something isn't. Pinned by three tests: an
+annotation sublayer *whose declared field is present* must fail (the dangerous
+case, since the old check would pass it), a Feature Layer without `Query` must
+fail, and a real queryable layer must still pass — the third because the first two
+are equally consistent with a verifier that rejects everything.
+
+The generalisation: **a name in a catalogue is a claim about existence, not about
+capability.** `type`, `geometryType` and `capabilities` answer capability, and the
+`/query` response is the destination check. Same shape as reading a field off a
+resolver that never returns it (rule 11), one layer out.

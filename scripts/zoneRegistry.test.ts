@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
-import { ZONE_SOURCES, ENUMERABLE, zoneSource } from './zoneRegistry'
-import { readEnumeration } from './enumerate-zones'
+import { ZONE_SOURCES, ENUMERABLE, zoneSource, type ZoneSource } from './zoneRegistry'
+import { readEnumeration, verifyField } from './enumerate-zones'
 import { CITIES } from '../src/config/cities'
 
 // WHAT THIS FILE DEFENDS
@@ -118,5 +118,67 @@ describe('the enumeration agrees with counts recorded independently', () => {
     )
     expect(sea.totalDistinct).toBe(285)
     expect(readEnumeration('seattle')!.codes.length).toBe(285)
+  })
+})
+
+describe('the field verifier also asks whether it is a layer at all', () => {
+  // ⚠️ ADDED AFTER ATLANTA, 2026-08-18. Hunting the geometry behind that city's
+  // gross-lot denominator, the service listing offered `Row-Width`, `Parks` and
+  // `Water` — three of the four components BY NAME, which reads as availability
+  // and would have been recorded as "computable, needs a spatial join".
+  //
+  // Three of the four are Annotation SubLayers: cartographic text drawn on the
+  // cadastral map. `type: "Annotation SubLayer"`, `geometryType: None`,
+  // `capabilities: "Map"`, and /query answers HTTP 400.
+  //
+  // A field-existence check never queries anything, so one of those sails
+  // through: it either publishes no fields, or publishes label fields, and
+  // nothing notices it can never return a feature. A LAYER NAME IS NOT A LAYER.
+  const src: ZoneSource = { city: 'atlanta', layer: 'https://example.test/x/MapServer/14', field: 'ROW_WIDTH' }
+
+  const withMeta = (meta: unknown) =>
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(meta), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    )
+  afterEach(() => vi.restoreAllMocks())
+
+  it('rejects an annotation sublayer even when the declared field is present', () => {
+    // The dangerous case: fields DO exist, so the old check would pass.
+    withMeta({
+      name: 'Row-Width',
+      type: 'Annotation SubLayer',
+      geometryType: null,
+      capabilities: 'Map',
+      fields: [{ name: 'ROW_WIDTH' }, { name: 'TextString' }],
+    })
+    return verifyField(src).then((r) => {
+      expect(r.ok).toBe(false)
+      expect(r.detail).toMatch(/not a queryable layer/)
+      expect(r.detail).toMatch(/Annotation SubLayer/)
+    })
+  })
+
+  it('rejects a layer that does not advertise Query', () => {
+    withMeta({ name: 'X', type: 'Feature Layer', capabilities: 'Map,Data', fields: [{ name: 'ROW_WIDTH' }] })
+    return verifyField(src).then((r) => {
+      expect(r.ok).toBe(false)
+      expect(r.detail).toMatch(/does not advertise Query/)
+    })
+  })
+
+  it('and still passes a real queryable layer (rule 20)', () => {
+    // Without this the two rejections above are consistent with a verifier that
+    // fails everything, which is the same output as one that works.
+    withMeta({
+      name: 'Zoning',
+      type: 'Feature Layer',
+      geometryType: 'esriGeometryPolygon',
+      capabilities: 'Query,Map,Data',
+      fields: [{ name: 'ROW_WIDTH' }],
+    })
+    return verifyField(src).then((r) => {
+      expect(r.ok).toBe(true)
+      expect(r.detail).toMatch(/Feature Layer/)
+    })
   })
 })
