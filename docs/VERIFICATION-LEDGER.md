@@ -7240,3 +7240,42 @@ Carried into the six remaining permit cities as a standing step: check what the
 script currently does before acting on what a note says it does. The notes in this
 repo are unusually good, which is exactly what makes them worth distrusting on
 this axis — a thorough note reads like current state.
+
+### Socrata stability: the oscillation is NYC's dataset, not the platform
+
+The scoping question — if every Socrata-sourced figure in this project were
+irreproducible, the permit leg would need a different class of source rather than
+better filters. One re-run answers it.
+
+Austin, same script, same query, against its own committed baseline:
+
+                        2026-08-06    2026-08-18
+    newConstruction n       11,534        11,650    +116  (+1.0%)
+    median / p80           2.1 / 6.1     2.1 / 6.1   unchanged
+    single                8,835 · 1.6   8,916 · 1.6   +81
+    multi                 1,208 · 2.9   1,209 · 2.9    +1
+    apartment             1,491 · 8.6   1,525 · 8.8   +34
+
+**Monotonic, one percent over twelve days, medians unmoved.** That is what a
+healthy feed looks like as new permits are applied and issued into a fixed window:
+the count can only grow, and it grows at roughly the rate permits are issued.
+Against NYC's 4,394 → 1,040 → 8,103 — non-monotonic, both directions, an order of
+magnitude.
+
+**So the instability is a property of `w9ak-ipjd`, not of Socrata.** The remaining
+permit cities are salvageable and the leg does not need a different source class.
+That is the largest thing this check could have told us and it cost one run.
+
+Worth naming what made the comparison legible: **the expected direction was known
+before the measurement.** A fixed `applied >= 2022-01-01` window over an
+append-mostly feed can only grow, so growth confirms and any decrease refutes. NYC
+failed on direction, not on magnitude — a shrinking population under a fixed lower
+bound cannot be new data. Without that prior, +1.0% and −76% are both just
+"different", and the test has no power.
+
+**The artifact was restored rather than committed.** The run was a measurement,
+not a refresh: the figures it produced are still conditional medians — the
+`issue_date IS NOT NULL` blindfold is still in that query — and the next step
+removes it and recomputes. Committing 11,650 in between would have re-blessed a
+figure already documented as defective, and churned the artifact twice to say the
+same thing.
