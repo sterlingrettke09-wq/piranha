@@ -7207,3 +7207,36 @@ Not removed in this pass, deliberately. Taking the predicate out changes what th
 script measures, and the honest sequence is remove → recompute → decide what
 survives, which is the censoring step rather than a one-line edit. Recorded in the
 file so the current figure is not mistaken for an unconditional one.
+
+### A brief describes the code as of when its notes were written
+
+Two premises stale in a row, in one pass:
+
+  · NYC — "the committed figure came from a corrected query the script doesn't
+    contain". The dataset-choice defect was corrected 2026-08-05; the script uses
+    DOB NOW and records the fix in place. The figure was withdrawn 2026-08-09 and
+    the script writes nothing.
+  · Austin — "`Shell` is excluded". `work_class IN ('New','Shell')` has been the
+    query for some time, with the correction recorded beside it: 202 records at
+    median 11.1 / p80 17.4, "1.7% of the count and the entire upper tail".
+
+Neither was wrong when written. Both were wrong when acted on, and the gap is
+simply that a note is a snapshot and the file kept moving.
+
+**This is the Dallas 30-versus-31 shape one level up.** There, a FIGURE passed
+between two parties acquired a provenance neither had. Here a DESCRIPTION did —
+"the script does X" was true, was written down, was repeated, and by the time it
+became a work item nobody had re-read the script. The failure is identical and the
+cost is larger: a wrong figure produces a wrong number, a wrong description
+produces a wrong plan.
+
+The fix is the same and it is cheap: **re-derive from the file, not from the record
+of the file.** Before acting on any note about what a script does, read the script.
+Both stale premises here were settled by opening the file and reading the query —
+under a minute each, and both times the note's own header contained the
+correction that superseded it.
+
+Carried into the six remaining permit cities as a standing step: check what the
+script currently does before acting on what a note says it does. The notes in this
+repo are unusually good, which is exactly what makes them worth distrusting on
+this axis — a thorough note reads like current state.
