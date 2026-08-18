@@ -7140,19 +7140,70 @@ days later it is back up 8x and still does not match 08-06. **A population that
 moves in both directions is not decaying.** The query and the resource are
 unchanged, so the instability is in the feed or in how it answers.
 
-Two consequences worth separating:
+Two consequences, and the ORDER matters:
 
-**No `n` from this source is reproducible**, which disqualifies it as a base for a
-published statistic regardless of censoring. That is a stronger disqualifier than
-the conditional-median one and it is independent of it.
+**FIRST, and the stronger claim: no `n` from this source is reproducible.** That
+disqualifies it as a base for a published statistic regardless of censoring, and
+it is independent of every other objection. The conditional-median problem was
+about what the number MEANS; this is about whether there is a number at all.
+Stated in that order deliberately — someone who fixed the censoring story would
+otherwise believe they had resolved this, and they would not have touched it.
 
-**And the issuance rate moved too** — 63.65% to 54.89% in nine days. "Publish the
-issuance rate regardless, it is the one number censoring cannot bias" is a sound
-rule and it assumes the denominator holds still. Here it does not, so the rate
-carries an extract date or it carries nothing.
+**SECOND, an amendment to a rule rather than an exception to it.** "Publish the
+issuance rate regardless — it is the one number censoring cannot bias" is sound,
+and it carried an invisible assumption: a stable denominator. NYC gives 63.65% →
+54.89% in nine days from the same query. **The rule now reads: publish the
+issuance rate regardless of censoring, WITH the extract date, and only where the
+population is reproducible across extracts.** Amended rather than excepted,
+because the assumption was invisible until this case and an exception would leave
+it invisible for the next one.
 
 Not diagnosed, and deliberately not guessed at: Socrata paging, an async index
 rebuild and a genuine mid-migration republish would all produce this signature,
 and choosing between them without evidence is mechanism-without-measurement
 (rule 1). What is established is that three extracts of one query gave three
 populations, so the next reader should expect a fourth.
+
+### Bounding the NYC oscillation without diagnosing it, and what it cost Austin
+
+**One command halved the hypothesis space.** Same run, same `$where`:
+
+    server-side count(*)      8103
+    rows the fetch returns    8103
+
+They agree, so it is NOT a client or paging artifact — the client faithfully
+reports what the server says, and the population genuinely moved server-side
+between extracts. Async index rebuild, mid-migration republish and real data
+movement all survive; paging does not. Bounded without being diagnosed, which is
+the distinction worth keeping: the hypothesis space shrank on evidence, and no
+member of it was chosen without any.
+
+**Is it Socrata-wide or this dataset?** Not answerable from the committed
+artifacts alone, but the material exists: `permitStats.json` records an `n` and a
+vintage per city, and `austin.mjs` already carries a `feedTotal()` that counts
+every row the resource holds, unfiltered — "the grew-vs-shrank number", routed
+through the script's own client so the count travels the same transport as the
+rows (rule 11). Austin's committed n is 11,534 at 2026-08-06 against
+data.austintexas.gov, also Socrata. Re-running it is the comparison; it was not
+run in this pass.
+
+**And looking there found a live defect of the class this whole pass is about.**
+Two things about `scripts/permits/austin.mjs`:
+
+`Shell` is ALREADY included. `work_class IN ('New','Shell')`, with the fix
+recorded in place: 202 records at median 11.1 / p80 17.4, "1.7% of the count and
+the entire upper tail". So that part of the brief was already satisfied, the same
+way NYC's dataset-choice defect was.
+
+**But the query still ends `AND issue_date IS NOT NULL`** — the predicate
+`nyc.mjs` names "THE BLINDFOLD, removed first". Selecting on the outcome makes it
+impossible to measure how often the outcome occurs. Removing it from NYC turned a
+reproducible-looking 8.3 months into a withdrawal, because the denominator came
+back and showed 45% of filings never carried an issue date. **Austin's published
+figure is a conditional median by exactly that mechanism**, and `feedTotal()` does
+not close it — that counts the whole resource, not this cohort's denominator.
+
+Not removed in this pass, deliberately. Taking the predicate out changes what the
+script measures, and the honest sequence is remove → recompute → decide what
+survives, which is the censoring step rather than a one-line edit. Recorded in the
+file so the current figure is not mistaken for an unconditional one.

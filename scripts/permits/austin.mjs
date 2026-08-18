@@ -139,6 +139,28 @@ async function pull(since) {
   // multifamily, office, hotel and parking-garage projects in the city, which is
   // exactly the cohort a feasibility tool is consulted about. Dropping them was
   // 1.7% of the count and the entire upper tail.
+  // ⚠️⚠️ THIS QUERY STILL CARRIES THE BLINDFOLD, recorded 2026-08-18 and NOT yet
+  // fixed. `AND ${ISSUED_DATE_FIELD} IS NOT NULL` selects on the OUTCOME, so this
+  // script cannot see how many matching applications never issued — and a query
+  // that selects on the outcome cannot measure how often the outcome occurs
+  // (rule 11).
+  //
+  // This is the same predicate `scripts/permits/nyc.mjs` calls "THE BLINDFOLD,
+  // removed first". Removing it there took NYC's figure from a reproducible-
+  // looking 8.3 months to a WITHDRAWAL, because the denominator came back from
+  // the server and showed 45% of filings never carried an issue date. Austin's
+  // published figure is therefore a CONDITIONAL median — time to issuance GIVEN
+  // issuance — by exactly the mechanism NYC was withdrawn for.
+  //
+  // `feedTotal()` below does NOT close this. It counts every row the resource
+  // holds, unfiltered, which is the grew-vs-shrank instrument; it is not the
+  // denominator of this cohort and cannot yield an issuance rate for it.
+  //
+  // Not removed in this pass, deliberately: taking the predicate out changes what
+  // this script measures, and the honest sequence is to remove it, recompute, and
+  // then decide what survives — which is the censoring step of the permit pass,
+  // not a one-line edit. Recorded here so the next reader does not mistake the
+  // current figure for an unconditional one.
   const where =
     `${PERMITTYPE_FIELD} = '${PERMITTYPE_BUILDING}' ` +
     `AND ${WORKCLASS_FIELD} IN ('New', 'Shell') ` +
