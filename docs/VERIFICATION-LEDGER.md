@@ -6731,3 +6731,59 @@ So three named asks now exist, each attached to a section:
 These are data requests with names attached, not reading tasks, and they should
 not sit in the same bucket as either. A plan-governed parcel would not be helped
 by any layer; these three would be closed by one each.
+
+### A flat total is the correct outcome for a classification change
+
+The map-keyed and two-claims entries moved the total not at all, and that is the
+right result reported the right way. Rule 26 asks whether the system changed or
+the counting did; there is a third case, and it was not written down: **the
+NAMING changed.** Phoenix's 17 DTC districts were a gap before and a gap after —
+what changed is that their reason went from "we could not extract the table" to
+"the height is on the § 1202.B map". Nothing became known, so nothing should move.
+
+Worth stating because a flat number after real work reads like a wasted session,
+and the temptation is to find something to move. The Phoenix commit before it DID
+move the total (748 → 731) because seventeen codes stopped being counted as gaps;
+the classification commit after it moved nothing because it only said what they
+are. Both are correct and they are different kinds of commit.
+
+### The column-count cross-check is necessary, not sufficient — merged headers break it
+
+The instrument established on San Diego's Table 131-05C — reconcile the header's
+column count against the live enumeration before encoding a value — worked because
+that table is rectangular. Six header columns, six values per row, six live CN
+codes.
+
+**Atlanta's SPI grids are not rectangular, and the check does not transfer.** The
+header of Chapter 16-18P's FAR table is multi-row with merged cells and nested
+sub-columns: "FAR (by right)" and "Max FAR (with Bonus)" sit UNDER a subarea
+heading, so the header column count and the data column count legitimately differ
+and a mismatch there is not evidence of misalignment. Applying the CN check
+unmodified would either fail on a correct table or, worse, pass on a wrong one
+after someone "fixed" the count.
+
+That table needs its own reconciliation — most likely colspan-aware, walking the
+header rows to build the real column path per data cell — and working that out is
+part of the read, not a prerequisite someone can hand over. Recorded so the next
+reader does not inherit the CN check as though it were general.
+
+The check is still right where it applies. What is not right is treating one
+table's shape as every table's.
+
+### Two corrections to figures stated earlier today
+
+**Dallas is 31, not 30.** An earlier summary said "Dallas is 31 → 30 gaps, the one
+change being a typo rescue", describing a change that was never made. The `MU=1`
+finding is real — its `ZONE_DIST` reads `MU-1` and production resolves it through
+the second candidate — but the sweep cannot pass `zoneDist`, so 31 is the correct
+code-only count and the single-code overstatement is declared in
+`sweepComposition.test.ts` rather than subtracted. Stating an intended change as a
+completed one is the same shape as a stale citation, one turn wide.
+
+**And a recomputation of the per-city composition summed to 730 against the
+sweep's 731.** The sweep is right. `unhandledFor` reads the committed zone-code
+enumeration, so it returns nothing for Philadelphia's `MaxFAR`/`MaxHeight` and San
+Jose's `HEIGHTLIMIT` — free-text table targets with no zone-code fixture — and San
+Jose's single gap was the missing one. Third time in this session a checking
+script has been the thing that was wrong, and the only reason it surfaced is that
+the two numbers were compared instead of one being trusted.
