@@ -6804,6 +6804,20 @@ is trivial next to the cost of the propagation.
 The practical form: a number that arrives from a summary rather than from a
 command is not evidence, however recently it was produced and by whomever.
 
+**Sharper still: a figure passed between two parties acquires a provenance
+neither of them has.** "Dallas 30" originated in one summary, was taken up by the
+other party, and came back — and by then it had been said twice, by two sources,
+which is indistinguishable from corroboration. Neither had computed it. The
+repetition manufactured exactly the signal that would normally justify trusting
+it.
+
+This is the characteristic failure of a working arrangement where two parties
+review each other. Cross-checking is the whole value of the arrangement, and it
+produces this artifact for free: agreement between reviewers looks like evidence
+even when one is only echoing the other. The defence is that a figure must trace
+to a command, not to who said it — and where it cannot, it is a hypothesis, no
+matter how many times it has been repeated or by whom.
+
 ### Compute the same quantity two ways and investigate the difference
 
 Three times tonight a checking script was the wrong thing: the namespace built
