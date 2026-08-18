@@ -7368,3 +7368,50 @@ apartment 8.6, refreshing to 8.8 on today's larger cohort. Its one real limitati
 is unchanged and is a property of the source: an issued-only feed cannot show
 applications that never issued, so the issuance rate is unobservable rather than
 adverse, and Kaplan-Meier is undefined for want of a risk set.
+
+### The permit leg, measured end to end: 6 publish, 10 withhold, and all six are defensible
+
+Before planning the "remaining five cities", one measurement across all sixteen
+permit scripts. It collapsed the plan.
+
+**Sixteen scripts. Six publish a figure; ten publish nothing.**
+
+    publishing   austin 11,534 · denver 6,922 · miami 991 · nashville 7,796 ·
+                 philadelphia 3,766 · raleigh 7,475
+    withheld     boston · chicago · dallas · dc · la · milwaukee · minneapolis ·
+                 nyc · seattle · sf
+
+Seattle, Chicago, SF and LA — four of the five cities queued for filter work — are
+**already withheld**. San Diego, the fifth, has no permit script at all. Filters
+and censoring only matter where a number is live, so none of that work applies to
+them.
+
+**And all six publishing cities are already in a defensible state:**
+
+  austin, denver, miami, philadelphia   issued-only feeds, registered in
+        OUTCOME_SELECTION_EXEMPTIONS with both-ways counts rather than titles.
+  nashville   MEASURED 2026-08-18: 0 of 28,521 rows in Building_Permits_Issued_2
+        lack a Date_Issued. Genuinely issued-only, and its query carries no
+        outcome predicate to exempt. The limitation is documented AND rendered —
+        the vintage string itself says "the issuance rate is not computable and
+        this median is a FLOOR", so the caveat reaches the UI rather than sitting
+        in a comment, which is precisely the failure that withdrew NYC's 8.3.
+  raleigh   computes and LOGS the issuance rate against applications. It measures
+        the denominator instead of selecting on it — the opposite of a blindfold.
+
+So the brief's steps 3, 4 and 5 — six remaining filters, censoring, bases — have
+no live target. Every city that publishes either has its outcome-selection status
+measured, or measures its own rate.
+
+**What is NOT established**, and is the honest remaining gap: the ten withheld
+cities are withheld, but this pass did not verify that each is withheld for a
+correct and current reason. Withholding is the safe direction, so an unnecessary
+withholding costs coverage rather than accuracy — but "correctly withheld" and
+"withheld for a reason that has since expired" are different states, and this
+session found expired reasons three times in the zoning modules.
+
+**Fourth session in a row where the work was smaller than the brief.** The pattern
+is now the expectation rather than a surprise: these scripts have each been
+through at least one correction pass, and any note describing them predates it.
+The opening move that keeps paying is the cheapest one — measure the current
+state before planning against a description of it.
