@@ -1,4 +1,4 @@
-import type { ParcelInfo } from './parcel'
+import type { ParcelInfo, ParcelErrorCode } from './parcel'
 export type Use = 'residential' | 'commercial' | 'mixed' | 'institutional'
 export type ProjectType = 'new' | 'addition' | 'adu' | 'change_of_use'
 export const PROJECT_TYPES: ProjectType[] = ['new', 'addition', 'adu', 'change_of_use']
@@ -237,7 +237,9 @@ export interface AnalysisResult {
 }
 
 export interface AnalysisError {
-  code: 'BAD_INPUT' | 'NO_PARCEL' | 'OUT_OF_BBOX' | 'UPSTREAM_ERROR' | 'RATE_LIMITED' | 'INTERNAL'
+  // Every ParcelErrorCode, plus the one this layer adds. Derived so a new parcel
+  // error cannot be representable in one file and not the other.
+  code: ParcelErrorCode | 'BAD_INPUT'
   message: string
 }
 

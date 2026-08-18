@@ -1,3 +1,4 @@
+import type { AnalysisInput } from '../../../src/types/analysis'
 // Estimate constants now live in src/config/estimates.ts (single source of
 // truth shared with the /math page). Re-exported here so the engine modules
 // that import from './assumptions' are unchanged.
@@ -46,13 +47,11 @@ export function assumptionsSummary(
   // stand-in — an unsourced assumption that drives cost, unit counts and impact
   // fees. It has to be visible: an undisclosed guess is indistinguishable from
   // a code-derived figure, which is the whole defect.
-  gfaBasis?:
-    | 'envelope'
-    | 'assumed-unconstrained'
-    | 'assumed-planned-development'
-    | 'assumed-basis-unavailable'
-    | 'assumed-basis-elective'
-    | 'assumed-far-1.0',
+  // DERIVED, not restated. This was a second copy, and adding
+  // 'assumed-basis-elective' on 2026-08-18 required hand-editing both — which is
+  // the duplication working exactly as designed to go wrong. Caught by
+  // src/types/noDuplicateUnions.test.ts, not by noticing.
+  gfaBasis?: AnalysisInput['gfaBasis'],
 ): Record<string, string> {
   const idx = cityCostIndex[city] ?? 1.0
   const rate = (n: number) => `$${Math.round(n * idx)}/sf`

@@ -137,7 +137,12 @@ export interface RankedCity {
 }
 
 const MONTHS_WEIGHT = 0.7
-const FEES_WEIGHT = 0.3
+/** Retained as the published figure; the score now derives it as
+ *  `1 - monthsWeight` so the two can never drift apart. Sensitivity-checked
+ *  2026-08-18 at 60/40, 70/30, 80/20 and 90/10: the top five are identical at
+ *  every weighting and only LA and SF trade the last two places at 60/40, so the
+ *  ranking is not an artifact of this number. */
+export const FEES_WEIGHT = 1 - MONTHS_WEIGHT
 
 // Normalize a value to 0–100 across the set's [min, max]. When every value is
 // identical the spread is zero, so we return 0 (no city is "worse" than another).
@@ -175,7 +180,14 @@ export function citiesWithoutProcessConstants(
   return CITIES.filter((c) => !(c.slug in lifecycle)).map((c) => c.slug)
 }
 
-export function computeRedTapeIndex(constants: Partial<RedTapeConstants> = {}): RankedCity[] {
+/** Weight on the months term; fees take the remainder. Defaults to the published
+ *  MONTHS_WEIGHT, so passing nothing reproduces the shipped ranking exactly.
+ *  Exists so the sensitivity check can exercise THIS function rather than a
+ *  second copy of the arithmetic (rule 11 — measure the pipeline, not the probe). */
+export function computeRedTapeIndex(
+  constants: Partial<RedTapeConstants> = {},
+  monthsWeight: number = MONTHS_WEIGHT,
+): RankedCity[] {
   const c: RedTapeConstants = { ...DEFAULTS, ...constants }
   const slugs = Object.keys(c.lifecycleMonths)
 
@@ -211,7 +223,7 @@ export function computeRedTapeIndex(constants: Partial<RedTapeConstants> = {}): 
   const scored = base.map((b) => {
     const monthsScore = normalize(b.processMonths, monthsMin, monthsMax)
     const feesScore = normalize(b.feePerSqFt, feeMin, feeMax)
-    const score = monthsScore * MONTHS_WEIGHT + feesScore * FEES_WEIGHT
+    const score = monthsScore * monthsWeight + feesScore * (1 - monthsWeight)
     return { ...b, monthsScore, feesScore, score }
   })
 
