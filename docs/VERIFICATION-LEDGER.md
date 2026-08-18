@@ -6963,3 +6963,46 @@ mapping, verify it end-to-end on SPI-16, apply it mechanically across nineteen
 chapters, and meet the denominator afterwards — at which point the wrong decision
 would have been replicated everywhere and invisible, because a gross-basis FAR
 multiplied by a net lot produces a plausible number in the safe direction.
+
+### The session's actual method was refusing to encode, twelve times
+
+The four largest refusals were LA's buildable area, Denver's former Chapter 59
+conditionals, Gaslamp's bonus-conditioned 6.0, and Atlanta's gross-lot denominator.
+Each would have produced a plausible number and none would have been catchable
+afterward. But the count understates it — the same decision was taken twelve times:
+
+  · LA buildable area — FAR stated against a denominator with no layer
+  · Denver former Chapter 59 — conditional FARs with premiums and lot-width heights
+  · Denver CMP `near === true` — the limit varies across the site, so neither 75
+    nor 200 is the parcel's answer
+  · Denver D-C / D-TD height — "unlimited except in three mapped areas" is not
+    "unlimited"
+  · Gaslamp — 6.0 conditions a height bonus and is not a by-right ratio
+  · Atlanta gross basis — a ratio against land the parcel polygon does not measure
+  · Atlanta's four non-existent codes — mapped by the city, absent from Part 16
+  · Miami's ten `farUnconstrained` — a FAR answer does not close a height target
+  · La Jolla § 159.0307(c)(2) bonus density — condition-heavy, not read closely
+  · San Diego CN § 131.0546 bonuses — additive or replacing is unknown, and
+    1.0 + 1.2 versus 1.2 is a 2.2x difference
+  · Austin `SF2` — established as interim SF-2 by the layer's own fields, and an
+    alias would publish 35 ft on 715 parcels off a naming pattern
+  · Phoenix accessory height 30 ft — stated, and not the district's height
+
+**What made each refusal possible was reading the provision's STRUCTURE before
+extracting its number.** The figure and the reason it cannot be published sit in
+the same sentence, and whoever goes looking for the figure alone finds only the
+figure: "5.0" says nothing, "Non-Residential FAR (times gross lot area)" says
+everything. Gaslamp is the sharpest case — the 6.0 is real, correct, and belongs
+to a programme, and the only thing distinguishing it from a district FAR is the
+clause it hangs off.
+
+So the operational rule is narrower than "be careful": **read the row label, the
+column path, the footnote and the conditioning clause before taking the value.**
+Every one of the twelve was decided by something adjacent to the number rather
+than by the number itself.
+
+This is rule 18 as a practice instead of a warning. Rule 18 says the surviving
+errors are the ones that produced plausible output. Its counterpart is that
+plausible output is produced by extracting a figure from a provision you have not
+finished reading — and the fix is available at the moment of extraction, at
+approximately zero cost, if the structure is read first.
