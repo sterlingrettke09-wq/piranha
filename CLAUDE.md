@@ -466,6 +466,13 @@ work: the discipline moves out of the reader's head and into the build. It also
 sets the standard for the next one — a guard that only fires when someone
 remembers to consult it is still the reader carrying it.
 
+## Working with the user
+
+**Do not tell the user when to stop working, rest, or sleep.** Not as a
+sign-off, not as concern, not as a suggestion. They decide when they stop; it is
+not a call to make on their behalf, and it has been asked for once already.
+Report state, hand over what is open, and end there.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

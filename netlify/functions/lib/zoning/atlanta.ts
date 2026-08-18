@@ -331,6 +331,59 @@
 // alternative was deciding a field mapping, applying it mechanically to twenty
 // chapters, and discovering the denominator afterwards.
 
+// ── SPI-20 GREENBRIAR (Ch. 16-18T) READ 2026-08-18, NOT ENCODED ─────────────
+// Chosen as the first chapter to verify the mapping end-to-end because all six
+// of its subareas carry live codes (SPI-20 SA1..SA6 in the 2026-08-17
+// enumeration), so every column of its grid can be checked against a real
+// parcel class. Three findings, and the third blocks encoding.
+//
+// ⚠️ 1. ONE ROW, TWO DIFFERENT QUANTITIES — and the label says so outright:
+//        "Nonresidential FAR (base) or Maximum Percentage of Development"
+//
+//   subarea        1       2       3       4       5       6
+//   nonres      2.5     1.5     1.0     20%      5%    None
+//   residential 0.696   0.696   0.696   2.0     0.696   0.5
+//   combined    3.196   2.196   1.696   2.0     0.696   0.5     <- the disproof
+//
+// The "Combined Maximum FAR without bonuses" row equals nonres + residential in
+// subareas 1, 2, 3 and 6, and equals the RESIDENTIAL FIGURE ALONE in 4 and 5.
+// So 20% and 5% are a use-mix cap on percentage of development, not a ratio, and
+// they are not addends. Reading the row uniformly — the mechanical application
+// this chapter was chosen to test — publishes SPI-20 SA4 at a nonresidential FAR
+// of 0.20 when the code states no nonresidential FAR for it at all.
+//
+// This is Philadelphia's rule-15 shape INVERTED. There, "70% of Lot Area" WAS
+// the FAR expression and a well-argued test denied it. Here a percentage sitting
+// in a FAR row is NOT a FAR. Same surface form, opposite answer, and the only
+// thing that separates them is the document's own arithmetic — which is rule 2:
+// the sum discriminates nothing, but the ratio BETWEEN the addends does.
+//
+// ⚠️ 2. THE BONUS CAP IS EXPLICITLY GROSS. "Under no circumstances shall the
+// ratio of floor area to gross lot area of any development with bonuses exceed
+// the amount indicated under 'Maximum Combined FAR With Bonuses'." Same basis
+// problem as SPI-16, same answer: label it, never convert it.
+//
+// ⚠️ 3. AND THE RESIDENTIAL DENOMINATOR IS THE APPLICANT'S CHOICE, WHICH THE
+// TYPE CANNOT HOLD. "Residential uses may use net lot area or gross lot area
+// when calculating maximum permitted residential floor area, provided that
+// usable open space requirements are met." That is not a fact about the parcel
+// to be looked up — it is an election, so `AtlantaLotBasis = 'net' | 'gross'`
+// has no correct value for this limb. Recording 'gross' would report a maximum
+// across alternatives as if it were a ceiling (rule 6), and in the overstating
+// direction, since gross >= net.
+//
+// So SPI-16's settled shape does NOT generalise, and one chapter was enough to
+// show it. That is the whole return on verifying end-to-end before applying a
+// mapping mechanically to twenty chapters: the fix here is a type decision, and
+// it would have been twenty encodings deep by the time anything surfaced it.
+//
+// WHAT IS CLEAN AND WOULD ENCODE TODAY — the height row, which states plain
+// figures with no basis question and no alternatives:
+//   SA1 80 ft · SA2 52 ft · SA3 52 ft · SA4 80 ft · SA5 52 ft · SA6 35 ft
+//
+// NOT encoded pending the basis-election decision, so that heights and ratios
+// land together rather than leaving a district half-answered.
+
 /** Which lot-area denominator the code's own sentence multiplies the ratio by.
  *  Never converted between (FACT 2) — recorded so the number can be labelled. */
 export type AtlantaLotBasis = 'net' | 'gross'
