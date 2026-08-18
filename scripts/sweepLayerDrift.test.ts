@@ -306,7 +306,7 @@ describe('every declared scope accounts for what it excuses', () => {
     // for height AND FAR), and four declared as codes Part 16 never established.
     ['atlanta', 173, 0],
     ['austin', 6, 8],
-    ['sandiego', 56, 84],
+    ['sandiego', 62, 78],
     ['denver', 9, 34],
     // First city closed completely: both codes read, both cited, one surfaced to
     // the user with the City's own sentence about its own data.

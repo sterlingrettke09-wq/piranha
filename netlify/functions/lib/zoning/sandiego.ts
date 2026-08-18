@@ -27,11 +27,22 @@
 // (agricultural). NOT read, and therefore still gaps rather than absences:
 //   · Division 2 (open space) — its Table 131-02C DOES have a "Max Floor Area
 //     Ratio" row reading `-- -- 0.45 0.10 --`, so a FAR applies to some of
-//     OP/OC/OR/OF. It is not encoded because the four-row column header does
-//     not survive text extraction and the values differ per column; assigning
-//     0.45 or 0.10 to OR-1-1 would be a guess between two real figures.
+//     OP/OC/OR/OF. Still unread; assigning 0.45 or 0.10 to OR-1-1 would be a
+//     guess between two real figures.
+//
+//     ⚠️ THE REASON THIS NOTE ORIGINALLY GAVE IS NO LONGER TRUE. It said the
+//     four-row column header does not survive text extraction. Under
+//     `pdftotext -layout` it does — demonstrated on 2026-08-17 against Table
+//     131-05C, whose header resolves to six columns (1st & 2nd >> CN-, 3rd >>
+//     1-, 4th >> 1…6) with six values in every data row and six matching codes
+//     in the live enumeration. The blocker was a statement about a TOOL, it was
+//     accurate when written, and it silently became a permanent exclusion.
+//     Divisions 2 and 5 are now blocked only on the reading time, not on the
+//     extraction.
 //   · Division 5 (commercial) — § 131.0546 exists and its tables state FARs
-//     from 0.75 to 4.0. Same blocker, and worse: the values vary across every
+//     from 0.75 to 4.0. PARTLY READ: Table 131-05C (CN) is encoded above and
+//     Table 131-05E (CC) was already. Table 131-05D (CR, CO, CV, CP) remains,
+//     and the caution below still applies to it — the values vary across every
 //     column, so a misalignment produces a plausible wrong number rather than
 //     an obvious one.
 //   · Division 6 (industrial) — § 131.0632 exists and Table 131-06C reads 2.0
@@ -199,6 +210,37 @@ const CC_TABLE =
   'San Diego Municipal Code § 131.0531, Table 131-05E (Development Regulations for CC Zones, 7-2026) — Max Floor Area Ratio row'
 const CC_OTAY =
   'San Diego Municipal Code § 131.0531, Table 131-05E footnote 4: "Within the Otay Mesa Community Plan area, the maximum floor area ratio is 0.30."'
+
+/**
+ * CN neighbourhood-commercial max FAR — § 131.0531, Table 131-05C.
+ *
+ * COLUMN ALIGNMENT RECONCILED THREE WAYS before any value was taken, which is
+ * the check that would have caught the DC MU-column off-by-one without anyone
+ * reading carefully:
+ *   · the table's own four-row Zone Designator header resolves to six columns,
+ *     "1st & 2nd >> CN-", "3rd >> 1-", "4th >> 1 2 3 4 5 6"
+ *   · every data row in the table carries exactly six values
+ *   · the live ZONE_NAME enumeration carries exactly six CN codes, CN-1-1…CN-1-6
+ * Three independent counts agreeing is what makes the row assignment safe.
+ *
+ * The Max Floor Area Ratio row reads 1.0 in all six columns, each carrying
+ * footnote 3.
+ *
+ * ⚠️ THE BONUSES ARE NOT ENCODED. The table also carries "Floor Area Ratio Bonus
+ * for Residential Mixed Use" (0.5 / 0.75 / 0.75 / 1.2 / 1.2 / 1.2, § 131.0546(a))
+ * and a child-care bonus (§ 131.0546(b)). Whether those ADD to the 1.0 or replace
+ * it is stated in § 131.0546, which has not been read — and a bonus recorded
+ * without knowing that is a number with no defined meaning. Same refusal as La
+ * Jolla's § 159.0307(c)(2) bonus density.
+ */
+const CN_FAR: Readonly<Record<string, number>> = Object.freeze({
+  'CN-1-1': 1.0, 'CN-1-2': 1.0, 'CN-1-3': 1.0,
+  'CN-1-4': 1.0, 'CN-1-5': 1.0, 'CN-1-6': 1.0,
+})
+const CN_TABLE =
+  'San Diego Municipal Code § 131.0531, Table 131-05C (Development Regulations for CN Zones, 7-2026) — Max Floor Area Ratio row'
+const CN_OTAY =
+  'San Diego Municipal Code § 131.0531, Table 131-05C footnote 3: "Within the Otay Mesa Community Plan area, the maximum floor area ratio is 0.30."'
 
 const IND_TABLE =
   'San Diego Municipal Code § 131.0632 and Table 131-06C (Development Regulations for Industrial Zones, 7-2026)'
@@ -453,6 +495,7 @@ const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
   // community plan area, so these carry no flat `far`; resolveSanDiego computes
   // them from CC_FAR and footnote 4.
   ...Object.fromEntries(Object.keys(CC_FAR).map((z) => [z, { far: null, commercial: true, source: CC_TABLE }])),
+  ...Object.fromEntries(Object.keys(CN_FAR).map((z) => [z, { far: null, commercial: true, source: CN_TABLE }])),
 })
 
 /**
@@ -634,10 +677,20 @@ function industrialFar(key: string, communityPlan?: string | null): SanDiegoLimi
 function commercialFar(key: string, communityPlan?: string | null): SanDiegoLimits {
   if (communityPlan === undefined) return UNRESOLVED
   const cp = communityPlan === null ? '' : String(communityPlan).trim().toUpperCase()
-  const base = CC_FAR[key]
+  // CC and CN are the same instrument in two tables, and each states the Otay
+  // Mesa override in its OWN footnote — 131-05E note 4 for CC, 131-05C note 3
+  // for CN. Same figure, different citation, so the source is selected with the
+  // value rather than hardcoded to one table.
+  const base = CC_FAR[key] ?? CN_FAR[key]
   if (base == null) return UNRESOLVED
+  const isCn = CN_FAR[key] != null
   if (cp === CP_OTAY_MESA) {
-    return { maxFAR: CC_OTAY_MESA_FAR, farUnconstrained: false, farAlternatives: [], source: CC_OTAY }
+    return {
+      maxFAR: CC_OTAY_MESA_FAR,
+      farUnconstrained: false,
+      farAlternatives: [],
+      source: isCn ? CN_OTAY : CC_OTAY,
+    }
   }
-  return { maxFAR: base, farUnconstrained: false, farAlternatives: [], source: CC_TABLE }
+  return { maxFAR: base, farUnconstrained: false, farAlternatives: [], source: isCn ? CN_TABLE : CC_TABLE }
 }

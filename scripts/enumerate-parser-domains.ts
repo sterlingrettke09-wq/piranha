@@ -443,7 +443,10 @@ export const TARGETS: Target[] = [
         //
         // Same declared reason, same shape, previously applied to only one of the
         // two families that have it.
-        if (/^CC-\d/.test(z)) return true
+        // CN joins them 2026-08-17, read from Table 131-05C: max FAR 1.0 in all
+        // six columns, footnote 3 stating the same 0.30 Otay Mesa override in
+        // that table's own words. Identical joint dependency, identical reason.
+        if (/^(CC|CN)-\d/.test(z)) return true
         if (z === 'LJSPD-SF') return true
         // ⚠️ CENTRE CITY — READ 2026-08-17, and the answer is that no zone code
         // can carry it. § 156.0309(a): "The minimum and maximum base FARs for

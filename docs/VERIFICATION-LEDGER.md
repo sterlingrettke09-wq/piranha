@@ -6574,3 +6574,54 @@ now an artifact of the extraction flags, which is worth recording because a
 documented refusal outlives the reason for it.
 
 San Diego 140 unhandled, 84 counted gaps. Total 779 → 754.
+
+### A blocker phrased as a TOOL limitation decays silently
+
+`zoning/sandiego.ts` refused to encode Divisions 2 and 5 because "the four-row
+column header does not survive text extraction". That was accurate when written.
+It is false under `pdftotext -layout`, demonstrated against Table 131-05C, and in
+the interval it functioned as a permanent exclusion — 56 codes, the largest
+readable block in the city, held out by a claim nobody re-tested.
+
+**This is a distinct failure shape from a stale citation.** A stale citation is a
+claim about the world that the world changed. This is a claim about a TOOL'S
+BEHAVIOUR, and tool behaviour changes with a flag — so it can be true and false in
+the same week, on the same document, depending on how it was invoked. Nothing
+about the source moved.
+
+The tell is grammatical: a source limitation says what the DOCUMENT does ("Table
+14-701-1 has no FAR row", "§ 156.0309 keys the ratio to Figure H"), and stays true
+as long as the document does. A tool limitation says what WE could not do
+("does not survive extraction", "runs together when flattened"), and expires the
+moment the toolchain changes without anyone being told.
+
+Audited the repo for the shape. Two more carry it, both untested since:
+
+  · `zoning/phoenix.ts` — the 17 Downtown Code districts (DTC-*, 1,249 acres) and
+    WU, held out because "flattened to text its per-frontage tables run together"
+  · `zoning/atlanta.ts` — the SPI chapters, "flattened to text the columns run
+    together"
+
+Both are the same claim about the same tool, made before `-layout` was tried.
+Neither has been re-tested and neither is asserted here to be wrong — they are
+recorded as candidates, because the honest statement is that the reason on file
+no longer establishes what it was written to establish.
+
+**Rephrase a blocker as a fact about the source, or re-test it.** A refusal that
+cites a tool needs an expiry date the way a fixture needs a `capturedOn`.
+
+### The column-count cross-check is the general instrument
+
+Reading Table 131-05C, three independent counts agreed before a single value was
+taken: the table's own four-row Zone Designator header resolves to six columns,
+every data row carries six values, and the live ZONE_NAME enumeration carries
+exactly six CN codes. Only then were the figures read.
+
+That agreement is an EXTERNAL check in rule 9's sense — the document's structure
+against the city's own published data — and it is the check that would have caught
+the DC MU-column off-by-one without anyone reading carefully. It costs one query
+against a fixture already committed.
+
+It is now standard for any table read here, not a Denver-specific habit:
+**reconcile the header's column count against the live enumeration before
+encoding a value.** Where they disagree, the disagreement is the finding.

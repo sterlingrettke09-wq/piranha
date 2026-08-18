@@ -27,13 +27,13 @@ describe('inventory', () => {
   // Rule 20: a check that can pass by finding nothing is not a check. Pin the
   // size AND the membership, so a regex that silently stops matching goes RED
   // rather than green.
-  it('covers 33 residential, 4 agricultural, 10 industrial, 28 CC commercial and 16 planned-district zones', () => {
+  it('covers 33 residential, 4 agricultural, 10 industrial, 28 CC commercial, 6 CN commercial and 16 planned-district zones', () => {
     // 75 → 91 on 2026-08-17: sixteen Chapter 15 planned-district codes read from
     // their own articles (Cass Street 1, Mission Beach 6, La Jolla Shores 3,
     // La Jolla 6).
     // The pin moving is the guard working — a curated table growing silently is
     // how an unsourced entry gets in.
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(91)
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(97)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',
@@ -42,6 +42,7 @@ describe('inventory', () => {
         'RM-1-1', 'RM-2-6', 'RM-3-7', 'RM-5-12',
         'CSPD-CASS-STREET', 'MBPD-R-N', 'MBPD-VC-S', 'LJSPD-SF', 'LJSPD-MF1',
         'LJPD-1', 'LJPD-4', 'LJPD-5', 'LJPD-6',
+        'CN-1-1', 'CN-1-6',
       ]),
     )
   })
@@ -133,12 +134,20 @@ describe('resolveSanDiego', () => {
 })
 
 describe('scope (rule 23)', () => {
-  // Division 4 is residential base zones ONLY. Commercial, industrial and
-  // planned-district codes are NOT in the scope that was read, so they must
-  // return null and keep reading downstream as a GAP. If one of these ever
-  // starts resolving, an out-of-scope table has been folded in without its
-  // source being read.
-  it.each(['CN-1-3', 'CV-1-1', 'CO-1-1', 'CR-1-1', 'OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
+  // Codes whose table has NOT been read must return null and keep reading
+  // downstream as a GAP. If one of these ever starts resolving, an out-of-scope
+  // table has been folded in without its source being read.
+  //
+  // ⚠️ CN-1-3 WAS IN THIS LIST AND IS NOT ANY MORE, 2026-08-17. The list was
+  // written when Division 4 (residential) was the only division read, and it was
+  // correct then. Table 131-05C has since been read — six columns reconciled
+  // against the header and the live enumeration, max FAR 1.0, footnote 3 giving
+  // the Otay Mesa override — so the CN zones are encoded and the assertion had
+  // become a claim about our own past scope rather than about the code.
+  //
+  // The rest stay: Table 131-05D (CR, CO, CV, CP), Division 2's open-space zones
+  // and the Barrio Logan / Centre City planned districts are still unread here.
+  it.each(['CV-1-1', 'CO-1-1', 'CR-1-1', 'OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
     'leaves the out-of-scope zone %s unresolved',
     (code) => {
       expect(sanDiegoZoneKey(code)).toBeNull()
@@ -181,11 +190,26 @@ describe('agricultural zones — a structural absence (rule 5)', () => {
   })
 
   it('separates the agricultural absence from an unread division', () => {
-    // AR is an answer; the commercial and industrial districts are gaps,
-    // because their divisions state FARs this module has not encoded.
+    // AR is an answer; an unread division is a gap. CN-1-3 was the example here
+    // and is now READ, so the example moved to CR-1-1 — Table 131-05D, still
+    // unread. Keeping CN would have asserted a gap that no longer exists.
     expect(resolveSanDiego('AR-1-1', 40_000).farUnconstrained).toBe(true)
-    expect(resolveSanDiego('CN-1-3', 40_000).farUnconstrained).toBe(false)
-    expect(resolveSanDiego('CN-1-3', 40_000).maxFAR).toBeNull()
+    expect(resolveSanDiego('CR-1-1', 40_000).farUnconstrained).toBe(false)
+    expect(resolveSanDiego('CR-1-1', 40_000).maxFAR).toBeNull()
+  })
+
+  it('and CN, now read, resolves only with the community plan it depends on', () => {
+    // The joint dependency is the whole reason this cannot be a flat lookup:
+    // Table 131-05C footnote 3 overrides the 1.0 to 0.30 inside Otay Mesa, so a
+    // call that cannot say where the parcel is must decline.
+    expect(resolveSanDiego('CN-1-3', 40_000).maxFAR).toBeNull() // plan undefined
+    expect(resolveSanDiego('CN-1-3', 40_000, 'LA JOLLA').maxFAR).toBe(1.0)
+    expect(resolveSanDiego('CN-1-3', 40_000, 'OTAY MESA').maxFAR).toBe(0.3)
+    // Each table cites its OWN footnote — 131-05C note 3 here, 131-05E note 4
+    // for CC. Same figure, different provision, and a shared source string would
+    // have pointed a CN reader at the wrong table.
+    expect(resolveSanDiego('CN-1-3', 40_000, 'OTAY MESA').source).toContain('131-05C footnote 3')
+    expect(resolveSanDiego('CC-1-1', 40_000, 'OTAY MESA').source).toContain('131-05E footnote 4')
   })
 })
 
