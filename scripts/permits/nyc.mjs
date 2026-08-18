@@ -68,6 +68,35 @@
 //
 // ⚠️ SEPARATELY, AND NOT THE REASON FOR THE WITHDRAWAL — an unresolved
 // instrument question, recorded so a future reader does not mistake it for one.
+//
+// ⚠️⚠️ THIRD EXTRACT, 2026-08-18, AND THE POPULATION OSCILLATES. Running this
+// script unchanged today returns 8,103 in-window filings of which 4,448 carry an
+// issue date — 54.89%. The three extracts, same query, same resource:
+//
+//     2026-08-06   4,394 -I1  (of 19,319 permitted NB)   published 8.3 / 17.0
+//     2026-08-09   1,040 filings, 662 issued             63.65%
+//     2026-08-18   8,103 filings, 4,448 issued           54.89%
+//
+// The 08-09 note below reads the drop as the feed being "roughly 3.5x smaller
+// than the record", which invited a decay story — a dataset being pruned, or a
+// migration in progress. Nine days later it is back up by 8x and still does not
+// match 08-06. **A population that moves in both directions is not decaying; the
+// query and the resource id are unchanged, so the instability is in the feed or
+// in how it answers, not in what we asked.**
+//
+// The consequence is larger than any single figure: **no n from this source is
+// reproducible**, which disqualifies it as a base for a published statistic
+// regardless of censoring. The issuance rate moved too — 63.65% to 54.89% in
+// nine days — so even the one quantity censoring cannot bias is unstable here.
+// That is worth stating precisely because "publish the issuance rate regardless"
+// is otherwise a sound rule; it assumes the denominator holds still.
+//
+// Not diagnosed, and deliberately not guessed at. Socrata paging, an async
+// index rebuild and a genuine mid-migration republish would all produce this
+// signature, and choosing between them without evidence is the mechanism-without-
+// measurement move (rule 1). What IS established is that three extracts of one
+// query gave three populations, so the next reader should expect a fourth.
+//
 // The committed n=4,403 no longer reproduces from this feed under any framing
 // tried. Measured 2026-08-09: `job_type='New Building'` returns 13,353 rows of
 // which 5,469 are permitted and 914 are `-I1`, against the 19,319 permitted /

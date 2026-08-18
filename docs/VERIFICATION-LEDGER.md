@@ -7112,3 +7112,47 @@ The generalisation: **a name in a catalogue is a claim about existence, not abou
 capability.** `type`, `geometryType` and `capabilities` answer capability, and the
 `/query` response is the destination check. Same shape as reading a field off a
 resolver that never returns it (rule 11), one layer out.
+
+### NYC: three extracts of one query, three populations
+
+Permit-timing pass, step 1 — reproducibility rather than accuracy. The finding is
+that the source will not hold still.
+
+`scripts/permits/nyc.mjs` is already halted and writes nothing: 8.3 mo / p80 17.0
+/ n=4,403 shipped 2026-08-06 and was withdrawn 2026-08-09 as a conditional median
+whose condition only ever appeared in a `vintage` string the UI never renders. The
+dataset-choice defect the brief anticipated — the script on legacy BIS while the
+committed figure came from DOB NOW — was corrected 2026-08-05 and the file records
+it. So the "make the script and the figure agree" instruction was already
+satisfied in the only direction available: the figure is gone and the script
+publishes nothing.
+
+**What re-running found is worse than a stale number.** Same script, same query,
+same resource id, three extracts:
+
+    2026-08-06   4,394 -I1  (of 19,319 permitted NB)
+    2026-08-09   1,040 filings,   662 issued   63.65%
+    2026-08-18   8,103 filings, 4,448 issued   54.89%
+
+The 08-09 note read the drop as the feed being "roughly 3.5x smaller than the
+record", which invites a decay story — pruning, or a migration in progress. Nine
+days later it is back up 8x and still does not match 08-06. **A population that
+moves in both directions is not decaying.** The query and the resource are
+unchanged, so the instability is in the feed or in how it answers.
+
+Two consequences worth separating:
+
+**No `n` from this source is reproducible**, which disqualifies it as a base for a
+published statistic regardless of censoring. That is a stronger disqualifier than
+the conditional-median one and it is independent of it.
+
+**And the issuance rate moved too** — 63.65% to 54.89% in nine days. "Publish the
+issuance rate regardless, it is the one number censoring cannot bias" is a sound
+rule and it assumes the denominator holds still. Here it does not, so the rate
+carries an extract date or it carries nothing.
+
+Not diagnosed, and deliberately not guessed at: Socrata paging, an async index
+rebuild and a genuine mid-migration republish would all produce this signature,
+and choosing between them without evidence is mechanism-without-measurement
+(rule 1). What is established is that three extracts of one query gave three
+populations, so the next reader should expect a fourth.
