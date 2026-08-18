@@ -427,6 +427,45 @@ prefixes, so `OS-` spans both eras and `I-A` (current) sits beside `I-0`
 **Test membership against the source, not the string.** A grep of the frozen
 document is one command and it is dispositive in both directions.
 
+**28. A planted defect must be verified as the defect you meant to plant.** The
+duplicate-parse detector is proven by planting a matching pair and asserting it
+fires — the standard answer to rule 20, since a detector that found nothing and a
+detector that stopped working look identical. The plant was
+`"const t = s.split(/[()\s]+/)"`, written as a JS string, where `\s` collapses to
+a bare `s`. So the planted regex was `/[()s]+/`, **which appears nowhere in this
+codebase**, and the detector was proven against a pattern it will never meet.
+
+It passed. Both halves of the pair were malformed *identically*, so they matched
+each other and the check went green. Nothing in the test could see it; the only
+thing that ever noticed was the linter's `no-useless-escape`.
+
+This is a new member of the rule-20 family and it is one level deeper. Rule 20
+says a check that can pass by finding nothing is not a check, and the fix is to
+assert the input set is non-empty. Here the set was non-empty and the assertion
+was real — **the PLANT was wrong**, so a working detector correctly reported a
+defect nobody meant to introduce. A green plant proves the detector fires; it
+does not prove it fires on the thing you care about.
+
+So: after planting, **assert a property of the plant itself**, not only that the
+check went red. One line — `expect(shared[0]).toContain('\\s')` — and the fixture
+can no longer drift into modelling something that does not exist. Escapes inside
+string literals that stand for source code are where this hides, because the
+string is read by a human as the text it denotes and by the runtime as something
+else.
+
+**A note on the instruments, recorded because it is the first time.** The stale
+Milwaukee absence reason — a hand-written note saying the residential pair "stays
+unpublished pending a live re-run and a product decision" — was caught by the
+coverage XOR guard the moment the data landed, before anyone grepped for it. Every
+other stale claim in this ledger was found by a person going looking. That guard
+asserts a city is either derived-present OR carries exactly one absence reason,
+never both, and it turned red on its own.
+
+That is what the guards are for, and it is worth knowing they have started to
+work: the discipline moves out of the reader's head and into the build. It also
+sets the standard for the next one — a guard that only fires when someone
+remembers to consult it is still the reader carrying it.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
