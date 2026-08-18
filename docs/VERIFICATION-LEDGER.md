@@ -6787,3 +6787,57 @@ Jose's `HEIGHTLIMIT` — free-text table targets with no zone-code fixture — a
 Jose's single gap was the missing one. Third time in this session a checking
 script has been the thing that was wrong, and the only reason it surfaced is that
 the two numbers were compared instead of one being trusted.
+
+### A figure repeated between two people is harder to question than one either computed
+
+"Dallas 30" was stated in a summary, repeated back, and then used as settled. It
+was never true. Neither party checked it, and the reason is worth naming: the
+first statement was a claim, and the repetition made it a shared premise. A
+premise does not get re-derived.
+
+This is rule 17's shape in conversation rather than in files. There, a retracted
+claim survived because it sat in the header where a reader lands first; here, a
+wrong figure survived because it had been said twice. In both cases the defence is
+the same — **re-derive, do not recall** — and in both cases the cost of the check
+is trivial next to the cost of the propagation.
+
+The practical form: a number that arrives from a summary rather than from a
+command is not evidence, however recently it was produced and by whomever.
+
+### Compute the same quantity two ways and investigate the difference
+
+Three times tonight a checking script was the wrong thing: the namespace built
+from the sweep's own imports, the `heightSource` guessed where the module has
+`planSource`, and `unhandledFor` returning nothing for the free-text targets.
+Auditing each script would have been expensive and would not have found the third,
+which looked entirely healthy.
+
+What found all three was cheaper: **compute the quantity a second way and look at
+the gap.** 730 against 731 is a one-code discrepancy nobody would notice in a
+single number, and it located a whole class of target the probe could not see. The
+Las Vegas credit that silently did nothing surfaced the same way — the expected
+total failed to appear.
+
+This is rule 9 turned inward. External validation checks the system against the
+world; this checks an instrument against a second instrument, and the disagreement
+is the finding regardless of which one is wrong. It costs one extra computation and
+it does not require knowing what to suspect.
+
+### The column-count check invites the wrong repair
+
+Stated plainly because the phrasing matters: applying the CN reconciliation to a
+merged-header table like Atlanta's SPI grids can fail a CORRECT table, and it can
+also **pass a wrong one after someone makes the counts match by adjusting the
+wrong side.**
+
+The second is the dangerous mode, and the check invites it. "Reconcile the header
+column count against the data" reads as an instruction to make two numbers agree,
+and where a header legitimately has fewer columns than its data — because
+"FAR (by right)" and "Max FAR (with Bonus)" sit under one merged subarea heading —
+the only way to make them agree is to misread one of them. Someone doing that in
+good faith produces a table that passes the check and publishes a neighbouring
+subarea's figure.
+
+A check whose failure message is "these counts differ" will be satisfied by
+changing either count. Where the counts SHOULD differ, the check must know by how
+much and why, or it must not run.
