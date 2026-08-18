@@ -237,8 +237,50 @@
 // right). JSTA *is* that sub-column. The identity is the evidence; the counts
 // never had to agree.
 //
-// SPI-16 READ 2026-08-17 and NOT YET ENCODED — recorded here so the reading is
-// not lost and so the next writer starts from figures rather than from a PDF.
+// ⚠️ SPI-16 RE-READ 2026-08-18, ALL ROWS. The 2026-08-17 pass recorded a figure
+// per subarea under the heading "FAR" and was complete for the "Max FAR" row
+// ALONE, of three FAR rows in Chapter 16-18P's table. What it recorded is
+// arithmetically correct and is the WRONG NUMBER TO PUBLISH for most projects:
+//
+//   by-right col   Non-Residential   Residential   Max FAR
+//   SA1                       5.0           3.2    8.2  = 5.0 + 3.2
+//   SA2 JSTA          (not a ratio)         6.4    6.4  = residential alone
+//   SA2 non-JSTA      (not a ratio)         3.2    3.2  = residential alone
+//   SA3                       2.0           3.2    5.2  = 2.0 + 3.2
+//
+// MAX FAR IS A COMBINED CAP ACROSS A USE MIX, NOT A CEILING FOR ANY ONE PROGRAM.
+// A residential building in SPI-16 SA1 is limited to 3.2, not 8.2 — publishing
+// the recorded figure would have overstated a residential envelope by 2.6x, and
+// in the flattering direction. That is rule 6 (do not report a maximum across
+// alternatives as a ceiling), and reading one row of three is what concealed it:
+// with only "Max FAR" in hand there is nothing to reveal that 8.2 is a sum.
+//
+// Note also that the additive relation holds here exactly as in SPI-20 — Max FAR
+// equals the sum where the non-residential cell is a ratio and equals residential
+// alone where it is not. Three chapters agree and SPI-21 still breaks it, so this
+// remains corroboration and not a law; it is recorded because it is what makes
+// the composition of 8.2 legible.
+//
+// ── HOW READINGS ARE RECORDED FROM NOW ON: ROWS, NOT CHAPTERS ───────────────
+// "SPI-16 read" was true of a chapter and false of a table. Any multi-row grid
+// can produce the same gap, and nothing downstream can see it, because a chapter
+// marked read is treated as verified. So every reading below states the rows it
+// covered and the rows it did not, and a chapter is only "read" when that list is
+// exhaustive.
+//
+//   SPI-16 Ch. 16-18P table 2 — rows READ 2026-08-18:
+//     [x] Non-Residential FAR (times gross lot area)
+//     [x] Residential FAR (times gross lot area)
+//     [x] Max FAR
+//     [x] Maximum Height
+//     [ ] Minimum Façade Height        — 24' in all ten columns; not modelled
+//     [ ] Side Yard Setback            — not modelled
+//     [ ] Rear Yard Setback            — not modelled
+//   The unticked three are DECLARED out of the envelope model, not overlooked.
+//
+// The figures below are the Max FAR row and are retained because they are correct
+// for a mixed-use program; the per-use limbs above are what a single-use project
+// needs, and BOTH must be encoded together or the district is half-answered.
 // Chapter 16-18P, Table "FAR / Height" (by-right column; the bonus column is a
 // programme the user has not chosen, rule 6):
 //
@@ -426,6 +468,17 @@
 // Only SPI-20 and SPI-21 announce the dual quantity in the label. The other three
 // carry a plainly-named FAR row whose cells are, for some subareas, not ratios at
 // all — so "label says it holds two quantities" identifies 2 of 5.
+//
+// ⚠️ SCOPE OF THAT FIVE, stated here because this is where the number gets USED
+// rather than only where it was measured: it is five of the chapters that state
+// FAR IN A TABLE. The scan walks expanded grid rows, so a chapter stating a ratio
+// in prose is invisible to it — SPI-6 does exactly that ("a maximum floor area
+// ratio of 0.348", no table in the chapter at all). "Five chapters carry
+// non-ratio cells" therefore means "five of the nineteen tabular chapters", and
+// any conclusion drawn from it inherits that boundary, including the claim that
+// cell-level refusal covers every case. It covers every case THE GRID PARSER CAN
+// SEE. Prose FAR is a second, unhandled form; no live code carries SPI-6 today,
+// which is the only reason that is not urgent.
 //
 // THE RULE THAT COVERS ALL FIVE IS CELL-LEVEL: a cell in a FAR row is a floor
 // area ratio ONLY if it parses as a bare number. Anything else — a percentage, a
