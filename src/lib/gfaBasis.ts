@@ -66,6 +66,13 @@ export function gfaBasisForFarBasis(farBasis: FarBasis | undefined): GfaBasis {
       // Distinct from 'assumed-far-1.0' in the one way that matters: nothing
       // here was left unread.
       return 'assumed-basis-unavailable'
+    case 'basis-elective':
+      // The ratio is published AND the denominator is the applicant's election,
+      // so the product is uncomputable for the same arithmetic reason as
+      // 'basis-unavailable' and for a completely different human reason. Kept
+      // apart because the disclosure differs: one says nobody can compute this,
+      // the other says you can and we cannot.
+      return 'assumed-basis-elective'
     case 'residential':
     case 'mixed':
     case 'district':

@@ -16,23 +16,39 @@ import type { ParcelInfo } from '../types/parcel'
 
 type FarBasis = NonNullable<ParcelInfo['envelope']>['farBasis']
 
-/** Every member of the published union. Pinned, so a new one fails HERE — the
- *  one place that must decide — rather than falling through in three files. */
-const ALL_FAR_BASES: FarBasis[] = [
+/** Every member of the published union.
+ *
+ *  ⚠️ THIS COMMENT USED TO CLAIM A NEW MEMBER "FAILS HERE", AND IT DID NOT.
+ *  Adding 'basis-elective' on 2026-08-18 left this array stale and every test in
+ *  the file green, because a hand-kept list is only ever checked against itself:
+ *  the loop below iterated six members and asserted six things, and the seventh
+ *  simply was not in the conversation. A pinned inventory that cannot notice its
+ *  own subject growing is rule 20 inside the guard.
+ *
+ *  Now the compiler enforces it. `Missing` resolves to `never` only when this
+ *  array covers the union; otherwise the assignment below is a type error that
+ *  NAMES the absent member. */
+const ALL_FAR_BASES = [
   'residential',
   'mixed',
   'district',
   'planned-development',
   'unconstrained',
   'basis-unavailable',
+  'basis-elective',
   null,
-]
+] as const satisfies readonly FarBasis[]
 
-describe('every farBasis maps to a gfaBasis, and the four reasons stay apart', () => {
+type MissingFarBasis = Exclude<FarBasis, (typeof ALL_FAR_BASES)[number]>
+const _allFarBasesCovered: MissingFarBasis extends never ? true : MissingFarBasis = true
+void _allFarBasesCovered
+
+describe('every farBasis maps to a gfaBasis, and the FIVE reasons stay apart', () => {
   it.each([
     ['unconstrained', 'assumed-unconstrained'],
     ['planned-development', 'assumed-planned-development'],
     ['basis-unavailable', 'assumed-basis-unavailable'],
+    ['basis-elective', 'assumed-basis-elective'],
     ['district', 'assumed-far-1.0'],
     ['residential', 'assumed-far-1.0'],
     ['mixed', 'assumed-far-1.0'],
@@ -50,11 +66,19 @@ describe('every farBasis maps to a gfaBasis, and the four reasons stay apart', (
     }
   })
 
-  it('keeps the three ESTABLISHED reasons distinct from the gap', () => {
-    const established = (['unconstrained', 'planned-development', 'basis-unavailable'] as const).map(
-      gfaBasisForFarBasis,
-    )
-    expect(new Set(established).size).toBe(3)
+  it('keeps the FOUR ESTABLISHED reasons distinct from the gap', () => {
+    // 'basis-elective' joins them: the ratio is known and the denominator is the
+    // applicant's to choose, which is an answer about the code — not a failure
+    // to look. It must not collapse into 'basis-unavailable' either, because
+    // that one tells the reader nobody can compute the area and this one tells
+    // them they can.
+    const established = ([
+      'unconstrained',
+      'planned-development',
+      'basis-unavailable',
+      'basis-elective',
+    ] as const).map(gfaBasisForFarBasis)
+    expect(new Set(established).size).toBe(4)
     for (const e of established) expect(e).not.toBe('assumed-far-1.0')
   })
 })

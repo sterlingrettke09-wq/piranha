@@ -51,6 +51,7 @@ export function assumptionsSummary(
     | 'assumed-unconstrained'
     | 'assumed-planned-development'
     | 'assumed-basis-unavailable'
+    | 'assumed-basis-elective'
     | 'assumed-far-1.0',
 ): Record<string, string> {
   const idx = cityCostIndex[city] ?? 1.0
@@ -82,6 +83,16 @@ export function assumptionsSummary(
                 floorAreaBasis:
                   'This district DOES publish a floor-area ratio, but the code applies it to buildable area — the lot minus its required yards — rather than to the lot. Required yards here depend on the setbacks of neighbouring built lots, which no public layer carries, so the ratio cannot be turned into a floor area. Lot area is used as a placeholder; it is neither the code limit nor a stand-in for one.',
               }
+            : gfaBasis === 'assumed-basis-elective'
+              ? {
+                  // Deliberately NOT the 'basis-unavailable' sentence. That one
+                  // says the area cannot be obtained at all; here the code lets
+                  // the applicant pick which area to use, so the reader is the
+                  // one who knows. Telling them "this cannot be computed" would
+                  // be false and would hide something they can act on.
+                  floorAreaBasis:
+                    'This district publishes a floor-area ratio and the zoning code lets you choose which lot area to apply it to — net lot area, or gross lot area including a credited half-width of adjoining streets and open space. That choice is yours to make and changes the answer, so no floor area is computed here. Multiply the published ratio by whichever lot area your program will use.',
+                }
           : gfaBasis === 'envelope'
             ? { floorAreaBasis: 'Derived from the published zoning limit for this district' }
             : {}),

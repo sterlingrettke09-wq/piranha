@@ -152,6 +152,11 @@ export interface ParcelInfo {
       | 'planned-development'
       | 'unconstrained'
       | 'basis-unavailable'
+      /** The ratio resolved and the code lets the APPLICANT choose the
+       *  denominator. Atlanta SPI-20: "Residential uses may use net lot area or
+       *  gross lot area." Distinct from 'basis-unavailable', where no one can
+       *  obtain the area — here the developer knows it and we do not. */
+      | 'basis-elective'
       | null
     /** Set when the headline floor area came from the code's fixed floor
      *  allowance rather than the ratio (small-lot case). Lets the UI cite the

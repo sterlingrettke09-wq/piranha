@@ -532,7 +532,23 @@
 
 /** Which lot-area denominator the code's own sentence multiplies the ratio by.
  *  Never converted between (FACT 2) — recorded so the number can be labelled. */
-export type AtlantaLotBasis = 'net' | 'gross'
+export type AtlantaLotBasis =
+  | 'net'
+  | 'gross'
+  /** THE APPLICANT ELECTS. SPI-20: "Residential uses may use net lot area or
+   *  gross lot area when calculating maximum permitted residential floor area."
+   *  Distinct from 'gross' and the distinction is user-facing, not pedantic:
+   *    'gross'         nobody can compute the product, because the denominator
+   *                    needs a layer Atlanta publishes as cartography only.
+   *                    A dead end until the city republishes ROW geometry.
+   *    'net-or-gross'  the DEVELOPER knows which they will use and we do not.
+   *                    The ratio is complete; the choice is theirs.
+   *  One is a data gap, the other is a choice the tool cannot make on someone's
+   *  behalf — so they must never share a sentence (rule 9: disclosure copy is
+   *  code). 'net-or-gross' is the more useful of the two: it hands the reader a
+   *  ratio and tells them the denominator is theirs to pick, which is actionable
+   *  in a way "we cannot compute this" is not. */
+  | 'net-or-gross'
 
 /** One floor-area ratio as the code prints it, with its denominator and its
  *  section. A limb cannot be constructed without a citation. */
@@ -566,6 +582,67 @@ export interface AtlantaSmallLotRule {
    *  ("If the floor area ratio does not allow at least 1,800 square feet …"). */
   guaranteedFloorSqFt?: number
   source: string
+}
+
+/** THE THREE FAR LIMBS AN SPI SUBAREA STATES, and why `combined` is not a field
+ *  callers read.
+ *
+ *  SPI-16 SA1 states non-residential 5.0, residential 3.2, and Max FAR 8.2 —
+ *  where 8.2 is 5.0 + 3.2. It is a cap on a MIXED programme, not a ceiling
+ *  available to any project: a residential building there is limited to 3.2, and
+ *  publishing 8.2 to it overstates by 2.6x. That defect existed because a reading
+ *  captured the combined row alone; putting `combined` on this object as a peer
+ *  of the other two would rebuild it one layer down, since nothing at a call site
+ *  would say the number is conditional on mixing uses.
+ *
+ *  So the field is NAMED for its condition and read through `atlantaFarFor`,
+ *  which cannot return it without being told the programme. The direct field is
+ *  pinned to a single reader by atlantaCombinedFar.test.ts, the same structural
+ *  invariant as the Denver resolver's single caller (rule 14). */
+export interface AtlantaSubareaFar {
+  /** null means the code states NO non-residential ratio for this subarea — an
+   *  ANSWER, not a missing lookup. Several subareas state a use-mix cap or a
+   *  locational rule in that cell instead; see parseAtlantaFarCell. */
+  nonResidential: AtlantaFarLimb | null
+  residential: AtlantaFarLimb | null
+  /** ⚠️ ONLY VALID FOR A PROGRAMME THAT MIXES USES. Never read directly — call
+   *  atlantaFarFor(sub, 'mixed'). Named this way so a direct read is legible as
+   *  wrong at the call site rather than only in this comment. */
+  combinedIfMixedUse: AtlantaFarLimb | null
+}
+
+/** The FAR a project may use, given what it is building. The ONLY sanctioned way
+ *  to reach a combined cap. Returns null where the code states no ratio for that
+ *  programme — which is an answer and must render as one. */
+export function atlantaFarFor(
+  sub: AtlantaSubareaFar,
+  programme: 'residential' | 'non-residential' | 'mixed',
+): AtlantaFarLimb | null {
+  if (programme === 'residential') return sub.residential
+  if (programme === 'non-residential') return sub.nonResidential
+  return sub.combinedIfMixedUse
+}
+
+/** A FAR cell is a ratio ONLY if it is a bare number.
+ *
+ *  Measured across all 23 SPI chapters 2026-08-18: five FAR-labelled rows carry a
+ *  cell that is not a ratio, under three different labels and four different
+ *  forms — `20%` (SPI-20/21), `Max 5% of Res. FAR` (SPI-11), `5% of the total
+ *  occupied residential floor area` (SPI-17), a prose locational rule (SPI-16),
+ *  plus `None` and `N/A`. Coercing any of them produces a plausible, silent,
+ *  order-of-magnitude error in the flattering direction: `20%` -> 0.20,
+ *  `Max 5% of Res. FAR` -> 0.05.
+ *
+ *  So this refuses everything that is not a bare number. It deliberately does NOT
+ *  try to classify what the cell means instead — that is a reading, not a parse.
+ *
+ *  SCOPE: this sees GRID CELLS. A chapter stating a ratio in prose with no table
+ *  (SPI-6: "a maximum floor area ratio of 0.348") never reaches it. */
+export function parseAtlantaFarCell(raw: string): number | null {
+  const t = raw.trim()
+  if (!/^\d+(\.\d+)?$/.test(t)) return null
+  const n = Number(t)
+  return Number.isFinite(n) ? n : null
 }
 
 /** An alternative development program with its own FAR — the user picks one

@@ -1,3 +1,4 @@
+import type { ParcelInfo } from './parcel'
 export type Use = 'residential' | 'commercial' | 'mixed' | 'institutional'
 export type ProjectType = 'new' | 'addition' | 'adu' | 'change_of_use'
 export const PROJECT_TYPES: ProjectType[] = ['new', 'addition', 'adu', 'change_of_use']
@@ -31,6 +32,7 @@ export interface AnalysisInput {
     | 'assumed-unconstrained'
     | 'assumed-planned-development'
     | 'assumed-basis-unavailable'
+    | 'assumed-basis-elective'
     | 'assumed-far-1.0'
   units?: number
   stories?: number
@@ -146,15 +148,17 @@ export interface AnalysisResult {
       allowedUses: string[] | null
       /** 'unconstrained' = the code imposes no FAR here (an ANSWER); null = we
        *  could not resolve one (a GAP). Both carry a null floor area, so the UI
-       *  must not render them the same. Mirrors ParcelInfo['envelope']. */
-      farBasis:
-      | 'residential'
-      | 'mixed'
-      | 'district'
-      | 'planned-development'
-      | 'unconstrained'
-      | 'basis-unavailable'
-      | null
+       *  must not render them the same.
+       *
+       *  ⚠️ DERIVED FROM ParcelInfo, NOT RESTATED. This used to be a second copy
+       *  of that union with a comment saying it "mirrors" it — and a mirror is a
+       *  claim, checked by nobody. Adding 'basis-elective' on 2026-08-18 updated
+       *  one copy and the build broke only because `analyze.ts` assigns a
+       *  ParcelInfo envelope straight into this shape; had the two been joined by
+       *  anything looser, the new state would have been silently unrepresentable
+       *  here while being set upstream. Same defect gfaBasis.ts was built to
+       *  remove, one field over. */
+      farBasis: NonNullable<ParcelInfo['envelope']>['farBasis']
       floorAreaFromAllowance?: boolean
       /** Other programs the code allows — alternatives to the headline, not a
        *  range around it. */

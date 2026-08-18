@@ -331,7 +331,11 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   // legitimately keeps its verdict: there, no FAR binds at all, so any size
   // clears the check honestly.
   const farUncheckable =
-    project.gfaBasis === 'assumed-far-1.0' || project.gfaBasis === 'assumed-basis-unavailable'
+    project.gfaBasis === 'assumed-far-1.0' ||
+    project.gfaBasis === 'assumed-basis-unavailable' ||
+    // Elective denominator: the ratio is known, the product is not, so the
+    // verdict cannot stand on a computed floor area any more than it can above.
+    project.gfaBasis === 'assumed-basis-elective'
   if (farUncheckable && (overall === 'AS_OF_RIGHT' || overall === 'NEEDS_RELIEF')) {
     overall = 'INDETERMINATE'
     checks.push({
