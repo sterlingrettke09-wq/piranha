@@ -6625,3 +6625,50 @@ against a fixture already committed.
 It is now standard for any table read here, not a Denver-specific habit:
 **reconcile the header's column count against the live enumeration before
 encoding a value.** Where they disagree, the disagreement is the finding.
+
+### Phoenix: the expired blocker was also the wrong blocker
+
+The re-test cost one browser page and settled 1,249 acres. Both halves of the
+recorded reason failed.
+
+**The extraction claim is dead.** `zoning/phoenix.ts` held the 17 Downtown Code
+districts out because Chapter 12's per-frontage tables "run together when
+flattened to text". `phoenix.municipal.codes` serves real HTML: § 1209's table is
+50 rows by 7 addressable columns (Street Section, Minimum Setback, Frontage Zone
+Depth, Minimum Building Frontage, Allowed Frontage Elements, Minimum Sidewalk
+Width, Minimum Streetscape Zone Depth). Cell-by-cell reading is available and is
+stronger than any flattening. Second confirmed instance of a tool-phrased blocker
+outliving its cause — and note the retest did NOT need `-layout`, because this
+source was never a PDF. The class generalises; the fix does not.
+
+**And the table was never where the height lives.** It states setbacks and
+streetscape. § 1209 and § 1217 both read "Maximum height: … governed by the height
+map, Section 1202.B, and height transition standards of Section 1207.E", and
+§ 1217 adds "Maximum density: governed by the density map, Section 1202.C".
+Checked on two districts rather than one (rule 10).
+
+So DTC is MAP-KEYED — the fourth instance, after Denver's Exhibit 8.1, Denver's
+CMP Protected District buffer and San Diego's Figure H. Phoenix publishes no such
+layer: all 178 services on maps.phoenix.gov were listed, and the only match,
+`Public/WalkableUrbanCode`, carries `APPLICABILITY_AREAS` alone — whether the WU
+code applies, not what height it sets.
+
+**The sections do state figures, and that is the trap.** § 1217 gives "Accessory
+structures, including accessory dwelling units: 30 feet" and "Maximum lot
+coverage: 75 percent". Publishing that 30 as the district's height would answer a
+different question than the one asked, in the flattering direction — the main
+building is the map's business. Miami's refusal, one city over.
+
+**WU is deliberately left counting.** It shared the retracted extraction reason
+and its Chapter 13 sections have not been read, so it now has NO established
+reason at all. Retracting a blocker does not transfer its coverage to whatever
+else was hiding behind it — the honest state for WU is a gap with nothing said
+about it, and it is worse than before the retest, which is correct.
+
+Phoenix 25 unhandled, 17 declared, 8 gaps. Total 748 → 731.
+
+The pattern across four instances is now firm enough to act on: a limit keyed to a
+map is resolvable in principle and blocked only on the city publishing the layer.
+Denver's CMP buffer was closed exactly that way this session. Exhibit 8.1,
+Figure H and § 1202.B are three known asks, and they are the shape of a data
+request rather than a reading task.

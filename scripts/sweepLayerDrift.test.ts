@@ -314,6 +314,9 @@ describe('every declared scope accounts for what it excuses', () => {
     // DTC/MHP point elsewhere in the code with citations; Satellite City is a
     // different jurisdiction. `I` stays a gap — the publisher was unreachable.
     ['nashville', 3, 1],
+    // The 17 DTC districts, map-keyed to § 1202.B. WU is deliberately NOT here:
+    // it shared the retracted extraction reason and has none of its own yet.
+    ['phoenix', 17, 8],
   ] as const)('%s: partial scope names %i and leaves %i counted', (city, named, gaps) => {
     const t = byCity(city)
     expect(t.scopedTo, `${city} must not carry a target-wide scope`).toBeUndefined()

@@ -381,6 +381,27 @@ export const TARGETS: Target[] = [
       if (r.planGoverned && (r.source ?? '').length > 20) return true
       return r.height != null
     },
+    // ⚠️ THE 17 DOWNTOWN CODE DISTRICTS ARE MAP-KEYED, not unextractable. The
+    // reason on file until 2026-08-17 was that Chapter 12's per-frontage tables
+    // "run together when flattened to text" — and that was wrong twice: the
+    // tables are real HTML (§ 1209's is 50 rows x 7 addressable columns), and the
+    // height was never in them. § 1209 and § 1217 both read "Maximum height: …
+    // governed by the height map, Section 1202.B"; § 1217 adds "Maximum density:
+    // governed by the density map, Section 1202.C".
+    //
+    // Fourth instance of the map-keyed class, after Denver's Exhibit 8.1 height
+    // areas, Denver's CMP Protected District buffer and San Diego's Figure H.
+    // Phoenix publishes no such layer — all 178 services on maps.phoenix.gov
+    // were listed and the only match, Public/WalkableUrbanCode, carries
+    // APPLICABILITY_AREAS alone.
+    //
+    // WU is left OUT of this declaration deliberately. It shared the retracted
+    // extraction reason, and its Chapter 13 sections have not been read, so it
+    // has no established reason of its own yet and must keep counting.
+    partiallyScoped: {
+      label: 'the 17 Downtown Code districts take their height from the § 1202.B height map, not from any per-district table',
+      explains: (v) => /^DTC-/.test(v.trim().toUpperCase()),
+    },
   },
   {
     city: 'raleigh', what: 'zoning string → height/stories',

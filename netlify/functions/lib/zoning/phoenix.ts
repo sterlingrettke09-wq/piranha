@@ -174,11 +174,42 @@
 //     county island ..............  1     1,853 ac =  0.52%  (ZONING = 'COUNTY')
 //     unresolved ................. 22     8,697 ac =  2.42%
 //
-// The 22 unresolved are: the 17 Downtown Code districts (DTC-*, 1,249 ac —
-// Chapter 12 is form-based, one section per district, and flattened to text its
-// per-frontage tables run together, which is the shape of the DC MU-column
-// off-by-one); WU (364 ac, the Chapter 13 Walkable Urban transects, same
-// reason); IND.PK. (6,553 ac) and GCP (6 ac), which have NO section in the
+// The 22 unresolved are: the 17 Downtown Code districts (DTC-*, 1,249 ac) and WU
+// (364 ac, Chapter 13 Walkable Urban) —
+//
+// ⚠️ RE-TESTED 2026-08-17, AND THE REASON RECORDED HERE WAS WRONG TWICE OVER.
+// It said Chapter 12's per-frontage tables "run together when flattened to
+// text", which is the DC MU-column shape. Both halves fail:
+//
+//   1. THE EXTRACTION CLAIM IS DEAD. phoenix.municipal.codes serves real HTML
+//      tables. § 1209's frontage table is 50 rows x 7 addressable columns
+//      (Street Section | Minimum Setback | Frontage Zone Depth | Minimum
+//      Building Frontage | Allowed Frontage Elements | Minimum Sidewalk Width |
+//      Minimum Streetscape Zone Depth). Cell-by-cell reading is available and is
+//      stronger than any text flattening. That claim was about a TOOL, was true
+//      when written, and expired silently.
+//
+//   2. THE TABLE WAS NEVER WHERE THE HEIGHT LIVES. It states setbacks and
+//      streetscape. § 1209 and § 1217 both read "Maximum height: … governed by
+//      the height map, Section 1202.B, and height transition standards of
+//      Section 1207.E", and § 1217 adds "Maximum density: governed by the
+//      density map, Section 1202.C". Confirmed on two districts rather than one.
+//
+// So DTC is MAP-KEYED, the same class as Denver's Exhibit 8.1 height areas and
+// San Diego's Centre City Figure H: the limit is real, published, and a function
+// of WHERE the parcel is rather than of its zone code. Not uncurated, and not
+// plan-governed — a layer would resolve it.
+//
+// Phoenix does not publish one. All 178 services on maps.phoenix.gov were
+// listed; the only match is Public/WalkableUrbanCode, whose single layer carries
+// APPLICABILITY_AREAS — whether the WU code applies, not what height it sets.
+//
+// ⚠️ AND THE SECTIONS DO STATE FIGURES, WHICH IS THE TRAP. § 1217 gives
+// "Accessory structures, including accessory dwelling units: 30 feet" and
+// "Maximum lot coverage: 75 percent". Publishing the 30 as this district's
+// height would answer a different question than the one asked, in the direction
+// that flatters — the main building is the map's business.
+// IND.PK. (6,553 ac) and GCP (6 ac), which have NO section in the
 // ordinance's table of contents at all and are therefore not guessable; PSCOD
 // (45 ac, the §659 Planned Shopping Center OVERLAY, not a base district); and 3
 // polygons with an empty ZONING string (480 ac).
