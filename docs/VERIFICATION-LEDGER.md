@@ -7580,3 +7580,35 @@ assertion now pins that the planted regex contains a backslash-s.
 
 **Ends: lint 0, tsc 0, 4,108 tests.** The suite grew by 6 and every one of them
 pins a distinction rather than a value.
+
+### Correction to the closing summary: the permit leg is AUDITED, not corrected
+
+The session's closing summary described the leg as done. That wording claims the
+figures are now right, and it is the wrong claim. What is true is narrower and
+worth stating exactly, because the difference is the whole point of the audit:
+
+**Six cities publish, and all six are DEFENSIBLE — which is not the same as all
+six being RIGHT.**
+
+    austin, denver, miami, philadelphia   CONDITIONAL medians: time-to-issuance
+        GIVEN issuance, off issued-only feeds where the issuance rate is not
+        observable at all. Honest, labelled, and still conditional.
+    nashville   renders its floor caveat — the vintage string says the median is
+        a FLOOR, so the limitation reaches the UI rather than a comment.
+    raleigh     measures its denominator (issuance rate against applications)
+        instead of selecting on it.
+
+Those are honest STATES. Not one of them is a figure that was wrong and got
+fixed.
+
+**What actually closed was a belief**, not a defect: the expectation that eight
+of eleven published permit numbers were wrong or overstated. They were — and they
+had already been withdrawn in earlier sessions. So brief steps 4 and 5 (censoring,
+bases) had no live target, and finding no work is not the same as doing it.
+
+The distinction generalises past permits. **"Audited" and "corrected" are
+different claims about a body of work, and the first is much cheaper to earn.**
+A summary that collapses them inherits the credibility of the second while having
+only done the first — which is rule 18's asymmetry applied to a status report
+rather than to a figure: a leg that reads as finished gets less scrutiny than one
+that reads as open.
