@@ -31,6 +31,8 @@ describe('inventory', () => {
     // 75 → 91 on 2026-08-17: sixteen Chapter 15 planned-district codes read from
     // their own articles (Cass Street 1, Mission Beach 6, La Jolla Shores 3,
     // La Jolla 6).
+    // 135 → 148 on 2026-08-19: thirteen Old Town codes across Tables 1516-01C
+    // and 1516-01E. Its two OTOP park zones are absent — plan-governed.
     // 126 → 135 on 2026-08-19: the nine Central Urbanized CU zones of Table
     // 155-02D. Its four CT zones are deliberately absent — each branches on
     // parcel facts this project does not hold.
@@ -43,7 +45,7 @@ describe('inventory', () => {
     // base zone, which is what the ordinance does.
     // The pin moving is the guard working — a curated table growing silently is
     // how an unsourced entry gets in.
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(135)
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(148)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',

@@ -317,7 +317,7 @@ describe('every declared scope accounts for what it excuses', () => {
     // Part 16 never established.
     ['atlanta', 68, 0],
     ['austin', 6, 8],
-    ['sandiego', 82, 36],
+    ['sandiego', 84, 21],
     ['denver', 9, 34],
     // First city closed completely: both codes read, both cited, one surfaced to
     // the user with the City's own sentence about its own data.

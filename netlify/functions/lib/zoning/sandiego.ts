@@ -337,6 +337,52 @@ export const RM_5_12_BY_HEIGHT: readonly { label: string; far: number }[] = Obje
  * table is silent and has already shipped once in this repo (DC's MU columns).
  */
 const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
+  // ── OLD TOWN SAN DIEGO (Chapter 15, Article 16, Division 1) ───────────────
+  // Fifteen live codes across TWO tables and one section that states no ratio.
+  // Both tables reconciled cleanly this time — 1516-01C has four columns for four
+  // codes and 1516-01E nine for nine, no merged designators — which is worth
+  // recording because the previous two districts both needed the rendered page to
+  // resolve a merge. The escalation is for when counts disagree, not a default.
+  //
+  // ⚠️ FOOTNOTE 4 ON OTRM-2-2 IS NOT A FLOOR-AREA FOOTNOTE. It reads "Single
+  // dwelling units on lots less than 10,000 square feet shall be limited to a
+  // maximum of six bedrooms" — a bedroom cap sitting on a FAR cell. Read before
+  // being carried into the ratio, which is the SPI-22 lesson: a marker on a
+  // figure is not necessarily about that figure.
+  //
+  // ⚠️ AND FOOTNOTE 3 OF 1516-01E LOWERS THE RATIO RATHER THAN RAISING IT. "For
+  // development that consist of 3 to 7 dwelling units, the maximum floor area
+  // ratio shall be 1.0" — against a 1.2 base in OTCC-2-3 and OTMCR-1-1. So it is
+  // a cap for that programme, not a bonus, and folding it into the headline would
+  // understate every OTHER programme while publishing 1.2 overstates that one.
+  // Recorded as an alternative, which is what the field is for (rule 6). Omitted
+  // where the base is already 1.0 and it changes nothing.
+  //
+  // The "Floor Area Ratio Bonus" rows of 1516-01E — residential mixed use and
+  // structured parking — are bonuses and are excluded from the headline.
+  'OTRS-1-1': { far: 0.6, source: 'SDMC § 1516.0114, Table 1516-01C (Development Regulations for OTR Zones, 7-2026)' },
+  'OTRM-1-1': { far: 0.7, alternatives: [{ label: '3 to 7 dwelling units', far: 1.0 }, { label: '8 to 10 dwelling units', far: 1.25 }], source: 'SDMC § 1516.0114, Table 1516-01C (Development Regulations for OTR Zones, 7-2026)' },
+  'OTRM-2-1': { far: 1.0, alternatives: [{ label: '8 to 10 dwelling units', far: 1.25 }], source: 'SDMC § 1516.0114, Table 1516-01C (Development Regulations for OTR Zones, 7-2026)' },
+  'OTRM-2-2': { far: 1.2, alternatives: [{ label: '8 to 10 dwelling units', far: 1.25 }], source: 'SDMC § 1516.0114, Table 1516-01C (Development Regulations for OTR Zones, 7-2026) — footnote 4 is a bedroom cap, not a floor-area provision' },
+  'OTCC-1-1': { far: 2.0, source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  'OTCC-2-1': { far: 1.0, source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  'OTCC-2-2': { far: 1.0, source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  'OTCC-2-3': { far: 1.2, alternatives: [{ label: '3 to 7 dwelling units', far: 1.0 }], source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  'OTCC-3-1': { far: 1.3, source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  'OTCC-3-2': { far: 1.3, source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  'OTMCR-1-1': { far: 1.2, alternatives: [{ label: '3 to 7 dwelling units', far: 1.0 }], source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  'OTMCR-1-2': { far: 2.0, source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  'OTMCR-1-3': { far: 2.0, source: 'SDMC § 1516.0119, Table 1516-01E (Development Regulations for OTCC/OTMCR Zones, 7-2026)' },
+  //
+  // ⚠️ OTOP-1-1 AND OTOP-2-1 ARE PLAN-GOVERNED, AND THE SLOT TEST IS WHAT SHOWS
+  // IT. § 1516.0123 is titled "Development Regulations for Old Town San Diego
+  // Open Space-Park Zones" — the section EXISTS where a ratio would be stated —
+  // and it states none. Instead: development must "comply with an approved park
+  // general development plan or master plan, the Old Town San Diego Community
+  // Plan". So the limit is in a per-site instrument, which is NOT the same as the
+  // code imposing no limit: farUnconstrained would assert an absence the section
+  // does not state. Declared in the sweep's scope with this reason.
+
   // ── CENTRAL URBANIZED (Chapter 15, Article 5, Division 2) — Table 155-02D ──
   // ⚠️ EIGHT DATA COLUMNS, NINE LIVE CU CODES, and the mismatch is correct for
   // the same reason as Table 131-05D: column 3 carries BOTH "2-" and "3-" in the

@@ -215,3 +215,58 @@ describe('Central Urbanized CU zones', () => {
     expect(resolveSanDiego('RM-2-5', null).maxFAR).toBe(1.35)
   })
 })
+
+// ── OLD TOWN SAN DIEGO ──────────────────────────────────────────────────────
+describe('Old Town: two tables, and one section that states no ratio', () => {
+  it('the OTR residential table resolves four codes', () => {
+    expect(resolveSanDiego('OTRS-1-1', null).maxFAR).toBe(0.6)
+    expect(resolveSanDiego('OTRM-1-1', null).maxFAR).toBe(0.7)
+    expect(resolveSanDiego('OTRM-2-1', null).maxFAR).toBe(1.0)
+    expect(resolveSanDiego('OTRM-2-2', null).maxFAR).toBe(1.2)
+  })
+
+  it('the OTCC/OTMCR commercial table resolves nine', () => {
+    const e: Record<string, number> = {
+      'OTCC-1-1': 2.0, 'OTCC-2-1': 1.0, 'OTCC-2-2': 1.0, 'OTCC-2-3': 1.2,
+      'OTCC-3-1': 1.3, 'OTCC-3-2': 1.3,
+      'OTMCR-1-1': 1.2, 'OTMCR-1-2': 2.0, 'OTMCR-1-3': 2.0,
+    }
+    for (const [z, far] of Object.entries(e)) expect(resolveSanDiego(z, null).maxFAR, z).toBe(far)
+  })
+
+  it('footnote 4 is a BEDROOM cap and never reaches the ratio', () => {
+    // "Single dwelling units on lots less than 10,000 square feet shall be
+    // limited to a maximum of six bedrooms" — a marker on a FAR cell that is not
+    // about floor area. OTRM-2-2 keeps its stated 1.2.
+    expect(resolveSanDiego('OTRM-2-2', null).maxFAR).toBe(1.2)
+    expect(resolveSanDiego('OTRM-2-2', null).farAlternatives.map((a) => a.far)).toEqual([1.25])
+  })
+
+  it('footnote 3 LOWERS the ratio for 3-7 units and is kept as an alternative', () => {
+    // Against a 1.2 base it is a cap for that programme, not a bonus. Folding it
+    // into the headline would understate every other programme; publishing 1.2
+    // alone overstates that one.
+    const r = resolveSanDiego('OTCC-2-3', null)
+    expect(r.maxFAR).toBe(1.2)
+    expect(r.farAlternatives).toEqual([expect.objectContaining({ far: 1.0 })])
+    // omitted where it changes nothing
+    expect(resolveSanDiego('OTCC-2-1', null).farAlternatives).toEqual([])
+  })
+
+  it('the OTOP park zones stay unresolved — plan-governed, not unconstrained', () => {
+    // §1516.0123 exists where a ratio would be and states none, requiring
+    // compliance with "an approved park general development plan or master
+    // plan". farUnconstrained would assert an absence the section does not make.
+    for (const z of ['OTOP-1-1', 'OTOP-2-1']) {
+      const r = resolveSanDiego(z, null)
+      expect(r.maxFAR, z).toBeNull()
+      expect(r.farUnconstrained, z).toBe(false)
+    }
+  })
+
+  it('and all thirteen non-park Old Town codes resolve', () => {
+    const ot = LIVE.filter((c) => c.startsWith('OT') && !c.startsWith('OTOP'))
+    expect(ot.length).toBe(13)
+    expect(ot.filter((c) => resolveSanDiego(c, null).maxFAR == null)).toEqual([])
+  })
+})

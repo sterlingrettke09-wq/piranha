@@ -469,7 +469,7 @@ export const TARGETS: Target[] = [
     //      Article 16 of this same chapter and every one of its fifteen codes is
     //      named in it. That is rule 27, and the count was 83.
     partiallyScoped: {
-      label: 'RS/LJSPD-SF lot-area bands and CC/CN/CR/CO/CV/CP/industrial community-plan overrides need parcel facts (plus the four Carmel Valley zones that adopt them); the four Central Urbanized CT zones branch on companion-zone overlap and major-street frontage; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
+      label: 'RS/LJSPD-SF lot-area bands and CC/CN/CR/CO/CV/CP/industrial community-plan overrides need parcel facts (plus the four Carmel Valley zones that adopt them); the four Central Urbanized CT zones branch on companion-zone overlap and major-street frontage; Old Town OTOP parks are governed by an approved park master plan; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
       // LJSPD-SF resolves — § 1510.0304(i)(1)(A) sends it to Table 131-04J, the
       // same band table as the RS zones — but the band is chosen by LOT AREA, and
       // the sweep has no parcel. Confirmed live: with a 5,000 sf lot it returns
@@ -515,6 +515,14 @@ export const TARGETS: Target[] = [
         // other — nearly half — so choosing is not available (rule 6). A stated
         // conditional we cannot evaluate, not an unread table.
         if (/^CUPD-CT-/.test(z)) return true
+        // ⚠️ OLD TOWN'S TWO OPEN SPACE-PARK ZONES, read 2026-08-19 by the slot
+        // test. §1516.0123 is titled "Development Regulations for Old Town San
+        // Diego Open Space-Park Zones" — the section exists where a ratio would
+        // be — and states none, requiring instead compliance with "an approved
+        // park general development plan or master plan". A per-site instrument,
+        // so PLAN-GOVERNED rather than unconstrained: farUnconstrained would
+        // assert an absence the section does not state.
+        if (/^OTOP-/.test(z)) return true
         if (z === 'LJSPD-SF') return true
         // ⚠️ CENTRE CITY — READ 2026-08-17, and the answer is that no zone code
         // can carry it. § 156.0309(a): "The minimum and maximum base FARs for
