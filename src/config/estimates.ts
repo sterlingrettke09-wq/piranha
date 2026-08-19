@@ -205,11 +205,155 @@ export type BuildingTier = 'single' | 'multi' | 'apartment'
 //
 // NOTE: "institutional" reflects schools/civic (~$450); hospitals run far higher
 // (~$700–975/sf), a known limitation of one bucket — Cumming confirms it.
+// ══════════════════════════════════════════════════════════════════════════
+// ⚠️ DEFECT — A DETACHED HOUSE IS PRICED AT AN APARTMENT RATE. Found 2026-08-19
+// while re-keying these constants by product type.
+//
+// `residential: 340` is corroborated — but corroborated against Cumming's
+// APARTMENT ranges, and the note above records that it lands inside the range in
+// all nine metros only at the 5–8 storey tier (heightCostFactor 1.12, so ~381).
+// Meanwhile `heightFactorTiers` gives "Up to 4 stories" a factor of 1.00.
+//
+// So today a detached single-family house resolves to 340 x cityIdx x 1.00, and a
+// mid-rise apartment to 340 x cityIdx x 1.12. The two differ ONLY by a height
+// factor, and both are anchored to a base validated against apartment product.
+// Detached wood-frame construction has no elevator core, no double-loaded
+// corridor and no podium; it is not 89% of a mid-rise rate.
+//
+// THE CAUSE IS THE KEY, NOT THE NUMBER. `Use` distinguishes residential /
+// commercial / mixed / institutional and says nothing about product type, while
+// every published cost source — Cumming, RSMeans, NAHB — is organised BY product
+// type. A constant keyed differently from every source that could validate it
+// cannot be validated except by accident, which is what "corroborated in 3 of 4
+// buckets" actually describes.
+//
+// Re-keying by product type is therefore not a refactor. It is the change that
+// makes the numbers checkable, and it splits `residential` into three buckets
+// whose real rates differ by more than any factor in this file.
+// ══════════════════════════════════════════════════════════════════════════
+
 export const costPerSqFtByUse: Record<Use, number> = {
   residential: 340, // internal estimate; corroborated vs Cumming Q4 2025 (see above)
   commercial: 390, // internal estimate; corroborated vs Cumming Q4 2025 office S&C
   mixed: 365, // blend of residential + ground-floor commercial
   institutional: 450, // schools/civic; healthcare is materially higher
+}
+
+// ── COST BY PRODUCT TYPE (2026-08-19) ─────────────────────────────────────
+// Keyed the way every published source publishes, so a figure can be checked
+// against one. See the defect note above for why `Use` alone could not be.
+
+/** Product types as the cost literature organises them. `mixed` is kept as a
+ *  product because the site models mixed-use projects — not because anyone
+ *  publishes a rate for it. */
+export type CostProduct =
+  | 'detached'
+  | 'small-multi'
+  | 'apartment'
+  | 'office'
+  | 'institutional'
+  | 'mixed'
+
+/** A rate WITH ITS PROVENANCE STATE, because the three states below must not
+ *  render the same (rule 5) and one of them must not produce a number at all.
+ *
+ *  'corroborated' — a figure checked against a published, scope-matched source.
+ *                   Still not provenance: agreement is not derivation, and the
+ *                   file says so. It is the strongest state anything here has.
+ *  'provisional'  — a figure carried forward from the old use-keyed constant
+ *                   whose validation belongs to a DIFFERENT product. It ships
+ *                   only so that re-keying does not delete a number nobody asked
+ *                   to lose, and it is the slot a real source drops into.
+ *  unsourced      — no published source covers this product at this scope.
+ *  unpriced       — the code/model needs a figure and none exists to have. */
+export type CostRate =
+  | {
+      kind: 'rate'
+      perSqFt: number
+      provenance: 'corroborated' | 'provisional'
+      source: string
+    }
+  | { kind: 'unsourced'; reason: string }
+  | { kind: 'unpriced'; reason: string }
+
+const CUMMING =
+  'Cumming Group Market Analysis Q4 2025 p.27 (Location Cost Impact), scope-matched to the hard line — Cumming excludes land, professional fees, permits, FF&E, soft costs and sitework'
+
+export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Object.freeze({
+  // Its validated home: 340 was checked against Cumming's APARTMENT ranges, and
+  // lands inside all nine metros at the 5–8 storey tier.
+  apartment: { kind: 'rate', perSqFt: 340, provenance: 'corroborated', source: CUMMING },
+  office: { kind: 'rate', perSqFt: 390, provenance: 'corroborated', source: `${CUMMING} — inside the office Shell & Core range for 7 of 9, and between S&C and S&C+TI in all nine` },
+  institutional: { kind: 'rate', perSqFt: 450, provenance: 'corroborated', source: `${CUMMING} — inside the K-12 range in all nine; hospitals run far higher and are a known limitation of one bucket` },
+
+  // ⚠️ PROVISIONAL, NOT CORROBORATED. This is the same 340, and 340 was validated
+  // against apartment product. A detached house has no elevator core, corridor or
+  // podium, so the rate is very likely high — but "very likely high" is a
+  // direction without a measurement, and rule 1 forbids publishing one. It keeps
+  // the number the site already shows rather than deleting a figure nobody asked
+  // to lose, and it is labelled so the deletion is not silent either way. NAHB's
+  // Cost of Construction survey is the intended source and is not yet in hand.
+  detached: {
+    kind: 'rate',
+    perSqFt: 340,
+    provenance: 'provisional',
+    source: 'carried from the former use-keyed residential constant, whose corroboration belongs to APARTMENT product (see the defect note above). Pending NAHB Cost of Construction.',
+  },
+
+  // The gap this re-key was expected to create, and it is a real one: NAHB covers
+  // detached, Cumming covers apartment, and 2–4 unit sits between them. An
+  // interpolation between two sources that each measure a different product is
+  // an invented conversion factor (rule 4) — so this stays empty rather than
+  // being filled with the arithmetic mean of two things neither of which is it.
+  'small-multi': {
+    kind: 'unsourced',
+    reason:
+      'No published source covers 2–4 unit construction at this scope. NAHB measures detached single-family and Cumming measures apartment; a figure between them would be interpolated, not sourced.',
+  },
+
+  // Was 365, described in-file as a "blend of residential + ground-floor
+  // commercial" — a composite whose basis was never checked, and Cumming
+  // publishes no mixed-use row to check it against.
+  mixed: {
+    kind: 'unpriced',
+    reason:
+      'No source publishes a mixed-use rate at this scope. The former 365 was a blend of two other constants rather than a measurement, and blending them again would reproduce that.',
+  },
+})
+
+/** The building tiers the timeline already classifies parcels into. Repeated as
+ *  a string union rather than imported, because this file is `src/config` and the
+ *  classifier lives under `netlify/` — but the MEMBERS must match, and
+ *  estimates.test.ts pins that they do rather than trusting the comment. */
+export type CostTier = 'single' | 'multi' | 'apartment'
+
+/**
+ * Which product a project is, from the use it declares and the tier its unit
+ * count puts it in.
+ *
+ * This is the whole point of the re-key: `use` alone cannot tell a detached
+ * house from a mid-rise, and every source that could price either is organised
+ * by exactly that distinction.
+ */
+export function costProductFor(use: Use, tier: CostTier | null): CostProduct {
+  if (use === 'commercial') return 'office'
+  if (use === 'institutional') return 'institutional'
+  if (use === 'mixed') return 'mixed'
+  // residential splits three ways. A null tier means the unit count did not
+  // resolve, and 'apartment' is NOT the safe default — it is the most expensive
+  // residential rate. Falling back to detached would be equally arbitrary, so an
+  // unresolved tier resolves to the product whose rate is PROVISIONAL, keeping
+  // the uncertainty visible in the provenance rather than hidden in a number.
+  if (tier === 'apartment') return 'apartment'
+  if (tier === 'multi') return 'small-multi'
+  return 'detached'
+}
+
+/** The rate for a project, with its provenance state attached. Never a bare
+ *  number: two of the six products have no rate to give, and a caller that
+ *  cannot see that would publish a total built on nothing. */
+export function costRateFor(use: Use, tier: CostTier | null): CostRate {
+  return costPerSqFtByProduct[costProductFor(use, tier)]
 }
 
 // Relative HARD-construction cost by metro = RSMeans City Cost Index "total"
