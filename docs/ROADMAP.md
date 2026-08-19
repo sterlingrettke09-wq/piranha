@@ -250,18 +250,41 @@ re-checking that the ten withholdings still hold for current reasons — a
 coverage question, not an accuracy one, and the reason-type sort makes it cheap:
 city-facts cannot expire, measurement-facts can, tool-facts have three times.
 
-### 4. Parcel-weighted coverage
+### 4. ~~Parcel-weighted coverage~~ — DONE 2026-08-19
 
-Today coverage counts PARCELS SAMPLED. Parcel-weighted means weighting a city's
-answer rate by the land or parcel count each district actually covers, so "78%
-resolve" describes the city rather than the sample.
+Denominator decided before measuring: all live features in each city's principal
+zoning layer — the same layer and field the provider reads. `scripts/parcel-weight.ts`
+counts per code, `docs/PARCEL-WEIGHTED-GAPS.md` is the derived report, and
+`scripts/parcelWeight.test.ts` pins it.
 
-Method: per-city parcel counts by district from the same ArcGIS layers the
-providers already read, then re-derive coverage against those weights.
+**All 23 targets reconcile exactly** — per-code counts plus the *measured* blank
+bucket plus the *measured* whitespace bucket equal each layer's own `count(1=1)`.
+The residual is never obtained by subtraction, which cannot fail to balance.
 
-*Failure mode:* this measures the sampler unless the weights come from the live
-layer rather than from the sample itself (rule 11). And the number will move for
-instrument reasons — say which, every time (rule 26).
+The reconciliation is what found things, exactly as intended:
+
+| finding | what it was |
+|---|---|
+| Chicago's grouped aggregate **undercounts its own layer by 68** | RT-4 groups to 1,954 against a direct count of 1,967; ten PD codes in `returnDistinctValues` absent from the grouped result and two the reverse. Not truncation, not transient. Fell back to per-value; the shortfall is recorded so the repair cannot delete the finding. |
+| Four Chicago codes stored with a **trailing space** | `WHERE ZONE_CLASS = 'PD 194'` returns 0 for a code that exists as `'PD 194 '` — and 0 from a query that ran is precisely what this tool treats as an established absence. Rule 5's own failure mode, inside the instrument built to avoid it. |
+| Philadelphia's blank check was **invalid SQL** on a numeric column | `MaxHeight = ''` → HTTP 400, recorded as unmeasured, residual −11. `MaxHeight IS NULL` returns exactly 11. Which predicate answered is now stored. |
+| Raleigh 500s on `count(ZONING)` but not `count(OBJECTID)` | Same grouped query, different statistic column. Counting the row is also the more correct one. |
+| Charlotte 500s on its own **layer-info** request while every query succeeds | Degraded, not fatal — metadata is descriptive, the counts are the measurement. |
+
+**The ordering it produced, which is the point.** By code count LA leads with 440
+gaps and Miami sits at 13. By coverage **Miami is first at 68.7%** of its zoning
+layer — T4-\*, T5-\*, CS, CI, D1–D3 and T1 resolve nothing, verified against
+T6-8-O and T3-R which do.
+
+**⚠️ And a polygon count is not a land share.** Measured rather than hedged: Miami's
+gaps are 68.67% of polygons and **37.04% of land**; San Francisco's are 12.82% of
+polygons and **41.91% of area**, because public land arrives in a few enormous
+parcels. Both columns are published; neither is the headline, and neither
+corrects the other. Ten of 23 layers publish no usable area column — recorded as
+unmeasured, not zero.
+
+*Open, and a product decision rather than work:* which column orders the backlog.
+Count answers "how many records"; area answers "how much of the city".
 
 ### 5. Map-layer asks  (five named)
 

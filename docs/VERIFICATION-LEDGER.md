@@ -7667,3 +7667,105 @@ kept is a one-time event masquerading as a standing result — it looks identica
 to a re-runnable check in every file that cites it, and the difference only
 surfaces the day someone needs to change the thing it was checking. Which is the
 day it is most expensive to discover.
+
+---
+
+## 2026-08-19 — Parcel-weighted coverage, and what the reconciliation found
+
+The 653 sweep gaps were weighted by the features carrying each code in the
+city's principal zoning layer. Denominator decided **before** measuring —
+specifically so it could not be chosen afterwards to make a number look better.
+
+**All 23 targets reconcile exactly:** per-code counts + a *measured* null/blank
+bucket + a *measured* whitespace bucket = the layer's own `count(1=1)`. The
+residual is never obtained by subtraction. A subtraction cannot fail to balance,
+so it cannot detect anything — it would have silently absorbed every defect below.
+
+Five findings, none of which came from the ranking. All five came from the two
+numbers disagreeing:
+
+**1. Chicago's grouped aggregate undercounts its own layer by 68 features.**
+`RT-4` groups to 1,954 against a direct count of 1,967; `B2-3` 601 against 614.
+Ten `PD` codes that `returnDistinctValues` returns are absent from the grouped
+result, and two codes the grouped result returns are absent from distinct-values.
+`exceededTransferLimit` false, 1,520 groups against a maxRecordCount of 2,000,
+five consecutive probes identical — so neither truncation nor a transient. Two
+server-side aggregations over one layer, disagreeing in both directions.
+
+Falling back to per-value counting is right. Falling back *silently* would have
+deleted the finding, so the shortfall is stored on the fixture and pinned by a
+test. Without that, 0.45% of Chicago would have been quietly missing from every
+share computed here and nothing downstream could have seen it.
+
+**2. Rule 5's own failure mode, committed by the instrument built to enforce it.**
+Chicago stores four codes with a trailing space. `WHERE ZONE_CLASS = 'PD 194'`
+returns **0** for a code that exists as `'PD 194 '` — and a 0 from a query that
+ran is exactly what this tool treats as an established absence. The query was
+well-formed, it executed, it answered, and it answered about a value that is not
+in the layer. Four codes were recorded as having no features when each has one.
+
+The fix is to count the RAW variants and sum into the trimmed key the sweep uses.
+The general lesson is sharper than the fix: **"the query ran" is not the same as
+"the query asked about the thing".** A normalisation applied on one side of a
+comparison and not the other turns a lookup miss into a confident zero.
+
+**3. A blank check that was invalid SQL, reported as an unmeasured value.**
+`MaxHeight = ''` is invalid against Philadelphia's numeric column; the service
+answers 400 and the first run recorded "blank unmeasured" with a residual of −11.
+`MaxHeight IS NULL` returns exactly 11. Two predicates now, and **which one
+answered is stored** — a null-only check must not read as the wider one.
+
+**4 and 5, both services contradicting themselves.** Raleigh answers HTTP 500 to
+`count(ZONING)` grouped by `ZONING` and returns all 268 groups summing to its
+exact total for `count(OBJECTID)` — same query, different statistic column.
+Charlotte answers 500 to its own layer-info request while every `/query` against
+that layer succeeds. The first was fixed by counting the row rather than the
+column, which is also the more correct statistic; the second degrades instead of
+killing the city, because metadata is descriptive and the counts are the
+measurement.
+
+### What the weighting changed
+
+By code count LA leads with 440 gaps and Miami sits at 13. By coverage **Miami is
+first at 68.7% of its zoning layer** — `T4-*`, `T5-*`, `CS`, `CI`, `D1`–`D3` and
+`T1` resolve nothing. Reconciled against a known-good before being believed
+(rule 25): `T6-8-O` returns 112 ft / 8 storeys / FAR 5 and `T3-R` returns 25 ft,
+so the module works and these codes genuinely are not in it.
+
+### ⚠️ The decided denominator answers a narrower question than it reads
+
+A polygon count is not a land share, and on a district-grain layer the two
+diverge hard **in both directions**:
+
+| | by polygon count | by area |
+|---|---:|---:|
+| Miami — 13 gap codes | 68.67% | 37.04% |
+| San Francisco — 33 gap codes | 12.82% | 41.91% |
+| Las Vegas — 11 gap codes | 3.03% | 11.07% |
+
+Near a factor of two down for Miami, over three times up for San Francisco, where
+public land arrives in a few enormous parcels. This was **measured before being
+said** — rule 1 forbids giving a mechanism a direction until something measures
+it, and "count probably overstates" would have been exactly that, and wrong for
+SF.
+
+Both columns are published, neither is called the headline, and neither corrects
+the other: count answers "how many records does this code touch", area answers
+"how much of the city". Ten of 23 layers publish no usable area column, recorded
+as unmeasured rather than zero. Areas stay in each layer's own projected units
+and are never converted — only the within-city share is used, which is unit-free,
+and a conversion to acres would need a factor per city that nothing sources.
+
+### A note on where the instrument sat
+
+The sweep and the weighting share ONE `classify()`, extracted for this work, and
+both report 653. That agreement is worth something narrower than it looks: the
+classification is shared by construction, but the value ROSTERS are independent —
+the sweep enumerates live, the weighting reads committed fixtures. Agreeing on
+653 is evidence the fixtures still match what the layers publish, and nothing more.
+
+Extracting it also fixed a hazard that had been latent: `enumerate-parser-domains.ts`
+ran its entire live sweep as a side effect of being imported, and under vite-node
+the entry filename is absent from `process.argv`, so no guard can distinguish
+"imported" from "invoked". The definitions now live in modules with nothing to
+run — rule 14, a structure rather than a comment.

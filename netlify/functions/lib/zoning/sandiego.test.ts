@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readEnumeration } from '../../../../scripts/enumerate-zones'
+import { readEnumeration } from '../../../../scripts/lib/zoneEnumeration'
 import { isPlannedDevelopment } from './plannedDevelopment'
 import {
   SAN_DIEGO_PLANNED_DISTRICTS,

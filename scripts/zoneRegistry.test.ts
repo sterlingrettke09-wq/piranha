@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { ZONE_SOURCES, ENUMERABLE, zoneSource, type ZoneSource } from './zoneRegistry'
-import { readEnumeration, verifyField } from './enumerate-zones'
+import { readEnumeration, verifyField } from './lib/zoneEnumeration'
 import { CITIES } from '../src/config/cities'
 
 // WHAT THIS FILE DEFENDS

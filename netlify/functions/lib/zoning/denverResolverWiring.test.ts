@@ -49,7 +49,7 @@ const DEFINITION = 'netlify/functions/lib/zoning/denver.ts'
 // scripts/sweepLayerDrift.test.ts, which asserts the sweep passes the flag AND
 // that it never calls the resolver bare. Listing it here keeps the exemption
 // visible instead of leaving the scan quietly narrower than it looks.
-const INSTRUMENTS_GUARDED_ELSEWHERE = new Set(['scripts/enumerate-parser-domains.ts'])
+const INSTRUMENTS_GUARDED_ELSEWHERE = new Set(['scripts/lib/parserDomains.ts'])
 
 function tsFilesUnder(dir: string): string[] {
   const out: string[] = []

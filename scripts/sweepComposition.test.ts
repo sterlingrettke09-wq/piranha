@@ -36,7 +36,7 @@ import { resolve, join } from 'node:path'
 // first, which is what the DECLARED table below does.
 
 const ROOT = resolve(__dirname, '..')
-const SWEEP_PATH = join(ROOT, 'scripts/enumerate-parser-domains.ts')
+const SWEEP_PATH = join(ROOT, 'scripts/lib/parserDomains.ts')
 const DIRS = ['netlify/functions/lib/zoning', 'netlify/functions/lib/providers'].map((d) => join(ROOT, d))
 
 /**

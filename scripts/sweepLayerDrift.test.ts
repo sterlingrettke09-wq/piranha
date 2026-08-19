@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { ZONE_SOURCES } from './zoneRegistry'
-import { TARGETS, unhandledFor } from './enumerate-parser-domains'
-import { readEnumeration } from './enumerate-zones'
+import { TARGETS, unhandledFor } from './lib/parserDomains'
+import { readEnumeration } from './lib/zoneEnumeration'
 import { resolveSeattle } from '../netlify/functions/lib/zoning/seattle'
 import { resolveChicago } from '../netlify/functions/lib/zoning/chicago'
 import { resolveNyc } from '../netlify/functions/lib/zoning/nyc'
@@ -65,7 +65,7 @@ export function providerLayerUrls(): Map<string, Set<string>> {
 
 /** Layer URLs the parser-domain sweep declares, by city. */
 function sweepTargetUrls(): Array<{ city: string; url: string }> {
-  const src = readFileSync(join(ROOT, 'scripts/enumerate-parser-domains.ts'), 'utf8')
+  const src = readFileSync(join(ROOT, 'scripts/lib/parserDomains.ts'), 'utf8')
   const consts: Record<string, string> = {}
   for (const m of src.matchAll(/^const ([A-Z_0-9]+) =\s*['`]([^'`]+)['`]/gm)) consts[m[1]] = m[2]
   const out: Array<{ city: string; url: string }> = []
@@ -162,7 +162,7 @@ describe('the sweep passes the arguments production passes', () => {
   //   sandiego     lotSqFt null                → already declared in scopedTo.
   //   miami/dallas/columbus  optional args passed null or omitted; no credit.
   // Denver was the only one crediting values production withholds.
-  const src = readFileSync(join(ROOT, 'scripts/enumerate-parser-domains.ts'), 'utf8')
+  const src = readFileSync(join(ROOT, 'scripts/lib/parserDomains.ts'), 'utf8')
 
   it('denver hands the resolver its legacy flag', () => {
     expect(src, 'resolveDenver called without formerChapter59 — legacy class codes will be read as storeys').toMatch(
