@@ -286,18 +286,48 @@ export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Obj
   office: { kind: 'rate', perSqFt: 390, provenance: 'corroborated', source: `${CUMMING} — inside the office Shell & Core range for 7 of 9, and between S&C and S&C+TI in all nine` },
   institutional: { kind: 'rate', perSqFt: 450, provenance: 'corroborated', source: `${CUMMING} — inside the K-12 range in all nine; hospitals run far higher and are a known limitation of one bucket` },
 
-  // ⚠️ PROVISIONAL, NOT CORROBORATED. This is the same 340, and 340 was validated
-  // against apartment product. A detached house has no elevator core, corridor or
-  // podium, so the rate is very likely high — but "very likely high" is a
-  // direction without a measurement, and rule 1 forbids publishing one. It keeps
-  // the number the site already shows rather than deleting a figure nobody asked
-  // to lose, and it is labelled so the deletion is not silent either way. NAHB's
-  // Cost of Construction survey is the intended source and is not yet in hand.
+  // ⚠️⚠️ 340 → 152, AND THIS IS THE MEASUREMENT THE RE-KEY WAS FOR.
+  //
+  // NAHB's Cost of Constructing a Home in 2024 (published 2025-01-20, survey
+  // conducted autumn 2024) puts the average construction cost of a typical
+  // single-family home at $428,215 over an average finished area of 2,647 sq ft
+  // — $161.77/sf as published.
+  //
+  // THAT IS NOT SCOPE-MATCHED TO THIS LINE, and the difference is four published
+  // line items. NAHB's Section I "Site Work" contains building permit fees
+  // ($7,640), impact fee ($6,367), water & sewer fees and inspections ($6,260)
+  // and architecture/engineering ($6,480) — every one of which this model adds
+  // SEPARATELY, as the permit line, the impact line, and softCostPct. Leaving
+  // them in would bill each of them twice.
+  //
+  //   published gross                              $161.77/sf
+  //   less permits + impact + water/sewer + A&E    $151.67/sf   <- this figure
+  //   less ALL of Section I                        $149.41/sf
+  //
+  // The middle figure is used: Section I's fifth member is "Other" ($5,972) under
+  // a heading whose other four are fees and design, so it may be genuine site
+  // work. Keeping it is the choice that does not UNDERSTATE, which is the
+  // direction that flatters a cost estimate (rule 7).
+  //
+  // ⚠️ AND IT RESOLVES THE CONTRADICTION THIS FILE REFUSED TO SETTLE. The header
+  // records RSMeans bare at $145.01 condemning 340, and Cumming's $280 apartment
+  // low-bound corroborating it, with no direction asserted because the
+  // reconciliation was "almost certainly a scope difference". It was a PRODUCT
+  // difference. NAHB scope-matched ($151.67) and RSMeans bare ($145.01) agree
+  // within 4.6% on DETACHED; Cumming's $280+ is metro APARTMENT. Two independent
+  // sources measuring the same product agree; the third was measuring another
+  // one. Nothing was wrong with either source — the constant was keyed so that
+  // they appeared to disagree.
+  //
+  // Derived from published figures, all four cited above and all from one table,
+  // so this is a derivation with every input sourced rather than a composite with
+  // one (rule 3).
   detached: {
     kind: 'rate',
-    perSqFt: 340,
-    provenance: 'provisional',
-    source: 'carried from the former use-keyed residential constant, whose corroboration belongs to APARTMENT product (see the defect note above). Pending NAHB Cost of Construction.',
+    perSqFt: 152,
+    provenance: 'corroborated',
+    source:
+      'NAHB, Cost of Constructing a Home in 2024 (Special Study, 20 Jan 2025): $428,215 average construction cost over 2,647 sq ft average finished area, less the Section I items this model bills separately (permit fees $7,640, impact fee $6,367, water & sewer $6,260, architecture/engineering $6,480) = $151.67/sf. Independently within 4.6% of the RSMeans bare figure recorded above.',
   },
 
   // The gap this re-key was expected to create, and it is a real one: NAHB covers
@@ -339,11 +369,15 @@ export function costProductFor(use: Use, tier: CostTier | null): CostProduct {
   if (use === 'commercial') return 'office'
   if (use === 'institutional') return 'institutional'
   if (use === 'mixed') return 'mixed'
-  // residential splits three ways. A null tier means the unit count did not
-  // resolve, and 'apartment' is NOT the safe default — it is the most expensive
-  // residential rate. Falling back to detached would be equally arbitrary, so an
-  // unresolved tier resolves to the product whose rate is PROVISIONAL, keeping
-  // the uncertainty visible in the provenance rather than hidden in a number.
+  // residential splits three ways.
+  //
+  // ⚠️ A NULL TIER RESOLVES TO 'detached' ONLY AS A TYPE-LEVEL TOTALITY — the
+  // rate lookup refuses it outright, see costRateFor. Until 2026-08-19 detached
+  // and apartment carried the SAME number, so this default cost nothing and
+  // nobody had to choose. They now differ by 2.2x, and every available default
+  // is wrong in a direction: apartment overstates a house, detached understates
+  // a block of flats, and understating is the direction that flatters a cost
+  // estimate (rule 7). So neither is picked.
   if (tier === 'apartment') return 'apartment'
   if (tier === 'multi') return 'small-multi'
   return 'detached'
@@ -353,6 +387,17 @@ export function costProductFor(use: Use, tier: CostTier | null): CostProduct {
  *  number: two of the six products have no rate to give, and a caller that
  *  cannot see that would publish a total built on nothing. */
 export function costRateFor(use: Use, tier: CostTier | null): CostRate {
+  // An unresolved unit count on a residential project cannot pick a rate: the
+  // three residential products span 152 to 340, so the choice IS the answer.
+  // Refusing is not defensive tidiness — it is the only option that does not
+  // publish a 2.2x error as a figure.
+  if (use === 'residential' && tier == null) {
+    return {
+      kind: 'unsourced',
+      reason:
+        'The number of homes in this project could not be determined, and the construction rate depends on it — a detached house and an apartment building differ by more than double per square foot.',
+    }
+  }
   return costPerSqFtByProduct[costProductFor(use, tier)]
 }
 

@@ -42,14 +42,17 @@ describe('a detached house and a mid-rise are no longer the same product', () =>
     expect(costProductFor('mixed', null)).toBe('mixed')
   })
 
-  it('an unresolved tier lands on the PROVISIONAL product, not the dearest one', () => {
-    // 'apartment' is the most expensive residential rate; defaulting an unknown
-    // unit count to it would overstate. Landing on 'detached' keeps the
-    // uncertainty in the provenance where a reader can see it.
+  it('an unresolved tier produces NO rate, because the choice is the answer', () => {
+    // ⚠️ THIS ASSERTION INVERTED 2026-08-19 and the reason is worth keeping.
+    // While detached and apartment carried the same 340, the default cost
+    // nothing and the test asserted which product it landed on. NAHB put
+    // detached at 152 against apartment's 340 — 2.2x — so every default is now
+    // wrong in a direction, and understating is the one that flatters a cost
+    // estimate. A test that passed for a year did so only because the two
+    // numbers happened to be equal.
     const r = costRateFor('residential', null)
-    expect(costProductFor('residential', null)).toBe('detached')
-    expect(r.kind).toBe('rate')
-    if (r.kind === 'rate') expect(r.provenance).toBe('provisional')
+    expect(r.kind).toBe('unsourced')
+    if (r.kind !== 'rate') expect(r.reason).toMatch(/could not be determined/i)
   })
 })
 
@@ -66,15 +69,28 @@ describe('every product states its provenance, and two state no rate', () => {
     }
   })
 
-  it('detached is PROVISIONAL and says whose validation it borrowed', () => {
+  it('detached is SOURCED from NAHB, scope-matched, and no longer the apartment rate', () => {
     const r = costPerSqFtByProduct.detached
     expect(r.kind).toBe('rate')
     if (r.kind === 'rate') {
-      expect(r.provenance).toBe('provisional')
-      expect(r.source).toMatch(/APARTMENT/)
-      // it carries the number the site already shows — re-keying must not
-      // silently delete a figure, nor silently keep one that has moved product
-      expect(r.perSqFt).toBe(costPerSqFtByUse.residential)
+      expect(r.provenance).toBe('corroborated')
+      expect(r.source).toMatch(/NAHB/)
+      // The scope match is the load-bearing part: NAHB's published $161.77/sf
+      // includes permit fees, impact fees, water/sewer and A&E, all of which
+      // this model bills separately. Billing them twice is the failure mode.
+      expect(r.source).toMatch(/permit fees|architecture/i)
+      expect(r.perSqFt).toBe(152)
+      // and it is emphatically NOT the old use-keyed residential rate
+      expect(r.perSqFt).not.toBe(costPerSqFtByUse.residential)
+    }
+  })
+
+  it('detached and apartment are now different numbers, which was the point', () => {
+    const d = costPerSqFtByProduct.detached
+    const a = costPerSqFtByProduct.apartment
+    if (d.kind === 'rate' && a.kind === 'rate') {
+      expect(d.perSqFt).toBeLessThan(a.perSqFt)
+      expect(a.perSqFt / d.perSqFt).toBeGreaterThan(2)
     }
   })
 

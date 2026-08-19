@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest'
 import { estimateCost } from './cost'
-import { costPerSqFtByUse, cityCostIndex, heightCostFactor } from '../../../src/config/estimates'
+import { costPerSqFtByProduct, cityCostIndex, heightCostFactor } from '../../../src/config/estimates'
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { ParcelInfo } from '../../../src/types/parcel'
 import type { Feasibility } from './feasibility'
 
-const RES = costPerSqFtByUse.residential // national $/sf, sourced
+// ⚠️ DERIVED FROM THE PRODUCT CONSTANT SINCE 2026-08-19, not from the use-keyed
+// one. The fixture below declares no `units`, so buildingTier resolves it to a
+// single home — i.e. DETACHED, whose rate is now NAHB's $152 rather than the
+// old $340. Reading the wrong constant made these assertions fail by exactly
+// 340/152, which is the whole re-key expressed as a test failure.
+const DETACHED = costPerSqFtByProduct.detached
+if (DETACHED.kind !== 'rate') throw new Error('detached must carry a rate for these fixtures')
+const RES = DETACHED.perSqFt // national $/sf for a detached home
 
 // The base fixture carries a REAL city, because production always has one:
 // analyze.ts resolves `city` as `q.city ?? 'boston'`, so no request reaches
