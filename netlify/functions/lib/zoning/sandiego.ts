@@ -131,6 +131,15 @@ export interface SanDiegoZone {
   industrial?: boolean
   /** Division 5 CC zone: same joint dependency, different override figure. */
   commercial?: boolean
+  /** THIS ZONE ADOPTS ANOTHER ZONE'S DEVELOPMENT REGULATIONS BY REFERENCE, which
+   *  is how every Chapter 15 planned district states its bulk limits: "the use
+   *  and development regulations of Land Development Code Chapter 13, Article 1,
+   *  Division 4 (Residential Base Zones) for the RS-1-14 zone shall apply"
+   *  (§153.0302). Modelled as a reference rather than a copied figure, because
+   *  that is what the ordinance does — so a correction to the base zone reaches
+   *  every planned district that adopts it, and a base zone we cannot yet resolve
+   *  makes its dependants honestly unresolved rather than silently wrong. */
+  incorporates?: string
   /** The exact table this row was read from, for the citation trail. */
   source: string
 }
@@ -304,6 +313,64 @@ export const RM_5_12_BY_HEIGHT: readonly { label: string; far: number }[] = Obje
  * table is silent and has already shipped once in this repo (DC's MU columns).
  */
 const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
+  // ── CARMEL VALLEY PLANNED DISTRICT (Chapter 15, Article 3, Division 3) ─────
+  // Twenty live codes, and the chapter states almost no figures of its own:
+  // ELEVEN of its sections adopt a Chapter 13 base zone by reference and then
+  // list exceptions. The division numbers came from the code's own Table of
+  // Contents PDF, not from a guessed path (rule 8).
+  //
+  // ⚠️ THE REFERENCE IS PHRASED TWO WAYS AND THE FIRST SCAN SAW ONE. "…for the
+  // RS-1-14 zone SHALL APPLY" (§153.0302) and "…for the CN-1-2 zone APPLY in the
+  // Neighborhood Commercial zone" (§153.0304) are the same instrument; a regex
+  // for the first reported four sections as having no base zone, and they have
+  // one. Checked because the alternative was recording an absence.
+  //
+  // WHAT RESOLVES TODAY: SF and MF, because RS-1-14 (0.6) and RM-1-1 (0.75) are
+  // Chapter 13 rows this module already reads, and both are LOT-INDEPENDENT —
+  // verified across 3,000/6,000/12,000/40,000 sq ft, since the RS lot-area bands
+  // that make other RS zones parcel-dependent do not reach RS-1-14.
+  //
+  // WHAT DOES NOT, AND WHY THAT IS THE RIGHT ANSWER: NC adopts CN-1-2, VC adopts
+  // CV-1-1, and TC and SC adopt CC-1-3 — none of which this module resolves yet.
+  // Encoding the reference anyway means they resolve the day those base zones
+  // land, and stay honestly unresolved until then. Copying figures would have
+  // hidden the dependency.
+  //
+  // NOT ENCODED AT ALL, and each for its own reason: EP states only a use
+  // restriction (schools and parks); OS states an open-space preservation
+  // condition; SP adopts "the RM zones" in the PLURAL, which names no single row
+  // — an ambiguity in the source, not a gap in the reading.
+  //
+  // Heights are not modelled in this city — SanDiegoLimits carries FAR only — so
+  // the SF 35 ft, MF 50 ft / 4 storeys and EC east-of-El-Camino-Real figures are
+  // read and recorded here rather than encoded.
+  'CVPD-SF': { far: null, incorporates: 'RS-1-14', source: 'SDMC ch.15 art.3 div.3 §153.0302' },
+  'CVPD-SF1': { far: null, incorporates: 'RS-1-14', source: 'SDMC ch.15 art.3 div.3 §153.0302' },
+  'CVPD-SF1A': { far: null, incorporates: 'RS-1-14', source: 'SDMC ch.15 art.3 div.3 §153.0302' },
+  'CVPD-SF2': { far: null, incorporates: 'RS-1-14', source: 'SDMC ch.15 art.3 div.3 §153.0302' },
+  'CVPD-SF3': { far: null, incorporates: 'RS-1-14', source: 'SDMC ch.15 art.3 div.3 §153.0302' },
+  'CVPD-SF4': { far: null, incorporates: 'RS-1-14', source: 'SDMC ch.15 art.3 div.3 §153.0302' },
+  'CVPD-MF1': { far: null, incorporates: 'RM-1-1', source: 'SDMC ch.15 art.3 div.3 §153.0303' },
+  'CVPD-MF2': { far: null, incorporates: 'RM-1-1', source: 'SDMC ch.15 art.3 div.3 §153.0303' },
+  'CVPD-MF3': { far: null, incorporates: 'RM-1-1', source: 'SDMC ch.15 art.3 div.3 §153.0303' },
+  'CVPD-MF4': { far: null, incorporates: 'RM-1-1', source: 'SDMC ch.15 art.3 div.3 §153.0303' },
+  'CVPD-MFL': { far: null, incorporates: 'RM-1-1', source: 'SDMC ch.15 art.3 div.3 §153.0303' },
+  'CVPD-NC': { far: null, incorporates: 'CN-1-2', source: 'SDMC ch.15 art.3 div.3 §153.0304' },
+  'CVPD-VC': { far: null, incorporates: 'CV-1-1', source: 'SDMC ch.15 art.3 div.3 §153.0305' },
+  'CVPD-TC': { far: null, incorporates: 'CC-1-3', source: 'SDMC ch.15 art.3 div.3 §153.0306' },
+  'CVPD-SC': { far: null, incorporates: 'CC-1-3', source: 'SDMC ch.15 art.3 div.3 §153.0307' },
+  // Employment Center adopts CC-1-3 for use, then OVERRIDES the ratio outright:
+  // "Maximum Floor Area Ratio. The maximum floor area ratio shall be 0.5". The
+  // stated figure wins over the incorporation, so this is a flat row.
+  'CVPD-EC': { far: 0.5, source: 'SDMC ch.15 art.3 div.3 §153.0309(b)(1)' },
+  // Mixed-Use Center states its own ratio and one ALTERNATIVE keyed to a unit
+  // count. 1.25 is not the headline (rule 6) — a 4-unit building does not get it.
+  'CVPD-MC': {
+    far: 1.2,
+    alternatives: [{ label: '8 to 10 dwelling units', far: 1.25 }],
+    source: 'SDMC ch.15 art.3 div.3 §153.0311(c)(3)',
+  },
+
   // ── RS, single unit. Two tables: RS-1-1…1-7 and RS-1-8…1-14. ──
   // RS-1-1 states a flat 0.45; RS-1-2…1-7 read "varies(5)", footnote 5 pointing
   // at Table 131-04J.
@@ -600,6 +667,19 @@ export function resolveSanDiego(
   const key = sanDiegoZoneKey(code)
   if (!key) return UNRESOLVED
   const zone = ZONES[key]
+
+  // Incorporation by reference (§153.0302 and its siblings). ONE hop only: the
+  // base zones are Chapter 13 rows that state their own figures, so a chain
+  // would mean a planned district adopting another planned district, which
+  // nothing in the enumeration does. Guarded rather than assumed — an
+  // unterminated chain would recurse.
+  if (zone.incorporates) {
+    const base = ZONES[zone.incorporates]
+    if (!base || base.incorporates) return UNRESOLVED
+    const inner = resolveSanDiego(zone.incorporates, lotSqFt, communityPlan)
+    if (inner.maxFAR == null && !inner.farUnconstrained) return UNRESOLVED
+    return { ...inner, source: `${zone.source} (adopts ${zone.incorporates}: ${inner.source})` }
+  }
 
   if (zone.industrial) return industrialFar(key, communityPlan)
   if (zone.commercial) return commercialFar(key, communityPlan)

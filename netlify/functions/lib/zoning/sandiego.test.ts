@@ -27,13 +27,19 @@ describe('inventory', () => {
   // Rule 20: a check that can pass by finding nothing is not a check. Pin the
   // size AND the membership, so a regex that silently stops matching goes RED
   // rather than green.
-  it('covers 33 residential, 4 agricultural, 10 industrial, 28 CC commercial, 6 CN commercial and 16 planned-district zones', () => {
+  it('covers the base zones plus 34 planned-district zones', () => {
     // 75 → 91 on 2026-08-17: sixteen Chapter 15 planned-district codes read from
     // their own articles (Cass Street 1, Mission Beach 6, La Jolla Shores 3,
     // La Jolla 6).
+    // 97 → 114 on 2026-08-19: SEVENTEEN Carmel Valley codes (Chapter 15, Article
+    // 3, Division 3) — six SF, five MF, four whose base zone is not yet read, and
+    // EC and MC which state their own ratios. Three of the district's twenty live
+    // codes are deliberately absent: EP, OS and SP state no ratio to encode.
+    // Most are `incorporates` rows rather than figures — they adopt a Chapter 13
+    // base zone, which is what the ordinance does.
     // The pin moving is the guard working — a curated table growing silently is
     // how an unsourced entry gets in.
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(97)
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(114)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',
