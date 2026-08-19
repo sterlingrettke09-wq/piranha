@@ -443,12 +443,58 @@ describe('what remains unresolved is deliberate, and enumerated', () => {
     // Pinned so that a code silently dropping out of coverage goes red rather
     // than joining a list nobody re-reads.
     expect(unresolved).toEqual([
-      'SPI-12 SA1', 'SPI-12 SA1-C', 'SPI-12 SA2', 'SPI-12 SA2-C', 'SPI-12 SA3',
-      'SPI-12 SA3-C', 'SPI-12 SA4',
       'SPI-18 SA1', 'SPI-18 SA10', 'SPI-18 SA2', 'SPI-18 SA3', 'SPI-18 SA4',
       'SPI-18 SA5', 'SPI-18 SA6', 'SPI-18 SA7', 'SPI-18 SA8', 'SPI-18 SA9',
       'SPI-5 SA1', 'SPI-7 SA1',
       'SPI-9 SA1', 'SPI-9 SA2', 'SPI-9 SA2-C', 'SPI-9 SA3', 'SPI-9 SA4', 'SPI-9-C SA1',
     ])
+  })
+})
+
+// ── SPI-12: TWO TABLES WITH A JOIN, AND A STATED ABSENCE OF FAR ────────────
+describe('SPI-12 joins a per-subarea FAR table to a per-GROUP height table', () => {
+  it('Subareas 1, 2 and 4 have NO floor-area ratio, and that is an answer', () => {
+    // Table 2 reads "a NA" and footnote a is explicit: "Not Applicable in
+    // Subareas 1, 2 and 4. See Transitional heights, yards and screening
+    // requirements." The code governs intensity by height and yards instead.
+    for (const c of ['SPI-12 SA1', 'SPI-12 SA2', 'SPI-12 SA4']) {
+      const r = resolveAtlanta(c)
+      expect(r.farUnconstrained, c).toBe(true)
+      expect(r.farResidential, c).toBeNull()
+      expect(r.farNonresidential, c).toBeNull()
+    }
+  })
+
+  it('only Subarea 3 states a ratio', () => {
+    const r = resolveAtlanta('SPI-12 SA3')
+    expect(r.farUnconstrained).toBe(false)
+    expect(r.farCombined).toEqual(expect.objectContaining({ far: 0.4, basis: 'unqualified' }))
+    expect(r.heightFt).toBe(35)
+  })
+
+  it('Subareas 1 and 2 publish no height — 600 ft is a cap on a map-keyed SUM', () => {
+    // Footnote a: total buildable height is the sum of the baseline (225'),
+    // block area (225'), Peachtree frontage (75') and transit station (100')
+    // allowances, "provided that said sum shall not exceed 600 feet". The last
+    // two are map-keyed and the unconstrained sum is 625, so 600 binds only
+    // where every component applies. Publishing it would hand a mid-block parcel
+    // a ceiling it cannot reach.
+    for (const c of ['SPI-12 SA1', 'SPI-12 SA2']) {
+      const r = resolveAtlanta(c)
+      expect(r.heightFt, c).toBeNull()
+      expect(r.heightUnconstrained, c).toBe(false)
+      expect(r.heightSource, c).toMatch(/600/)
+    }
+  })
+
+  it('Subarea 4 is use-conditional and publishes no single figure', () => {
+    const r = resolveAtlanta('SPI-12 SA4')
+    expect(r.heightFt).toBeNull()
+    expect(r.heightTiers!.map((t) => t.heightFt).sort((a, b) => a - b)).toEqual([100, 264])
+  })
+
+  it('and the -C variants resolve to their bases', () => {
+    expect(resolveAtlanta('SPI-12 SA3-C').farCombined!.far).toBe(0.4)
+    expect(resolveAtlanta('SPI-12 SA1-C').farUnconstrained).toBe(true)
   })
 })

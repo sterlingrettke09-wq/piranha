@@ -976,6 +976,60 @@ const DISTRICTS: Record<string, AtlantaLimits> = {
   //   SPI-17  row labels, gross on both, no combined row at all
   // Read every chapter's own sentences. Nothing carries across.
 
+  // ── SPI-12 BUCKHEAD/LENOX — A TENTH SHAPE: TWO TABLES WITH A JOIN ─────────
+  // The FAR is in Table 2, keyed per subarea. The heights are in Table 3B, keyed
+  // to subarea GROUPS — its first column is "SUBAREA 1 and SUBAREA 2". So the
+  // two halves of one district's envelope have different keys and must be joined,
+  // and reading Table 3B's column order as 1/2/3/4 would shift every height by
+  // one subarea. The key is stated in Table 3B's own header; it was read there.
+  //
+  // ⚠️ SUBAREAS 1, 2 AND 4 HAVE NO FLOOR-AREA RATIO, AND THAT IS AN ANSWER.
+  // Table 2's "Total FAR, maximum" reads "a NA" for those three, and footnote a
+  // is explicit: "Not Applicable in Subareas 1, 2 and 4. See Transitional
+  // heights, yards and screening requirements." So the code affirmatively imposes
+  // no ratio there and governs intensity by height and yards instead —
+  // farUnconstrained, the FACT-3 shape, not a gap (rule 5). Only Subarea 3 states
+  // a ratio, and it states 0.40.
+  //
+  // ⚠️ SUBAREAS 1 AND 2 PUBLISH NO HEIGHT, AND 600 FT IS NOT THEIR MAXIMUM IN THE
+  // SENSE THIS FIELD MEANS. Footnote a to Table 3B: "Maximum total building
+  // height in Subareas 1, 2 and 4 shall be the SUM of subsections
+  // §16-18L.007(3)(a) through (3)(d), provided that said sum shall not exceed 600
+  // feet". The addends are the baseline (225'), block area (225'), Peachtree
+  // frontage area (75') and transit station area (100') allowances — and the
+  // last two apply only to parcels with Peachtree frontage or within the transit
+  // station area, which is map-keyed. Their unconstrained sum is 625, so the 600
+  // cap binds only where every component applies. Publishing 600 would hand a
+  // mid-block parcel a ceiling it cannot reach; the components are recorded in
+  // the source string instead.
+  'SPI-12 SA1': {
+    ...base('SPI-12 Buckhead/Lenox Stations (Subarea 1)', '§16-18L.007'),
+    farUnconstrained: true,
+    heightSource: '§16-18L.007 Table 3B footnote a — total buildable height is the SUM of the baseline (225 ft), block area (225 ft), Peachtree frontage (75 ft) and transit station (100 ft) allowances, capped at 600 ft. The last two are map-keyed, so no single figure applies to a parcel',
+  },
+  'SPI-12 SA2': {
+    ...base('SPI-12 Buckhead/Lenox Stations (Subarea 2)', '§16-18L.007'),
+    farUnconstrained: true,
+    heightSource: '§16-18L.007 Table 3B footnote a — Subarea 2 shares Subarea 1\'s height column (the table keys heights to "SUBAREA 1 and SUBAREA 2"); total buildable height is the same map-keyed sum capped at 600 ft, so no single figure applies to a parcel',
+  },
+  'SPI-12 SA3': {
+    ...base('SPI-12 Buckhead/Lenox Stations (Subarea 3)', '§16-18L.007'),
+    farNonresidential: far(0.4, 'unqualified', '§16-18L.007 Table 2, "Total FAR, maximum" — one ratio for all uses; no denominator is stated in the chapter'),
+    farResidential: far(0.4, 'unqualified', '§16-18L.007 Table 2, "Total FAR, maximum"'),
+    farCombined: far(0.4, 'unqualified', '§16-18L.007 Table 2, "Total FAR, maximum"'),
+    heightFt: 35,
+    heightSource: '§16-18L.007 Table 3B, "Total buildable height, maximum"',
+  },
+  'SPI-12 SA4': {
+    ...base('SPI-12 Buckhead/Lenox Stations (Subarea 4)', '§16-18L.007'),
+    farUnconstrained: true,
+    heightTiers: [
+      { label: 'office use', heightFt: 100 },
+      { label: 'all uses except office', heightFt: 264 },
+    ],
+    heightSource: '§16-18L.007 Table 3B, "Total buildable height, maximum": 264 ft for all uses except office, 100 ft for office use — conditional on the programme, so no single figure is resolved',
+  },
+
   // ── THE "GROUP HEADER + LETTERED SUB-ROWS" CHAPTERS ────────────────────────
   // SPI-3, SPI-4, SPI-11 and SPI-19 share a NINTH structural pattern: the FAR
   // row is an EMPTY group header ("Maximum FAR" / "Base FAR") with the figures in

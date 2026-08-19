@@ -152,7 +152,7 @@ export const TARGETS: Target[] = [
       // never have revealed that (rule 26: report the composition, not the
       // bare number). The label now names which chapters are done.
       label:
-        'SPI curated for 1/2/3/4/5/7/11/15/16/17/19/20/21/22/26 (100 codes); the remaining SPI chapters plus HC-20 / NC / Poncey-Highland / LD deliberately uncurated, plus four codes Part 16 does not establish at all — see zoning/atlanta.ts',
+        'SPI curated for 1/2/3/4/5/7/11/15/16/17/19/20/21/22/26 (107 codes); the remaining SPI chapters plus HC-20 / NC / Poncey-Highland / LD deliberately uncurated, plus four codes Part 16 does not establish at all — see zoning/atlanta.ts',
       // ⚠️ THE FOUR ARE NOT UNCURATED — THEY DO NOT EXIST IN THE CODE. Read and
       // recorded in zoning/atlanta.ts with their acreages: PD-H1 (37.2 ac),
       // MR-4-C (16.1), PD-H2 (10.1), MR-3A-C (3.6). Chapter 35 establishes MR-1,
@@ -188,7 +188,16 @@ export const TARGETS: Target[] = [
     handled: (v) => {
       if (isPlannedDevelopment('atlanta', v)) return true
       const r = resolveAtlanta(v)
+      // ⚠️ BOTH stated absences count, and only one used to. This read
+      // `heightUnconstrained` as an answer and ignored `farUnconstrained`, so a
+      // district whose code affirmatively imposes NO floor-area ratio was
+      // reported as unhandled — rule 5 inside the instrument, where a known
+      // absence and a missing lookup render the same. Found 2026-08-18 when
+      // SPI-12 encoded seven codes and the sweep moved by two: Subareas 1, 2 and
+      // 4 carry farUnconstrained (Table 2 footnote a, "Not Applicable in
+      // Subareas 1, 2 and 4") and were still being counted as gaps.
       if (r.heightFt != null || r.heightUnconstrained === true) return true
+      if (r.farUnconstrained === true) return true
       return r.farNonresidential != null || r.farResidential != null || r.farCombined != null
     },
   },
@@ -271,7 +280,14 @@ export const TARGETS: Target[] = [
   {
     city: 'dallas', what: 'long zone district → height/FAR',
     url: 'https://gis.dallascityhall.com/arcgis/rest/services/sdc_public/Zoning/MapServer/15', field: 'LONG_ZONE_DIST',
-    handled: (v) => { if (isPlannedDevelopment('dallas', v)) return true; const r = resolveDallas(v); return r.heightFt != null || r.heightUnconstrained === true },
+    // Credits BOTH stated absences, for the reason given on the Atlanta target:
+    // this predicate read heightUnconstrained and not farUnconstrained, and
+    // zoning/dallas.ts sets the latter. Undeclared asymmetry, same shape.
+    handled: (v) => {
+      if (isPlannedDevelopment('dallas', v)) return true
+      const r = resolveDallas(v)
+      return r.heightFt != null || r.heightUnconstrained === true || r.farUnconstrained === true
+    },
   },
   {
     city: 'la', what: 'ZONE_CMPLT → height/FAR/stories',
