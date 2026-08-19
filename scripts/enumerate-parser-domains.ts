@@ -469,7 +469,7 @@ export const TARGETS: Target[] = [
     //      Article 16 of this same chapter and every one of its fifteen codes is
     //      named in it. That is rule 27, and the count was 83.
     partiallyScoped: {
-      label: 'RS/LJSPD-SF lot-area bands and CC/CN/CR/CO/CV/CP/industrial community-plan overrides need parcel facts (plus the four Carmel Valley zones that adopt them); the four Central Urbanized CT zones branch on companion-zone overlap and major-street frontage; Old Town OTOP parks are governed by an approved park master plan; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
+      label: 'RS/LJSPD-SF lot-area bands and CC/CN/CR/CO/CV/CP/industrial community-plan overrides need parcel facts (plus the four Carmel Valley zones that adopt them); the four Central Urbanized CT zones branch on companion-zone overlap and major-street frontage; Old Town OTOP parks are governed by an approved park master plan; the OP/OC/OF open-space zones have no dimensional standards in Table 131-02C; LJSPD-YMCA, three Carmel Valley zones, the repealed MPD-MARINA and UNZONED each state no ratio; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
       // LJSPD-SF resolves — § 1510.0304(i)(1)(A) sends it to Table 131-04J, the
       // same band table as the RS zones — but the band is chosen by LOT AREA, and
       // the sweep has no parcel. Confirmed live: with a 5,000 sf lot it returns
@@ -523,6 +523,30 @@ export const TARGETS: Target[] = [
         // so PLAN-GOVERNED rather than unconstrained: farUnconstrained would
         // assert an absence the section does not state.
         if (/^OTOP-/.test(z)) return true
+        // ⚠️ THE FINAL SAN DIEGO TAIL, read 2026-08-19. Four distinct reasons, and
+        // they are deliberately not collapsed into one:
+        //
+        //   OP / OC / OF   Table 131-02C sets NO dimensional standard for these —
+        //                  density, lot area, dimensions, setbacks, height, lot
+        //                  coverage and FAR are all "--". A table that regulates
+        //                  nothing is not a code stating there is no limit, and OC
+        //                  exists "to protect natural and cultural resources"
+        //                  (§131.0203). farUnconstrained would assert unlimited
+        //                  floor area in a conservation zone.
+        //   LJSPD-YMCA     §1510.0312 states permitted uses and a design rule and
+        //                  does not address dimensions at all — unlike its three
+        //                  siblings, whose Development Regulations sections state
+        //                  height and coverage and omit FAR, which IS evidence.
+        //   CVPD-EP/OS/SP  EP is use-restricted (schools and parks), OS states an
+        //                  open-space preservation condition, and SP adopts "the
+        //                  RM zones" in the PLURAL, naming no single row.
+        //   MPD-MARINA     a live code for a REPEALED district (Article 11 and its
+        //                  Division 3 both read "(Repealed 6-21-2019 …)").
+        //   UNZONED        the layer's own value for land in no zone.
+        if (/^(OP|OC|OF)-\d/.test(z)) return true
+        if (z === 'LJSPD-YMCA') return true
+        if (/^CVPD-(EP|OS|SP)$/.test(z)) return true
+        if (z === 'MPD-MARINA' || z === 'UNZONED') return true
         if (z === 'LJSPD-SF') return true
         // ⚠️ CENTRE CITY — READ 2026-08-17, and the answer is that no zone code
         // can carry it. § 156.0309(a): "The minimum and maximum base FARs for

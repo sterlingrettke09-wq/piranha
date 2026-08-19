@@ -337,6 +337,71 @@ export const RM_5_12_BY_HEIGHT: readonly { label: string; far: number }[] = Obje
  * table is silent and has already shipped once in this repo (DC's MU columns).
  */
 const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
+  // ── LA JOLLA SHORES (Chapter 15, Article 10, Division 3) ──────────────────
+  // The slot test in its strongest form. Article 10 gives EACH zone family its
+  // own "-Development Regulations" section, and exactly one of the five states a
+  // floor area ratio:
+  //     §1510.0304  Single-Family        FAR STATED (by lot area — already declared)
+  //     §1510.0306  Multi Family         none
+  //     §1510.0308  Visitor              none
+  //     §1510.0310  Commercial Center    none
+  //     §1510.0314  Private Recreation   none
+  // The sections are substantive, not empty — §1510.0310 states that "commercial
+  // structures may occupy 100 percent of the lot or parcel" (lot coverage, not a
+  // ratio) and a building height. So the code regulates these zones dimensionally
+  // and imposes no floor-area ratio on them: the document's own structure is
+  // positive evidence of absence, which is what farUnconstrained is for (rule 5).
+  //
+  // AND THE CATCH-ALL WAS CHECKED, because "the code imposes no FAR here" is a
+  // strong claim: Division 4 (General and Supplemental Regulations) contains ZERO
+  // occurrences of "floor area ratio". Nothing elsewhere in the article supplies
+  // one.
+  'LJSPD-V': { far: null, farUnconstrained: true, source: 'SDMC ch.15 art.10 div.3 §1510.0308 (Visitor Zone-Development Regulations) states no floor area ratio; §1510.0304 states one for the Single-Family zone, and Division 4 states none' },
+  'LJSPD-CC': { far: null, farUnconstrained: true, source: 'SDMC ch.15 art.10 div.3 §1510.0310 (Commercial Center Zone-Development Regulations) states lot coverage and height and no floor area ratio' },
+  'LJSPD-PRF': { far: null, farUnconstrained: true, source: 'SDMC ch.15 art.10 div.3 §1510.0314 (Private Recreation Facility-Development Regulations) states no floor area ratio' },
+  // ⚠️ LJSPD-YMCA IS NOT ENCODED, and the difference from its three siblings is
+  // the point. §1510.0312 (Northwest YMCA) states permitted uses and a general
+  // design regulation — it is not a dimensional section that omits a ratio, it is
+  // a section that does not address dimensions at all. The absence of a FAR there
+  // is not the same positive evidence, so it is declared rather than asserted.
+
+  // ── OPEN SPACE BASE ZONES (Chapter 13, Article 1, Division 2) ─────────────
+  // Table 131-02C, five data columns for six live codes — the merged-cell shape
+  // for the third time: `OP-` spans one column carrying both 1- and 2- in the
+  // 3rd-designator row, so OP-1-1 and OP-2-1 share it. Read from the rendered
+  // page after the text extraction disagreed with itself on the column count.
+  //
+  // ⚠️ ONLY THE TWO OR ZONES STATE A RATIO. For OP, OC and OF the FAR cell is
+  // "--" — and so is every other dimensional cell in their columns: density, lot
+  // area, lot dimensions, all four setbacks, structure height and lot coverage.
+  //
+  // THAT IS NOT farUnconstrained, AND THE DIFFERENCE MATTERS. A table that sets
+  // no dimensional standard for a zone is not a code stating there is no limit.
+  // OC exists "to protect natural and cultural resources and environmentally
+  // sensitive lands" (§131.0203) and OF "to control development within
+  // floodplains" (§131.0205); publishing farUnconstrained for either would
+  // assert that a conservation zone permits unlimited floor area. Declared in the
+  // sweep's scope instead.
+  //
+  // Nor is it the OTOP shape: §131.0230 points at this division's own table plus
+  // Chapter 13 Article 2 and Chapter 14, not at an approved plan, so these are
+  // not plan-governed either. Three different reasons a FAR cell can be empty.
+  'OR-1-1': { far: 0.45, source: 'SDMC § 131.0231, Table 131-02C (Development Regulations for Open Space Zones, 7-2026)' },
+  'OR-1-2': { far: 0.1, source: 'SDMC § 131.0231, Table 131-02C (Development Regulations for Open Space Zones, 7-2026)' },
+
+  // ── MIXED-USE BASE ZONES (Chapter 13, Article 1, Division 7) ──────────────
+  // Table 131-07B, six columns for six live codes, header unambiguous — no
+  // escalation needed. Footnote 3 ("Underground or structured parking is exempt
+  // from floor area ratio calculation") changes what COUNTS as floor area, not
+  // the ratio, so it is not an alternative. The child-care bonus at §131.0719(a)
+  // is a bonus and is excluded from the headline (rule 6).
+  'RMX-1': { far: 3.0, source: 'SDMC § 131.0719, Table 131-07B (Development Regulations Table for Mixed-Use Zones, 7-2026)' },
+  'RMX-2': { far: 5.0, source: 'SDMC § 131.0719, Table 131-07B (Development Regulations Table for Mixed-Use Zones, 7-2026)' },
+  'RMX-3': { far: 7.0, source: 'SDMC § 131.0719, Table 131-07B (Development Regulations Table for Mixed-Use Zones, 7-2026)' },
+  'EMX-1': { far: 3.0, source: 'SDMC § 131.0719, Table 131-07B (Development Regulations Table for Mixed-Use Zones, 7-2026)' },
+  'EMX-2': { far: 5.0, source: 'SDMC § 131.0719, Table 131-07B (Development Regulations Table for Mixed-Use Zones, 7-2026)' },
+  'EMX-3': { far: 7.0, source: 'SDMC § 131.0719, Table 131-07B (Development Regulations Table for Mixed-Use Zones, 7-2026)' },
+
   // ── OLD TOWN SAN DIEGO (Chapter 15, Article 16, Division 1) ───────────────
   // Fifteen live codes across TWO tables and one section that states no ratio.
   // Both tables reconciled cleanly this time — 1516-01C has four columns for four

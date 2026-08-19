@@ -270,3 +270,49 @@ describe('Old Town: two tables, and one section that states no ratio', () => {
     expect(ot.filter((c) => resolveSanDiego(c, null).maxFAR == null)).toEqual([])
   })
 })
+
+// ── THE TAIL, AND FOUR REASONS A FAR CELL CAN BE EMPTY ──────────────────────
+describe('San Diego closes with no gaps, and the empties are told apart', () => {
+  it('the OR open-space zones state ratios; OP, OC and OF state nothing at all', () => {
+    expect(resolveSanDiego('OR-1-1', null).maxFAR).toBe(0.45)
+    expect(resolveSanDiego('OR-1-2', null).maxFAR).toBe(0.1)
+    // Table 131-02C leaves EVERY dimensional cell "--" for these three. A table
+    // that sets no standard is not a code stating there is no limit — OC exists
+    // to protect environmentally sensitive lands, and farUnconstrained would
+    // assert unlimited floor area there.
+    for (const z of ['OP-1-1', 'OP-2-1', 'OC-1-1', 'OF-1-1']) {
+      const r = resolveSanDiego(z, null)
+      expect(r.maxFAR, z).toBeNull()
+      expect(r.farUnconstrained, z).toBe(false)
+    }
+  })
+
+  it('the mixed-use zones resolve from Table 131-07B', () => {
+    expect(resolveSanDiego('RMX-1', null).maxFAR).toBe(3.0)
+    expect(resolveSanDiego('RMX-2', null).maxFAR).toBe(5.0)
+    expect(resolveSanDiego('RMX-3', null).maxFAR).toBe(7.0)
+    expect(resolveSanDiego('EMX-1', null).maxFAR).toBe(3.0)
+    expect(resolveSanDiego('EMX-3', null).maxFAR).toBe(7.0)
+  })
+
+  it('three La Jolla Shores zones are farUnconstrained — a STATED absence', () => {
+    // Article 10 gives each zone family its own Development Regulations section
+    // and only the Single-Family one states a ratio. §1510.0310 states lot
+    // coverage and height and no FAR, so the omission is positive evidence.
+    // Division 4 was checked for a catch-all: zero occurrences.
+    for (const z of ['LJSPD-CC', 'LJSPD-V', 'LJSPD-PRF']) {
+      const r = resolveSanDiego(z, null)
+      expect(r.farUnconstrained, z).toBe(true)
+      expect(r.maxFAR, z).toBeNull()
+    }
+  })
+
+  it('but LJSPD-YMCA is NOT, because its section never addresses dimensions', () => {
+    // §1510.0312 states permitted uses and a design rule. Absence of a ratio in a
+    // section that regulates no dimensions is not the same evidence as absence
+    // from one that states height and coverage.
+    const r = resolveSanDiego('LJSPD-YMCA', null)
+    expect(r.farUnconstrained).toBe(false)
+    expect(r.maxFAR).toBeNull()
+  })
+})

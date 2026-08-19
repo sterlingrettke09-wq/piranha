@@ -31,6 +31,8 @@ describe('inventory', () => {
     // 75 → 91 on 2026-08-17: sixteen Chapter 15 planned-district codes read from
     // their own articles (Cass Street 1, Mission Beach 6, La Jolla Shores 3,
     // La Jolla 6).
+    // 148 → 159 on 2026-08-19, closing San Diego: two OR open-space zones, six
+    // RMX/EMX mixed-use zones and three La Jolla Shores zones that state no ratio.
     // 135 → 148 on 2026-08-19: thirteen Old Town codes across Tables 1516-01C
     // and 1516-01E. Its two OTOP park zones are absent — plan-governed.
     // 126 → 135 on 2026-08-19: the nine Central Urbanized CU zones of Table
@@ -45,7 +47,7 @@ describe('inventory', () => {
     // base zone, which is what the ordinance does.
     // The pin moving is the guard working — a curated table growing silently is
     // how an unsourced entry gets in.
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(148)
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(159)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',
@@ -164,9 +166,16 @@ describe('scope (rule 23)', () => {
   // Mesa override in that table's own words. The assertion had become a claim
   // about our own past scope rather than about the code (rule 15).
   //
-  // The rest stay: Division 2's open-space zones and the Barrio Logan / Centre
-  // City planned districts are still unread here.
-  it.each(['OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
+  // ⚠️ OR-1-1 LEFT THIS LIST 2026-08-19 — Division 2 has been read and Table
+  // 131-02C states 0.45 for it. OP-1-1 and OC-1-1 STAY, but their reason has
+  // changed and the change is the interesting part: they are no longer unread,
+  // they are read and the table sets no dimensional standard for them at all.
+  // Unresolved for a different reason than before, which is why the assertion
+  // still holds while the comment above it had to be rewritten.
+  //
+  // The Barrio Logan and Centre City planned districts remain genuinely unread
+  // here (Centre City is separately declared: its FARs are per-site in Figure H).
+  it.each(['OP-1-1', 'OC-1-1', 'CCPD-ER', 'BLPD-CT'])(
     'leaves the out-of-scope zone %s unresolved',
     (code) => {
       expect(sanDiegoZoneKey(code)).toBeNull()
