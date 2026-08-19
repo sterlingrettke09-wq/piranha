@@ -30,3 +30,18 @@ charlotte.jpg    | Uptown Charlotte skyline                   | Precisionviews  
 columbus.jpg     | Ohio Statehouse                            | Ɱ (Wikimedia user) | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:Ohio_Statehouse_exterior_01.jpg
 raleigh.jpg      | North Carolina State Capitol               | P. Hughes        | CC-BY-4.0 | https://commons.wikimedia.org/wiki/File:Raleigh_-_North_Carolina_State_Capitol.jpg
 sanjose.jpg      | San José City Hall rotunda                 | The wub          | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:San_Jose_City_Hall_2023-07-16_(1).jpg
+dallas.jpg       | Dallas skyline from Reunion Tower          | Michael Barera   | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:View_of_Dallas_from_Reunion_Tower_August_2015_13.jpg
+lasvegas.jpg     | The Las Vegas Strip from Resorts World     | King of Hearts   | CC-BY-SA-4.0 | https://commons.wikimedia.org/wiki/File:Las_Vegas_Strip_from_Resorts_World_February_2023_HDR_1.jpg
+phoenix.jpg      | Downtown Phoenix, aerial looking north-east | DPPed            | CC-BY-SA-3.0 | https://commons.wikimedia.org/wiki/File:Downtown_Phoenix_Aerial_Looking_Northeast.jpg
+
+⚠️ Every licence above was read from the file's own Commons page via the API's
+`extmetadata`, which reports the page's licence template rather than a search
+result's guess — the same check the note above describes, done the same way.
+
+The `Restrictions` field was read too, and it rejected a candidate: the Dietmar
+Rabich photograph of the Strip
+(File:Las_Vegas_(Nevada,_USA),_The_Strip_--_2012_--_6232.jpg) is CC-BY-SA-4.0 and
+carries `Restrictions: trademarked`. A licence that permits reuse of the
+PHOTOGRAPH says nothing about the marks inside it, and those two are separately
+held. Recorded because the licence line alone would have read as clear.
+
