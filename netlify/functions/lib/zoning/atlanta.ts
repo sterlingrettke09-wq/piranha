@@ -855,6 +855,61 @@ const DISTRICTS: Record<string, AtlantaLimits> = {
   // carry heightFt: null with the figures disclosed as tiers, because publishing
   // the larger would overstate every parcel in the restricted band (rule 6).
 
+  // ⚠️⚠️ THE ROW-LABEL SCAN WAS READING ONE COLUMN, AND SOME LABELS ARE IN THE
+  // SECOND. Corrected 2026-08-18 after the slot test on the seven chapters that
+  // appeared to have no FAR rows at all — every one of them states a FAR.
+  //
+  // The cause: a table may carry a merged GROUP label in column 0 spanning
+  // several rows, with the actual row label in column 1. SPI-9's FAR rows sit
+  // under a "Bulk Limitations" group; a scan reading r[0] sees the group name and
+  // never the row. This is the merged-cell hazard this file already documents for
+  // HEADERS, in the ROW dimension, and it was not looked for there.
+  //
+  // WHAT THE CORRECTION CHANGES — two figures previously recorded here were low:
+  //     FAR-labelled rows across the 23 chapters   27  ->  47
+  //     rows carrying a '%' cell                    5  ->   8
+  // so "five chapters carry non-ratio cells" was five of those the scan could
+  // see. Chapters whose FAR rows were entirely invisible: SPI-1 (4 rows),
+  // SPI-9 (2), SPI-22 (5), and SPI-16 (3 -> 12).
+  //
+  // ⚠️ SPI-16 IS ALREADY ENCODED AND IS UNAFFECTED — by luck, not design. Its
+  // nine unseen rows are all in the bonus-amenity schedule ("2.0 FAR — New
+  // street", "0.5 FAR — Professional …"), which rule 6 excludes anyway, and the
+  // by-right table it was encoded from sits in column 0. The same blindness in
+  // SPI-1, SPI-9 and SPI-22 hid REAL by-right rows, so the outcome differed by
+  // which table happened to be laid out which way.
+  //
+  // ── WHAT THE THREE HIDDEN CHAPTERS ACTUALLY CONTAIN ────────────────────────
+  //
+  // SPI-1 DOWNTOWN — substantial by-right figures, none of them previously seen:
+  //   Non-residential Maximum FAR      25 · 12 · 10 · 7 · 10
+  //   Residential Maximum FAR          25 · 12 · 10 · 7 · 10   (without workforce housing)
+  //   Maximum Achievable Combined FAR  35 · 19 · 17 · 11 · 20
+  // Not encoded: the workforce-housing row is a programme (rule 6) and the
+  // basis is not yet read.
+  //
+  // ⚠️ SPI-9 BUCKHEAD VILLAGE — THE BY-RIGHT FAR IS NOT IN THE CODE. Its table
+  // states "Max. FAR without Bonuses: According to Map Attachment", with only the
+  // WITH-BONUS figures given numerically (8.2, 5.0 …). So the base ratio is
+  // map-keyed and the only published numbers are a programme the applicant has
+  // not chosen. This is a SIXTH named map-layer ask, alongside Atlanta ROW width,
+  // Denver Exhibit 8.1, San Diego Figure H, Phoenix §1202.B/C and Charlotte's
+  // site-plan basis — and the first where the MAP carries the ratio itself.
+  //
+  // SPI-22 MEMORIAL DRIVE — and it settles the rendering question SPI-18 raised.
+  // One row carries the same footnote marker BOTH ways: "1.0 2" with the space
+  // preserved, and "2.52" / "3.02" with it lost. So a fused footnote digit is
+  // demonstrably a thing this source does, within a single row. That raises the
+  // prior on SPI-18's 0.505 being 0.50 + a marker — and still does not license
+  // correcting it, because SPI-18's numbered footnotes 4/5/6 are about sidewalks
+  // and paving and a "5" there has nothing to point at. Evidence moved; the
+  // standard did not.
+  //
+  // NOTE THE SHAPE OF THIS WHOLE ENTRY: the survey said "no FAR rows" for seven
+  // chapters and the correct reading was "my scan cannot see these rows". Rule 11
+  // — measure the pipeline, not the probe — and it took running the slot test on
+  // an apparent absence to expose it.
+
   // ── SPI-18 MECHANICSVILLE IS READ AND DELIBERATELY NOT ENCODED ─────────────
   // Two unresolved questions, either of which alone would block it.
   //

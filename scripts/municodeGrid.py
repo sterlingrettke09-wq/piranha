@@ -31,6 +31,19 @@ The identity is the evidence; the counts never had to agree.
      5 live codes  (the fifth, SPI-16 SA1C, is a "-C" conditional variant, which
                     zoning/atlanta.ts already resolves to its base district)
 
+⚠️ A ROW LABEL IS NOT ALWAYS IN COLUMN 0. Found 2026-08-18: a table may carry a
+merged GROUP label in column 0 spanning several rows, with the real row label in
+column 1 — SPI-9's FAR rows sit under a "Bulk Limitations" group that way. A scan
+reading r[0] sees the group name and never the row, and reports the chapter as
+having no FAR at all. That is the same merged-cell hazard this file already warns
+about for HEADERS, in the ROW dimension, and it cost two published figures:
+FAR rows across the SPI chapters went 27 -> 47 and rows carrying a '%' cell went
+5 -> 8 once the scan read the first TWO columns for a label.
+
+So when you scan rows for a label, scan the leading columns, not the leading
+column — and take the first that matches, since the group name is broader than
+the row name and matching it would attribute the row to the wrong thing.
+
 Run it against a saved CodesContent payload:
     curl -o spi.json 'https://api.municode.com/CodesContent?nodeId=<id>&productId=10376'
     python3 scripts/municodeGrid.py spi.json
