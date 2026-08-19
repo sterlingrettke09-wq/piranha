@@ -62,14 +62,35 @@ export interface StateFloorLayer {
   protections: string[]
 }
 
+/** ⚠️ THREE STATES, BECAUSE `null` WAS DOING TWO JOBS.
+ *
+ *  The first version used `value: null` to mean "the ordinance states no
+ *  maximum" — an answer, and the most permissive rule San Diego has. But it is
+ *  indistinguishable from "our reading did not find a maximum for this case",
+ *  which is a gap in US. Same distinction as `not-read` one level down: there it
+ *  is the whole ordinance, here it is one provision inside a section we did read.
+ *
+ *  So a union, and the asymmetry is enforced by the shape rather than by care:
+ *  `no-maximum` REQUIRES a cite, because you may only claim the code states none
+ *  if you read the provision that says so. `not-found` CANNOT carry one — there
+ *  is no source for a thing you did not find (rule 14: make the wrong state
+ *  uncompilable rather than commenting on it). */
+export type LocalCap =
+  /** The ordinance states a figure. */
+  | { kind: 'capped'; sqFt: number; condition: string; cite: string }
+  /** The ordinance affirmatively states NO maximum for this configuration. */
+  | { kind: 'no-maximum'; condition: string; cite: string }
+  /** We read the section and located no rule covering this configuration. A gap
+   *  in the reading, never a permission. */
+  | { kind: 'not-found'; condition: string }
+
 /** The city's own ordinance. */
 export interface LocalLayer {
   kind: 'read'
   citation: string
   readOn: string
-  /** What the city allows. `null` on a cap means the ordinance states NO maximum
-   *  — an answer, not a gap, and it beats any state floor. */
-  maxSizeSqFt: { value: number | null; condition: string; cite: string }[]
+  /** What the city allows, one entry per configuration the ordinance names. */
+  maxSizeSqFt: LocalCap[]
   /** Height as the ordinance states it. Storeys and feet are kept apart and
    *  never converted (rule 12). */
   maxStories: { value: number; condition: string; cite: string } | null
@@ -232,14 +253,14 @@ const SANDIEGO_LOCAL: LocalLayer = {
   citation: 'San Diego Municipal Code § 141.0302 (Accessory Dwelling Units and Junior Accessory Dwelling Units)',
   readOn: '2026-08-19',
   maxSizeSqFt: [
-    { value: 1200, condition: 'attached or detached ADU', cite: '§ 141.0302(a)(7)(B)' },
-    // ⚠️ `null` IS AN ANSWER HERE, and it is the most permissive rule in the
-    // section: a conversion inside the existing house has NO maximum at all. A
-    // number would be wrong in the restrictive direction, and a gap would render
-    // it as unknown — neither is what the code says.
-    { value: null, condition: 'built inside an existing or proposed single dwelling unit structure — no maximum stated', cite: '§ 141.0302(a)(7)(C)' },
-    { value: null, condition: 'built inside an existing accessory structure, plus 150 sq ft for ingress and egress only', cite: '§ 141.0302(a)(7)(D)' },
-    { value: null, condition: 'built inside an existing multiple dwelling unit structure — no maximum stated', cite: '§ 141.0302(a)(7)(E)' },
+    { kind: 'capped', sqFt: 1200, condition: 'attached or detached ADU', cite: '§ 141.0302(a)(7)(B)' },
+    // ⚠️ `no-maximum` IS AN ANSWER, and it is the most permissive rule in the
+    // section: a conversion inside the existing house has none at all. Each of
+    // these three carries the provision that SAYS so — that is what separates
+    // them from a configuration the reading simply did not cover.
+    { kind: 'no-maximum', condition: 'built inside an existing or proposed single dwelling unit structure', cite: '§ 141.0302(a)(7)(C)' },
+    { kind: 'no-maximum', condition: 'built inside an existing accessory structure, plus 150 sq ft for ingress and egress only', cite: '§ 141.0302(a)(7)(D)' },
+    { kind: 'no-maximum', condition: 'built inside an existing multiple dwelling unit structure', cite: '§ 141.0302(a)(7)(E)' },
   ],
   maxStories: { value: 2, condition: 'detached, on a lot permitting single but not multiple dwelling units', cite: '§ 141.0302(a)(8)(A)' },
   // ⚠️ Height in FEET is not stated for ADUs — the section defers to the base
@@ -326,39 +347,51 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
   const floor = r.stateFloor?.floors.sizeSqFt.find((f) => f.baseline) ?? null
   if (r.local.kind !== 'read') {
     return floor == null
-      ? { value: null, source: 'unresolved', why: `Neither a state floor nor ${r.city}'s own ordinance has been established.` }
+      ? { value: null, source: 'unresolved', why: `Neither a state floor nor ${cityName(r.city)}'s own ordinance has been established.` }
       : {
           value: floor.value,
           source: 'floor-only',
           why: `Only the state floor is known (${floor.cite}). This is the MINIMUM the city cannot refuse, not what it allows — the local ordinance has not been read.`,
         }
   }
-  const unlimited = r.local.maxSizeSqFt.find((m) => m.value == null)
-  if (unlimited) {
+  const stated = r.local.maxSizeSqFt.find((m) => m.kind === 'no-maximum')
+  if (stated) {
     return {
       value: null,
       source: 'local-no-maximum',
-      why: `The city states no maximum for this case (${unlimited.cite}: ${unlimited.condition}). Other configurations have caps — see the full list.`,
+      why: `The city states no maximum for this case (${stated.cite}: ${stated.condition}). Other configurations have caps — see the full list.`,
     }
   }
-  const biggestLocal = r.local.maxSizeSqFt.reduce((m, x) => ((x.value ?? 0) > (m.value ?? 0) ? x : m))
-  if (floor == null) {
-    return { value: biggestLocal.value, source: 'local', why: `${r.local.citation}, ${biggestLocal.cite}.` }
+  const caps = r.local.maxSizeSqFt.filter((m): m is Extract<LocalCap, { kind: 'capped' }> => m.kind === 'capped')
+  // ⚠️ ONLY `capped` ENTRIES COUNT. A `not-found` is a hole in our reading and
+  // must never be treated as a permission — if the section we read covers no
+  // configuration with a figure, the local layer tells us nothing and the state
+  // floor is all we have.
+  if (caps.length === 0) {
+    return floor == null
+      ? { value: null, source: 'unresolved', why: `${cityName(r.city)}'s ordinance was read but no size rule was located in it.` }
+      : {
+          value: floor.value,
+          source: 'floor-only',
+          why: `The ordinance was read but no size rule was located in it, so only the state floor is known (${floor.cite}) — a MINIMUM, not what the city allows.`,
+        }
   }
-  const local = biggestLocal.value as number
-  return local >= floor.value
+  const biggestLocal = caps.reduce((m, x) => (x.sqFt > m.sqFt ? x : m))
+  if (floor == null) {
+    return { value: biggestLocal.sqFt, source: 'local', why: `${r.local.citation}, ${biggestLocal.cite}.` }
+  }
+  return biggestLocal.sqFt >= floor.value
     ? {
-        value: local,
+        value: biggestLocal.sqFt,
         source: 'local',
-        why: `The city allows more than the state floor requires (${local.toLocaleString()} sq ft at ${biggestLocal.cite}, against a ${floor.value.toLocaleString()} sq ft floor at ${floor.cite}), so the local figure governs.`,
+        why: `The city allows more than the state floor requires (${biggestLocal.sqFt.toLocaleString()} sq ft at ${biggestLocal.cite}, against a ${floor.value.toLocaleString()} sq ft floor at ${floor.cite}), so the local figure governs.`,
       }
     : {
         value: floor.value,
         source: 'state-floor',
-        why: `The city's cap of ${local.toLocaleString()} sq ft sits below the state floor of ${floor.value.toLocaleString()} sq ft (${floor.cite}), so it is void to that extent and the floor governs.`,
+        why: `The city's cap of ${biggestLocal.sqFt.toLocaleString()} sq ft sits below the state floor of ${floor.value.toLocaleString()} sq ft (${floor.cite}), so it is void to that extent and the floor governs.`,
       }
 }
-
 
 /** One line for the report. Says which instrument governs, and where the answer
  *  rests only on a state floor, that the figure is a minimum rather than a cap. */

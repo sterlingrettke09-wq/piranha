@@ -95,12 +95,17 @@ export default function RedTape() {
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-piranha-gold">
             The Red Tape Index
           </p>
+          {/* ⚠️ COPY CHANGED 2026-08-19, and the two dropped phrases are the point.
+              "Wildly different answers" characterises the spread before the
+              reader sees it, and "ask every city" describes something this tool
+              does not do — nobody is asked; public records are read. Both were
+              claims the page cannot back, sitting above a ranking whose largest
+              input is calibrated rather than measured. */}
           <h1 className="mt-4 max-w-3xl font-serif text-[clamp(2.4rem,6vw,4.2rem)] leading-[1.04] tracking-tight">
-            One building. {ranked.length} cities. Wildly different answers.
+            The same 40,000 sq ft apartment building, priced and timed in {ranked.length} cities.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-piranha-bone/70">
-            Take the same 40,000 sq ft apartment building and ask every city: how long, and how
-            much, before you can build it? Rank by the answer.
+            Ranked by what it takes to get it built.
           </p>
         </header>
 

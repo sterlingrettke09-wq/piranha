@@ -197,9 +197,10 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
   it('and the capped configurations still carry the larger local figure', () => {
     const local = aduRulesFor('sandiego').local
     if (local.kind !== 'read') throw new Error('setup')
-    const capped = local.maxSizeSqFt.find((m) => m.value != null)!
-    expect(capped.value).toBe(1200)
-    expect(capped.value!).toBeGreaterThan(850) // the state floor it exceeds
+    const capped = local.maxSizeSqFt.find((m) => m.kind === 'capped')!
+    if (capped.kind !== 'capped') throw new Error('setup')
+    expect(capped.sqFt).toBe(1200)
+    expect(capped.sqFt).toBeGreaterThan(850) // the state floor it exceeds
   })
 
   it('a city with only the floor says so, and calls it a MINIMUM', () => {
@@ -223,7 +224,10 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     const r = aduRulesFor('sandiego')
     const stingy = {
       ...r,
-      local: { ...(r.local as Extract<typeof r.local, { kind: 'read' }>), maxSizeSqFt: [{ value: 600, condition: 'hypothetical', cite: '§ test' }] },
+      local: {
+        ...(r.local as Extract<typeof r.local, { kind: 'read' }>),
+        maxSizeSqFt: [{ kind: 'capped' as const, sqFt: 600, condition: 'hypothetical', cite: '§ test' }],
+      },
     }
     const e = effectiveMaxSize(stingy)
     expect(e.source).toBe('state-floor')
@@ -239,5 +243,50 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     expect(local.maxStories?.value).toBe(2)
     expect(local.heightDefersToBaseZone?.cite).toBe('§ 141.0302(a)(8)(C)')
     expect(summariseAdu(aduRulesFor('sandiego'))).toMatch(/no height in feet for ADUs — it defers to the base zone/)
+  })
+})
+
+describe('⚠️ "the code states no maximum" vs "we did not find one"', () => {
+  // The distinction the user flagged, and it is `not-read` one level down: there
+  // the whole ordinance is unread, here a single configuration inside a section
+  // we DID read. Both render as an absent number and only one is a permission.
+  const sd = aduRulesFor('sandiego')
+  const local = sd.local as Extract<typeof sd.local, { kind: 'read' }>
+
+  it("San Diego's unlimited cases are `no-maximum`, each with the provision that says so", () => {
+    const none = local.maxSizeSqFt.filter((m) => m.kind === 'no-maximum')
+    expect(none).toHaveLength(3)
+    for (const m of none) {
+      if (m.kind !== 'no-maximum') throw new Error('narrow')
+      // ⚠️ A cite is REQUIRED on this arm. You may only claim the code states
+      // none if you read the provision saying so.
+      expect(m.cite).toMatch(/§ 141\.0302/)
+    }
+  })
+
+  it('a not-found entry can carry no citation at all — enforced by the type', () => {
+    // There is no source for a thing you did not find. The union makes the
+    // mistake uncompilable rather than commenting on it (rule 14).
+    const gap = { kind: 'not-found' as const, condition: 'some configuration nobody read' }
+    expect('cite' in gap).toBe(false)
+  })
+
+  it('⚠️ a not-found NEVER counts as permission, and falls back to the floor', () => {
+    // The failure this prevents: a hole in our reading rendering as "the city
+    // sets no maximum", which is the most permissive statement the tool can make.
+    const holed = {
+      ...sd,
+      local: { ...local, maxSizeSqFt: [{ kind: 'not-found' as const, condition: 'unread configuration' }] },
+    }
+    const e = effectiveMaxSize(holed)
+    expect(e.source).toBe('floor-only')
+    expect(e.value).toBe(850)
+    expect(e.why).toMatch(/no size rule was located in it/)
+    expect(e.why).toMatch(/MINIMUM, not what the city allows/)
+  })
+
+  it('and a no-maximum still wins over every capped figure', () => {
+    const e = effectiveMaxSize(sd)
+    expect(e.source).toBe('local-no-maximum')
   })
 })

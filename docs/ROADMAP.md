@@ -962,6 +962,68 @@ READING defect caught before encoding rather than a shipped one.
 
 ---
 
+## Timeline leg — a measured source LOCATED, not encoded (2026-08-19)
+
+**Status: recorded, nothing changed.** `lifecycleMonths` is untouched and this is
+deliberate — see the constraints below, any one of which is disqualifying on its
+own.
+
+### The problem it would address
+
+`lifecycleMonths` is **calibrated, not measured.** Ten of fifteen cities carry a
+one-line rationale or nothing; Austin's 15 / 24 / 38 has no citation at all; and
+Nashville was calibrated *against Austin* — a figure derived from an uncited
+figure. It is **70% of the Red Tape Index score**, which makes it the largest
+uncited input in anything this project publishes.
+
+### The source
+
+**California HCD Housing Element Annual Progress Report**, Tables A and A2, on
+`data.ca.gov`. No authentication, updated 2026-08-14, every California
+jurisdiction, 2018–2025.
+
+| table | field | rows |
+|---|---|---|
+| A | `APP_SUBMIT_DT` | 357,875 |
+| A2 | `ENT_APPROVE_DT1` | 921,404 |
+
+Join on `JURIS_NAME` + `APN`.
+
+### What it measures, for 5+ unit multifamily
+
+Application → entitlement, in months:
+
+| city | median | p80 | n |
+|---|---:|---:|---:|
+| San Francisco | 18.0 | 27.0 | 90 |
+| San José | 15.3 | 22.1 | 52 |
+| Los Angeles | 8.5 | 19.5 | 1,325 |
+| ~~San Diego~~ | ~~4.4~~ | ~~12.5~~ | ~~15~~ |
+
+### ⚠️ Why it is recorded rather than encoded
+
+- **It is ONE LEG, not the lifecycle.** Application to entitlement only —
+  excluding pre-application, permit issuance and construction. It is not a
+  substitute for `lifecycleMonths` and swapping it in would replace a calibrated
+  whole with a measured fragment.
+- **San Diego is unusable.** n=15 is too thin, and 4.4 months against LA's 8.5 is
+  implausible on its face. Do not use it. (Same shape as the Milwaukee and
+  Chicago permit-timing withholdings: a number in the right units that fails a
+  known-good comparison.)
+- **Coverage is 4 of 15 ranked cities**, and the three usable ones are 3 of 15.
+  No equivalent source has been identified for the other eleven — so encoding
+  these would make three cities measured and twelve calibrated inside one ranked
+  list, which is a worse state than uniformly calibrated unless the difference is
+  rendered everywhere the score appears.
+
+### What would have to be true to use it
+
+A second source covering the remaining legs, or a decision to publish an
+application→entitlement figure as its own metric rather than folding it into
+`lifecycleMonths`. Both are product decisions.
+
+---
+
 ## Where the sweep stands, 2026-08-19
 
 The parser-domain sweep opened the day at **731** unexplained values and closed at
