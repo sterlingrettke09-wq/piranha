@@ -855,6 +855,145 @@ const DISTRICTS: Record<string, AtlantaLimits> = {
   // carry heightFt: null with the figures disclosed as tiers, because publishing
   // the larger would overstate every parcel in the restricted band (rule 6).
 
+  // ── SPI-18 MECHANICSVILLE IS READ AND DELIBERATELY NOT ENCODED ─────────────
+  // Two unresolved questions, either of which alone would block it.
+  //
+  // ⚠️ 1. TWO PUBLISHED FIGURES IN ONE TABLE CONTRADICT EACH OTHER. §16-18R's
+  // Development Controls Table states, for Subarea 10, a "Non-residential FAR
+  // (base)" of 0.505 — and a "Maximum Combined FAR (without bonus)" of 1.196
+  // against a residential base of 0.696. Nine of the ten columns are exactly
+  // additive (combined = nonresidential + residential); the tenth misses by
+  // 0.005, precisely the trailing digit.
+  //
+  // The likely cause is a fused footnote marker: this chapter renders footnotes
+  // as trailing digits ("10% or 20% 1", "None or 5% 2"), and SPI-17's height
+  // cells show the same pattern with the space preserved ("45' 2", "50' 2"). In
+  // SPI-18 the space is gone. But the chapter's numbered footnotes 4, 5 and 6
+  // are about sidewalks, tree grates and paving, so a "5" on a FAR row has
+  // nothing to point at — which is evidence AGAINST the tidy explanation.
+  //
+  // So: 0.50 is almost certainly the figure, and "almost certainly" is not the
+  // standard. Correcting a published cell from the table's own arithmetic is
+  // exactly the inference this file refuses elsewhere, and the direction happens
+  // to be favourable, which is when it is least trustworthy. Left unencoded and
+  // recorded, rather than silently corrected or silently published.
+  //
+  // ⚠️ 2. ITS BASIS IS STATED NOWHERE. The row labels read "(base)" with no
+  // denominator, and the chapter carries no "ratio of floor area to … lot area"
+  // sentence at all — so the SPI-20 slot test has to be run against §16-18R
+  // before any figure ships. Its coverage row says "as % of NLA", which is a
+  // different quantity and must not be read across.
+  //
+  // ── WHAT THE 2026-08-18 SURVEY ESTABLISHED ABOUT THE REST ──────────────────
+  // All 23 SPI chapters fetched and scanned. Only SPI-20 and SPI-21 carry a
+  // bulk-limitations basis sentence; every other chapter states its denominator
+  // in row labels, or not at all. Reconciled against the known-good pair before
+  // being believed (rule 16) — the first run excluded them and so had nothing to
+  // check the instrument against.
+  //
+  // FOUR MECHANISMS IN FIVE CHAPTERS, none predictable from the last:
+  //   SPI-16  row labels, gross on every limb, no prose
+  //   SPI-20  prose; nonresidential UNQUALIFIED, residential elective
+  //   SPI-21  prose; the mirror — nonresidential net, residential elective
+  //   SPI-2   row labels; nonresidential NET and residential GROSS, split
+  //   SPI-17  row labels, gross on both, no combined row at all
+  // Read every chapter's own sentences. Nothing carries across.
+
+  // SPI-2 Fort McPherson — §16-18B.008. A FOURTH basis mechanism: the two limbs
+  // carry DIFFERENT denominators, stated in the row labels, and not the pairing
+  // any other chapter uses — nonresidential against NET, residential against
+  // GROSS. Four chapters, four mechanisms; nothing here was predictable from the
+  // three before it.
+  //
+  // ⚠️ HEIGHT IS CONDITIONAL ON USE, so no single figure is published for
+  // Subareas 1-4. The table carries two height rows — "Single-family residential
+  // and Duplexes" and "all other principal structures" — and serving 120 ft to a
+  // single-family project would overstate by 3.4x. Subarea 5 is the exception and
+  // resolves cleanly: single-family is 'X' there (not permitted), so the 150 ft
+  // row is the only one that can apply.
+  'SPI-2 SA1': {
+    ...base('SPI-2 Fort McPherson (Subarea 1)', '§16-18B.008'),
+    farNonresidential: far(4.0, 'net', '§16-18B.008 Table, "Non-Residential FAR (times net lot area)"'),
+    farResidential: far(3.2, 'gross', '§16-18B.008 Table, "Residential FAR (times gross lot area)"'),
+    heightTiers: [
+      { label: 'single-family residential and duplexes', heightFt: 35 },
+      { label: 'all other principal structures', heightFt: 120 },
+    ],
+    heightSource: '§16-18B.008 Table — two height rows by use; no single figure applies',
+  },
+  'SPI-2 SA2': {
+    ...base('SPI-2 Fort McPherson (Subarea 2)', '§16-18B.008'),
+    farNonresidential: far(3.0, 'net', '§16-18B.008 Table, "Non-Residential FAR (times net lot area)"'),
+    farResidential: far(2.0, 'gross', '§16-18B.008 Table, "Residential FAR (times gross lot area)"'),
+    heightTiers: [
+      { label: 'single-family residential and duplexes', heightFt: 35 },
+      { label: 'all other principal structures', heightFt: 120 },
+    ],
+    heightSource: '§16-18B.008 Table — two height rows by use; a transitional height plane also applies adjacent to R and PD-H districts',
+  },
+  'SPI-2 SA3': {
+    ...base('SPI-2 Fort McPherson (Subarea 3)', '§16-18B.008'),
+    farNonresidential: far(3.0, 'net', '§16-18B.008 Table, "Non-Residential FAR (times net lot area)"'),
+    farResidential: far(2.0, 'gross', '§16-18B.008 Table, "Residential FAR (times gross lot area)"'),
+    heightTiers: [
+      { label: 'single-family residential and duplexes', heightFt: 35 },
+      { label: 'all other principal structures', heightFt: 75 },
+    ],
+    heightSource: '§16-18B.008 Table — two height rows by use; no single figure applies',
+  },
+  'SPI-2 SA4': {
+    ...base('SPI-2 Fort McPherson (Subarea 4)', '§16-18B.008'),
+    farNonresidential: far(3.0, 'net', '§16-18B.008 Table, "Non-Residential FAR (times net lot area)"'),
+    farResidential: far(2.0, 'gross', '§16-18B.008 Table, "Residential FAR (times gross lot area)"'),
+    heightTiers: [
+      { label: 'single-family residential and duplexes', heightFt: 35 },
+      { label: 'all other principal structures', heightFt: 75 },
+    ],
+    heightSource: '§16-18B.008 Table — two height rows by use; no single figure applies',
+  },
+  'SPI-2 SA5': {
+    ...base('SPI-2 Fort McPherson (Subarea 5)', '§16-18B.008'),
+    farNonresidential: far(4.0, 'net', '§16-18B.008 Table, "Non-Residential FAR (times net lot area)"'),
+    farResidential: far(3.2, 'gross', '§16-18B.008 Table, "Residential FAR (times gross lot area)"'),
+    heightFt: 150,
+    heightSource: '§16-18B.008 Table, "Maximum Height all other principal structures" — the single-family row states X (not permitted) here, so this row is the only one that can apply',
+  },
+
+  // SPI-17 Piedmont Avenue — §16-18Q.010. Both limbs against GROSS, stated in the
+  // row labels. The chapter states NO combined row, so farCombined stays null:
+  // that is the code being silent, not a figure we failed to read.
+  'SPI-17 SA1': {
+    ...base('SPI-17 Piedmont Avenue (Subarea 1)', '§16-18Q.010'),
+    farNonresidential: null, // table states "None"
+    farResidential: far(0.696, 'gross', '§16-18Q.010 Table, "Max Residential FAR (times gross lot area)"'),
+    heightFt: 45,
+    heightSource: '§16-18Q.010 Table, "Maximum Building Height" (45 ft; a transitional height plane also applies per §16-18Q.008)',
+  },
+  'SPI-17 SA2': {
+    ...base('SPI-17 Piedmont Avenue (Subarea 2)', '§16-18Q.010'),
+    farNonresidential: null, // "5% of the total occupied residential floor area" — not a ratio
+    farResidential: far(1.49, 'gross', '§16-18Q.010 Table, "Max Residential FAR (times gross lot area)"'),
+    heightFt: 50,
+    heightSource: '§16-18Q.010 Table, "Maximum Building Height" (50 ft; a transitional height plane also applies per §16-18Q.008)',
+  },
+  'SPI-17 SA3': {
+    ...base('SPI-17 Piedmont Avenue (Subarea 3)', '§16-18Q.010'),
+    farNonresidential: far(1.5, 'gross', '§16-18Q.010 Table, "Max Non-Residential FAR (times gross lot area)"'),
+    farResidential: far(1.49, 'gross', '§16-18Q.010 Table, "Max Residential FAR (times gross lot area)"'),
+    heightTiers: [
+      { label: 'east of Piedmont Ave.', heightFt: 35 },
+      { label: 'west of Piedmont Ave.', heightFt: 50 },
+    ],
+    heightSource: '§16-18Q.010 Table, "Maximum Building Height": 35 ft east of Piedmont Ave., 50 ft west — map-keyed, so no single figure is resolved',
+  },
+  'SPI-17 SA4': {
+    ...base('SPI-17 Piedmont Avenue (Subarea 4)', '§16-18Q.010'),
+    farNonresidential: null, // table states "None"
+    farResidential: far(0.696, 'gross', '§16-18Q.010 Table, "Max Residential FAR (times gross lot area)"'),
+    heightFt: 35,
+    heightSource: '§16-18Q.010 Table, "Maximum Building Height"',
+  },
+
   // SPI-16 Midtown — Ch. 16-18P, "FAR / Height" table, BY-RIGHT columns only.
   // The bonus columns are a programme the applicant has not chosen (rule 6).
   'SPI-16 SA1': {

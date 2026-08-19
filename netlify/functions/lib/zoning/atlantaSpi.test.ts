@@ -134,3 +134,67 @@ describe('every live SPI-16 and SPI-20 code resolves', () => {
     expect(live.filter((c) => resolveAtlanta(c).name == null)).toEqual([])
   })
 })
+
+// ── SPI-2 AND SPI-17: TWO MORE MECHANISMS ──────────────────────────────────
+describe('SPI-2 splits its denominators between the limbs', () => {
+  it('nonresidential is NET and residential is GROSS — the pairing no other chapter uses', () => {
+    const r = resolveAtlanta('SPI-2 SA1')
+    expect(r.farNonresidential).toEqual(expect.objectContaining({ far: 4.0, basis: 'net' }))
+    expect(r.farResidential).toEqual(expect.objectContaining({ far: 3.2, basis: 'gross' }))
+    // The specific thing a carried-across assumption would produce.
+    expect(r.farNonresidential!.basis).not.toBe(r.farResidential!.basis)
+  })
+
+  it('publishes no single height where the table states one per use', () => {
+    for (const code of ['SPI-2 SA1', 'SPI-2 SA2', 'SPI-2 SA3', 'SPI-2 SA4']) {
+      const r = resolveAtlanta(code)
+      expect(r.heightFt, `${code}: 120ft to a single-family project overstates by 3.4x`).toBeNull()
+      expect(r.heightTiers!.map((t) => t.label).join(' ')).toMatch(/single-family/)
+    }
+  })
+
+  it('except Subarea 5, where single-family is not permitted so one row applies', () => {
+    expect(resolveAtlanta('SPI-2 SA5').heightFt).toBe(150)
+  })
+})
+
+describe('SPI-17 states no combined row, and that is the code being silent', () => {
+  it('both limbs are gross and farCombined is null', () => {
+    const r = resolveAtlanta('SPI-17 SA3')
+    expect(r.farNonresidential!.basis).toBe('gross')
+    expect(r.farResidential!.basis).toBe('gross')
+    expect(r.farCombined, 'the chapter publishes no combined row').toBeNull()
+  })
+
+  it('the "5% of residential floor area" cell is not a ratio', () => {
+    expect(resolveAtlanta('SPI-17 SA2').farNonresidential).toBeNull()
+    expect(resolveAtlanta('SPI-17 SA2').farResidential!.far).toBe(1.49)
+  })
+
+  it('and the Piedmont Ave split refuses a single height', () => {
+    const r = resolveAtlanta('SPI-17 SA3')
+    expect(r.heightFt).toBeNull()
+    expect(r.heightTiers!.map((t) => t.heightFt).sort()).toEqual([35, 50])
+  })
+})
+
+describe('SPI-18 is read and deliberately unencoded', () => {
+  it('resolves to nothing while its table contradicts itself', () => {
+    // Subarea 10 states a non-residential base of 0.505 against a combined of
+    // 1.196 and a residential of 0.696 — nine of ten columns are exactly
+    // additive and this one misses by the trailing digit. Correcting a published
+    // cell from the table's own arithmetic is the inference this module refuses,
+    // and the direction is favourable, which is when it is least trustworthy.
+    for (const c of ['SPI-18 SA1', 'SPI-18 SA10']) {
+      expect(resolveAtlanta(c).name, `${c} must not ship while the table disagrees with itself`).toBeNull()
+    }
+  })
+})
+
+describe('every live SPI-2 and SPI-17 code resolves', () => {
+  it.each(['SPI-2', 'SPI-17'])('%s', (prefix) => {
+    const live = LIVE.filter((c) => c.startsWith(prefix + ' '))
+    expect(live.length).toBeGreaterThan(3)
+    expect(live.filter((c) => resolveAtlanta(c).name == null)).toEqual([])
+  })
+})
