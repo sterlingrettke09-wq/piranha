@@ -152,7 +152,7 @@ export const TARGETS: Target[] = [
       // never have revealed that (rule 26: report the composition, not the
       // bare number). The label now names which chapters are done.
       label:
-        'SPI curated for 1/2/16/17/20/21/22 (41 codes); the remaining SPI chapters plus HC-20 / NC / Poncey-Highland / LD deliberately uncurated, plus four codes Part 16 does not establish at all — see zoning/atlanta.ts',
+        'SPI curated for 1/2/5/7/16/17/20/21/22/26 (48 codes); the remaining SPI chapters plus HC-20 / NC / Poncey-Highland / LD deliberately uncurated, plus four codes Part 16 does not establish at all — see zoning/atlanta.ts',
       // ⚠️ THE FOUR ARE NOT UNCURATED — THEY DO NOT EXIST IN THE CODE. Read and
       // recorded in zoning/atlanta.ts with their acreages: PD-H1 (37.2 ac),
       // MR-4-C (16.1), PD-H2 (10.1), MR-3A-C (3.6). Chapter 35 establishes MR-1,

@@ -494,6 +494,26 @@ sign-off, not as concern, not as a suggestion. They decide when they stop; it is
 not a call to make on their behalf, and it has been asked for once already.
 Report state, hand over what is open, and end there.
 
+**29. A test fixture chosen for being "not done yet" is scheduled to break.**
+The Atlanta parser has a test asserting that unread district codes return no base
+— never a guess. Its example was `SPI-16 SA1`, which was then encoded; replaced
+with `SPI-1 SA1`, which was encoded two commits later. Both broke within one day,
+and both for the same reason: a code that is "not curated yet" is by construction
+drawn from the FRONT OF THE WORK QUEUE, so the fixture names whatever is about to
+stop qualifying.
+
+The failure is mild — the test goes red and a reader fixes it — but it is red for
+a reason that has nothing to do with the invariant, and the natural repair is to
+pick the next uncurated code, which re-arms it. Twice was enough to see it.
+
+The fix is to choose the example by WHY it cannot be done rather than by WHEN it
+will be. `SPI-9 SA1` is stable because SPI-9's table states "Max. FAR without
+Bonuses: According to Map Attachment" — the ratio is not in the document at all,
+so no amount of reading produces one. A structural reason outlives a schedule.
+
+Generalises to any fixture standing for an absent, unsupported or unhandled case:
+name something absent by construction, not something merely absent for now.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

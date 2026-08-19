@@ -86,14 +86,20 @@ describe('the bare-C alias is enumerated, never inferred from the string', () =>
     expect(parseAtlantaZone('SPI-16 SA1C').conditional).toBe(true)
   })
 
-  it('SPI-7 SA2C does NOT resolve to a stripped "SPI-7 SA2"', () => {
-    // THE HAZARD, PINNED. SPI-7 carries SA2A, SA2B and SA2C — a lettered subarea
-    // series, not conditional variants. A "strip a C after a digit" rule would
-    // turn Subarea 2C into Subarea 2. It is not enough that this returns null
-    // today because SPI-7 is unencoded: assert the PARSER never claims a base for
-    // it, so the trap cannot arm itself when SPI-7 is encoded later.
-    expect(parseAtlantaZone('SPI-7 SA2C').base).toBeNull()
-    expect(resolveAtlanta('SPI-7 SA2C').name).toBeNull()
+  it('SPI-7 SA2C resolves to SUBAREA 2C, not to a stripped "SPI-7 SA2"', () => {
+    // THE HAZARD, PINNED — and now pinned in its stronger form. SPI-7 carries
+    // SA2A, SA2B and SA2C: a lettered subarea series, not conditional variants.
+    // A "strip a C after a digit" rule would turn Subarea 2C into Subarea 2.
+    //
+    // The original assertion was that this resolves to NOTHING, which held only
+    // while SPI-7 was unencoded — the same "true until the work happens" shape as
+    // the fixture above. SPI-7 was encoded on 2026-08-18, so the invariant is now
+    // stated positively: it resolves to its OWN entry, and no 'SPI-7 SA2' entry
+    // exists for it to have collapsed into.
+    expect(parseAtlantaZone('SPI-7 SA2C').base).toBe('SPI-7 SA2C')
+    expect(parseAtlantaZone('SPI-7 SA2C').conditional).toBe(false)
+    expect(resolveAtlanta('SPI-7 SA2C').name).toMatch(/Subarea 2C/)
+    expect(resolveAtlanta('SPI-7 SA2').name, 'no bare Subarea 2 exists to collapse into').toBeNull()
   })
 
   it('both spellings exist live, which is why the string cannot decide', () => {
@@ -267,5 +273,47 @@ describe('SPI-9 is a map-layer ask, not an encode target', () => {
     // figures in that chapter are with-bonus, which rule 6 excludes.
     expect(resolveAtlanta('SPI-9 SA1').name).toBeNull()
     expect(resolveAtlanta('SPI-9 SA1').farNonresidential).toBeNull()
+  })
+})
+
+// ── PROSE-FAR CHAPTERS: NO GRID AT ALL, AND THE SENTENCE IS SCOPED ─────────
+describe('SPI-5, SPI-7 and SPI-26 state their FAR in prose', () => {
+  it('the residential-only sentence encodes only the residential limb', () => {
+    for (const c of ['SPI-5 SA2', 'SPI-5 SA3', 'SPI-7 SA2A', 'SPI-7 SA3']) {
+      const r = resolveAtlanta(c)
+      expect(r.farResidential, c).toEqual(
+        expect.objectContaining({ far: 0.5, basis: 'unqualified' }),
+      )
+      // "The RESIDENTIAL, or dwelling, floor area ratio" — the sentence says
+      // nothing about non-residential, so nothing is asserted about it.
+      expect(r.farNonresidential, c).toBeNull()
+      expect(r.farCombined, c).toBeNull()
+    }
+  })
+
+  it('and the subareas the section does NOT reach stay unresolved', () => {
+    // §16-18E.010 is titled "Residential subareas" and SPI-5 Subarea 1 is
+    // "Public open space or park"; §16-18G.009 is titled "Residential Subareas 2
+    // and 3", so SPI-7 Subarea 1 is outside it. Filling either from a neighbour
+    // would publish a residential ratio onto a subarea the code never gave one.
+    expect(resolveAtlanta('SPI-5 SA1').name).toBeNull()
+    expect(resolveAtlanta('SPI-7 SA1').name).toBeNull()
+  })
+
+  it('SPI-26 is district-wide, so every limb carries the same ratio', () => {
+    const r = resolveAtlanta('SPI-26')
+    for (const limb of [r.farNonresidential, r.farResidential, r.farCombined]) {
+      expect(limb).toEqual(expect.objectContaining({ far: 0.5, basis: 'unqualified' }))
+    }
+  })
+
+  it('none of the three claims a height, and none claims height is absent', () => {
+    for (const c of ['SPI-5 SA2', 'SPI-7 SA3', 'SPI-26']) {
+      const r = resolveAtlanta(c)
+      expect(r.heightFt, c).toBeNull()
+      // Accessory-structure limits and one named building are not district
+      // maxima — and not stated absences either (rule 5).
+      expect(r.heightUnconstrained, c).toBe(false)
+    }
   })
 })

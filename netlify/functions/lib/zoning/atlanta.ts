@@ -962,6 +962,69 @@ const DISTRICTS: Record<string, AtlantaLimits> = {
   //   SPI-17  row labels, gross on both, no combined row at all
   // Read every chapter's own sentences. Nothing carries across.
 
+  // ── PROSE-FAR CHAPTERS: SPI-5, SPI-7, SPI-26 ──────────────────────────────
+  // A SEVENTH mechanism. These chapters carry NO development-controls grid at
+  // all — the ratio is a sentence in the ordinance text, so every table-based
+  // scan in this repo is structurally blind to them (the same shape as SPI-6,
+  // which states "a maximum floor area ratio of 0.348" and has no table).
+  //
+  // ⚠️ AND THE SENTENCE IS SCOPED. The figure is not district-wide in SPI-5 or
+  // SPI-7: it sits inside a section whose TITLE names the subareas it governs —
+  // §16-18E.010 "Residential subareas" and §16-18G.009 "Residential Subareas 2
+  // and 3". Reading either as the chapter's FAR would publish a residential
+  // ratio onto a subarea the section never reaches. SPI-5 Subarea 1 is "Public
+  // open space or park"; SPI-7 Subarea 1 is outside §16-18G.009 by its own
+  // title. Both are left unresolved rather than filled from a neighbour.
+  //
+  // BASIS IS 'unqualified' IN ALL THREE, for the SPI-20 reason: the sentence
+  // states a ratio and no denominator, and §16-29.001(37) — which would supply
+  // "net" — scopes itself to R-1 through R-5 and does not reach an SPI district.
+  //
+  // NO HEIGHT IS ENCODED. SPI-5 and SPI-7 state only accessory-structure limits
+  // (25 ft, or the height of the main structure); SPI-26's 35 ft attaches to one
+  // named building (the Gresham Hall replacement), not to the district. None of
+  // that is a district maximum, and none of it is a stated ABSENCE either, so
+  // heightFt stays null and heightUnconstrained stays false.
+  'SPI-5 SA2': {
+    ...base('SPI-5 Inman Park — North Highland-Sinclair (Subarea 2)', '§16-18E.010'),
+    heightSource: '§16-18E.010 states no district maximum height — only accessory-structure limits (25 ft or the height of the main structure, §16-18E.008(7)e). Not a stated absence either, so no height is asserted',
+    farResidential: far(0.5, 'unqualified', '§16-18E.010(4): "The residential, or dwelling, floor area ratio shall not exceed 0.50"'),
+  },
+  'SPI-5 SA3': {
+    ...base('SPI-5 Inman Park — Freedom Park (Subarea 3)', '§16-18E.010'),
+    heightSource: '§16-18E.010 states no district maximum height — only accessory-structure limits (25 ft or the height of the main structure, §16-18E.008(7)e). Not a stated absence either, so no height is asserted',
+    farResidential: far(0.5, 'unqualified', '§16-18E.010(4): "The residential, or dwelling, floor area ratio shall not exceed 0.50"'),
+  },
+  'SPI-7 SA2A': {
+    ...base('SPI-7 Candler Park (Subarea 2A)', '§16-18G.009'),
+    heightSource: '§16-18G.009 states no district maximum height — only accessory-structure limits (25 ft or the height of the main structure). Not a stated absence either, so no height is asserted',
+    farResidential: far(0.5, 'unqualified', '§16-18G.009(5): "The residential, or dwelling, floor area ratio shall not exceed 0.50"'),
+  },
+  'SPI-7 SA2B': {
+    ...base('SPI-7 Candler Park (Subarea 2B)', '§16-18G.009'),
+    heightSource: '§16-18G.009 states no district maximum height — only accessory-structure limits (25 ft or the height of the main structure). Not a stated absence either, so no height is asserted',
+    farResidential: far(0.5, 'unqualified', '§16-18G.009(5): "The residential, or dwelling, floor area ratio shall not exceed 0.50"'),
+  },
+  'SPI-7 SA2C': {
+    ...base('SPI-7 Candler Park (Subarea 2C)', '§16-18G.009'),
+    heightSource: '§16-18G.009 states no district maximum height — only accessory-structure limits (25 ft or the height of the main structure). Not a stated absence either, so no height is asserted',
+    farResidential: far(0.5, 'unqualified', '§16-18G.009(5): "The residential, or dwelling, floor area ratio shall not exceed 0.50"'),
+  },
+  'SPI-7 SA3': {
+    ...base('SPI-7 Candler Park (Subarea 3)', '§16-18G.009'),
+    heightSource: '§16-18G.009 states no district maximum height — only accessory-structure limits (25 ft or the height of the main structure). Not a stated absence either, so no height is asserted',
+    farResidential: far(0.5, 'unqualified', '§16-18G.009(5): "The residential, or dwelling, floor area ratio shall not exceed 0.50"'),
+  },
+  // SPI-26 is the one district-wide case: "The maximum floor area ratio WITHIN
+  // THIS DISTRICT shall not exceed 0.50" — all uses, one ratio, one live code.
+  'SPI-26': {
+    ...base('SPI-26 Chastain Park Galloway School', '§16-18Z.007'),
+    heightSource: '§16-18Z.008 states a 35 ft maximum for ONE named building (the Gresham Hall replacement), not for the district, so no district height is asserted',
+    farNonresidential: far(0.5, 'unqualified', '§16-18Z.007(5): "The maximum floor area ratio within this district shall not exceed 0.50"'),
+    farResidential: far(0.5, 'unqualified', '§16-18Z.007(5): "The maximum floor area ratio within this district shall not exceed 0.50"'),
+    farCombined: far(0.5, 'unqualified', '§16-18Z.007(5): "The maximum floor area ratio within this district shall not exceed 0.50"'),
+  },
+
   // SPI-1 Downtown — §16-18A.008. A FIFTH basis mechanism: stated in TABLE
   // FOOTNOTES, with the markers sitting on the row labels ("Non-residential
   // Maximum FAR 1"). Footnote 1: "Non-residential FAR shall be multiplied by net
