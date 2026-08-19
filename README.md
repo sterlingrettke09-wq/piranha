@@ -41,8 +41,18 @@ Copy `.env.example` to `.env` and fill in the values:
   the in-process rate limiter is best-effort, not a durable spend cap.
 - `ADMIN_KEY` — optional. Passphrase for the owner-only `/admin` search log.
 - `NETLIFY_BLOBS_SITE_ID` / `NETLIFY_BLOBS_TOKEN` — optional. Only needed if
-  the deploy doesn't auto-inject the Netlify Blobs environment (the search log
-  store); see `netlify/functions/lib/searchLog.ts`.
+  the deploy doesn't auto-inject the Netlify Blobs environment; see
+  `netlify/functions/lib/store.ts`. Accounts and watchlists live in Blobs and,
+  unlike the search log, have **no local-file fallback** — a watchlist write
+  that quietly landed in `/tmp` is a row the user believes exists.
+- `RESEND_API_KEY` / `AUTH_EMAIL_FROM` — required for **sign-in**. Without both,
+  `/api/auth-request` still returns 204 (it must, or it becomes an
+  account-enumeration oracle) and logs `status: "not-configured"`. Nobody can
+  sign in and the only place that says so is the function log, so check it after
+  the first deploy.
+- `SITE_ORIGIN` — optional. The absolute origin used to build the sign-in link
+  (e.g. `https://thepiranhaproject.com`). Falls back to the request's `Host`,
+  which is right in almost every case and wrong behind a proxy that rewrites it.
 
 The `/api/analyze` feasibility engine is fully deterministic — it calls city
 GIS services and Mapbox, not an LLM, and needs no model API key.
