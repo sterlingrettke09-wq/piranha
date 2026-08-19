@@ -962,6 +962,109 @@ const DISTRICTS: Record<string, AtlantaLimits> = {
   //   SPI-17  row labels, gross on both, no combined row at all
   // Read every chapter's own sentences. Nothing carries across.
 
+  // ── SPI-15 LINDBERGH — PROSE *AND* PER-SUBAREA (§16-18O.028 / §16-18O.029) ──
+  // The hardest chapter so far: the ratios are written out IN WORDS ("six hundred
+  // ninety-six-one thousandths times gross lot area"), there is no development
+  // controls grid, and §16-18O.010 does not state figures at all — it defers with
+  // "See specific regulations for each subarea at sections 16-18O.028 and
+  // 16-18O.029". The roster splits nine subareas into commercial (1, 2, 3, 4, 9)
+  // and residential (5, 6, 7, 8).
+  //
+  // ⚠️ AN EIGHTH FINDING: THE BASIS VARIES BETWEEN SUBAREAS OF ONE CHAPTER.
+  // Subareas 2 and 4 state residential against GROSS lot area; Subarea 3 states
+  // it against NET, in the same section, in the same sentence form. So "read the
+  // chapter's basis" is not fine-grained enough either — it is per LIMB and per
+  // SUBAREA, and nothing about Subarea 3 is predictable from Subarea 2.
+  //
+  // ⚠️ AND THE CODE'S OWN GLOSS IS WRONG FOR TWO SUBAREAS. Each mixed-use clause
+  // reads "shall not exceed N times net lot area [the sum of the nonresidential
+  // (i) and residential (ii) above]". For Subarea 1 that holds (1.0 + 0.696 =
+  // 1.696) and for Subarea 3 it holds (4.0 + 4.2 = 8.2). For Subarea 2 the stated
+  // figure is 2.0 against a sum of 4.0, and for Subarea 4 it is 3.0 against 6.0.
+  // The operative words govern and the bracket is explanatory — so the stated
+  // figure is encoded and the gloss is not computed from. Third chapter where a
+  // combined cap must be READ rather than derived.
+  //
+  // NON-RESIDENTIAL IN THE RESIDENTIAL SUBAREAS IS NOT A RATIO: §16-18O.029(4)
+  // caps it at "five percent of total built residential floor area" — a share of
+  // the building, not of the lot — so farNonresidential is null there.
+  //
+  // HEIGHTS: Subarea 1 is tiered on distance from R-1..R-G / PD-H (35 ft within
+  // 150 ft, 52 ft between 150 and 300 ft) — map-keyed, so no single figure.
+  // Subareas 2-5 are 225 ft per §16-18O.028; the residential subareas are 225 ft
+  // per §16-18O.029(3)(b). Subarea 9 states "Maximum building heights shall
+  // conform to Attachment C" — a SECOND map-keyed height in Atlanta, joining
+  // SPI-9's map-keyed FAR.
+  'SPI-15 SA1': {
+    ...base('SPI-15 Miami Circle Commercial (Subarea 1)', '§16-18O.028'),
+    farNonresidential: far(1.0, 'net', '§16-18O.028, "For nonresidential uses, floor area shall not exceed an amount equal to 1.0 times net lot area"'),
+    farResidential: far(0.696, 'gross', '§16-18O.028, "For residential uses, floor area shall not exceed an amount equal to 0.696 times gross lot area"'),
+    farCombined: far(1.696, 'net', '§16-18O.028 mixed-use clause — the STATED figure; the bracketed "sum of" gloss does not hold for every subarea'),
+    heightTiers: [
+      { label: 'within 150 ft of an R-1 through R-G or PD-H district', heightFt: 35 },
+      { label: 'between 150 ft and 300 ft of an R-1 through R-G or PD-H district', heightFt: 52 },
+    ],
+    heightSource: '§16-18O.028 — keyed to distance from R-1..R-G / PD-H districts, so no single figure is resolved',
+  },
+  'SPI-15 SA2': {
+    ...base('SPI-15 Sydney Marcus Commercial (Subarea 2)', '§16-18O.028'),
+    farNonresidential: far(2.0, 'net', '§16-18O.028, "For nonresidential uses, floor area shall not exceed an amount equal to 2.0 times net lot area"'),
+    farResidential: far(2.0, 'gross', '§16-18O.028, "For residential uses, floor area shall not exceed an amount equal to 2.0 times gross lot area"'),
+    farCombined: far(2.0, 'net', '§16-18O.028 mixed-use clause — the STATED figure; the bracketed "sum of" gloss does not hold for every subarea'),
+    heightFt: 225,
+    heightSource: '§16-18O.028 — 225 feet along each façade visible from the public right-of-way',
+  },
+  'SPI-15 SA3': {
+    ...base('SPI-15 Piedmont Commercial (Subarea 3)', '§16-18O.028'),
+    farNonresidential: far(4.0, 'net', '§16-18O.028, "For nonresidential uses, floor area shall not exceed an amount equal to 4.0 times net lot area"'),
+    farResidential: far(4.2, 'net', '§16-18O.028, "For residential uses, floor area shall not exceed an amount equal to 4.2 times net lot area"'),
+    farCombined: far(8.2, 'net', '§16-18O.028 mixed-use clause — the STATED figure; the bracketed "sum of" gloss does not hold for every subarea'),
+    heightFt: 225,
+    heightSource: '§16-18O.028 — 225 feet along each façade visible from the public right-of-way',
+  },
+  'SPI-15 SA4': {
+    ...base('SPI-15 Garson Commercial (Subarea 4)', '§16-18O.028'),
+    farNonresidential: far(3.0, 'net', '§16-18O.028, "For nonresidential uses, floor area shall not exceed an amount equal to 3.0 times net lot area"'),
+    farResidential: far(3.0, 'gross', '§16-18O.028, "For residential uses, floor area shall not exceed an amount equal to 3.0 times gross lot area"'),
+    farCombined: far(3.0, 'net', '§16-18O.028 mixed-use clause — the STATED figure; the bracketed "sum of" gloss does not hold for every subarea'),
+    heightFt: 225,
+    heightSource: '§16-18O.028 — 225 feet along each façade visible from the public right-of-way',
+  },
+  'SPI-15 SA5': {
+    ...base('SPI-15 Sydney Marcus West Residential (Subarea 5)', '§16-18O.029'),
+    farNonresidential: null, // §16-18O.029(4) caps non-residential at 5% of built residential floor area — a share of the building, not a ratio on the lot,
+    farResidential: far(3.2, 'gross', '§16-18O.029, "For residential uses, floor area shall not exceed an amount equal to 3.2 times gross lot area"'),
+    heightFt: 225,
+    heightSource: '§16-18O.029 — 225 feet along each façade visible from the public right-of-way',
+  },
+  'SPI-15 SA6': {
+    ...base('SPI-15 Sydney Marcus East Residential (Subarea 6)', '§16-18O.029'),
+    farNonresidential: null, // §16-18O.029(4) caps non-residential at 5% of built residential floor area — a share of the building, not a ratio on the lot,
+    farResidential: far(0.696, 'gross', '§16-18O.029, "For residential uses, floor area shall not exceed an amount equal to 0.696 times gross lot area"'),
+    heightFt: 225,
+    heightSource: '§16-18O.029 — 225 feet along each façade visible from the public right-of-way',
+  },
+  'SPI-15 SA7': {
+    ...base('SPI-15 Garson Residential (Subarea 7)', '§16-18O.029'),
+    farNonresidential: null, // §16-18O.029(4) caps non-residential at 5% of built residential floor area — a share of the building, not a ratio on the lot,
+    farResidential: far(1.49, 'gross', '§16-18O.029, "For residential uses, floor area shall not exceed an amount equal to 1.49 times gross lot area"'),
+    heightFt: 225,
+    heightSource: '§16-18O.029 — 225 feet along each façade visible from the public right-of-way',
+  },
+  'SPI-15 SA8': {
+    ...base('SPI-15 Lindbergh Residential (Subarea 8)', '§16-18O.029'),
+    farNonresidential: null, // §16-18O.029(4) caps non-residential at 5% of built residential floor area — a share of the building, not a ratio on the lot,
+    farResidential: far(1.15, 'gross', '§16-18O.029, "For residential uses, floor area shall not exceed an amount equal to 1.15 times gross lot area"'),
+    heightFt: 225,
+    heightSource: '§16-18O.029 — 225 feet along each façade visible from the public right-of-way',
+  },
+  'SPI-15 SA9': {
+    ...base('SPI-15 MARTA Lindbergh City Center (Subarea 9)', '§16-18O.028'),
+    farNonresidential: far(4.0, 'net', '§16-18O.028, "For nonresidential uses, floor area shall not exceed an amount equal to 4.0 times net lot area"'),
+    farResidential: far(4.2, 'net', '§16-18O.028, "For residential uses, floor area shall not exceed an amount equal to 4.2 times net lot area"'),
+    heightSource: '§16-18O.028 — Subarea 9 heights conform to Attachment C (MARTA Lindbergh City Center Station SPI-15 SA-9 Height Maximums), a map this project cannot read',
+  },
+
   // ── PROSE-FAR CHAPTERS: SPI-5, SPI-7, SPI-26 ──────────────────────────────
   // A SEVENTH mechanism. These chapters carry NO development-controls grid at
   // all — the ratio is a sentence in the ordinance text, so every table-based

@@ -317,3 +317,63 @@ describe('SPI-5, SPI-7 and SPI-26 state their FAR in prose', () => {
     }
   })
 })
+
+// ── SPI-15: PROSE *AND* PER-SUBAREA ────────────────────────────────────────
+describe('SPI-15 assigns its basis per subarea, not per chapter', () => {
+  it('Subareas 2 and 4 state residential against GROSS, Subarea 3 against NET', () => {
+    // Same section, same sentence form, different denominator. "Read the
+    // chapter's basis" is not fine-grained enough — it is per limb AND per
+    // subarea, and nothing about Subarea 3 follows from Subarea 2.
+    expect(resolveAtlanta('SPI-15 SA2').farResidential!.basis).toBe('gross')
+    expect(resolveAtlanta('SPI-15 SA4').farResidential!.basis).toBe('gross')
+    expect(resolveAtlanta('SPI-15 SA3').farResidential!.basis).toBe('net')
+  })
+
+  it("the combined cap is the STATED figure, not the code's own 'sum of' gloss", () => {
+    // Each mixed-use clause reads "N times net lot area [the sum of the
+    // nonresidential (i) and residential (ii) above]". It holds for Subareas 1
+    // and 3 and fails for 2 and 4 — so the bracket is explanatory and the figure
+    // governs. Computing from the gloss would double Subarea 2.
+    expect(resolveAtlanta('SPI-15 SA1').farCombined!.far).toBe(1.696) // 1.0 + 0.696 ✓
+    expect(resolveAtlanta('SPI-15 SA3').farCombined!.far).toBe(8.2) // 4.0 + 4.2 ✓
+    const sa2 = resolveAtlanta('SPI-15 SA2')
+    expect(sa2.farCombined!.far).toBe(2.0)
+    expect(sa2.farCombined!.far).not.toBe(sa2.farNonresidential!.far + sa2.farResidential!.far)
+    const sa4 = resolveAtlanta('SPI-15 SA4')
+    expect(sa4.farCombined!.far).toBe(3.0)
+    expect(sa4.farCombined!.far).not.toBe(sa4.farNonresidential!.far + sa4.farResidential!.far)
+  })
+
+  it('the residential subareas state no non-residential RATIO', () => {
+    // §16-18O.029(4) caps it at "five percent of total built residential floor
+    // area" — a share of the building, not a ratio on the lot.
+    for (const c of ['SPI-15 SA5', 'SPI-15 SA6', 'SPI-15 SA7', 'SPI-15 SA8']) {
+      expect(resolveAtlanta(c).farNonresidential, c).toBeNull()
+      expect(resolveAtlanta(c).farResidential!.basis, c).toBe('gross')
+    }
+  })
+
+  it('Subarea 9 publishes no height because it conforms to a map attachment', () => {
+    const r = resolveAtlanta('SPI-15 SA9')
+    expect(r.heightFt).toBeNull()
+    expect(r.heightTiers).toBeNull()
+    expect(r.heightSource).toMatch(/Attachment C/)
+    // but its FARs ARE stated, so the district still resolves
+    expect(r.farNonresidential!.far).toBe(4.0)
+  })
+
+  it('Subarea 1 refuses a single height, keyed to distance from R districts', () => {
+    const r = resolveAtlanta('SPI-15 SA1')
+    expect(r.heightFt).toBeNull()
+    expect(r.heightTiers!.map((t) => t.heightFt)).toEqual([35, 52])
+  })
+
+  it('and every live SPI-15 code resolves, including the -C variant', () => {
+    const live = LIVE.filter((c) => c.startsWith('SPI-15 '))
+    expect(live.length).toBe(10)
+    expect(live.filter((c) => resolveAtlanta(c).name == null)).toEqual([])
+    expect(resolveAtlanta('SPI-15 SA4-C').farCombined!.far).toBe(
+      resolveAtlanta('SPI-15 SA4').farCombined!.far,
+    )
+  })
+})
