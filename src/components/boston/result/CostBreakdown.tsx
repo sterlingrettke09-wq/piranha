@@ -7,6 +7,10 @@ const usd = (n: number): string => formatEstimate(n)
 
 interface Props {
   costs: AnalysisResult['costs']
+  /** Set when no published rate covers this product, so the construction lines
+   *  are null. Renders the REASON in place of the total — a dash alone would
+   *  read as a rendering fault rather than a stated limit. */
+  costUnavailable?: AnalysisResult['costUnavailable']
   gfa: number
   units?: number
   /** A teardown is required but its floor area isn't in the city's data, so the
@@ -14,7 +18,7 @@ interface Props {
   demolitionRequired?: boolean
 }
 
-export function CostBreakdown({ costs, gfa, units, demolitionRequired }: Props) {
+export function CostBreakdown({ costs, gfa, units, demolitionRequired, costUnavailable }: Props) {
   const rows: { label: string; value: number | null }[] = [
     ...(costs.demolition > 0
       ? [{ label: 'Demolish existing building', value: costs.demolition }]
@@ -27,13 +31,18 @@ export function CostBreakdown({ costs, gfa, units, demolitionRequired }: Props) 
     { label: 'Construction (hard)', value: costs.hard },
     { label: 'Soft costs', value: costs.soft },
     { label: 'Permitting & approvals', value: costs.permit },
-    ...(costs.impact > 0 ? [{ label: 'Affordable-housing / linkage fee', value: costs.impact }] : []),
+    ...(costs.impact != null && costs.impact > 0
+      ? [{ label: 'Affordable-housing / linkage fee', value: costs.impact }]
+      : []),
   ]
   // Per-sq-ft / per-unit reflect the building you're putting up — exclude
   // demolition and the impact fee, which would otherwise inflate the rate.
-  const construction = costs.total - costs.demolition - costs.impact
-  const perSqft = gfa > 0 ? construction / gfa : null
-  const perUnit = units && units > 0 ? construction / units : null
+  // Every operand is checked: subtracting a null coerces to a number in JS and
+  // would print a confident rate derived from a missing total.
+  const construction =
+    costs.total == null || costs.impact == null ? null : costs.total - costs.demolition - costs.impact
+  const perSqft = construction != null && gfa > 0 ? construction / gfa : null
+  const perUnit = construction != null && units && units > 0 ? construction / units : null
 
   return (
     <div className="overflow-hidden rounded-2xl border border-piranha-charcoal/10 bg-white/60">
@@ -41,9 +50,20 @@ export function CostBreakdown({ costs, gfa, units, demolitionRequired }: Props) 
         <p className="text-xs uppercase tracking-[0.14em] text-piranha-charcoal/50">
           Estimated total · excludes land
         </p>
-        <p className="mt-2 font-serif text-4xl tracking-tight text-piranha-charcoal tabular-nums sm:text-5xl">
-          {usd(costs.total)}
-        </p>
+        {costs.total == null ? (
+          <p className="mt-2 font-serif text-3xl tracking-tight text-piranha-charcoal/70 sm:text-4xl">
+            Not estimated
+          </p>
+        ) : (
+          <p className="mt-2 font-serif text-4xl tracking-tight text-piranha-charcoal tabular-nums sm:text-5xl">
+            {usd(costs.total)}
+          </p>
+        )}
+        {costUnavailable && (
+          <p className="mt-3 max-w-prose text-sm leading-relaxed text-piranha-charcoal/60">
+            {costUnavailable.reason}
+          </p>
+        )}
         {(perSqft || perUnit) && (
           <div className="mt-4 flex flex-wrap gap-x-8 gap-y-1 text-sm text-piranha-charcoal/60">
             {perSqft && (

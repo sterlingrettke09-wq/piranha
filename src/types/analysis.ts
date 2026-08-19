@@ -197,7 +197,32 @@ export interface AnalysisResult {
    *  offline relief pipeline produced a trustworthy figure; absent otherwise. */
   reliefOdds?: { grantRate: number; n: number; window: string; vintage: string; label?: string }
   hurdles: Hurdle[]
-  costs: { hard: number; soft: number; permit: number; demolition: number; impact: number; total: number; currency: 'USD' }
+  /** NULLABLE SINCE 2026-08-19. Four of these are functions of construction
+   *  value, and where no published rate covers the product they cannot be
+   *  produced. Null, never 0 — a zero renders as free. `demolition` and the
+   *  linkage half of `impact` survive, being per-square-foot. */
+  costs: {
+    hard: number | null
+    soft: number | null
+    permit: number | null
+    demolition: number
+    impact: number | null
+    total: number | null
+    currency: 'USD'
+  }
+  /** Present only when the costs above are null. TWO STATES, DIFFERENT FACTS:
+   *  'unsourced' — no published source prices this product type yet (2–4 unit:
+   *                NAHB measures detached, Cumming measures apartment, and this
+   *                sits between them).
+   *  'unpriced'  — nobody publishes this quantity at all (mixed-use: the figure
+   *                it used to carry was a blend of two other constants, not a
+   *                measurement).
+   *  They must not share a sentence — the UI renders each from `reason`. */
+  costUnavailable?: {
+    product: string
+    kind: 'unsourced' | 'unpriced'
+    reason: string
+  }
   timeline: {
     months: number
     path: ApprovalPath

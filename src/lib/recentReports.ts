@@ -21,7 +21,8 @@ export interface RecentReport {
   city: string
   verdict: CheckStatus
   /** Total estimated cost in dollars, for the compact card. */
-  totalCost: number
+  /** Null where no published rate covers the product, so no total exists. */
+  totalCost: number | null
   /** When this report was last loaded (Date.now()). */
   ts: number
   /** Pinned entries survive past the ring buffer's cap. */
@@ -45,7 +46,8 @@ function read(): RecentReport[] {
         typeof (e as RecentReport).address === 'string' &&
         typeof (e as RecentReport).city === 'string' &&
         typeof (e as RecentReport).verdict === 'string' &&
-        typeof (e as RecentReport).totalCost === 'number' &&
+        (typeof (e as RecentReport).totalCost === 'number' ||
+          (e as RecentReport).totalCost === null) &&
         typeof (e as RecentReport).ts === 'number',
     )
   } catch {

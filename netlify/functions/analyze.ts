@@ -284,6 +284,7 @@ export const handler: JsonHandler = async (event) => {
     ...(feasibility.path === 'variance' ? { reliefOdds: reliefOddsFor(city) } : {}),
     hurdles,
     costs: estimate.costs,
+    ...(estimate.costUnavailable ? { costUnavailable: estimate.costUnavailable } : {}),
     timeline,
     narrative,
     assumptions: assumptionsSummary(

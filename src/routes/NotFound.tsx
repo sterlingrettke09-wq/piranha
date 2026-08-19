@@ -32,7 +32,7 @@ function RecentList() {
               </p>
               <p className="mt-0.5 truncate text-sm text-piranha-charcoal/60">
                 {cityName(r.city)} · <span className="text-piranha-burgundy">{VERDICT[r.verdict].short}</span> ·{' '}
-                {formatEstimate(r.totalCost)}
+                {r.totalCost == null ? 'Not estimated' : formatEstimate(r.totalCost)}
               </p>
             </Link>
             <button

@@ -58,7 +58,7 @@ const costLines: Omit<CostEstimate['costs'], 'total'> = {
 const cost: CostEstimate = {
   costs: {
     ...costLines,
-    total: costLines.hard + costLines.soft + costLines.permit + costLines.demolition + costLines.impact,
+    total: costLines.hard! + costLines.soft! + costLines.permit! + costLines.demolition + costLines.impact!,
   },
   timeline: { months: 4, path: 'as_of_right' },
 }
@@ -87,7 +87,7 @@ describe('buildNarrative', () => {
     const f: Feasibility = { overall: 'AS_OF_RIGHT', checks: [], path: 'as_of_right' }
     const demoCost: CostEstimate = {
       ...cost,
-      costs: { ...cost.costs, demolition: 800_000, total: cost.costs.total + 800_000 },
+      costs: { ...cost.costs, demolition: 800_000, total: cost.costs.total! + 800_000 },
     }
     const text = buildNarrative(parcel, { ...project, projectType: 'new' }, f, demoCost, {
       timelineMonths: 26,

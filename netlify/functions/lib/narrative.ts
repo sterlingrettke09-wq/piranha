@@ -71,7 +71,18 @@ export function buildNarrative(
   }
 
   const demoPart = c.costs.demolition > 0 ? `, demolition ${usd(c.costs.demolition)}` : ''
-  const cost = ` Estimated cost is ${usd(c.costs.total)} (hard ${usd(c.costs.hard)}, soft ${usd(c.costs.soft)}, permitting ${usd(c.costs.permit)}${demoPart}).`
+  // NO RATE, NO SENTENCE — the same refusal the PROHIBITED branch above makes,
+  // for a different reason. The prose is where a missing figure is likeliest to
+  // be quietly coerced: `usd(null)` would print "$0" inside a fluent sentence,
+  // which reads as a finding rather than a fault. The reason is stated instead,
+  // and the demolition figure still prints when there is one, because it does
+  // not pass through construction value.
+  const cost =
+    c.costs.total == null || c.costs.hard == null || c.costs.soft == null || c.costs.permit == null
+      ? ` No construction cost is estimated${
+          c.costUnavailable ? `: ${c.costUnavailable.reason}` : ' for this project type.'
+        }${c.costs.demolition > 0 ? ` Demolition is estimated at ${usd(c.costs.demolition)}.` : ''}`
+      : ` Estimated cost is ${usd(c.costs.total)} (hard ${usd(c.costs.hard)}, soft ${usd(c.costs.soft)}, permitting ${usd(c.costs.permit)}${demoPart}).`
 
   // Demolition honesty. Prefer recorded building area, else estimate from units.
   const existingSf = parcel.existing?.buildingAreaSqFt ?? (parcel.existing?.units ?? 0) * avgUnitGrossSqFt

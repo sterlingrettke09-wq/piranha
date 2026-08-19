@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { estimateCost } from './cost'
-import { costPerSqFtByUse, cityCostIndex, heightCostFactor, MIXED_RESIDENTIAL_SHARE } from '../../../src/config/estimates'
+import { costPerSqFtByUse, cityCostIndex, heightCostFactor } from '../../../src/config/estimates'
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { ParcelInfo } from '../../../src/types/parcel'
 import type { Feasibility } from './feasibility'
@@ -32,14 +32,14 @@ const variance: Feasibility = { overall: 'NEEDS_RELIEF', checks: [], path: 'vari
 
 describe('estimateCost', () => {
   it('computes hard cost as gfa x $/sf for the use', () => {
-    expect(estimateCost(project, asOfRight).costs.hard).toBe(Math.round(10_000 * RES * IDX))
+    expect(estimateCost(project, asOfRight).costs.hard!).toBe(Math.round(10_000 * RES * IDX))
   })
 
   it('scales hard cost by the city construction index', () => {
-    const bos = estimateCost({ ...project, city: 'boston' }, asOfRight).costs.hard
-    const nyc = estimateCost({ ...project, city: 'nyc' }, asOfRight).costs.hard
-    const chi = estimateCost({ ...project, city: 'chicago' }, asOfRight).costs.hard
-    const dc = estimateCost({ ...project, city: 'dc' }, asOfRight).costs.hard
+    const bos = estimateCost({ ...project, city: 'boston' }, asOfRight).costs.hard!
+    const nyc = estimateCost({ ...project, city: 'nyc' }, asOfRight).costs.hard!
+    const chi = estimateCost({ ...project, city: 'chicago' }, asOfRight).costs.hard!
+    const dc = estimateCost({ ...project, city: 'dc' }, asOfRight).costs.hard!
     // Per the RSMeans City Cost Index: NYC > Chicago (unionized trades) > Boston,
     // and DC's construction is below the national average (cheap labor pool).
     expect(nyc).toBeGreaterThan(chi)
@@ -50,21 +50,21 @@ describe('estimateCost', () => {
   })
 
   it('applies a height premium to taller buildings', () => {
-    const low = estimateCost({ ...project, stories: 3 }, asOfRight).costs.hard
-    const high = estimateCost({ ...project, stories: 15 }, asOfRight).costs.hard
+    const low = estimateCost({ ...project, stories: 3 }, asOfRight).costs.hard!
+    const high = estimateCost({ ...project, stories: 15 }, asOfRight).costs.hard!
     expect(high).toBeGreaterThan(low)
     expect(high).toBe(Math.round(10000 * RES * IDX * heightCostFactor(15)))
   })
 
   it('computes soft cost as a fraction of hard', () => {
     const c = estimateCost(project, asOfRight).costs
-    expect(c.soft).toBe(Math.round(c.hard * 0.25))
+    expect(c.soft!).toBe(Math.round(c.hard! * 0.25))
   })
 
   it('total is hard + soft + permit', () => {
     const c = estimateCost(project, asOfRight).costs
     expect(c.demolition).toBe(0)
-    expect(c.total).toBe(c.hard + c.soft + c.permit + c.demolition)
+    expect(c.total!).toBe(c.hard! + c.soft! + c.permit! + c.demolition)
   })
 
   it('adds a demolition cost scaled to the existing building being torn down', () => {
@@ -72,16 +72,16 @@ describe('estimateCost', () => {
     const withDemo = estimateCost(project, asOfRight, { demolitionSqFt: 20000 })
     expect(noDemo.costs.demolition).toBe(0)
     expect(withDemo.costs.demolition).toBeGreaterThan(0)
-    expect(withDemo.costs.total).toBe(
-      withDemo.costs.hard + withDemo.costs.soft + withDemo.costs.permit + withDemo.costs.demolition,
+    expect(withDemo.costs.total!).toBe(
+      withDemo.costs.hard! + withDemo.costs.soft! + withDemo.costs.permit! + withDemo.costs.demolition,
     )
-    expect(withDemo.costs.total).toBeGreaterThan(noDemo.costs.total)
+    expect(withDemo.costs.total!).toBeGreaterThan(noDemo.costs.total!)
   })
 
   it('prices renovations & changes-of-use below an identical ground-up build', () => {
-    const base = estimateCost({ ...project, projectType: 'new' }, asOfRight).costs.hard
+    const base = estimateCost({ ...project, projectType: 'new' }, asOfRight).costs.hard!
     for (const pt of ['change_of_use', 'addition'] as const) {
-      const scoped = estimateCost({ ...project, projectType: pt }, asOfRight).costs.hard
+      const scoped = estimateCost({ ...project, projectType: pt }, asOfRight).costs.hard!
       expect(scoped).toBeLessThan(base)
     }
   })
@@ -89,15 +89,15 @@ describe('estimateCost', () => {
   it('prices an ADU at per-sf parity with new build (NOT a discount)', () => {
     // Terner Center: ADUs run ~$250/sf — equal-or-more than a house per sf,
     // because fixed costs (foundation, utilities, kitchen/bath) hit a tiny area.
-    const base = estimateCost({ ...project, projectType: 'new' }, asOfRight).costs.hard
-    const adu = estimateCost({ ...project, projectType: 'adu' }, asOfRight).costs.hard
+    const base = estimateCost({ ...project, projectType: 'new' }, asOfRight).costs.hard!
+    const adu = estimateCost({ ...project, projectType: 'adu' }, asOfRight).costs.hard!
     expect(adu).toBe(base)
   })
 
   it('adds a variance filing fee and a longer timeline on the variance path', () => {
     const aor = estimateCost(project, asOfRight)
     const v = estimateCost(project, variance)
-    expect(v.costs.permit).toBeGreaterThan(aor.costs.permit)
+    expect(v.costs.permit!).toBeGreaterThan(aor.costs.permit!)
     expect(v.timeline.months).toBeGreaterThan(aor.timeline.months)
     expect(v.timeline.path).toBe('variance')
   })
@@ -139,66 +139,78 @@ describe('impact fees per city', () => {
     estimateCost({ ...project, ...over }, asOfRight, feeOverlays ? { overlays: overlays(feeOverlays) } : {})
 
   it('Boston: commercial ≥50k sf pays linkage; smaller and residential do not', () => {
-    expect(at({ city: 'boston', use: 'commercial', gfa: 50_000 }).costs.impact).toBe(
+    expect(at({ city: 'boston', use: 'commercial', gfa: 50_000 }).costs.impact!).toBe(
       Math.round(23.09 * 50_000),
     )
-    expect(at({ city: 'boston', use: 'commercial', gfa: 49_999 }).costs.impact).toBe(0)
-    expect(at({ city: 'boston', use: 'residential', gfa: 80_000 }).costs.impact).toBe(0)
+    expect(at({ city: 'boston', use: 'commercial', gfa: 49_999 }).costs.impact!).toBe(0)
+    expect(at({ city: 'boston', use: 'residential', gfa: 80_000 }).costs.impact!).toBe(0)
   })
 
   it('LA: residential always pays the Medium-tier rate; nonres only at ≥15k sf', () => {
     // AHLF flattened to the published Medium market-area rate (eff. 7/1/2025):
     // residential $12.90/sf, nonresidential $5.16/sf.
-    expect(at({ city: 'la', use: 'residential', gfa: 10_000 }).costs.impact).toBe(Math.round(12.9 * 10_000))
-    expect(at({ city: 'la', use: 'commercial', gfa: 15_000 }).costs.impact).toBe(Math.round(5.16 * 15_000))
-    expect(at({ city: 'la', use: 'commercial', gfa: 14_999 }).costs.impact).toBe(0)
+    expect(at({ city: 'la', use: 'residential', gfa: 10_000 }).costs.impact!).toBe(Math.round(12.9 * 10_000))
+    expect(at({ city: 'la', use: 'commercial', gfa: 15_000 }).costs.impact!).toBe(Math.round(5.16 * 15_000))
+    expect(at({ city: 'la', use: 'commercial', gfa: 14_999 }).costs.impact!).toBe(0)
   })
 
   it('Denver: residential <10 units pays $5.12/sf; 10+ units pays none (inclusionary mandate); commercial varies by EHA area', () => {
     // Rates per the Denver CPD EHA schedule effective 7/1/2026 (annual CPI-U).
-    expect(at({ city: 'denver', use: 'residential', gfa: 8_000, units: 4 }).costs.impact).toBe(Math.round(5.12 * 8_000))
-    expect(at({ city: 'denver', use: 'residential', gfa: 80_000, units: 60 }).costs.impact).toBe(0)
+    expect(at({ city: 'denver', use: 'residential', gfa: 8_000, units: 4 }).costs.impact!).toBe(Math.round(5.12 * 8_000))
+    expect(at({ city: 'denver', use: 'residential', gfa: 80_000, units: 60 }).costs.impact!).toBe(0)
     // WO-5.6: units omitted → tier unknowable → informational note, not a charge.
     const unknown = at({ city: 'denver', use: 'residential', gfa: 8_000 })
-    expect(unknown.costs.impact).toBe(0)
+    expect(unknown.costs.impact!).toBe(0)
     expect(unknown.impactNote).toMatch(/unit count needed/)
-    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'High' }).costs.impact).toBe(Math.round(9.21 * 10_000))
-    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'Typical' }).costs.impact).toBe(Math.round(6.14 * 10_000))
+    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'High' }).costs.impact!).toBe(Math.round(9.21 * 10_000))
+    expect(at({ city: 'denver', use: 'commercial', gfa: 10_000 }, { feeArea: 'Typical' }).costs.impact!).toBe(Math.round(6.14 * 10_000))
   })
 
   it('Philadelphia: mandatory 1% Development Impact Tax on residential construction', () => {
     // Phila. Code Ch. 19-4400 — 1% of construction cost, residential only,
     // over $15,000 of value. Asserted as a RELATIONSHIP to hard cost so the
     // expectation survives future cost-index tuning.
-    const res = at({ city: 'philadelphia', use: 'residential', gfa: 6_000, units: 4 })
-    expect(res.costs.impact).toBe(Math.round(res.costs.hard * 0.01))
+    // ⚠️ FIXTURE CHANGED 2026-08-19, and the reason is the point. This asserted
+    // the relationship on a 4-unit project — which is 'multi', i.e. the 2–4 unit
+    // product that now has NO published rate, so there is no hard cost for a
+    // percentage to be a percentage OF. Moved to 8 units (apartment product,
+    // corroborated rate). The tax rule did not change; the fixture was sitting on
+    // a product the cost model can no longer price.
+    const res = at({ city: 'philadelphia', use: 'residential', gfa: 12_000, units: 8 })
+    expect(res.costs.impact!).toBe(Math.round(res.costs.hard! * 0.01))
     expect(res.impactNote).toMatch(/Development Impact Tax/i)
 
     // Non-residential is exempt.
     const com = at({ city: 'philadelphia', use: 'commercial', gfa: 40_000 })
-    expect(com.costs.impact).toBe(0)
+    expect(com.costs.impact!).toBe(0)
 
-    // Mixed-use is taxed on the residential share only, not the whole building.
+    // ⚠️ AND MIXED-USE NO LONGER PRODUCES A TAX FIGURE AT ALL, because it no
+    // longer produces a construction value. A percentage of an unknown value is
+    // unknown — NOT zero, which is what `?? 0` would have made it and what a
+    // reader would have taken as "Philadelphia levies nothing here".
     const mix = at({ city: 'philadelphia', use: 'mixed', gfa: 40_000, units: 30 })
-    expect(mix.costs.impact).toBe(Math.round(mix.costs.hard * MIXED_RESIDENTIAL_SHARE * 0.01))
+    expect(mix.costs.hard).toBeNull()
+    expect(mix.costs.impact, 'a percentage of an unknown value is unknown, not 0').toBeNull()
+    expect(mix.costs.total).toBeNull()
+    expect(mix.costUnavailable?.kind).toBe('unpriced')
 
     // Below the $15,000 construction-value floor, no tax.
     const tiny = at({ city: 'philadelphia', use: 'residential', gfa: 20 })
-    expect(tiny.costs.impact).toBe(0)
+    expect(tiny.costs.impact!).toBe(0)
   })
 
   it('Seattle and SF fees are informational (applied:false): note set, $0 in total', () => {
     const sea = at({ city: 'seattle', use: 'residential', gfa: 20_000 }, { feeArea: 'High Areas' })
-    expect(sea.costs.impact).toBe(0)
+    expect(sea.costs.impact!).toBe(0)
     expect(sea.impactNote).toMatch(/Seattle MHA/)
     const sf = at({ city: 'sf', use: 'commercial', gfa: 60_000 })
-    expect(sf.costs.impact).toBe(0)
+    expect(sf.costs.impact!).toBe(0)
     if (sf.impactNote) expect(sf.impactNote).toMatch(/not included/)
   })
 
   it('cities with no codified fee produce neither a charge nor a note', () => {
     const chi = at({ city: 'chicago', use: 'residential', gfa: 20_000 })
-    expect(chi.costs.impact).toBe(0)
+    expect(chi.costs.impact!).toBe(0)
     expect(chi.impactNote).toBeUndefined()
   })
 
@@ -222,14 +234,14 @@ describe('impact fees per city', () => {
       const failed = at(DEN, { unresolved: ['feeArea'] })
 
       // The measured control values, to the dollar.
-      expect(high.costs.impact).toBe(921_000)
-      expect(typical.costs.impact).toBe(614_000)
+      expect(high.costs.impact!).toBe(921_000)
+      expect(typical.costs.impact!).toBe(614_000)
 
       // The defect, stated as the assertion that would have failed: a failed
       // read must NOT produce the Typical charge.
-      expect(failed.costs.impact).not.toBe(typical.costs.impact)
-      expect(failed.costs.impact).toBe(0)
-      expect(failed.costs.total).toBe(typical.costs.total - 614_000)
+      expect(failed.costs.impact!).not.toBe(typical.costs.impact!)
+      expect(failed.costs.impact!).toBe(0)
+      expect(failed.costs.total!).toBe(typical.costs.total! - 614_000)
 
       // …and the gap is disclosed, naming both rates, with NO "roughly $X/sq ft"
       // beside it — that figure would re-publish the guess the label withdraws.
@@ -246,7 +258,7 @@ describe('impact fees per city', () => {
       // outside-the-mapped-areas case, not a failure. The dollars are
       // unchanged; only the label stops attributing "Typical" to the layer.
       const none = at(DEN, {})
-      expect(none.costs.impact).toBe(614_000)
+      expect(none.costs.impact!).toBe(614_000)
       expect(none.impactNote).toBeUndefined() // applied → in the total, no note
     })
 
@@ -257,7 +269,7 @@ describe('impact fees per city', () => {
       const highArea = at({ city: 'seattle', use: 'residential', gfa: 20_000 }, { feeArea: 'High Areas' })
       const failed = at({ city: 'seattle', use: 'residential', gfa: 20_000 }, { unresolved: ['feeArea'] })
       expect(highArea.impactNote).toMatch(/roughly \$45\/sq ft/)
-      expect(failed.costs.impact).toBe(0) // still out of the total
+      expect(failed.costs.impact!).toBe(0) // still out of the total
       expect(failed.impactNote).not.toMatch(/roughly \$28\/sq ft/)
       expect(failed.impactNote).toMatch(/didn’t answer/)
       expect(failed.impactNote).toMatch(/\$10\.78–\$50\.46/)
@@ -268,9 +280,9 @@ describe('impact fees per city', () => {
       // unresolved must not become a general "charge nothing" switch.
       const a = at({ city: 'boston', use: 'commercial', gfa: 60_000 })
       const b = at({ city: 'boston', use: 'commercial', gfa: 60_000 }, { unresolved: ['feeArea'] })
-      expect(a.costs.impact).toBe(Math.round(23.09 * 60_000))
-      expect(b.costs.impact).toBe(a.costs.impact)
-      expect(b.costs.total).toBe(a.costs.total)
+      expect(a.costs.impact!).toBe(Math.round(23.09 * 60_000))
+      expect(b.costs.impact!).toBe(a.costs.impact!)
+      expect(b.costs.total!).toBe(a.costs.total!)
     })
   })
 })

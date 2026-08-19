@@ -1,9 +1,9 @@
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { Feasibility } from './feasibility'
 import type { ParcelInfo } from '../../../src/types/parcel'
-import { impactFee, feeAreaRead, MIXED_RESIDENTIAL_SHARE, constructionTax, CONSTRUCTION_TAX_MIN_VALUE } from '../../../src/config/estimates'
+import { impactFee, feeAreaRead, MIXED_RESIDENTIAL_SHARE, constructionTax, CONSTRUCTION_TAX_MIN_VALUE, costRateFor, type CostProduct, costProductFor } from '../../../src/config/estimates'
+import { buildingTier } from './timeline'
 import {
-  costPerSqFtByUse,
   cityCostIndex,
   heightCostFactor,
   softCostPct,
@@ -16,8 +16,32 @@ import {
   projectFactor,
 } from './assumptions'
 
+/** Why a construction cost could not be produced. Two states, and they are NOT
+ *  the same fact: one is a product no published source prices yet, the other is a
+ *  quantity nobody publishes at all. They must not share a sentence (rule 5). */
+export interface CostUnavailable {
+  product: CostProduct
+  kind: 'unsourced' | 'unpriced'
+  reason: string
+}
+
 export interface CostEstimate {
-  costs: { hard: number; soft: number; permit: number; demolition: number; impact: number; total: number; currency: 'USD' }
+  /** NULLABLE SINCE 2026-08-19. Four of these depend on construction value, and
+   *  when the rate for a product is unavailable they cannot be produced. They are
+   *  null rather than 0 — a zero would render as free. `demolition` and the
+   *  linkage half of `impact` survive, because both are per-square-foot and do
+   *  not pass through the construction value at all. */
+  costs: {
+    hard: number | null
+    soft: number | null
+    permit: number | null
+    demolition: number
+    impact: number | null
+    total: number | null
+    currency: 'USD'
+  }
+  /** Present ONLY when the costs above are null, and says which product and why. */
+  costUnavailable?: CostUnavailable
   timeline: { months: number; path: Feasibility['path'] }
   /** A linkage/impact fee we can't bake in (uncheckable trigger) — surfaced as a note. */
   impactNote?: string
@@ -48,10 +72,18 @@ export function estimateCost(
   // construction. Scale by the same project-scope factor the timeline uses, so
   // cost and schedule stay consistent. (new = 1.0.)
   const scope = projectFactor[project.projectType ?? 'new'] ?? 1
-  const hard = Math.round(
-    project.gfa * costPerSqFtByUse[project.use] * cityIdx * heightCostFactor(stories) * scope,
-  )
-  const soft = Math.round(hard * softCostPct)
+
+  // THE RATE IS KEYED BY PRODUCT, NOT BY USE. `use` cannot tell a detached house
+  // from a mid-rise, and every source that could price either is organised by
+  // exactly that distinction — see the defect note in estimates.ts, where a
+  // detached house was resolving to an apartment-validated rate.
+  const tier = project.use === 'residential' ? buildingTier(project) : null
+  const rate = costRateFor(project.use, tier)
+  const hard =
+    rate.kind === 'rate'
+      ? Math.round(project.gfa * rate.perSqFt * cityIdx * heightCostFactor(stories) * scope)
+      : null
+  const soft = hard == null ? null : Math.round(hard * softCostPct)
   const demoSf = opts.demolitionSqFt ?? 0
   // Demo rate scales with size: small/residential teardowns run ~$10/sf; large
   // concrete/steel structures ~$18/sf (phased demo, hauling). Linearly
@@ -63,9 +95,15 @@ export function estimateCost(
     : demoSf >= 20000 ? 18
     : 10 + ((demoSf - 5000) / 15000) * 8
   const demolition = demoSf > 0 ? Math.round(demoSf * demoRate * cityIdx) : 0
-  const constructionValue = hard
-  let permit = Math.round(PERMIT_BASE_FEE + (constructionValue / 1000) * PERMIT_RATE_PER_1000)
-  if (feasibility.path === 'variance') permit += VARIANCE_FILING_FEE
+  // Permit fee is a function of CONSTRUCTION VALUE, so it goes with `hard`. The
+  // flat base fee is knowable without it, but publishing $100 as "the permit fee"
+  // when the rate component is missing would understate by orders of magnitude —
+  // a partial sum presented as a total is the failure this whole change is about.
+  let permit: number | null = null
+  if (hard != null) {
+    permit = Math.round(PERMIT_BASE_FEE + (hard / 1000) * PERMIT_RATE_PER_1000)
+    if (feasibility.path === 'variance') permit += VARIANCE_FILING_FEE
+  }
   // Affordable-housing / linkage fee. Baked into the total only when we can verify
   // the trigger (use + size); otherwise surfaced as an informational note.
   const fee = impactFee(
@@ -86,10 +124,19 @@ export function estimateCost(
   // the tax is residential-only, so it applies to the residential share.
   const tax = constructionTax(project.city, project.use)
   const taxMin = CONSTRUCTION_TAX_MIN_VALUE[project.city] ?? 0
-  const taxableValue = project.use === 'mixed' ? Math.round(hard * MIXED_RESIDENTIAL_SHARE) : hard
+  const taxableValue =
+    hard == null ? null : project.use === 'mixed' ? Math.round(hard * MIXED_RESIDENTIAL_SHARE) : hard
+  // A percentage-of-construction-value tax cannot be computed without the value.
+  // Where a city levies one and the value is missing, `impact` is null rather
+  // than "just the linkage" — that would silently drop a real charge from a line
+  // the reader reads as complete. Where no such tax applies, linkage stands
+  // alone and is fully computable, because it is per square foot.
   const constructionTaxAmt =
-    tax && taxableValue > taxMin ? Math.round(taxableValue * tax.pct) : 0
-  const impact = linkage + constructionTaxAmt
+    tax == null ? 0
+    : taxableValue == null ? null
+    : taxableValue > taxMin ? Math.round(taxableValue * tax.pct)
+    : 0
+  const impact = constructionTaxAmt == null ? null : linkage + constructionTaxAmt
   const notes: string[] = []
   // A fee whose RATE could not be resolved prints its label alone. Printing
   // "roughly $6.14/sq ft" beside a label that says the rate is unknown would
@@ -101,12 +148,27 @@ export function estimateCost(
         : `${fee.label}: roughly $${fee.perSqFt}/sq ft — not included in the total above.`,
     )
   }
-  if (constructionTaxAmt > 0 && tax) notes.push(`Includes the ${tax.label}.`)
+  if (constructionTaxAmt != null && constructionTaxAmt > 0 && tax) notes.push(`Includes the ${tax.label}.`)
   const impactNote = notes.length > 0 ? notes.join(' ') : undefined
-  const total = hard + soft + permit + demolition + impact
+  // EVERY ADDEND CHECKED, not `?? 0`. Coercing a missing figure to zero is how a
+  // partial sum becomes a confident total — the exact failure this change exists
+  // to prevent. If any component is unknown the total is unknown.
+  const total =
+    hard == null || soft == null || permit == null || impact == null
+      ? null
+      : hard + soft + permit + demolition + impact
   return {
     costs: { hard, soft, permit, demolition, impact, total, currency: 'USD' },
     timeline: { months: timelineMonthsByPath[feasibility.path], path: feasibility.path },
     impactNote,
+    ...(rate.kind !== 'rate'
+      ? {
+          costUnavailable: {
+            product: costProductFor(project.use, tier),
+            kind: rate.kind,
+            reason: rate.reason,
+          },
+        }
+      : {}),
   }
 }

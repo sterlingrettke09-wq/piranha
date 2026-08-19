@@ -29,7 +29,10 @@ export function KeyMetrics({ costs, timeline, hurdles, lotSqFt, indeterminate }:
   // the static render. Reduced motion → instant (useCountUp returns the target).
   const hasMonths = timeline.months > 0
   const monthsAreFloor = hasMonths && excludedMonths > 0
-  const costValue = useCountUp(costs.total)
+  // A null total must not animate to 0 — a count-up landing on "$0" is the most
+  // confident-looking wrong figure this component could produce.
+  const hasCost = costs.total != null
+  const costValue = useCountUp(costs.total ?? 0)
   const monthsValue = useCountUp(hasMonths ? timeline.months : 0)
   const hurdleValue = useCountUp(counted.length)
   const lotValue = useCountUp(lotSqFt ?? 0)
@@ -45,8 +48,8 @@ export function KeyMetrics({ costs, timeline, hurdles, lotSqFt, indeterminate }:
 
   const metrics = [
     {
-      figure: formatEstimate(costValue),
-      label: 'Construction cost, excludes land',
+      figure: hasCost ? formatEstimate(costValue) : 'N/A',
+      label: hasCost ? 'Construction cost, excludes land' : 'Construction cost not estimated',
     },
     {
       figure: hasMonths ? `${Math.round(monthsValue)}` : 'N/A',

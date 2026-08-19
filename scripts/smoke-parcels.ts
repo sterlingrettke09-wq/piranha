@@ -421,9 +421,13 @@ export interface RunRow {
   gfa?: number
   units?: number | null
   use?: string
-  costTotal?: number
-  costHard?: number
-  costImpact?: number
+  // NULL, not undefined: the sampler must be able to tell "this parcel produced
+  // no construction cost because no rate covers its product" from "this field
+  // was never populated". Collapsing them would make a coverage gap look like a
+  // sampler bug, or worse, the reverse.
+  costTotal?: number | null
+  costHard?: number | null
+  costImpact?: number | null
   timelineMonths?: number
   timelinePath?: string
   hurdleCount?: number

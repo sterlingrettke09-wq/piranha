@@ -97,7 +97,19 @@ export default function Compare() {
           <span className="text-piranha-charcoal/45">not on file</span>
         ),
     },
-    { label: 'Construction cost', render: (d) => <span className="tabular-nums">{usd(d.costs.total)}</span> },
+    {
+      label: 'Construction cost',
+      // A city whose product has no published rate shows "Not estimated", never
+      // a blank. In a side-by-side an empty cell reads as cheaper (the
+      // absence-renders-as-a-finding shape this table already guards against
+      // for hurdles and permits).
+      render: (d) =>
+        d.costs.total == null ? (
+          <span className="text-piranha-charcoal/45">Not estimated</span>
+        ) : (
+          <span className="tabular-nums">{usd(d.costs.total)}</span>
+        ),
+    },
     {
       // Some cities carry a measured filing→issuance permit leg from their own
       // open-data portal; the rest are estimate-only. Unmarked, the difference

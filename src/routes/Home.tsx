@@ -88,7 +88,7 @@ function RecentReportsRow() {
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-piranha-charcoal/60">
                   <span className="font-medium text-piranha-burgundy">{VERDICT[r.verdict].short}</span>
                   <span aria-hidden="true">·</span>
-                  <span>{formatEstimate(r.totalCost)}</span>
+                  <span>{r.totalCost == null ? 'Not estimated' : formatEstimate(r.totalCost)}</span>
                   <span aria-hidden="true">·</span>
                   <span className="text-piranha-charcoal/40">{relativeTime(r.ts)}</span>
                 </div>
