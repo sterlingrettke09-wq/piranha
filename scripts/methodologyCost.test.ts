@@ -34,9 +34,16 @@ describe('the cost table is generated from the product constant, not a stale one
   it('every product state has copy explaining it', () => {
     // Four states, four explanations. A table cell reading "Not priced" with
     // nothing saying what that means is a dash with extra steps.
-    for (const phrase of ['Corroborated', 'Provisional', 'Not sourced', 'Not priced']) {
+    // 'Provisional' left the page 2026-08-19 when NAHB sourced the detached rate.
+    // In its place the page states that detached is a POINT, not a range —
+    // because the survey publishes an average and no spread, and inventing a
+    // band around a point is the thing the range was supposed to avoid.
+    for (const phrase of ['Corroborated', 'Not sourced', 'Not priced']) {
       expect(PAGE, phrase).toContain(phrase)
     }
+    expect(PAGE, 'the page must say detached is a single figure, not a range').toMatch(
+      /a single figure, not a range/i,
+    )
   })
 
   it('and the page states that no cost is shown rather than a zero', () => {

@@ -282,6 +282,47 @@ const CUMMING =
 export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Object.freeze({
   // Its validated home: 340 was checked against Cumming's APARTMENT ranges, and
   // lands inside all nine metros at the 5–8 storey tier.
+  // ── APARTMENT RE-VALIDATED AGAINST CUMMING, 2026-08-19 ────────────────────
+  // Asked for once the key was corrected, and the answer has three parts.
+  //
+  // 1. THE ARITHMETIC DID NOT CHANGE; THE VALIDITY DID. Comparing 340 to
+  //    Cumming's apartment ranges is the same comparison it always was — neither
+  //    number moved. What moved is what it licenses. Before the re-key, 340 also
+  //    priced detached houses and 2–4 unit buildings, so "inside Cumming's
+  //    APARTMENT range for 3 of 9 cities" said nothing whatsoever about
+  //    two-thirds of what the constant was used for. It now serves one product
+  //    and the check covers all of it. The corroboration got stronger by being
+  //    narrowed, without a figure moving — which is what re-keying was for.
+  //
+  // 2. ⚠️ BUT ITS SUPPORTING EXPLANATION IS CONTRADICTED BY THE OTHER SOURCE IN
+  //    THIS FILE. The note below explains 340 sitting BELOW Cumming's low bound
+  //    in 6 of 9 cities by observing that all nine land inside at the 5–8 storey
+  //    tier, and concludes "the residual low bias is a tier artifact, not a
+  //    base-rate error". That rests entirely on the 1.12 premium being real.
+  //
+  //    The RSMeans models quoted at the top of this file price
+  //      Apartment 1-3 Story   bare $146.52
+  //      Apartment 4-7 Story   bare $145.01
+  //    — taller is marginally CHEAPER, about −1%, against a modelled +12%. So
+  //    "all nine land inside at 1.12" is not evidence that 340 is correct. It is
+  //    equally consistent with 381 being correct and the premium being spurious.
+  //    Two sources, one file, opposite signs on the same question.
+  //
+  //    NO DIRECTION IS ASSERTED for either the rate or the premium (rule 1). What
+  //    is established is that one leg of the corroboration does not hold up.
+  //
+  // 3. ⚠️ AND THE CHECK CANNOT BE RE-RUN, because the per-city Cumming ranges
+  //    were never stored — only the conclusion drawn from them. That is
+  //    "corroboration is not provenance" made concrete: a claim recorded in a
+  //    form that cannot be re-examined, so re-validating it means re-obtaining
+  //    the source rather than re-reading the repo. STORE THE RANGES next time,
+  //    not the verdict.
+  //
+  //    Also unsettleable from the record: buildingTier puts 5+ units in
+  //    'apartment', so a five-unit two-storey walkup takes this rate at factor
+  //    1.00 — and nothing here says whether Cumming's apartment ranges describe
+  //    walkups or mid-rise. That is the same product-vs-key question one level
+  //    down from the one just fixed.
   apartment: { kind: 'rate', perSqFt: 340, provenance: 'corroborated', source: CUMMING },
   office: { kind: 'rate', perSqFt: 390, provenance: 'corroborated', source: `${CUMMING} — inside the office Shell & Core range for 7 of 9, and between S&C and S&C+TI in all nine` },
   institutional: { kind: 'rate', perSqFt: 450, provenance: 'corroborated', source: `${CUMMING} — inside the K-12 range in all nine; hospitals run far higher and are a known limitation of one bucket` },
@@ -322,6 +363,34 @@ export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Obj
   // Derived from published figures, all four cited above and all from one table,
   // so this is a derivation with every input sourced rather than a composite with
   // one (rule 3).
+  // ── STEP 5: VALIDATED AGAINST PERMIT-DECLARED VALUATIONS, 2026-08-19 ──────
+  // An outside measurement, because two published sources agreeing is still two
+  // documents (rule 9). LA's building-permit feed is the only one of the six
+  // permit datasets read by this project that carries BOTH a declared valuation
+  // and a floor area — Austin, Seattle and SF have one or neither.
+  //
+  //   data.lacity.org pi9x-tg5x, permit_type='Bldg-New',
+  //   use_desc='Dwelling - Single Family', issued 2024-01-01 onward, n=3,344
+  //     p25 $111/sf   median $138/sf   p75 $185/sf   (as declared, in LA)
+  //   ÷ LA cityCostIndex 1.12 →
+  //     p25  $99/sf   median $123/sf   p75 $165/sf   (national-equivalent)
+  //
+  // $152 sits INSIDE that band and ABOVE its median.
+  //
+  // ⚠️ THE DIRECTION IS STATED AND NOT CORRECTED FOR (rule 7). Permit valuations
+  // are declared by the applicant for fee assessment and are widely understood to
+  // understate actual construction cost; the magnitude of that understatement is
+  // not something this source can tell us. So the median is a FLOOR, not an
+  // estimate, and this check can only bound from BELOW. It cannot confirm $152 —
+  // it can only fail it, and it does not.
+  //
+  // WHAT IT DOES SETTLE is the figure it replaced. At 340 national, LA detached
+  // resolved to $381/sf against a declared p75 of $185 — more than double the
+  // 75th percentile of what LA builders themselves declare. A rate above the p75
+  // of its own city's declarations is not a defensible estimate in any direction.
+  //
+  // Limits: one city, and a high-index one. A second city with both fields would
+  // strengthen it; none of the other five feeds has both.
   detached: {
     kind: 'rate',
     perSqFt: 152,

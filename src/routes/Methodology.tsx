@@ -381,10 +381,11 @@ export default function Methodology() {
                 Agreement is not the same as derivation, so these are still estimates.
               </li>
               <li>
-                <span className="font-medium text-piranha-charcoal">Provisional</span> — carried
-                over from an earlier rate that was checked against apartment buildings, not detached
-                ones. A detached house has no lift core, shared corridor or podium, so this figure is
-                more likely high than low. We publish it labelled rather than quietly.
+                <span className="font-medium text-piranha-charcoal">A single figure, not a range</span>{' '}
+                — the detached rate comes from a national builder survey that publishes an average
+                and no spread, so we show the average rather than invent a band around it. Where a
+                published range exists for a building type we will show one; we would rather give
+                you one honest number than two invented edges.
               </li>
               <li>
                 <span className="font-medium text-piranha-charcoal">Not sourced</span> — no
