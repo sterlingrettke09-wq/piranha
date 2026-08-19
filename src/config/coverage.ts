@@ -79,7 +79,23 @@ export const DIMENSION_LABELS: Record<CoverageDimension, { label: string; means:
   },
   parking: { label: 'Parking rule', means: 'the parking ordinance was read, and the rule is stated in the city’s own words' },
   hurdles: { label: 'City-specific hurdles', means: 'city-specific approvals encoded beyond the generic floor' },
-  cost: { label: 'Cost index', means: 'RSMeans city cost index, matched by ZIP group' },
+  // ⚠️ THIS COLUMN MEASURES THE MULTIPLIER, NOT THE RATE, and after 2026-08-19
+  // the difference is load-bearing. `isCovered(city, 'cost')` asks whether a
+  // location factor exists for the city — which is unchanged and still true
+  // everywhere it was. It does NOT mean a construction cost can be produced for a
+  // parcel there: the base rate is keyed by BUILDING TYPE, and two of the six
+  // types (2–4 unit, mixed-use) have no published rate in ANY city.
+  //
+  // So the product gap is invisible to this matrix by construction — the matrix
+  // is per-city and the gap is per-product. Rather than invent a per-city cell
+  // that would be identically empty for all 23 and read as a regression in each,
+  // the column says what it covers and /math states the per-type position in
+  // full. An absence has to render as an absence, but it has to render in the
+  // dimension it actually lives in.
+  cost: {
+    label: 'Cost index',
+    means: 'a city construction multiplier — NOT the base rate, which is keyed by building type and is unavailable for 2–4 unit and mixed-use everywhere',
+  },
   lifecycle: { label: 'Lifecycle months', means: 'a city-specific design-to-move-in duration' },
   permits: { label: 'Measured permit timing', means: 'empirical filing→issuance months from the city’s own permit records' },
   relief: { label: 'Relief grant rate', means: 'empirical board grant rate from the city’s own decision records' },

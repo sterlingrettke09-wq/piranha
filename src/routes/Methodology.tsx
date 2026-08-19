@@ -4,7 +4,6 @@ import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
 import { CITIES, getCity } from '../config/cities'
-import type { Use } from '../types/analysis'
 import {
   COVERAGE_DIMENSIONS,
   DIMENSION_LABELS,
@@ -20,7 +19,8 @@ import {
 } from '../config/envelopeSample'
 import { CITY_CLAIMS } from '../config/coverageClaim'
 import {
-  costPerSqFtByUse,
+  costPerSqFtByProduct,
+  type CostProduct,
   cityCostIndex,
   heightFactorTiers,
   lifecycleMonths,
@@ -251,14 +251,20 @@ export default function Methodology() {
   // All tables below are generated from the live engine constants, so they can
   // never drift from what the analysis actually computes (or from new cities).
   const cityOrder = Object.keys(cityCostIndex).sort((a, b) => cityCostIndex[b] - cityCostIndex[a])
-  const useRows: [string, string][] = (
+  const useRows: [string, string, string][] = (
     [
-      ['Residential', 'residential'],
-      ['Mixed-use', 'mixed'],
-      ['Commercial', 'commercial'],
+      ['Detached house', 'detached'],
+      ['2–4 unit', 'small-multi'],
+      ['Apartment (5+ units)', 'apartment'],
+      ['Office / commercial', 'office'],
       ['Institutional', 'institutional'],
-    ] as [string, Use][]
-  ).map(([label, key]) => [label, `$${costPerSqFtByUse[key]}`])
+      ['Mixed-use', 'mixed'],
+    ] as [string, CostProduct][]
+  ).map(([label, key]) => {
+    const r = costPerSqFtByProduct[key]
+    if (r.kind !== 'rate') return [label, r.kind === 'unsourced' ? 'Not sourced' : 'Not priced', '—']
+    return [label, `$${r.perSqFt}`, r.provenance === 'corroborated' ? 'Corroborated' : 'Provisional']
+  })
   const cityIndexRows: (string | number)[][] = cityOrder.map((s) => [getCity(s).name, cityCostIndex[s].toFixed(2)])
   const heightRows: (string | number)[][] = heightFactorTiers.map((t) => [t.label, t.factor.toFixed(2)])
   const timelineRows: (string | number)[][] = cityOrder
@@ -344,12 +350,12 @@ export default function Methodology() {
 
           <Section n="03" title="Cost">
             <p>
-              Hard cost is your gross floor area times a per-square-foot rate for the use, times a
-              city construction index. Soft costs are a share of hard cost, and permitting is a
+              Hard cost is your gross floor area times a per-square-foot rate for the building type,
+              times a city construction index. Soft costs are a share of hard cost, and permitting is a
               filing fee plus a rate on construction value.
             </p>
             <p className="rounded-xl bg-piranha-charcoal/[0.04] px-5 py-3 font-mono text-sm text-piranha-charcoal/80">
-              hard = area &times; rate(use) &times; city index &times; height factor<br />
+              hard = area &times; rate(building type) &times; city index &times; height factor<br />
               soft = {softPct}% of hard<br />
               permit = ${PERMIT_BASE_FEE} + ${PERMIT_RATE_PER_1000} per $1,000 of hard cost (+${VARIANCE_FILING_FEE} if relief is required)<br />
               total = hard + soft + permit
@@ -358,14 +364,46 @@ export default function Methodology() {
               This is construction cost. It does not include land or acquisition, which in the
               priciest markets often costs more than the building itself.
             </p>
-            <p className="pt-2 font-semibold text-piranha-charcoal">Base rate by use (U.S. national average)</p>
-            <p className="text-sm text-piranha-charcoal/70">
-              These base rates are internal estimates. We have not been able to verify where they
-              were derived from, so we do not attribute them to a published cost source. Independent
-              industry figures for comparable buildings run higher than these for a market-grade
-              finish specification. Treat them as a rough floor, not a quote.
+            <p className="pt-2 font-semibold text-piranha-charcoal">
+              Base rate by building type (U.S. national average)
             </p>
-            <Table head={['Use', '$ / sq ft']} rows={useRows} />
+            <p className="text-sm text-piranha-charcoal/70">
+              Rates are stated by building type rather than by use, because that is how published
+              cost sources are organised — and because a detached house and a mid-rise apartment are
+              not the same product. Each row says how far we can stand behind it.
+            </p>
+            <Table head={['Building type', '$ / sq ft', 'Basis']} rows={useRows} />
+            <ul className="space-y-2 text-sm text-piranha-charcoal/70">
+              <li>
+                <span className="font-medium text-piranha-charcoal">Corroborated</span> — checked
+                against an independent published source for comparable buildings, scope-matched to
+                exclude land, professional fees, permits, furnishings, soft costs and sitework.
+                Agreement is not the same as derivation, so these are still estimates.
+              </li>
+              <li>
+                <span className="font-medium text-piranha-charcoal">Provisional</span> — carried
+                over from an earlier rate that was checked against apartment buildings, not detached
+                ones. A detached house has no lift core, shared corridor or podium, so this figure is
+                more likely high than low. We publish it labelled rather than quietly.
+              </li>
+              <li>
+                <span className="font-medium text-piranha-charcoal">Not sourced</span> — no
+                published source prices 2–4 unit construction at this scope. The surveys we can
+                stand behind measure detached houses; the market data measures apartment buildings.
+                A figure between the two would be interpolated, not measured, so we do not give one.
+              </li>
+              <li>
+                <span className="font-medium text-piranha-charcoal">Not priced</span> — mixed-use
+                has no published rate at all. The figure we used to show was a blend of the
+                residential and commercial rates rather than a measurement of anything, so we
+                withdrew it rather than keep averaging two numbers into a third.
+              </li>
+            </ul>
+            <p className="rounded-xl border border-piranha-burgundy/20 bg-piranha-burgundy/[0.04] px-5 py-3 text-sm text-piranha-charcoal/80">
+              Where a rate is not sourced or not priced, no construction cost is shown at all — not
+              a zero and not a blank. The schedule, the approvals and any demolition or fee figures
+              are unaffected, because none of them is calculated from construction cost.
+            </p>
             <p className="pt-2 font-semibold text-piranha-charcoal">City construction index</p>
             <p>
               Hard construction costs run higher in some metros than others. We scale the base rate
