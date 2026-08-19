@@ -1,5 +1,6 @@
 import type { ParcelInfo } from '../../../src/types/parcel'
 import type { AnalysisInput, Hurdle } from '../../../src/types/analysis'
+import { aduAuthorityFor, summariseAdu } from './zoning/adu'
 import { PARKING_RULES } from '../../../src/config/parkingRules'
 // Reused, never re-implemented. Both of these normalise a hand-maintained GIS
 // string whose edge cases were measured in the zoning modules (Milwaukee keeps
@@ -771,12 +772,35 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
 
   // ---- Project-type-specific requirements (apply in every city). ----
   if (project.projectType === 'adu') {
-    hurdles.push({
-      category: 'review',
-      label: 'ADU-specific rules',
-      status: 'likely',
-      note: 'Accessory dwelling units have their own size caps, owner-occupancy, and parking rules that vary by city. Confirm the local ADU ordinance.',
-    })
+    // ⚠️ THE FIRST HURDLE IN THIS FILE WHOSE BINDING SOURCE MAY SIT ABOVE THE
+    // CITY. For California and Washington the legislature has set floors the
+    // municipality cannot go below, so "confirm the local ordinance" — which is
+    // what this said before — sends the reader to the wrong instrument.
+    //
+    // The state figures are FLOORS, not the envelope: the city may allow more.
+    // `zoning/adu.ts` carries that distinction and the status reflects it — a
+    // ministerial state right is not the same kind of obstacle as an unread
+    // local ordinance, and grading them alike would be the rule 5 collapse.
+    const adu = aduAuthorityFor(project.city)
+    hurdles.push(
+      adu.kind === 'not-established'
+        ? {
+            category: 'review',
+            label: 'ADU-specific rules',
+            status: 'likely',
+            note: `${adu.detail} Accessory dwelling units generally carry their own size caps, owner-occupancy and parking rules — confirm the local ADU ordinance before relying on the envelope above.`,
+          }
+        : {
+            category: 'review',
+            label: `ADU rules — ${adu.kind === 'state-floor' ? `${adu.state} state law` : 'local ordinance'}`,
+            // `info`, not `likely`, where the state mandates MINISTERIAL
+            // approval: there is no discretionary review to clear, so it is an
+            // entitlement rather than an obstacle. Grading it as a likely hurdle
+            // would overstate the bar in a leg that exists to count real ones.
+            status: adu.kind === 'state-floor' ? 'info' : 'likely',
+            note: `${summariseAdu(adu)} ${adu.protections.join(' ')} Source: ${adu.citation}; read ${adu.readOn}.`,
+          },
+    )
   } else if (project.projectType === 'change_of_use') {
     hurdles.push({
       category: 'review',

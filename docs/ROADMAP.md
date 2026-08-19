@@ -321,6 +321,76 @@ decision from un-pinning a year, and one of them is named "beta".
 
 ---
 
+## ADU — DONE 2026-08-19, five cities read, eighteen declared unread
+
+`netlify/functions/lib/zoning/adu.ts`, wired into the ADU hurdle.
+
+### Both preconditions, answered by looking
+
+**What already existed:** almost nothing. Only Phoenix mentions ADUs, and only as
+a lot-coverage *bonus* ("an additional 5%/10% permitted for accessory dwelling
+units") plus a 30 ft accessory-structure height. No city carried an ADU rule set.
+Different from `heightUnconstrained`, where the fact was fully established in
+three modules and merely had nowhere to go.
+
+**Which instrument binds, per city.** Piranha has 4 cities in California (LA, SF,
+San Jose, San Diego) and 1 in Washington (Seattle). Oregon and Montana preempt too
+but have no Piranha city. Both statutes were read from the legislature's own text:
+
+| | source | read |
+|---|---|---|
+| California | Gov. Code §§ 66321, 66323 | 2026-08-19 |
+| Washington | RCW 36.70A.681 | 2026-08-19 |
+
+**⚠️ The California chapter was RECODIFIED.** ADU law moved out of Gov. Code
+§ 65852.2 into Chapter 13 (§ 66310–66342), *added by Stats. 2024, Ch. 7, Sec. 20*,
+with § 66321 further amended by SB 543 effective 2026-01-01. Citing § 65852.2
+would have looked right and pointed at a repealed provision — this is exactly why
+the citation was read off the live page rather than recalled.
+
+### ⚠️ A state floor is a floor, not an envelope
+
+The distinction this feature most easily gets wrong, because the numbers look like
+limits and are not. California forbids a city capping an ADU below 850 sq ft; it
+does not stop the city allowing 1,200. Reporting 850 as "the answer" **understates
+what is buildable**, and an understatement in the right units reads as
+authoritative (rule 18). So the figures are named as minimums, and what each city
+allows *on top* is a separate reading this tool has not done and does not claim.
+
+### Two things kept apart that a summary would have flattened
+
+- **850 and 800 are different provisions.** § 66321(b)(2) caps how low a city's
+  max-size ordinance may go. § 66321(b)(3) is stronger and narrower: an 800 sq ft
+  ADU with four-foot setbacks must be buildable **notwithstanding** lot coverage,
+  FAR, open space, front setbacks and minimum lot size. One constrains a number;
+  the other overrides a family of standards.
+- **Washington's `maxSetbackFt` is null**, and that is an answer. The statute sets
+  no figure — it forbids setbacks *more restrictive than the principal unit's*, a
+  different instrument. Borrowing California's 4 ft by analogy would be rule 4.
+
+### Caught by running it
+
+The summary picked the **largest** floor, which for California is the most
+*conditioned* one: 1,000 sq ft needs more than one bedroom, and 25 ft is attached-
+only and capped at the primary dwelling's own limit "whichever is LOWER". Leading
+with those reads as an entitlement when neither is unconditional — rule 6 in
+mirror image. Each dimension now carries exactly one `baseline` entry, and
+`summariseAdu` **throws** rather than falling back to the biggest.
+
+### Status in the hurdle leg
+
+A state-floor city gets `info`, not `likely`: where the state mandates
+**ministerial** approval there is no discretionary review to clear, so it is an
+entitlement rather than an obstacle. An unread city keeps `likely` and says nobody
+has looked.
+
+### Next for ADU
+
+The eighteen unread cities, and the local-ordinance layer for the five read ones —
+state floors say what a city cannot refuse, not what it allows.
+
+---
+
 ## Pro forma — DONE 2026-08-19, revenue-free by decision
 
 `src/lib/proForma.ts` + `ProForma.tsx` on the report. Total development cost,
