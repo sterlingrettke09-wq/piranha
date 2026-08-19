@@ -12,6 +12,8 @@ vi.mock('./store', () => ({
   }),
 }))
 
+const NOT_VERSIONED = { basis: 'not-versioned', year: null, layerUrl: null } as const
+
 const snap = (o: Partial<WatchSnapshot> = {}): WatchSnapshot => ({
   districtCode: 'R-2',
   maxHeightFt: 35,
@@ -109,7 +111,7 @@ describe('adding to a watchlist', () => {
     const { addWatch } = await import('./watchlist')
     const r = await addWatch('u1', {
       city: 'dallas', parcelId: 'MULTIPLE', address: '1 Main St',
-      snapshot: snap(), layerVintage: null,
+      snapshot: snap(), parcelVintage: NOT_VERSIONED,
     }, known)
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -121,7 +123,7 @@ describe('adding to a watchlist', () => {
   it('refuses an uncovered city rather than storing an unwatchable row', async () => {
     const { addWatch } = await import('./watchlist')
     const r = await addWatch('u1', {
-      city: 'atlantis', parcelId: '1', address: null, snapshot: snap(), layerVintage: null,
+      city: 'atlantis', parcelId: '1', address: null, snapshot: snap(), parcelVintage: NOT_VERSIONED,
     }, known)
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.reason).toBe('unknown-city')
@@ -131,7 +133,7 @@ describe('adding to a watchlist', () => {
     const { addWatch, readWatchlist } = await import('./watchlist')
     const r = await addWatch('u1', {
       city: 'denver', parcelId: '0123', address: '1 Main St',
-      snapshot: snap(), layerVintage: '2025',
+      snapshot: snap(), parcelVintage: { basis: 'resolved', year: '2025', layerUrl: 'https://x/2025' },
     }, known)
     expect(r.ok).toBe(true)
     if (r.ok) {
@@ -139,7 +141,7 @@ describe('adding to a watchlist', () => {
       // claiming otherwise would be a check that never ran reading as one that did.
       expect(r.row.resolution).toBe('unchecked')
       expect(r.row.lastCheckedAt).toBeNull()
-      expect(r.row.layerVintage).toBe('2025')
+      expect(r.row.parcelVintage).toEqual({ basis: 'resolved', year: '2025', layerUrl: 'https://x/2025' })
       expect(r.row.snapshot.maxFAR).toBe(0.5)
     }
     expect(await readWatchlist('u1')).toHaveLength(1)
@@ -147,7 +149,7 @@ describe('adding to a watchlist', () => {
 
   it('is idempotent on (city, parcelId) and does not duplicate the row', async () => {
     const { addWatch, readWatchlist } = await import('./watchlist')
-    const input = { city: 'denver', parcelId: '0123', address: null, snapshot: snap(), layerVintage: null }
+    const input = { city: 'denver', parcelId: '0123', address: null, snapshot: snap(), parcelVintage: NOT_VERSIONED }
     await addWatch('u1', input, known)
     const again = await addWatch('u1', { ...input, address: 'a different spelling' }, known)
     expect(again.ok && again.alreadyPresent).toBe(true)
@@ -156,7 +158,7 @@ describe('adding to a watchlist', () => {
 
   it('keeps the spec off the identity — same parcel, different plan, one row', async () => {
     const { addWatch, readWatchlist } = await import('./watchlist')
-    const base = { city: 'denver', parcelId: '0123', address: null, snapshot: snap(), layerVintage: null }
+    const base = { city: 'denver', parcelId: '0123', address: null, snapshot: snap(), parcelVintage: NOT_VERSIONED }
     await addWatch('u1', { ...base, spec: { use: 'residential', units: 4 } }, known)
     await addWatch('u1', { ...base, spec: { use: 'office', gfa: 9000 } }, known)
     expect(await readWatchlist('u1')).toHaveLength(1)
@@ -164,7 +166,7 @@ describe('adding to a watchlist', () => {
 
   it('separates users', async () => {
     const { addWatch, readWatchlist } = await import('./watchlist')
-    const base = { city: 'denver', parcelId: '0123', address: null, snapshot: snap(), layerVintage: null }
+    const base = { city: 'denver', parcelId: '0123', address: null, snapshot: snap(), parcelVintage: NOT_VERSIONED }
     await addWatch('u1', base, known)
     expect(await readWatchlist('u2')).toEqual([])
   })
@@ -174,15 +176,15 @@ describe('removing', () => {
   const known = () => true
   it('reports whether it removed anything, so a no-op is visible', async () => {
     const { addWatch, removeWatch } = await import('./watchlist')
-    await addWatch('u1', { city: 'denver', parcelId: '0123', address: null, snapshot: snap(), layerVintage: null }, known)
+    await addWatch('u1', { city: 'denver', parcelId: '0123', address: null, snapshot: snap(), parcelVintage: NOT_VERSIONED }, known)
     expect(await removeWatch('u1', 'denver', '0123')).toBe(true)
     expect(await removeWatch('u1', 'denver', '0123')).toBe(false)
   })
 
   it('does not remove the same id in another city', async () => {
     const { addWatch, removeWatch, readWatchlist } = await import('./watchlist')
-    await addWatch('u1', { city: 'denver', parcelId: '9', address: null, snapshot: snap(), layerVintage: null }, known)
-    await addWatch('u1', { city: 'dallas', parcelId: '9', address: null, snapshot: snap(), layerVintage: null }, known)
+    await addWatch('u1', { city: 'denver', parcelId: '9', address: null, snapshot: snap(), parcelVintage: NOT_VERSIONED }, known)
+    await addWatch('u1', { city: 'dallas', parcelId: '9', address: null, snapshot: snap(), parcelVintage: NOT_VERSIONED }, known)
     expect(await removeWatch('u1', 'denver', '9')).toBe(true)
     const left = await readWatchlist('u1')
     expect(left.map((r) => r.city)).toEqual(['dallas'])

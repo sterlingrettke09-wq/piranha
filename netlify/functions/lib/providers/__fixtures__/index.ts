@@ -73,7 +73,20 @@ export interface GeoJsonFeatureCollection {
  *  compiled, and every route payload in every provider test was unchecked at the
  *  top level. Narrowing it is what makes a mistyped envelope key a compile
  *  error rather than a mysterious 404 in one test. */
-export type RoutePayload = ArcgisFeatureSet | ArcgisErrorBody | GeoJsonFeatureCollection
+/** A service's own metadata envelope — the `?f=json` on a MapServer root, not a
+ *  /query. Added because Cook County's parcel LAYER LIST is now read at request
+ *  time to resolve the tax-year layer, so it is a route a provider really hits.
+ *  Kept as its own member rather than widening RoutePayload to `unknown`: the
+ *  point of this union is that a mistyped envelope is a compile error. */
+export interface ArcgisServiceMeta {
+  layers: Array<{ id: number; name: string }>
+}
+
+export type RoutePayload =
+  | ArcgisFeatureSet
+  | ArcgisErrorBody
+  | GeoJsonFeatureCollection
+  | ArcgisServiceMeta
 
 export type RouteValue =
   | RoutePayload

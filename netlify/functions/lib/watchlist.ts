@@ -48,11 +48,22 @@
 //      system can send, since a parcel leaving the fabric usually means it was
 //      subdivided or merged.
 //
-// `layerVintage` is stored for the same reason: without it, `not-in-layer` is
+// `parcelVintage` is stored for the same reason: without it, `not-in-layer` is
 // ambiguous between "this parcel was retired" and "we are reading last year's
-// layer", and those call for opposite responses.
+// layer", and those call for opposite responses. It carries the BASIS as well as
+// the year, so "we could not read the layer list and used the pinned floor" is
+// distinguishable from "this is the current year" — see providers/parcelVintage.ts.
+//
+// ── AND THE CHECKER MUST COMPARE VINTAGES BEFORE IT COMPARES SNAPSHOTS ──────
+//
+// When Cook County publishes `Parcel 2026`, every Chicago row stored before that
+// day was read against a different fabric. A parcel that stops resolving has
+// almost certainly been subdivided or merged — which is an alert worth sending —
+// but it is NOT the same event as its zoning changing, and diffing the snapshots
+// across a vintage boundary would report it as one.
 
 import { blobStore } from './store'
+import type { ParcelVintage } from './providers/parcelVintage'
 
 const STORE = 'watchlists'
 
@@ -89,9 +100,19 @@ export interface WatchRow {
   /** The answer when the row was created. Without a prior state there is no diff,
    *  so this is what makes the row alertable at all. */
   snapshot: WatchSnapshot
-  /** The parcel layer this id was resolved against, and its vintage where the
-   *  source is versioned (Cook County). Null where the layer states none. */
-  layerVintage: string | null
+  /** WHICH FABRIC THIS ROW WAS READ AGAINST — the whole state, not a year string.
+   *
+   *  The three bases are not interchangeable and the checker must branch on them:
+   *    `resolved`        a real tax year, read from the service's layer list.
+   *    `pinned-fallback` the layer list could not be read and the pinned floor
+   *                      was used. The row is usable and is NOT evidence that
+   *                      this year is current.
+   *    `not-versioned`   this city's fabric carries no year. An answer.
+   *
+   *  A bare year string could not express the middle case, and a row that cannot
+   *  tell "2025 is current" from "we could not check" would let a metadata blip
+   *  freeze a watch permanently with nothing recording it. */
+  parcelVintage: ParcelVintage
   /** Optional, and explicitly not part of the identity. */
   spec?: { use?: string; gfa?: number; units?: number }
   resolution: WatchResolution
@@ -138,7 +159,7 @@ export interface AddInput {
   parcelId: string | null | undefined
   address: string | null
   snapshot: WatchSnapshot
-  layerVintage: string | null
+  parcelVintage: ParcelVintage
   spec?: WatchRow['spec']
 }
 
@@ -174,7 +195,7 @@ export async function addWatch(
     addedAt: now.toISOString(),
     address: input.address,
     snapshot: input.snapshot,
-    layerVintage: input.layerVintage,
+    parcelVintage: input.parcelVintage,
     ...(input.spec ? { spec: input.spec } : {}),
     resolution: 'unchecked',
     lastCheckedAt: null,

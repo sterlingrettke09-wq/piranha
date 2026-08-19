@@ -1,6 +1,7 @@
 import type { JsonHandler } from './lib/handlerType'
 import { readSessionCookie, sessionFor, clearedSessionCookie } from './lib/auth'
 import { addWatch, readWatchlist, removeWatch, type AddInput } from './lib/watchlist'
+import { parcelVintageFor } from './lib/providers/parcelVintage'
 import { CITIES } from '../../src/config/cities'
 import { clientIp, originAllowed, rateLimited } from './lib/guard'
 
@@ -61,6 +62,14 @@ export const handler: JsonHandler = async (event) => {
     }
     const city = str(body.city)
     if (city == null) return json(400, { error: 'city required' })
+    // ⚠️ CITY VALIDATED BEFORE THE VINTAGE IS RESOLVED. parcelVintageFor throws
+    // on an undeclared slug — deliberately, so silence cannot read as "no vintage
+    // applies" — which meant an unknown city produced a 500 instead of the
+    // `unknown-city` answer addWatch already had. The strictness was right; the
+    // order was wrong.
+    if (!knownCity(city)) {
+      return json(200, { ok: false, reason: 'unknown-city', detail: `${city} is not a covered city` })
+    }
 
     const existing = await readWatchlist(user.id)
     if (existing.length >= MAX_ROWS) {
@@ -76,7 +85,10 @@ export const handler: JsonHandler = async (event) => {
       city,
       parcelId: str(body.parcelId),
       address: str(body.address),
-      layerVintage: str(body.layerVintage),
+      // The vintage is the SERVER's answer about the parcel, not something a
+      // client may assert — a caller could otherwise store a row claiming it was
+      // read against a year nobody read it against. Resolved here.
+      parcelVintage: await parcelVintageFor(city),
       snapshot: {
         districtCode: str(snapshot.districtCode),
         maxHeightFt: num(snapshot.maxHeightFt),

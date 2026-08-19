@@ -9,11 +9,17 @@ import { readRequired, requestDeadline, upstreamUnavailable } from '../requiredU
 import { cityLimitsGate, cityLimitsSource, fetchCityLimits, outsideCity } from '../jurisdiction'
 import { CHICAGO_BASE_FAR } from '../zoning/chicago'
 import { geocodedAddress } from '../address'
+import { parcelVintageFor } from './parcelVintage'
 
 const ZONING =
   'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/15'
-const PARCELS =
-  'https://gis.cookcountyil.gov/traditional/rest/services/parcelHistorical/MapServer/2025'
+// ⚠️ THE PARCEL LAYER IS RESOLVED, NOT TYPED. Cook County publishes the fabric as
+// one layer per tax year — twenty-six of them, 2000 through 2025 — so a hardcoded
+// `/2025` here was not a risk but a scheduled break: the day `Parcel 2026` is
+// published, every Chicago answer keeps reading the previous year and nothing
+// says so. `parcelVintage.ts` reads the service's own layer list and the year it
+// resolved travels on the answer, so a watchlist row records what it was read
+// from. See that file for why this did NOT move to `parcel_current_beta`.
 const HISTORIC =
   'https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/Zoning_update/MapServer/6' // Historic Districts (NAME).
 
@@ -82,6 +88,10 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
   // past Netlify's 10s ceiling, which the old 9s overrides did. The required
   // reads now share ONE deadline across the request as well.
   const deadline = requestDeadline()
+  // Resolved before the reads because it decides which layer they hit. Memoised
+  // per warm instance, so this is one extra request per instance, not per parcel.
+  const vintage = await parcelVintageFor('chicago')
+  const PARCELS = vintage.layerUrl ?? ''
   // REQUIRED reads go through readRequired; OPTIONAL ones keep allSettled, so
   // the two categories look different in the source. Read the contract at the
   // top of ../requiredUpstream.ts before moving a fetch between them.
@@ -161,6 +171,7 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
       }),
     },
     existing: { landUse: chicagoExistingUse(pf.attributes.AssessorBLDGclass) },
+    parcelVintage: vintage,
     sources: { zoning: ZONING, parcels: PARCELS, ...cityLimitsSource('chicago'), flood: ENDPOINTS.flood, historic: HISTORIC },
     fetchedAt: new Date().toISOString(),
   }

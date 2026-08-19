@@ -3,6 +3,7 @@ import { getChicagoParcelInfo } from './chicago'
 import { mockArcgisFetch, ARCGIS_ERROR_200 } from './__fixtures__'
 import { chicagoRoutesRM5, chicagoRoutesB32 } from './__fixtures__/chicago'
 import { resolveZoningLimits } from '../zoningLimits'
+import { resetVintageCache } from './parcelVintage'
 
 // Inside the Chicago bbox (the Loop).
 const LAT = 41.88
@@ -14,6 +15,9 @@ describe('getChicagoParcelInfo', () => {
     // address is the deterministic 'Selected location' fallback.
     vi.stubEnv('MAPBOX_TOKEN', '')
     vi.stubEnv('VITE_MAPBOX_TOKEN', '')
+    // The vintage resolution is memoised per warm instance, which is right in
+    // production and would leak one test's resolved layer into the next here.
+    resetVintageCache()
   })
   afterEach(() => {
     vi.restoreAllMocks()
@@ -79,7 +83,7 @@ describe('getChicagoParcelInfo', () => {
 
   it('returns UPSTREAM_ERROR 502 when the parcels dataset returns a 200 ArcGIS error body', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
-      mockArcgisFetch({ ...chicagoRoutesRM5, '/MapServer/2025/query': ARCGIS_ERROR_200 }),
+      mockArcgisFetch({ ...chicagoRoutesRM5, '/MapServer/24/query': ARCGIS_ERROR_200 }),
     )
     const res = await getChicagoParcelInfo(LAT, LNG)
     expect(res.ok).toBe(false)
@@ -90,7 +94,7 @@ describe('getChicagoParcelInfo', () => {
 
   it('returns NO_PARCEL 404 when the parcels dataset is empty (exact + buffered)', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
-      mockArcgisFetch({ ...chicagoRoutesRM5, '/MapServer/2025/query': { features: [] } }),
+      mockArcgisFetch({ ...chicagoRoutesRM5, '/MapServer/24/query': { features: [] } }),
     )
     const res = await getChicagoParcelInfo(LAT, LNG)
     expect(res.ok).toBe(false)

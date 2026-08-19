@@ -151,14 +151,73 @@ the single highest-value follow-up here, and it costs one command.
 The one real change across the whole zoning sweep: **Dallas gained `PD-1144`**, a
 new planned development. Exactly the change an alert should fire on.
 
+### ~~The Chicago vintage pin~~ — FIXED 2026-08-19
+
+`providers/chicago.ts` read `parcelHistorical/MapServer/2025`, a typed year. That
+was a scheduled break, not a risk: the day Cook County publishes `Parcel 2026`
+every Chicago answer keeps reading the previous year's parcels and nothing says
+so — and a watchlist checking a frozen year reports "no change" forever while
+looking like it works.
+
+The layer is now RESOLVED from the service's own layer list
+(`providers/parcelVintage.ts`), and the resolved year travels on the answer into
+`ParcelInfo.parcelVintage` and onto every stored watchlist row.
+
+Three things that were nearly wrong and are now pinned by tests:
+
+- **The layer id is not the year.** Cook County numbers 2000–2021 as ids 0–23
+  (with a `Parcels 2012A` in the middle) and only 2022–2025 happen to use the
+  year as the id. A resolver taking the largest *id* works today and picks the
+  wrong layer the moment id 24 becomes 2026. Resolution is by NAME.
+- **`Parcel History 2000-2023` also starts with "Parcel ".** It is a history
+  index, not a year's fabric, and is excluded by name rather than by hoping a max
+  never selects it.
+- **A failed layer-list read falls back to the pinned floor and says so.**
+  `basis: 'pinned-fallback'` is distinct from `'resolved'`, so a metadata blip can
+  never read as "this year is current" (rule 5). Cities whose fabric carries no
+  year answer `'not-versioned'` — an answer — and an undeclared city throws.
+
+`scripts/verify-parcel-vintage.ts` fails when the live newest is ahead of the
+floor, and its failure message says the part that gets forgotten: **every row
+stored before a rollover carries the old vintage, so the checker must compare
+vintages before it compares snapshots.** A parcel that stops resolving against a
+new fabric has been subdivided or merged — worth alerting on, and not the same
+event as its zoning changing.
+
+Deliberately NOT done: Chicago was not moved to Cook County's
+`parcel_current_beta` or `CookViewer3Parcels`, which exist and are not
+year-versioned. Both key on the **fourteen**-digit `PARID` against this layer's
+ten-digit `PIN10`, and their counts (1,872,370 and 1,865,097 vs 1,432,483) are
+consistent with the extra records being individual condominium units. That would
+change what a "parcel" IS and what a watchlist row identifies — a different
+decision from un-pinning a year, and one of them is named "beta".
+
 ### Next
 
-1. Re-observe the register (`--observe`) to turn 2-day verdicts into 12-day ones.
+1. **Re-observe the stability register.** One command, and it is the single
+   highest-value follow-up here — it turns 18 two-day verdicts into twelve-day
+   ones. **Due on or after 2026-08-26.**
+
+   ```
+   npx vite-node scripts/source-stability.ts --observe
+   ```
+
+   Re-run `npx vite-node scripts/parcel-weight.ts --counts` first if the zoning
+   rosters need a fresh vintage to compare against.
+
 2. The watchlist UI — sign-in, list, add/remove from a parcel report.
-3. The checker: re-resolve each row, `diffSnapshots`, and only for sources the
-   register calls diffable.
+3. The checker: re-resolve each row, compare VINTAGE first and then
+   `diffSnapshots`, and only for sources the register calls diffable.
 4. Delivery. Nothing is sent until 3 has been observed producing no false
    positives across at least one re-observation interval.
+
+### Recurring checks, so they do not get lost
+
+| check | command | when |
+|---|---|---|
+| stability register | `npx vite-node scripts/source-stability.ts --observe` | weekly; **next due 2026-08-26** |
+| Cook County tax-year rollover | `npx vite-node scripts/verify-parcel-vintage.ts` | monthly, and before the checker ships |
+| parser-domain sweep | `npx vite-node scripts/enumerate-parser-domains.ts` | when a parser changes |
 
 ---
 

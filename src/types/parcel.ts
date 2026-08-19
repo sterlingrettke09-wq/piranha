@@ -246,6 +246,23 @@ export interface ParcelInfo {
     assessedValueBasis?: string | null
   }
   sources: Record<string, string>
+  /** WHICH VINTAGE OF THE PARCEL FABRIC THIS ANSWER WAS READ AT.
+   *
+   *  Cook County publishes one parcel layer PER TAX YEAR — twenty-six of them —
+   *  so "the Chicago parcel layer" is not one thing, and a stored watchlist row
+   *  that cannot say which year it was resolved against cannot distinguish "this
+   *  parcel was subdivided" from "we are reading last year's fabric".
+   *
+   *  Optional on the type only because it is set by the providers that have been
+   *  wired to it; `netlify/functions/lib/providers/parcelVintage.ts` is the one
+   *  place that decides, and it answers `not-versioned` for cities whose fabric
+   *  carries no year rather than leaving the distinction to a missing field. */
+  parcelVintage?: {
+    basis: 'resolved' | 'pinned-fallback' | 'not-versioned'
+    year: string | null
+    layerUrl: string | null
+    why?: string
+  }
   fetchedAt: string
 }
 
