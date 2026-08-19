@@ -214,9 +214,32 @@ decision from un-pinning a year, and one of them is named "beta".
    read against, so a list that has quietly stopped moving cannot look like a
    list where nothing changed. `noindex` via the edge function — the page renders
    nothing without a session, so a crawler would only ever bank a sign-in form.
-3. The checker: re-resolve each row, compare VINTAGE first and then
-   `diffSnapshots`, and only for sources the register calls diffable.
-4. Delivery. Nothing is sent until 3 has been observed producing no false
+3. ~~The checker's decision layer~~ — **DONE 2026-08-19.**
+   `netlify/functions/lib/watchCheck.ts`, pure and fully tested. Five gates, in a
+   fixed order, because each earlier one can produce a change in the later ones
+   for a reason that has nothing to do with the land:
+
+   | # | gate | on failure |
+   |---|---|---|
+   | 1 | could we read it at all? | `check-failed`, **no event** |
+   | 2 | does the register call this source diffable? | refuse, no event |
+   | 3 | did the parcel FABRIC change? | report the rebase, **do not diff across it** |
+   | 4 | is the parcel still in the layer? | `left-the-layer` — an event in itself |
+   | 5 | diff the fields | only `changed` is alertable |
+
+   Two refusals carry the weight. An unreachable service produces **nothing** —
+   otherwise every upstream wobble reads as a rezoning. And a value going `null`
+   is recorded as `became-unavailable`, never as a change: `null` means "not
+   resolved", so "we stopped being able to read the FAR" is not "your FAR moved".
+
+   The snapshot advances **only when a comparison actually ran on one fabric.**
+   Adopting an uncompared reading as the new baseline would mean the change is
+   never reported by anyone — this run suppressed it, the next finds it banked.
+
+   Still to build on top: the runner that fetches each row through the real
+   provider and persists the outcome. The decisions are done; the plumbing is not.
+
+4. Delivery. Nothing is sent until 3's runner has been observed producing no false
    positives across at least one re-observation interval.
 
 ### Recurring checks, so they do not get lost
