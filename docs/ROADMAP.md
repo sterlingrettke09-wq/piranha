@@ -26,23 +26,46 @@ Sequence set **2026-08-17**, reordered by Sterling from the version proposed.
 
 | # | Item | Kind | State (2026-08-18) |
 |---|------|------|--------------------|
-| 1 | **Atlanta SPI** | DECIDED 2026-08-17 | IN PROGRESS |
-| 1 | **San Diego** | DECIDED 2026-08-17 | NOT STARTED |
+| 1 | ~~Atlanta SPI~~ | DECIDED 2026-08-17 | **DONE 2026-08-19** |
+| 1 | ~~San Diego~~ | DECIDED 2026-08-17 | **DONE 2026-08-19** |
 | 2 | **Cost-data access** | **OPEN — blocked on Sterling** | BLOCKED |
 | 3 | ~~Permit timing~~ | DECIDED 2026-08-17 | **DONE 2026-08-18** — see Superseded |
 | 4 | **Parcel-weighted coverage** | DECIDED 2026-08-17 | NOT STARTED |
 | 5 | **Map-layer asks** | DECIDED 2026-08-17 | NOT STARTED |
 | 6 | **More cities** | DECIDED 2026-08-17, deliberately last | NOT STARTED |
 
-**Atlanta SPI** — method solved (`scripts/municodeGrid.py`); SPI-16, 20 and 21
-read in full and recorded row-by-row in `netlify/functions/lib/zoning/atlanta.ts`;
-the types are built (`AtlantaSubareaFar`, `basis-elective`, `parseAtlantaFarCell`,
-`atlantaFarFor`). What remains is the encoding pass itself, then ~15 further
-chapters, which cell-level refusal makes mechanical.
+**~~Atlanta SPI~~ — DONE 2026-08-19.** 105 of 123 live SPI codes resolve across
+eleven chapters. The 18 that do not are pinned as an exact list with a reason
+each: SPI-18 (10, its Development Controls Table contradicts itself — Subarea 10
+states a non-residential base of 0.505 while the combined figure implies 0.500),
+SPI-9 (6, its base FAR is "According to Map Attachment"), and SPI-5 SA1 / SPI-7
+SA1, both outside their sections' titled scope.
 
-**San Diego** — Carmel Valley (20 codes), Central Urbanized (13), Old Town (15),
-Table 131-05D (CR/CO/CV/CP), Division 2 open space, three La Jolla sub-areas.
-78 sweep gaps, the largest readable block in the city.
+*What the chapter took, and what it cost to be right:* **ten distinct structural
+patterns and eight distinct basis mechanisms, none predictable from the last.**
+The basis is not uniform at ANY level of the code — not the city (§16-29.001(37)
+scopes itself to R-1 through R-5), not the chapter (SPI-20 and SPI-21 each leave
+one limb unqualified and it is a different limb), not the section (SPI-15
+§16-18O.028 states residential against gross for Subareas 2 and 4 and against net
+for Subarea 3). Only the subarea. That warning is in the module for the next
+editor.
+
+**~~San Diego~~ — DONE 2026-08-19.** ZERO sweep gaps: all 183 live zone names
+either resolve or carry a declared reason. 78 → 0 in one day.
+
+*The reusable finding:* Chapter 15's planned districts mostly **incorporate base
+zones by reference** rather than restating figures, and modelling that as a
+reference (`incorporates`) rather than a copied number paid for itself
+immediately — four Carmel Valley zones resolved the day Table 131-05D landed,
+without being touched. The four blocks: Carmel Valley (20 codes), Table 131-05D
+(12), Central Urbanized (13), Old Town (15), plus a tail of open-space, mixed-use
+and La Jolla Shores zones.
+
+*And an instrument rule worth keeping:* `pdftotext` first, **rendered page when
+the column count will not reconcile**. Needed three times, and every time the
+counts were RIGHT to differ — a merged header cell serving two zone designators
+(CR-1-1/CR-2-1, CU-2-3/CU-3-3, OP-1-1/OP-2-1). Forcing them to match could only
+have been done by misreading a side.
 
 **Cost-data access** — the only item blocked on a person rather than on work, and
 it gates monetization: a feasibility number with an unsourced cost basis cannot be
@@ -93,6 +116,15 @@ while the cost basis is unsourced.
 
 ---
 
+## Open questions — technical, carried forward
+
+| Question | Since | State |
+|---|---|---|
+| **La Jolla sub-areas LJPD-1A / 5A / 6A** | before 2026-08-19 | § 159.0301(a) creates six zones with 1A, 5A and 6A "included in" them, and nothing establishes that the parent zone's FAR carries to the included sub-area. This is an unanswered question about the ordinance, NOT an unread document — re-reading Article 9 will not settle it. Declared out of scope in the sweep. |
+| **Atlanta SPI-18 Subarea 10** | 2026-08-18 | The Development Controls Table contradicts itself: a stated non-residential base of `0.505` against a combined figure implying `0.500`, with nine of ten columns exactly additive. A fused footnote digit is the likely cause and is demonstrably something this source does — but the chapter's footnotes 4/5/6 concern sidewalks, so a "5" there has nothing to point at. Correcting a published cell from the table's own arithmetic is the inference the module refuses elsewhere. Left unencoded. |
+
+---
+
 ## Open questions — waiting on Sterling, not on work
 
 | Question | Since | Consequence while open |
@@ -126,7 +158,10 @@ instrument it uses, and the specific way it can go wrong — because in this rep
 the failure is almost never "we could not find the number", it is "we found a
 plausible one".
 
-### 1a. Atlanta SPI  (~15 chapters after 16/20/21)
+### 1a. ~~Atlanta SPI~~ — DONE 2026-08-19
+
+*Method kept because it generalises to any Municode city; the work itself is
+finished.*
 
 Per chapter, in order:
 
@@ -152,7 +187,11 @@ Per chapter, in order:
 *Failure mode to watch:* a chapter that states FAR in prose with no table
 (SPI-6 does) is invisible to the grid parser entirely.
 
-### 1b. San Diego  (78 sweep gaps — the largest readable block)
+### 1b. ~~San Diego~~ — DONE 2026-08-19 (78 → 0 gaps)
+
+*Method kept for the same reason. Two additions this city contributed: model an
+incorporation-by-reference as a REFERENCE, not a copied figure; and escalate
+`pdftotext` → rendered page the moment a column count will not reconcile.*
 
 Same discipline, different source: Municipal Code Chapter 15 planned districts
 plus Table 131-05D. Named blocks — Carmel Valley (20 codes), Central Urbanized
@@ -313,7 +352,7 @@ a decision.
 |---|---|
 | **Minneapolis story paragraph** | Must come from `cityStories.ts` by interpolation. `parkingClause` is guarded so every word except the city name must appear in the verified parking headline — checked mechanically. Target text: parking minimums abolished citywide in 2021; a by-right apartment build ~38 months, +3 once a variance is needed. Both figures already exist on the ranked city object. |
 | **Photos — Dallas, Las Vegas, Phoenix** | Asset acquisition. Sterling. |
-| **#15 LA recodification** | Make the bracketed-format count dynamic. The 151-vs-169 discrepancy is resolved BY the dynamic count, not investigated first. LA is 440 of 731 sweep gaps — the single largest block anywhere. |
+| **#15 LA recodification** | Make the bracketed-format count dynamic. The 151-vs-169 discrepancy is resolved BY the dynamic count, not investigated first. LA is 440 of the remaining 653 sweep values — now by far the single largest block, and the only readable city work left on the build order. |
 | **RSMeans credential rotation** | Sterling. A password was pasted into a transcript on 2026-08-18. Never used, never entered anywhere. Still needs rotating. |
 
 ---
@@ -359,6 +398,33 @@ carrying the answer wherever they differ. So SPI-16's 8.2 combined cap cannot
 become "the FAR" for a residential project regardless of how the encoding lands.
 That architecture predates 2026-08-18, and it is why the 2.6x overstatement was a
 READING defect caught before encoding rather than a shipped one.
+
+---
+
+## Where the sweep stands, 2026-08-19
+
+The parser-domain sweep opened the day at **731** unexplained values and closed at
+**653**. Composition, because the bare number is not the report (rule 26):
+
+| block | then | now |
+|---|---|---|
+| **San Diego** | 78 gaps | **0** — every live zone name resolves or carries a declared reason |
+| **Atlanta** | 0 gaps, 173 excused | 0 gaps, 68 excused — 105 of 123 SPI codes now resolve |
+| **LA** | 440 | 440 — recodification mid-transition, deliberately unencoded |
+| everything else | ~213 | ~213 — per-city tails never queued |
+
+**Two of the three movements this session were the system, not the counting**, and
+the distinction is stated wherever the number appears. San Diego's 78 → 0 is code:
+codes that returned nothing now return a figure. Atlanta's 173 → 68 excused is
+also code, and is only visible in the EXCUSED count because those values were
+already declared out of scope — the gap total never moved, so the headline number
+would have shown a completed chapter as nothing at all.
+
+**The readable city work on the build order is now finished.** What remains in the
+653 is LA's recodification — one bounded task (`#15`, make the bracketed-format
+count dynamic) rather than a reading programme — and per-city tails of 30–40 codes
+that were never queued. Neither is next: the roadmap's order puts cost-data access
+after this, and it has been blocked since before 2026-08-17.
 
 ---
 
