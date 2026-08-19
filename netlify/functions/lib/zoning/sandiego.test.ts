@@ -31,6 +31,7 @@ describe('inventory', () => {
     // 75 → 91 on 2026-08-17: sixteen Chapter 15 planned-district codes read from
     // their own articles (Cass Street 1, Mission Beach 6, La Jolla Shores 3,
     // La Jolla 6).
+    // 114 → 126 on 2026-08-19: the twelve CR/CO/CV/CP zones of Table 131-05D.
     // 97 → 114 on 2026-08-19: SEVENTEEN Carmel Valley codes (Chapter 15, Article
     // 3, Division 3) — six SF, five MF, four whose base zone is not yet read, and
     // EC and MC which state their own ratios. Three of the district's twenty live
@@ -39,7 +40,7 @@ describe('inventory', () => {
     // base zone, which is what the ordinance does.
     // The pin moving is the guard working — a curated table growing silently is
     // how an unsourced entry gets in.
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(114)
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(126)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',
@@ -151,9 +152,16 @@ describe('scope (rule 23)', () => {
   // the Otay Mesa override — so the CN zones are encoded and the assertion had
   // become a claim about our own past scope rather than about the code.
   //
-  // The rest stay: Table 131-05D (CR, CO, CV, CP), Division 2's open-space zones
-  // and the Barrio Logan / Centre City planned districts are still unread here.
-  it.each(['CV-1-1', 'CO-1-1', 'CR-1-1', 'OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
+  // ⚠️ CV-1-1, CO-1-1 AND CR-1-1 LEFT THIS LIST 2026-08-19, for exactly the
+  // reason CN-1-3 did: Table 131-05D has now been read. Eleven data columns
+  // reconciled against twelve live codes — the CR- header spans one column
+  // serving both CR-1-1 and CR-2-1 — with footnote 4 giving the same 0.30 Otay
+  // Mesa override in that table's own words. The assertion had become a claim
+  // about our own past scope rather than about the code (rule 15).
+  //
+  // The rest stay: Division 2's open-space zones and the Barrio Logan / Centre
+  // City planned districts are still unread here.
+  it.each(['OP-1-1', 'OC-1-1', 'OR-1-1', 'CCPD-ER', 'BLPD-CT'])(
     'leaves the out-of-scope zone %s unresolved',
     (code) => {
       expect(sanDiegoZoneKey(code)).toBeNull()

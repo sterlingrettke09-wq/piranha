@@ -469,7 +469,7 @@ export const TARGETS: Target[] = [
     //      Article 16 of this same chapter and every one of its fifteen codes is
     //      named in it. That is rule 27, and the count was 83.
     partiallyScoped: {
-      label: 'RS/LJSPD-SF lot-area bands and CC/industrial community-plan overrides need parcel facts; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
+      label: 'RS/LJSPD-SF lot-area bands and CC/CN/CR/CO/CV/CP/industrial community-plan overrides need parcel facts (plus the four Carmel Valley zones that adopt them); Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
       // LJSPD-SF resolves — § 1510.0304(i)(1)(A) sends it to Table 131-04J, the
       // same band table as the RS zones — but the band is chosen by LOT AREA, and
       // the sweep has no parcel. Confirmed live: with a 5,000 sf lot it returns
@@ -492,7 +492,21 @@ export const TARGETS: Target[] = [
         // CN joins them 2026-08-17, read from Table 131-05C: max FAR 1.0 in all
         // six columns, footnote 3 stating the same 0.30 Otay Mesa override in
         // that table's own words. Identical joint dependency, identical reason.
-        if (/^(CC|CN)-\d/.test(z)) return true
+        // CR, CO, CV and CP join them 2026-08-19, read from Table 131-05D on the
+        // RENDERED page — pdftotext splits that table across a page break with
+        // different x-offsets and mis-assigns tokens between its 3rd- and
+        // 4th-designator header rows, so no positional alignment of the text
+        // extraction is trustworthy. Eleven data columns against twelve live
+        // codes, and the mismatch is CORRECT: the `CR-` header spans one column
+        // serving both CR-1-1 and CR-2-1. Footnote 4 states the same 0.30 Otay
+        // Mesa override in that table's own words — third table, one instrument.
+        if (/^(CC|CN|CR|CO|CV|CP)-\d/.test(z)) return true
+        // The four Carmel Valley zones that ADOPT those base zones inherit the
+        // dependency with them: §153.0304 adopts CN-1-2, §153.0305 CV-1-1, and
+        // §153.0306 and §153.0307 CC-1-3. All four resolve the moment a
+        // community plan is supplied — verified live — so they are excused for
+        // the reason their base zones already are, not for a new one.
+        if (/^CVPD-(NC|VC|TC|SC)$/.test(z)) return true
         if (z === 'LJSPD-SF') return true
         // ⚠️ CENTRE CITY — READ 2026-08-17, and the answer is that no zone code
         // can carry it. § 156.0309(a): "The minimum and maximum base FARs for

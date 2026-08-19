@@ -93,3 +93,68 @@ describe('Carmel Valley adopts base zones rather than restating them', () => {
     ])
   })
 })
+
+// ── TABLE 131-05D: CR, CO, CV, CP ───────────────────────────────────────────
+//
+// The third table in one instrument. CC (131-05E), CN (131-05C) and now
+// CR/CO/CV/CP (131-05D) each state the SAME Otay Mesa override — max FAR 0.30 —
+// in their own footnote, so the citation is selected with the value and can
+// never name the wrong table.
+describe('Table 131-05D carries the same joint dependency as CC and CN', () => {
+  it('every zone resolves once a community plan is supplied', () => {
+    const expected: Record<string, number> = {
+      'CR-1-1': 1.0, 'CR-2-1': 1.0,
+      'CO-1-1': 0.75, 'CO-1-2': 1.5,
+      'CO-2-1': 0.75, 'CO-2-2': 1.5,
+      'CO-3-1': 2.0, 'CO-3-2': 2.0, 'CO-3-3': 2.0,
+      'CV-1-1': 2.0, 'CV-1-2': 2.0,
+      'CP-1-1': 1.0,
+    }
+    for (const [z, far] of Object.entries(expected)) {
+      expect(resolveSanDiego(z, null, 'MIDWAY').maxFAR, z).toBe(far)
+    }
+    expect(Object.keys(expected).length, 'twelve live codes in eleven table columns').toBe(12)
+  })
+
+  it('CR-1-1 and CR-2-1 share a merged column and therefore a figure', () => {
+    // The reconciliation that mattered: 11 data columns against 12 live codes,
+    // because the CR- header spans one column serving both. The counts SHOULD
+    // differ here — making them match could only be done by misreading a side.
+    expect(resolveSanDiego('CR-1-1', null, 'MIDWAY').maxFAR).toBe(
+      resolveSanDiego('CR-2-1', null, 'MIDWAY').maxFAR,
+    )
+  })
+
+  it('Otay Mesa overrides all twelve to 0.30, cited to 131-05D footnote 4', () => {
+    for (const z of ['CR-1-1', 'CO-1-2', 'CO-3-3', 'CV-1-1', 'CP-1-1']) {
+      const r = resolveSanDiego(z, null, 'OTAY MESA')
+      expect(r.maxFAR, z).toBe(0.3)
+      expect(r.source, z).toMatch(/131-05D footnote 4/)
+    }
+  })
+
+  it('and the citation names the RIGHT table for each family', () => {
+    expect(resolveSanDiego('CO-1-1', null, 'MIDWAY').source).toMatch(/131-05D/)
+    expect(resolveSanDiego('CN-1-1', null, 'MIDWAY').source).toMatch(/131-05C/)
+    expect(resolveSanDiego('CC-1-3', null, 'MIDWAY').source).toMatch(/131-05E/)
+  })
+
+  it('fails closed with no community plan, exactly as CC and CN do', () => {
+    // The override makes the ratio a joint function of zone AND plan (rule 13).
+    // An absent plan must not yield the base figure — that would overstate an
+    // Otay Mesa parcel by up to 6.7x.
+    for (const z of ['CR-1-1', 'CO-3-1', 'CV-1-2', 'CP-1-1']) {
+      expect(resolveSanDiego(z, null).maxFAR, z).toBeNull()
+    }
+  })
+
+  it('and it unblocks the four Carmel Valley zones that adopt these bases', () => {
+    // The payoff of encoding the reference rather than copying figures: NC, VC,
+    // TC and SC were unresolved yesterday and resolve today without being touched.
+    expect(resolveSanDiego('CVPD-NC', null, 'CARMEL VALLEY').maxFAR).toBe(1.0)
+    expect(resolveSanDiego('CVPD-VC', null, 'CARMEL VALLEY').maxFAR).toBe(2.0)
+    expect(resolveSanDiego('CVPD-TC', null, 'CARMEL VALLEY').maxFAR).toBe(0.75)
+    expect(resolveSanDiego('CVPD-SC', null, 'CARMEL VALLEY').maxFAR).toBe(0.75)
+    expect(resolveSanDiego('CVPD-NC', null, 'CARMEL VALLEY').source).toMatch(/adopts CN-1-2/)
+  })
+})

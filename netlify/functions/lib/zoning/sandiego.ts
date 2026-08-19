@@ -251,6 +251,30 @@ const CN_TABLE =
 const CN_OTAY =
   'San Diego Municipal Code § 131.0531, Table 131-05C footnote 3: "Within the Otay Mesa Community Plan area, the maximum floor area ratio is 0.30."'
 
+/** Table 131-05D — CR, CO, CV and CP, read from the rendered page 2026-08-19.
+ *
+ *  ⚠️ THE COLUMN COUNT DOES NOT MATCH THE ZONE COUNT, AND THAT IS CORRECT. The
+ *  table has ELEVEN data columns and the live layer carries TWELVE codes, because
+ *  the `CR-` header spans one column serving BOTH CR-1-1 and CR-2-1 — a merged
+ *  cell, exactly the case this module's header warns about where "the counts
+ *  SHOULD differ". Reconciled on the rendered page rather than the text
+ *  extraction: pdftotext splits this table across a page break with different
+ *  x-offsets and mis-assigns tokens between the 3rd- and 4th-designator header
+ *  rows, so no positional alignment of it is trustworthy. The values below come
+ *  from reading the page as an image.
+ *
+ *  Footnote 5 (on CO-3-2) concerns Placemaking, setbacks and lot coverage — NOT
+ *  floor area — so it is deliberately not modelled here. */
+const CRCOCVCP_FAR: Readonly<Record<string, number>> = Object.freeze({
+  // § 131.0531 Table 131-05D, Max Floor Area Ratio row, left to right.
+  'CR-1-1': 1.0, 'CR-2-1': 1.0, 'CO-1-1': 0.75, 'CO-1-2': 1.5, 'CO-2-1': 0.75, 'CO-2-2': 1.5,
+  'CO-3-1': 2.0, 'CO-3-2': 2.0, 'CO-3-3': 2.0, 'CV-1-1': 2.0, 'CV-1-2': 2.0, 'CP-1-1': 1.0,
+})
+const CRCOCVCP_TABLE =
+  'San Diego Municipal Code § 131.0531, Table 131-05D (Development Regulations for CR, CO, CV, CP Zones, 7-2026) — Max Floor Area Ratio row'
+const CRCOCVCP_OTAY =
+  'San Diego Municipal Code § 131.0531, Table 131-05D footnote 4: "Within the Otay Mesa Community Plan area, the maximum floor area ratio is 0.30."'
+
 const IND_TABLE =
   'San Diego Municipal Code § 131.0632 and Table 131-06C (Development Regulations for Industrial Zones, 7-2026)'
 const IND_OTAY =
@@ -313,6 +337,21 @@ export const RM_5_12_BY_HEIGHT: readonly { label: string; far: number }[] = Obje
  * table is silent and has already shipped once in this repo (DC's MU columns).
  */
 const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
+  // ── CR / CO / CV / CP (Table 131-05D). Same joint dependency as CC and CN:
+  //    the figure is a function of the zone AND the community plan (rule 13).
+  'CR-1-1': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CR-2-1': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CO-1-1': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CO-1-2': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CO-2-1': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CO-2-2': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CO-3-1': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CO-3-2': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CO-3-3': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CV-1-1': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CV-1-2': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+  'CP-1-1': { far: null, commercial: true, source: CRCOCVCP_TABLE },
+
   // ── CARMEL VALLEY PLANNED DISTRICT (Chapter 15, Article 3, Division 3) ─────
   // Twenty live codes, and the chapter states almost no figures of its own:
   // ELEVEN of its sections adopt a Chapter 13 base zone by reference and then
@@ -365,11 +404,7 @@ const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
   'CVPD-EC': { far: 0.5, source: 'SDMC ch.15 art.3 div.3 §153.0309(b)(1)' },
   // Mixed-Use Center states its own ratio and one ALTERNATIVE keyed to a unit
   // count. 1.25 is not the headline (rule 6) — a 4-unit building does not get it.
-  'CVPD-MC': {
-    far: 1.2,
-    alternatives: [{ label: '8 to 10 dwelling units', far: 1.25 }],
-    source: 'SDMC ch.15 art.3 div.3 §153.0311(c)(3)',
-  },
+  'CVPD-MC': { far: 1.2, alternatives: [{ label: '8 to 10 dwelling units', far: 1.25 }], source: 'SDMC ch.15 art.3 div.3 §153.0311(c)(3)' },
 
   // ── RS, single unit. Two tables: RS-1-1…1-7 and RS-1-8…1-14. ──
   // RS-1-1 states a flat 0.45; RS-1-2…1-7 read "varies(5)", footnote 5 pointing
@@ -761,16 +796,26 @@ function commercialFar(key: string, communityPlan?: string | null): SanDiegoLimi
   // Mesa override in its OWN footnote — 131-05E note 4 for CC, 131-05C note 3
   // for CN. Same figure, different citation, so the source is selected with the
   // value rather than hardcoded to one table.
-  const base = CC_FAR[key] ?? CN_FAR[key]
-  if (base == null) return UNRESOLVED
-  const isCn = CN_FAR[key] != null
+  // THREE tables now, one instrument. Each states the Otay Mesa override in its
+  // OWN footnote — 131-05E note 4 (CC), 131-05C note 3 (CN), 131-05D note 4
+  // (CR/CO/CV/CP) — and all three give 0.30. The source is selected WITH the
+  // value so a citation can never name the wrong table.
+  const table =
+    CC_FAR[key] != null
+      ? ({ far: CC_FAR[key], base: CC_TABLE, otay: CC_OTAY } as const)
+      : CN_FAR[key] != null
+        ? ({ far: CN_FAR[key], base: CN_TABLE, otay: CN_OTAY } as const)
+        : CRCOCVCP_FAR[key] != null
+          ? ({ far: CRCOCVCP_FAR[key], base: CRCOCVCP_TABLE, otay: CRCOCVCP_OTAY } as const)
+          : null
+  if (!table) return UNRESOLVED
   if (cp === CP_OTAY_MESA) {
     return {
       maxFAR: CC_OTAY_MESA_FAR,
       farUnconstrained: false,
       farAlternatives: [],
-      source: isCn ? CN_OTAY : CC_OTAY,
+      source: table.otay,
     }
   }
-  return { maxFAR: base, farUnconstrained: false, farAlternatives: [], source: isCn ? CN_TABLE : CC_TABLE }
+  return { maxFAR: table.far, farUnconstrained: false, farAlternatives: [], source: table.base }
 }
