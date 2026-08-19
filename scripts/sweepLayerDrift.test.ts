@@ -302,15 +302,17 @@ describe('every declared scope accounts for what it excuses', () => {
   )
 
   it.each([
-    // 144/0 as of 2026-08-18: SPI-16/20/21 (20 codes) then SPI-2/17 (9 more),
-    // so 173 -> 153 -> 144. The GAP figure stayed 0 throughout, because those codes
+    // 132/0 as of 2026-08-18: SPI-16/20/21 (20 codes), SPI-2/17 (9), SPI-1/22
+    // (12), so 173 -> 153 -> 144 -> 132. The GAP figure is 0 throughout, because
+    // these codes were already excused — the excused count is the ONLY evidence
+    // the city moved (rule 26). The GAP figure stayed 0 throughout, because those codes
     // were already excused by Atlanta's partial scope — so the only evidence the
     // city moved at all is this excused count. That is why it is pinned: a scope
     // declaration silently over-claiming is invisible to the sweep total
     // (rule 26). Before that: six codes credited once the predicate read FAR
     // (this target is named for height AND FAR), and four declared as codes
     // Part 16 never established.
-    ['atlanta', 144, 0],
+    ['atlanta', 132, 0],
     ['austin', 6, 8],
     ['sandiego', 62, 78],
     ['denver', 9, 34],

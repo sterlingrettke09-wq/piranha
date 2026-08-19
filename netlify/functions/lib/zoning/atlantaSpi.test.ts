@@ -198,3 +198,74 @@ describe('every live SPI-2 and SPI-17 code resolves', () => {
     expect(live.filter((c) => resolveAtlanta(c).name == null)).toEqual([])
   })
 })
+
+// ── SPI-1 AND SPI-22: THE BASIS IN TABLE FOOTNOTES ─────────────────────────
+describe('SPI-1 splits its footnote-stated bases; SPI-22 applies one to all', () => {
+  it('SPI-1 nonresidential is fixed net, residential elective (footnotes 1 and 2)', () => {
+    const r = resolveAtlanta('SPI-1 SA1')
+    expect(r.farNonresidential).toEqual(expect.objectContaining({ far: 25, basis: 'net' }))
+    expect(r.farResidential).toEqual(expect.objectContaining({ far: 25, basis: 'net-or-gross' }))
+  })
+
+  it('SPI-22 applies ONE elective basis to every limb (footnote 1)', () => {
+    const r = resolveAtlanta('SPI-22 SA1')
+    for (const limb of [r.farNonresidential, r.farResidential, r.farCombined]) {
+      expect(limb!.basis).toBe('net-or-gross')
+    }
+    // The discrimination: SPI-1 splits, SPI-22 does not. Both put it in a
+    // footnote, and neither could be read off the other.
+    expect(resolveAtlanta('SPI-1 SA1').farNonresidential!.basis).not.toBe(
+      resolveAtlanta('SPI-22 SA1').farNonresidential!.basis,
+    )
+  })
+
+  it('SPI-1 states NO height limit — an answer, not a gap', () => {
+    for (const c of ['SPI-1 SA1', 'SPI-1 SA4', 'SPI-1 SA7']) {
+      const r = resolveAtlanta(c)
+      expect(r.heightUnconstrained, `${c}`).toBe(true)
+      expect(r.heightFt).toBeNull()
+    }
+  })
+
+  it('SPI-1 publishes no combined cap, because the phrase is ambiguous in this code', () => {
+    // "Maximum Achievable Combined FAR" — SPI-22 splits the SAME phrase into
+    // Base and Bonus rows, so reading SPI-1's as the base would be an inference
+    // from another chapter.
+    expect(resolveAtlanta('SPI-1 SA1').farCombined).toBeNull()
+    expect(resolveAtlanta('SPI-22 SA1').farCombined!.far).toBe(6.0)
+  })
+
+  it('both spellings of SPI-22 Subarea 1 resolve identically', () => {
+    const a = resolveAtlanta('SPI-22 SA1')
+    const b = resolveAtlanta('SPI-22 SA-1')
+    expect(b.farCombined).toEqual(a.farCombined)
+    expect(b.heightTiers).toEqual(a.heightTiers)
+    expect(LIVE).toContain('SPI-22 SA-1')
+    expect(LIVE).toContain('SPI-22 SA1')
+  })
+
+  it('SPI-22 refuses a single height where the footnotes key it to streets', () => {
+    expect(resolveAtlanta('SPI-22 SA2').heightFt).toBe(64)
+    for (const c of ['SPI-22 SA1', 'SPI-22 SA3', 'SPI-22 SA4']) {
+      expect(resolveAtlanta(c).heightFt, c).toBeNull()
+      expect(resolveAtlanta(c).heightTiers!.length).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('and every live SPI-1 and SPI-22 code resolves', () => {
+    for (const p of ['SPI-1 ', 'SPI-22 ']) {
+      const live = LIVE.filter((c) => c.startsWith(p))
+      expect(live.length).toBeGreaterThan(3)
+      expect(live.filter((c) => resolveAtlanta(c).name == null)).toEqual([])
+    }
+  })
+})
+
+describe('SPI-9 is a map-layer ask, not an encode target', () => {
+  it('stays unresolved because its base FAR is on a map attachment', () => {
+    // "Max. FAR without Bonuses: According to Map Attachment" — the only numeric
+    // figures in that chapter are with-bonus, which rule 6 excludes.
+    expect(resolveAtlanta('SPI-9 SA1').name).toBeNull()
+    expect(resolveAtlanta('SPI-9 SA1').farNonresidential).toBeNull()
+  })
+})

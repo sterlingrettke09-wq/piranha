@@ -51,11 +51,19 @@ describe('parseAtlantaZone', () => {
   })
 
   it('returns base null — never a guess — for codes this build has not read', () => {
-    // SPI-16 SA1 was the example here until 2026-08-18, when it was encoded and
-    // stopped being unread. Replaced with SPI-1 SA1, which is still uncurated —
-    // a test whose fixture becomes a counterexample of itself is worse than no
-    // test, because it goes red for the right reason and gets 'fixed' wrongly.
-    for (const code of ['SPI-1 SA1', 'SPI-22 SA-1', 'SPI-4 SA 11', 'HC-20B', 'NC-11', 'Poncey-Highland SA3']) {
+    // ⚠️ THIS FIXTURE BROKE TWICE IN ONE DAY, and the second time is the lesson.
+    // It named SPI-16 SA1, which was then encoded; replaced with SPI-1 SA1, which
+    // was encoded two commits later. Both were chosen because they were "not
+    // curated yet" — i.e. precisely the codes at the front of the work queue.
+    //
+    // SPI-9 SA1 is stable for a STRUCTURAL reason rather than a scheduling one:
+    // SPI-9's table states "Max. FAR without Bonuses: According to Map
+    // Attachment", so its by-right ratio is not in the code text at all and no
+    // amount of reading will produce one. A fixture for "unread" should name
+    // something that cannot become read by doing the planned work.
+    //
+    // SPI-22 SA-1 was also removed — it is now an encoded spelling variant.
+    for (const code of ['SPI-9 SA1', 'SPI-4 SA 11', 'HC-20B', 'NC-11', 'Poncey-Highland SA3']) {
       expect(parseAtlantaZone(code).base, code).toBeNull()
     }
     expect(parseAtlantaZone(null).base).toBeNull()
@@ -454,7 +462,7 @@ describe('resolveAtlanta — absence vs gap (rule 5)', () => {
   // An unread district must assert nothing whatsoever. This is the assertion
   // that stops 173 mapped codes from silently acquiring a known-absence flag.
   it('an unresolved code asserts nothing — no FAR, no height, no absence flags', () => {
-    for (const code of ['SPI-1 SA1', 'HC-20B', 'NC-11', 'LD Mean Street', 'Poncey-Highland SA1', 'Unknown', 'ZZZ']) {
+    for (const code of ['SPI-9 SA1', 'HC-20B', 'NC-11', 'LD Mean Street', 'Poncey-Highland SA1', 'Unknown', 'ZZZ']) {
       const r = resolveAtlanta(code)
       expect(r.source, code).toBe('')
       expect(r.farUnconstrained, code).toBe(false)

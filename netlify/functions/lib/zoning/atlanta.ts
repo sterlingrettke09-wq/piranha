@@ -470,8 +470,16 @@
 // all — so "label says it holds two quantities" identifies 2 of 5.
 //
 // ⚠️ SCOPE OF THAT FIVE, stated here because this is where the number gets USED
-// rather than only where it was measured: it is five of the chapters that state
-// FAR IN A TABLE. The scan walks expanded grid rows, so a chapter stating a ratio
+// rather than only where it was measured. TWO boundaries, not one.
+//
+// FIRST, it was five of the chapters the scan COULD SEE. The negative-case check
+// that produced it read row labels from column 0 only, and some tables put the
+// row label in column 1 under a merged group header. Corrected 2026-08-18: FAR
+// rows 27 -> 47 and rows carrying a '%' cell 5 -> 8. The finding that the LABEL
+// cannot decide a cell still holds — it is strengthened, since the extra rows are
+// more of the same — but "five chapters" was never the population.
+//
+// SECOND, it is five of the chapters that state FAR IN A TABLE. The scan walks expanded grid rows, so a chapter stating a ratio
 // in prose is invisible to it — SPI-6 does exactly that ("a maximum floor area
 // ratio of 0.348", no table in the chapter at all). "Five chapters carry
 // non-ratio cells" therefore means "five of the nineteen tabular chapters", and
@@ -953,6 +961,145 @@ const DISTRICTS: Record<string, AtlantaLimits> = {
   //   SPI-2   row labels; nonresidential NET and residential GROSS, split
   //   SPI-17  row labels, gross on both, no combined row at all
   // Read every chapter's own sentences. Nothing carries across.
+
+  // SPI-1 Downtown — §16-18A.008. A FIFTH basis mechanism: stated in TABLE
+  // FOOTNOTES, with the markers sitting on the row labels ("Non-residential
+  // Maximum FAR 1"). Footnote 1: "Non-residential FAR shall be multiplied by net
+  // lot area (NLA)". Footnote 2: "Residential FAR may be multiplied by net lot
+  // area (NLA) or gross area of a regular lot (GLA)". So the limbs split — one
+  // fixed, one elective — and neither is stated in prose or in a row label.
+  //
+  // ⚠️ HEIGHT IS AN ANSWER HERE, NOT A GAP. "Maximum Building Height: None" in
+  // all seven columns, so heightUnconstrained is TRUE: downtown intensity is
+  // governed by FAR instead. That is the FACT-3 shape — a stated absence, which
+  // must not render like a district nobody read (rule 5).
+  //
+  // ⚠️ farCombined IS DELIBERATELY NULL, and the reason is a cross-chapter trap.
+  // The row is "Maximum Achievable Combined FAR" (35/19/17/11/20/32/32) and this
+  // chapter never says whether "achievable" includes bonuses. SPI-22 splits the
+  // very same phrase into TWO rows — "Maximum Achievable Combined Base FAR" and
+  // "Maximum Achievable Combined Bonus FAR" — so the phrase is demonstrably
+  // ambiguous inside this code, and reading SPI-1's as the base is an inference
+  // FROM ANOTHER CHAPTER. That is precisely the move five chapters of basis
+  // findings say is unsafe. The figure is recorded here and not published.
+  'SPI-1 SA1': {
+    ...base('SPI-1 Downtown Core (Subarea 1)', '§16-18A.008'),
+    farNonresidential: far(25, 'net', '§16-18A.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA)'),
+    farResidential: far(25, 'net-or-gross', '§16-18A.008 Table, "Residential Maximum FAR without Workforce Housing", footnote 2 (NLA or GLA)'),
+    heightUnconstrained: true,
+    heightSource: '§16-18A.008 Table, "Maximum Building Height": None in every subarea',
+  },
+  'SPI-1 SA2': {
+    ...base('SPI-1 SoNo Commercial West (Subarea 2)', '§16-18A.008'),
+    farNonresidential: far(12, 'net', '§16-18A.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA)'),
+    farResidential: far(12, 'net-or-gross', '§16-18A.008 Table, "Residential Maximum FAR without Workforce Housing", footnote 2 (NLA or GLA)'),
+    heightUnconstrained: true,
+    heightSource: '§16-18A.008 Table, "Maximum Building Height": None in every subarea',
+  },
+  'SPI-1 SA3': {
+    ...base('SPI-1 SoNo Commercial East (Subarea 3)', '§16-18A.008'),
+    farNonresidential: far(10, 'net', '§16-18A.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA)'),
+    farResidential: far(10, 'net-or-gross', '§16-18A.008 Table, "Residential Maximum FAR without Workforce Housing", footnote 2 (NLA or GLA)'),
+    heightUnconstrained: true,
+    heightSource: '§16-18A.008 Table, "Maximum Building Height": None in every subarea',
+  },
+  'SPI-1 SA4': {
+    ...base('SPI-1 SoNo Residential (Subarea 4)', '§16-18A.008'),
+    farNonresidential: far(7, 'net', '§16-18A.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA)'),
+    farResidential: far(7, 'net-or-gross', '§16-18A.008 Table, "Residential Maximum FAR without Workforce Housing", footnote 2 (NLA or GLA)'),
+    heightUnconstrained: true,
+    heightSource: '§16-18A.008 Table, "Maximum Building Height": None in every subarea',
+  },
+  'SPI-1 SA5': {
+    ...base('SPI-1 Centennial Olympic Park (Subarea 5)', '§16-18A.008'),
+    farNonresidential: far(10, 'net', '§16-18A.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA)'),
+    farResidential: far(10, 'net-or-gross', '§16-18A.008 Table, "Residential Maximum FAR without Workforce Housing", footnote 2 (NLA or GLA)'),
+    heightUnconstrained: true,
+    heightSource: '§16-18A.008 Table, "Maximum Building Height": None in every subarea',
+  },
+  'SPI-1 SA6': {
+    ...base('SPI-1 Terminus (Subarea 6)', '§16-18A.008'),
+    farNonresidential: far(25, 'net', '§16-18A.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA)'),
+    farResidential: far(25, 'net-or-gross', '§16-18A.008 Table, "Residential Maximum FAR without Workforce Housing", footnote 2 (NLA or GLA)'),
+    heightUnconstrained: true,
+    heightSource: '§16-18A.008 Table, "Maximum Building Height": None in every subarea',
+  },
+  'SPI-1 SA7': {
+    ...base('SPI-1 Fairlie Poplar (Subarea 7)', '§16-18A.008'),
+    farNonresidential: far(25, 'net', '§16-18A.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA)'),
+    farResidential: far(25, 'net-or-gross', '§16-18A.008 Table, "Residential Maximum FAR without Workforce Housing", footnote 2 (NLA or GLA)'),
+    heightUnconstrained: true,
+    heightSource: '§16-18A.008 Table, "Maximum Building Height": None in every subarea',
+  },
+
+  // SPI-22 Memorial Drive/Oakland Cemetery — §16-18V.008. A SIXTH mechanism:
+  // footnote 1 reads "FAR shall be multiplied by NLA or GLA", applied to FAR
+  // GENERALLY rather than split by use — so every limb is elective, where SPI-1
+  // splits its two. Both chapters put the basis in a footnote and assign it
+  // differently.
+  //
+  // Heights are street-distance conditional in three of four subareas (footnotes
+  // 9, 10 and 11), so those publish no single figure. Subarea 2 states a flat
+  // 64 ft and resolves.
+  //
+  // farCombined is NOT the sum in Subareas 3 and 4 (1.0 + 2.5 = 3.5 against a
+  // stated 3.0) — footnote 3 requires residential and non-residential
+  // requirements to be met separately. Read, never computed.
+  'SPI-22 SA1': {
+    ...base('SPI-22 MLK Lofts (Subarea 1)', '§16-18V.008'),
+    farNonresidential: far(2.0, 'net-or-gross', '§16-18V.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farResidential: far(4.0, 'net-or-gross', '§16-18V.008 Table, "Residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farCombined: far(6.0, 'net-or-gross', '§16-18V.008 Table, "Maximum Achievable Combined Base FAR", footnote 1'),
+    heightTiers: [
+      { label: 'more than 200 ft from Martin Luther King Jr. Dr. or Oakland Ave.', heightFt: 200 },
+      { label: 'all other areas', heightFt: 76 },
+    ],
+    heightSource: '§16-18V.008 Table, "Maximum Building Height" — footnote 9, map-keyed on distance from named streets, so no single figure is resolved',
+  },
+  // The live layer spells Subarea 1 BOTH ways. Enumerated, not pattern-matched.
+  'SPI-22 SA-1': {
+    ...base('SPI-22 MLK Lofts (Subarea 1)', '§16-18V.008'),
+    farNonresidential: far(2.0, 'net-or-gross', '§16-18V.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farResidential: far(4.0, 'net-or-gross', '§16-18V.008 Table, "Residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farCombined: far(6.0, 'net-or-gross', '§16-18V.008 Table, "Maximum Achievable Combined Base FAR", footnote 1'),
+    heightTiers: [
+      { label: 'more than 200 ft from Martin Luther King Jr. Dr. or Oakland Ave.', heightFt: 200 },
+      { label: 'all other areas', heightFt: 76 },
+    ],
+    heightSource: '§16-18V.008 Table, "Maximum Building Height" — footnote 9, map-keyed on distance from named streets, so no single figure is resolved',
+  },
+  'SPI-22 SA2': {
+    ...base('SPI-22 Memorial Drive (Subarea 2)', '§16-18V.008'),
+    farNonresidential: far(2.0, 'net-or-gross', '§16-18V.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farResidential: null, // table states "None",
+    farCombined: far(2.0, 'net-or-gross', '§16-18V.008 Table, "Maximum Achievable Combined Base FAR", footnote 1'),
+    heightFt: 64,
+    heightSource: '§16-18V.008 Table, "Maximum Building Height"',
+  },
+  'SPI-22 SA3': {
+    ...base('SPI-22 Capitol Gateway (Subarea 3)', '§16-18V.008'),
+    farNonresidential: far(1.0, 'net-or-gross', '§16-18V.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farResidential: far(2.5, 'net-or-gross', '§16-18V.008 Table, "Residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farCombined: far(3.0, 'net-or-gross', '§16-18V.008 Table, "Maximum Achievable Combined Base FAR", footnote 1'),
+    heightTiers: [
+      { label: 'more than 50 ft from Memorial Dr. and west of Fraser St.', heightFt: 225 },
+      { label: 'all other areas', heightFt: 66 },
+    ],
+    heightSource: '§16-18V.008 Table, "Maximum Building Height" — footnote 10, map-keyed on distance from named streets, so no single figure is resolved',
+  },
+  'SPI-22 SA4': {
+    ...base('SPI-22 Grant Park North (Subarea 4)', '§16-18V.008'),
+    farNonresidential: far(1.0, 'net-or-gross', '§16-18V.008 Table, "Non-residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farResidential: far(2.5, 'net-or-gross', '§16-18V.008 Table, "Residential Maximum FAR", footnote 1 (NLA or GLA)'),
+    farCombined: far(3.0, 'net-or-gross', '§16-18V.008 Table, "Maximum Achievable Combined Base FAR", footnote 1'),
+    heightTiers: [
+      { label: 'within 200 ft of Memorial Dr., east of Cherokee Ave. or 150+ ft west of Harden St.', heightFt: 66 },
+      { label: 'within 200 ft of Memorial Dr., all other areas', heightFt: 58 },
+      { label: 'more than 200 ft from Memorial Dr., adjacent to Hill St., Cherokee Ave. or Boulevard', heightFt: 50 },
+      { label: 'all other areas', heightFt: 35 },
+    ],
+    heightSource: '§16-18V.008 Table, "Maximum Building Height" — footnote 11, map-keyed on distance from named streets, so no single figure is resolved',
+  },
 
   // SPI-2 Fort McPherson — §16-18B.008. A FOURTH basis mechanism: the two limbs
   // carry DIFFERENT denominators, stated in the row labels, and not the pairing

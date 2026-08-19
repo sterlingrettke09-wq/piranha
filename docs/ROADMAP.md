@@ -215,6 +215,16 @@ data-publication gap rather than an epistemic one:
 | San Diego | Figure H |
 | Phoenix | § 1202.B/C |
 | Charlotte | site-plan basis |
+| **Atlanta (2nd)** | **SPI-9 Buckhead Village "Map Attachment"** — see below |
+
+⚠️ **SPI-9 is a STRONGER version of this category and should be asked for as
+one.** Every other entry puts the spatial dependency in a *term* — a denominator
+(Atlanta ROW width), a boundary, a qualifier. SPI-9's Development Controls table
+states "Max. FAR without Bonuses: **According to Map Attachment**", so the base
+entitlement itself is the map. The only numeric figures the chapter publishes are
+with-bonus, which are a programme the applicant has not chosen (rule 6). Six live
+zone codes resolve to nothing until that attachment is published as data, and no
+amount of reading the ordinance will change that.
 
 Deliverable per city: a short written request naming the exact layer, why the
 current publication does not serve, and what it unblocks. These are outbound
