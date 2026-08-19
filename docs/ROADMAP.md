@@ -118,6 +118,50 @@ while the cost basis is unsourced.
 
 ---
 
+## Next session — Atlanta SPI encode, two things to settle first
+
+Recorded 2026-08-18. Both are preconditions, not tasks: getting either wrong
+produces a published figure rather than a visible failure.
+
+**1. SPI-20's non-residential basis is UNSTATED, and that is a slot question.**
+The chapter's bonus cap is explicitly against gross lot area, and the residential
+limb is elective ("may use net lot area or gross lot area"). Neither establishes
+the denominator for the BASE non-residential ratio, and it must not be inferred
+from its neighbours — a basis taken from the adjacent limb is an invented
+conversion wearing a citation (rule 4).
+
+Apply rule 5's slot test to the section structure: does the chapter have a place
+where a basis for that limb would be stated? If the slot exists and is empty,
+that is an ANSWER. If there is no slot at all, the test's precondition is unmet
+and the honest output is a gap — the same distinction that settled DC and
+Philadelphia, and the same one that made Milwaukee's parks a gap rather than an
+absence.
+
+**2. SPI-21 has ten columns and nine live codes — SA6 has no parcel.**
+Live codes measured against the 2026-08-17 enumeration: SA1–SA5, SA7–SA10. SA6 is
+absent.
+
+This is NOT a coverage gap: no parcel carries the code, so nothing renders wrong
+whatever the column says. But it cannot be VERIFIED either, because column-path
+identity is checked by mapping distinct paths onto live zone codes, and there is
+no code to map. Encoding it would publish a figure whose column mapping was never
+checked against reality — which is the DC MU-column off-by-one with nothing able
+to detect it.
+
+So: encode the nine that check out, and declare SA6 read-but-unverifiable with
+that reason stated. It is the same shape as a declared-out-of-model row in the
+rows-not-chapters convention — a column someone looked at and could not confirm
+is different from one nobody read.
+
+**Why the encode is safe to attempt at all:** `providers/atlanta.ts` sets
+`maxFAR` only when all three limbs agree, and leaves it null with `farByUse`
+carrying the answer wherever they differ. So SPI-16's 8.2 combined cap cannot
+become "the FAR" for a residential project regardless of how the encoding lands.
+That architecture predates 2026-08-18, and it is why the 2.6x overstatement was a
+READING defect caught before encoding rather than a shipped one.
+
+---
+
 ## Superseded
 
 Kept rather than deleted. In each case the plan item was real and the belief
