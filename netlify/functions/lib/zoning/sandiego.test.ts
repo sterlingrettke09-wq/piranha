@@ -31,6 +31,9 @@ describe('inventory', () => {
     // 75 → 91 on 2026-08-17: sixteen Chapter 15 planned-district codes read from
     // their own articles (Cass Street 1, Mission Beach 6, La Jolla Shores 3,
     // La Jolla 6).
+    // 126 → 135 on 2026-08-19: the nine Central Urbanized CU zones of Table
+    // 155-02D. Its four CT zones are deliberately absent — each branches on
+    // parcel facts this project does not hold.
     // 114 → 126 on 2026-08-19: the twelve CR/CO/CV/CP zones of Table 131-05D.
     // 97 → 114 on 2026-08-19: SEVENTEEN Carmel Valley codes (Chapter 15, Article
     // 3, Division 3) — six SF, five MF, four whose base zone is not yet read, and
@@ -40,7 +43,7 @@ describe('inventory', () => {
     // base zone, which is what the ordinance does.
     // The pin moving is the guard working — a curated table growing silently is
     // how an unsourced entry gets in.
-    expect(SAN_DIEGO_ZONE_CODES.length).toBe(126)
+    expect(SAN_DIEGO_ZONE_CODES.length).toBe(135)
     expect(SAN_DIEGO_ZONE_CODES).toEqual(
       expect.arrayContaining([
         'RS-1-1', 'RS-1-7', 'RS-1-8', 'RS-1-14',

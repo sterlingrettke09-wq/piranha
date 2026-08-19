@@ -158,3 +158,60 @@ describe('Table 131-05D carries the same joint dependency as CC and CN', () => {
     expect(resolveSanDiego('CVPD-NC', null, 'CARMEL VALLEY').source).toMatch(/adopts CN-1-2/)
   })
 })
+
+// ── CENTRAL URBANIZED: TABLE 155-02D ────────────────────────────────────────
+describe('Central Urbanized CU zones', () => {
+  it('nine zones resolve from eight table columns', () => {
+    const expected: Record<string, number> = {
+      'CUPD-CU-1-1': 0.6, 'CUPD-CU-1-2': 0.6,
+      'CUPD-CU-2-3': 1.0, 'CUPD-CU-3-3': 1.0,
+      'CUPD-CU-2-4': 2.0, 'CUPD-CU-2-5': 2.0,
+      'CUPD-CU-3-6': 0.75, 'CUPD-CU-3-7': 0.5, 'CUPD-CU-3-8': 0.5,
+    }
+    for (const [z, far] of Object.entries(expected)) {
+      expect(resolveSanDiego(z, null).maxFAR, z).toBe(far)
+    }
+    expect(Object.keys(expected).length).toBe(9)
+  })
+
+  it('CU-2-3 and CU-3-3 share column 3 and therefore a figure', () => {
+    // The reconciliation: eight data columns, nine live codes, because column 3
+    // carries BOTH "2-" and "3-" in the 3rd-designator row. Same merged-cell
+    // shape as CR-1-1/CR-2-1 in Table 131-05D.
+    expect(resolveSanDiego('CUPD-CU-2-3', null).maxFAR).toBe(
+      resolveSanDiego('CUPD-CU-3-3', null).maxFAR,
+    )
+  })
+
+  it('resolves with NO community plan — this table has no Otay Mesa footnote', () => {
+    // Checked against 155-02D's own footnotes rather than assumed from the
+    // neighbouring commercial tables, which all carry the 0.30 override.
+    expect(resolveSanDiego('CUPD-CU-1-1', null).maxFAR).toBe(0.6)
+    expect(resolveSanDiego('CUPD-CU-1-1', null, 'OTAY MESA').maxFAR).toBe(0.6)
+  })
+
+  it('footnotes 8 and 9 are unit-count alternatives, never the headline', () => {
+    const r = resolveSanDiego('CUPD-CU-3-7', null)
+    expect(r.maxFAR).toBe(0.5)
+    expect(r.farAlternatives.map((a) => a.far)).toEqual([1.0, 1.0])
+    expect(r.maxFAR, 'a 2-unit building does not get the 3-to-7-unit figure').not.toBe(1.0)
+  })
+
+  it('and are omitted where they would equal the headline', () => {
+    // CU-2-3's base is already 1.0, so footnote 9 adds nothing; publishing it
+    // would suggest a choice that changes no number.
+    expect(resolveSanDiego('CUPD-CU-2-3', null).farAlternatives).toEqual([])
+  })
+
+  it('the four CT zones stay unresolved — each branches on parcel facts', () => {
+    // §155.0236: subject to a companion zone if the development is also within
+    // it AND fronts a major street, otherwise a residential zone. CT-2-4 is 2.0
+    // on one branch and 1.35 on the other.
+    for (const z of ['CUPD-CT-2-3', 'CUPD-CT-2-4', 'CUPD-CT-3-3', 'CUPD-CT-5-4']) {
+      expect(resolveSanDiego(z, null, 'MIDWAY').maxFAR, z).toBeNull()
+    }
+    // and the branch figures really do differ, which is why picking is unavailable
+    expect(resolveSanDiego('CU-2-4', null)?.maxFAR ?? resolveSanDiego('CUPD-CU-2-4', null).maxFAR).toBe(2.0)
+    expect(resolveSanDiego('RM-2-5', null).maxFAR).toBe(1.35)
+  })
+})

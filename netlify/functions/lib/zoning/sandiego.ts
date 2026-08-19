@@ -337,6 +337,45 @@ export const RM_5_12_BY_HEIGHT: readonly { label: string; far: number }[] = Obje
  * table is silent and has already shipped once in this repo (DC's MU columns).
  */
 const ZONES: Readonly<Record<string, SanDiegoZone>> = Object.freeze({
+  // ── CENTRAL URBANIZED (Chapter 15, Article 5, Division 2) — Table 155-02D ──
+  // ⚠️ EIGHT DATA COLUMNS, NINE LIVE CU CODES, and the mismatch is correct for
+  // the same reason as Table 131-05D: column 3 carries BOTH "2-" and "3-" in the
+  // 3rd-designator row, so it serves CU-2-3 AND CU-3-3. Read from the rendered
+  // page — the text extraction collapses that stacked header into a single row
+  // of tokens and no positional alignment of it survives. Second time the same
+  // escalation has been needed, and second time the counts were RIGHT to differ.
+  //
+  // NO COMMUNITY-PLAN DEPENDENCY HERE. Footnotes 8 and 9 are unit-count
+  // alternatives ("For development that consist of 3 to 7 dwelling units, the
+  // maximum floor area ratio shall be 1.0"), not an Otay Mesa override — so
+  // unlike CC/CN/CR/CO/CV/CP these resolve with no parcel facts at all. Checked
+  // against this table's own footnotes rather than assumed from its neighbours.
+  //
+  // The alternatives are recorded only where they DIFFER from the headline: for
+  // CU-2-3 and CU-3-3 the base is already 1.0, so footnote 9 adds nothing and
+  // publishing it would suggest a choice that changes nothing.
+  'CUPD-CU-1-1': { far: 0.6, alternatives: [{ label: '3 to 7 dwelling units', far: 1.0 }, { label: '8 to 10 dwelling units', far: 1.0 }], source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row' },
+  'CUPD-CU-1-2': { far: 0.6, alternatives: [{ label: '3 to 7 dwelling units', far: 1.0 }, { label: '8 to 10 dwelling units', far: 1.0 }], source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row' },
+  'CUPD-CU-2-3': { far: 1.0, source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row' },
+  'CUPD-CU-3-3': { far: 1.0, source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row — shares column 3 with CU-2-3' },
+  'CUPD-CU-2-4': { far: 2.0, source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row' },
+  'CUPD-CU-2-5': { far: 2.0, source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row' },
+  'CUPD-CU-3-6': { far: 0.75, alternatives: [{ label: '3 to 7 dwelling units', far: 1.0 }, { label: '8 to 10 dwelling units', far: 1.0 }], source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row' },
+  'CUPD-CU-3-7': { far: 0.5, alternatives: [{ label: '3 to 7 dwelling units', far: 1.0 }, { label: '8 to 10 dwelling units', far: 1.0 }], source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row' },
+  'CUPD-CU-3-8': { far: 0.5, alternatives: [{ label: '3 to 7 dwelling units', far: 1.0 }, { label: '8 to 10 dwelling units', far: 1.0 }], source: 'SDMC § 155.0242, Table 155-02D (Development Regulations of CU Zones, 7-2026) — Max floor area ratio row' },
+  //
+  // ⚠️ THE FOUR CT ZONES ARE DELIBERATELY ABSENT. §155.0236 makes each one a
+  // BRANCH on two parcel facts we do not hold — whether the development also
+  // lies within a named companion zone, and whether it fronts "a major street as
+  // designated in the applicable community plan":
+  //     CT-5-4 → CC-5-4 (1.0) if both, else RM-2-5 (1.35)
+  //     CT-2-3 → CU-2-3 (1.0) if both, else RM-2-5 (1.35)
+  //     CT-2-4 → CU-2-4 (2.0) if both, else RM-2-5 (1.35)
+  //     CT-3-3 → CP-1-1 (1.0) if within CU-3-3, else RM-1-2 (0.9)
+  // The branches differ by nearly half in the CT-2-4 case, so choosing one is not
+  // available (rule 6), and neither fact is in the parcel record. Declared in the
+  // sweep's scope with this reason rather than encoded to a guess.
+
   // ── CR / CO / CV / CP (Table 131-05D). Same joint dependency as CC and CN:
   //    the figure is a function of the zone AND the community plan (rule 13).
   'CR-1-1': { far: null, commercial: true, source: CRCOCVCP_TABLE },

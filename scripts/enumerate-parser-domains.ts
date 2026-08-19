@@ -469,7 +469,7 @@ export const TARGETS: Target[] = [
     //      Article 16 of this same chapter and every one of its fifteen codes is
     //      named in it. That is rule 27, and the count was 83.
     partiallyScoped: {
-      label: 'RS/LJSPD-SF lot-area bands and CC/CN/CR/CO/CV/CP/industrial community-plan overrides need parcel facts (plus the four Carmel Valley zones that adopt them); Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
+      label: 'RS/LJSPD-SF lot-area bands and CC/CN/CR/CO/CV/CP/industrial community-plan overrides need parcel facts (plus the four Carmel Valley zones that adopt them); the four Central Urbanized CT zones branch on companion-zone overlap and major-street frontage; Centre City FARs are per-site in Figure H; Gaslamp states an FAR only as a height-bonus cap; three La Jolla sub-areas unresolved',
       // LJSPD-SF resolves — § 1510.0304(i)(1)(A) sends it to Table 131-04J, the
       // same band table as the RS zones — but the band is chosen by LOT AREA, and
       // the sweep has no parcel. Confirmed live: with a 5,000 sf lot it returns
@@ -507,6 +507,14 @@ export const TARGETS: Target[] = [
         // community plan is supplied — verified live — so they are excused for
         // the reason their base zones already are, not for a new one.
         if (/^CVPD-(NC|VC|TC|SC)$/.test(z)) return true
+        // ⚠️ THE FOUR CENTRAL URBANIZED CT ZONES, read 2026-08-19. §155.0236
+        // makes each a BRANCH on two parcel facts this project does not hold:
+        // whether the development also lies within a named companion zone, and
+        // whether it fronts "a major street as designated in the applicable
+        // community plan". CT-2-4 resolves to 2.0 on one branch and 1.35 on the
+        // other — nearly half — so choosing is not available (rule 6). A stated
+        // conditional we cannot evaluate, not an unread table.
+        if (/^CUPD-CT-/.test(z)) return true
         if (z === 'LJSPD-SF') return true
         // ⚠️ CENTRE CITY — READ 2026-08-17, and the answer is that no zone code
         // can carry it. § 156.0309(a): "The minimum and maximum base FARs for
