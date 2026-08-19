@@ -17,8 +17,12 @@ const SEVERITY: Record<CheckStatus, number> = {
 // FAR/density increase above ~1.2× crosses into rezoning territory — density is
 // generally excluded from area-variance consideration. Source: variance-practice
 // doctrine (NY ZR §72-21; area- vs use-variance literature).
-const RELIEF_FACTOR_HEIGHT = 1.5
-const RELIEF_FACTOR_FAR = 1.2
+// EXPORTED so the inverse query (`whatWouldItTake`) classifies overages with the
+// SAME thresholds this pass does. A second copy would let the two directions
+// disagree — the report saying a project needs a variance while the inverse says
+// it needs a rezoning, off the same numbers.
+export const RELIEF_FACTOR_HEIGHT = 1.5
+export const RELIEF_FACTOR_FAR = 1.2
 
 // A proposal taller than this on a parcel whose district carries NO height
 // limit in public data can't honestly be called "as-of-right" — outside

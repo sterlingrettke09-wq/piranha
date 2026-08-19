@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { WatchParcelButton } from '../components/WatchParcelButton'
+import { WhatWouldItTake } from '../components/WhatWouldItTake'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { recordReport, togglePin, listReports } from '../lib/recentReports'
@@ -526,6 +527,20 @@ export default function BostonResult() {
               </div>
             </>
           )}
+
+          {/* The inverse query. Placed AFTER the report rather than beside the
+              inputs, because it answers a question the report provokes: the
+              reader has just been told what their project needs, and the natural
+              next one is "what would it take to get what I actually want".
+              Offered on every branch — a parcel whose current answer is "no"
+              is exactly where someone wants to know what changes it. */}
+          <div className="print-hide mt-12">
+            <WhatWouldItTake
+              city={state.data.project.city}
+              lat={state.data.project.lat}
+              lng={state.data.project.lng}
+            />
+          </div>
 
           <div className="mt-8 space-y-6">
             <AssumptionsDisclosure assumptions={state.data.assumptions} />

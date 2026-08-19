@@ -321,6 +321,73 @@ decision from un-pinning a year, and one of them is named "beta".
 
 ---
 
+## Inverse query — DONE 2026-08-19
+
+**"I want 40 units here — what would it take?"** The existing pipeline run
+backward on ONE parcel: given a target, report which constraints bind, by how
+much, and what kind of relief each needs. No index, no bounded result set, no new
+infrastructure.
+
+`netlify/functions/lib/inverse.ts` (pure), `/api/inverse`, and
+`WhatWouldItTake.tsx` on the report — placed after it, because it answers the
+question the report provokes.
+
+**Not a search.** "Find me parcels where I could build X" is a different product
+with a per-city index behind it. If it is worth doing it is a separate item and
+it needs the index conversation on its own terms.
+
+**Every threshold is the forward pass's.** `RELIEF_FACTOR_HEIGHT` (1.5) and
+`RELIEF_FACTOR_FAR` (1.2) are now exported from `feasibility.ts` and imported
+here; `avgUnitGrossSqFt` converts units to floor area. A second copy of any of
+them would let the two directions contradict each other off the same inputs — the
+report saying variance while the inverse says rezoning. The tests pin against the
+shared constants rather than literals, so raising one cannot leave them disagreeing.
+
+### The thing this feature could most easily get wrong
+
+**An unresolved limit is not an absent constraint.** If a district's FAR cannot be
+read, "you need a height variance" is a false completeness claim — the FAR might
+be the harder problem and nobody looked, and the user goes to the wrong hearing.
+So an unreadable limit yields `relief: 'unknown'`, the dimension is listed in
+`unresolved`, it is excluded from being named the binding constraint, and the
+summary says what it does not cover **in the same sentence** as the
+recommendation. A confident headline with a grey caveat underneath is how a
+partial answer gets read as a whole one.
+
+Five relief states, not three, because collapsing any pair produces a false
+sentence: `none` · `dimensional-variance` · `beyond-variance` · `no-limit` (the
+code imposes none — an answer) · `unknown` (a gap).
+
+### Caught by running it on live parcels
+
+- **Denver `D-CV` returned "fits within what the district allows by right"**
+  while the FAR line directly beneath it said height, setbacks and coverage govern
+  instead — neither of which was checked, because the target named neither. "No
+  FAR applies here" is an answer about FAR, not about the parcel, and the summary
+  was borrowing the confidence of one for the other. Now it says what actually
+  governs and that no height was given.
+- SF `C-3-G`: 40 units on a 1,426 sf lot → FAR 36.47 against 6.00, 6.1× over,
+  correctly rezoning-grade. NYC `C6-7`: same target on 14,246 sf fits by right.
+
+### Known limits, stated rather than papered over
+
+- **Storeys and feet are never converted.** A storey target against a limit in
+  feet returns `unknown` and says why — the round trip is what published 87
+  storeys for a district whose code says 80 (rule 12).
+- **There is no `heightUnconstrained` on the zoning type**, only
+  `farUnconstrained`. So "the code sets no height limit" and "we could not read
+  one" are genuinely indistinguishable here, and neither is claimed. That is a
+  real gap in the data model, not in this feature.
+- **No district unit cap is read.** `envelope.maxUnits` is derived from floor
+  area, so reporting it would restate the FAR constraint as a second problem and
+  imply a second hearing. A district that caps units directly would need its own
+  field, and none exists.
+- **The relief thresholds are doctrine, not any city's ordinance.** The UI says
+  so: which board hears it, and what it is called locally, is a question for the
+  city.
+
+---
+
 ## Feature order
 
 Ranking set **2026-08-18**. Sterling's own weighting, quoted.
