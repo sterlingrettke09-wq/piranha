@@ -91,21 +91,52 @@ describe('the ranking', () => {
     // is evidence the fixture roster still matches what the layers publish.
     expect(r.totalGaps).toBe(653)
     expect(r.ranked.length + r.offCoverage.length + r.unranked.length).toBe(653)
+    expect([r.ranked.length, r.offCoverage.length, r.unranked.length]).toEqual([204, 1, 448])
     expect(r.missingWeights).toEqual([])
     expect(r.notReconciled).toEqual([])
   })
 
-  it('orders by share and puts Miami first, not LA', () => {
-    // The point of the whole exercise. By code count LA leads with 440 gaps and
-    // Miami sits at 13; by coverage Miami is 68.7% of its layer and LA 41.1%.
-    expect(r.byCity[0].city).toBe('miami')
-    expect(r.byCity[1].city).toBe('la')
-    expect(r.byCity[0].gapCodes).toBeLessThan(r.byCity[1].gapCodes)
-    expect(r.byCity[0].gapFeatures / r.byCity[0].total).toBeGreaterThan(
-      r.byCity[1].gapFeatures / r.byCity[1].total,
-    )
+  it('orders by AREA, and count never breaks a tie', () => {
     for (let i = 1; i < r.ranked.length; i++) {
-      expect(r.ranked[i - 1].share).toBeGreaterThanOrEqual(r.ranked[i].share)
+      expect(r.ranked[i - 1].areaShare!, `${r.ranked[i].city}/${r.ranked[i].code}`).toBeGreaterThanOrEqual(
+        r.ranked[i].areaShare!,
+      )
+    }
+    // Every ranked row HAS an area share — that is what ranked means here.
+    expect(r.ranked.every((x) => x.areaShare != null)).toBe(true)
+    // And the order is genuinely not the count order: SF's P leads on area at
+    // 30.7% while sitting sixth on count, and Miami's CS is third on area and
+    // first-among-Miami on count.
+    expect(r.ranked[0].city).toBe('sf')
+    expect(r.ranked[0].code).toBe('P')
+    const byCount = [...r.ranked].sort((a, b) => b.share - a.share)
+    expect(byCount[0].code).not.toBe(r.ranked[0].code)
+  })
+
+  it('puts SF first by land and Miami first by polygons — the two disagree', () => {
+    expect(r.byCity[0].city).toBe('sf')
+    const byCount = [...r.byCity].sort((a, b) => b.gapFeatures / b.total - a.gapFeatures / a.total)
+    expect(byCount[0].city).toBe('miami')
+    // Cities with no area column sort to the END and are labelled, never given
+    // an implicit zero that would read as "nothing to do here".
+    // Eight cities here, not ten: Philadelphia's two no-area targets are a code
+    // table and sit in offCoverage, so they never reach the citywide table.
+    const noArea = r.byCity.filter((v) => v.areaShare == null).map((v) => v.city).sort()
+    expect(noArea).toEqual(['atlanta', 'chicago', 'dc', 'la', 'milwaukee', 'nyc', 'phoenix', 'seattle'])
+    expect(r.byCity.slice(-noArea.length).every((v) => v.areaShare == null)).toBe(true)
+  })
+
+  it('marks the no-area gaps unranked rather than last or zero', () => {
+    // 448 of the 653 — LA's 440 and Phoenix's 8. The largest single contributor
+    // to the sweep total is deliberately NOT in the ranked list, because ranking
+    // it on the other column would interleave two denominators in one order.
+    expect(r.unranked.length).toBe(448)
+    const cities = [...new Set(r.unranked.map((u) => u.city))].sort()
+    expect(cities).toEqual(['la', 'phoenix'])
+    expect(r.unranked.filter((u) => u.city === 'la').length).toBe(440)
+    for (const u of r.unranked) {
+      expect(u.why).toContain('unmeasured, not small')
+      expect(u.n, u.code).not.toBeNull() // the count IS known; only the area is not
     }
   })
 
@@ -144,16 +175,15 @@ describe('the ranking', () => {
     expect(sf.areaShare!).toBeGreaterThan((sf.gapFeatures / sf.total) * 2)
     // An unavailable area column is null, never 0 — LA publishes none.
     expect(byCity.la.areaShare).toBeNull()
-    expect(r.ranked.filter((x) => x.areaShare != null).length).toBeGreaterThan(100)
+    expect(r.ranked.length).toBe(204)
   })
 
   it('never sums a share across cities', () => {
     // Shares have different denominators per city; a grand total would be
     // meaningless, so nothing computes one. This pins that the largest single
     // gap is a share of ONE city and is under 100%.
+    expect(r.ranked[0].areaShare!).toBeLessThan(1)
     expect(r.ranked[0].share).toBeLessThan(1)
-    expect(r.ranked[0].city).toBe('la')
-    expect(r.ranked[0].code).toBe('R1-1')
   })
 })
 

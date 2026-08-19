@@ -271,57 +271,61 @@ The reconciliation is what found things, exactly as intended:
 | Raleigh 500s on `count(ZONING)` but not `count(OBJECTID)` | Same grouped query, different statistic column. Counting the row is also the more correct one. |
 | Charlotte 500s on its own **layer-info** request while every query succeeds | Degraded, not fatal — metadata is descriptive, the counts are the measurement. |
 
-**The ordering it produced, which is the point.** By code count LA leads with 440
-gaps and Miami sits at 13. By coverage **Miami is first at 68.7%** of its zoning
-layer — T4-\*, T5-\*, CS, CI, D1–D3 and T1 resolve nothing, verified against
-T6-8-O and T3-R which do.
+**RANKED BY LAND AREA, decided 2026-08-19.** Polygon count is published in every
+table beside it and never breaks a tie, so the two cannot quietly swap roles.
 
-**⚠️ And a polygon count is not a land share.** Measured rather than hedged: Miami's
-gaps are 68.67% of polygons and **37.04% of land**; San Francisco's are 12.82% of
-polygons and **41.91% of area**, because public land arrives in a few enormous
-parcels. Both columns are published; neither is the headline, and neither
-corrects the other. Ten of 23 layers publish no usable area column — recorded as
-unmeasured, not zero.
+The two disagree, in both directions, which is why both are published:
 
-*Open, and a product decision rather than work:* which column orders the backlog.
-Count answers "how many records"; area answers "how much of the city".
+| city | by area | by count |
+|---|---:|---:|
+| san francisco | **41.91%** | 12.82% |
+| miami | **37.04%** | 68.67% |
+| columbus | 21.37% | 16.31% |
+| las vegas | 11.07% | 3.03% |
 
-### 5. Map-layer asks  (five named)
+Miami is near a factor of two *down* from its polygon share; San Francisco over
+three times *up*, because public land arrives in a few enormous parcels. The
+single largest gap in the file is SF's `P` — 30.7% of the city's land, 7.5% of
+its polygons.
 
-Each is a figure that exists in a code and depends on WHERE, blocked by a
-data-publication gap rather than an epistemic one:
+Miami's substance is unchanged and still the sharpest finding: T4-\*, T5-\*, CS,
+CI, D1–D3 and T1 resolve nothing, verified against T6-8-O and T3-R which do.
 
-| city | ask |
-|---|---|
-| Atlanta | ROW width as a queryable feature layer (today: cartographic annotation, `/query` 400s) |
-| Denver | Exhibit 8.1 |
-| San Diego | Figure H |
-| Phoenix | § 1202.B/C |
-| Charlotte | site-plan basis |
-| **Atlanta (2nd)** | **SPI-9 Buckhead Village "Map Attachment"** — see below |
-| **Atlanta (3rd)** | **SPI-15 Attachment C** — Subarea 9 height maximums |
+**⚠️ 448 of the 653 are UNRANKED — not last, and not zero.** Ten of the 23 layers
+publish no area column; nine cities, of which two have gaps: **LA with 440 and
+Phoenix with 8**. So the largest single contributor to the sweep total is not in
+the ranked list at all, and the ranked list covers 204.
 
-⚠️ **SPI-9 is a STRONGER version of this category and should be asked for as
-one.** Every other entry puts the spatial dependency in a *term* — a denominator
-(Atlanta ROW width), a boundary, a qualifier. SPI-9's Development Controls table
-states "Max. FAR without Bonuses: **According to Map Attachment**", so the base
-entitlement itself is the map. The only numeric figures the chapter publishes are
-with-bonus, which are a programme the applicant has not chosen (rule 6). Six live
-zone codes resolve to nothing until that attachment is published as data, and no
-amount of reading the ordinance will change that.
+This is an established absence rather than a missing lookup. Seven area-column
+spellings were queried against each service — `SHAPE.STArea()`, `Shape.STArea()`,
+`SHAPE.AREA`, `ST_Area(SHAPE)`, `Shape__Area`, `SHAPE_Area`, `Shape.area` — and
+all seven were rejected by LA, Phoenix and Seattle. They publish geometry with no
+summable area statistic.
 
-**Atlanta's three asks are not the same KIND of request, and should not be sent
-as one.** ROW width is an existing GIS product published in the wrong form — it
-is drawn on the cadastral map as cartographic annotation, so the ask is "expose
-the layer you already draw". SPI-9's Map Attachment and SPI-15's Attachment C are
-**attachments to the ordinance itself** — documents adopted as part of the code,
-never GIS products at all, so the ask is "publish the adopted attachment as
-data". The second is a records question and probably goes to a different desk
-than the first.
+*Open:* whether to compute LA's and Phoenix's areas client-side from returned
+geometry. That is a real option and a different instrument — it would fetch
+~68,000 polygons rather than one aggregate — so it is a decision, not a to-do.
 
-Deliverable per city: a short written request naming the exact layer, why the
-current publication does not serve, and what it unblocks. These are outbound
-communications — drafted here, sent by Sterling.
+### 5. ~~Map-layer asks~~ — PARKED 2026-08-19, and not because they are hard
+
+**These are outbound requests to city GIS departments, not code.** Nothing in this
+repo can close any of them; each needs a person to email a city and wait. Sterling
+is sending them separately, so they are off the build order entirely rather than
+sitting in it looking like unstarted work.
+
+They stay listed because each is a live constraint on a published figure — a
+reader wondering why Atlanta has no gross-lot denominator should find the reason
+here, not conclude nobody looked.
+
+| city | ask | what it unblocks |
+|---|---|---|
+| Atlanta | ROW width as a queryable feature layer — today it is cartographic annotation, `type: "Annotation SubLayer"`, and `/query` answers 400 | the gross-lot denominator |
+| Denver | Exhibit 8.1 | |
+| San Diego | Figure H | |
+| Phoenix | § 1202.B/C | |
+| Charlotte | site-plan basis | |
+
+*Re-open this section only if a city answers.* No code change can move it.
 
 ### 6. More cities  (deliberately last)
 

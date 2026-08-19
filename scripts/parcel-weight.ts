@@ -493,33 +493,29 @@ function runRanking() {
   for (const nr of r.notReconciled) console.log(`  ⚠️ ${nr} — DOES NOT RECONCILE; excluded from every share below`)
 
   console.log("[weight] Gaps ranked by the share of the city's principal zoning layer they cover.")
-  console.log('[weight] Shares are WITHIN a city. A feature is a tax lot in NYC (856,614) and a')
-  console.log('[weight] zoning polygon in Philadelphia — the two are not the same unit.\n')
+  console.log('[weight] Shares are WITHIN a city and never compare across cities.\n')
 
-  console.log('  rank  city          code                              features   by count    by area')
+  console.log('  rank  city          code                              features    by area   by count')
   for (const [i, x] of r.ranked.slice(0, 40).entries()) {
     console.log(
       `  ${String(i + 1).padStart(4)}  ${x.city.padEnd(13)} ${x.code.slice(0, 31).padEnd(33)} ${String(x.n).padStart(7)}   ` +
-        `${(100 * x.share).toFixed(3)}%`.padStart(8) +
-        `   ${x.areaShare == null ? '     —' : `${(100 * x.areaShare).toFixed(3)}%`.padStart(8)}`,
+        `${(100 * x.areaShare!).toFixed(3)}%`.padStart(9) +
+        `  ${`${(100 * x.share).toFixed(3)}%`.padStart(8)}`,
     )
   }
   if (r.ranked.length > 40) console.log(`  … ${r.ranked.length - 40} further ranked gaps — full list in docs/PARCEL-WEIGHTED-GAPS.md`)
 
   console.log("\n  Share of each city's principal zoning layer sitting under a gap:")
   for (const v of r.byCity) {
+    const area = v.areaShare == null ? '  UNRANKED — no area column' : `${(100 * v.areaShare).toFixed(2)}% by area`.padStart(18)
     console.log(
-      `    ${v.city.padEnd(13)} ${String(v.gapFeatures).padStart(7)} / ${String(v.total).padStart(7)}  ` +
-        `${(100 * v.gapFeatures / v.total).toFixed(2)}% by count` +
-        `${v.areaShare == null ? '  (no area column)' : `, ${(100 * v.areaShare).toFixed(2)}% by area`}` +
-        `   (${v.gapCodes} gap codes)`,
+      `    ${v.city.padEnd(13)} ${area}   ${`${(100 * v.gapFeatures / v.total).toFixed(2)}%`.padStart(6)} by count   (${v.gapCodes} gap codes, ${v.gapFeatures}/${v.total} features)`,
     )
   }
-  console.log('\n  ⚠️ The two columns answer different questions and can differ by nearly 2x')
-  console.log('  (Miami: 68.67% of polygons, 37.04% of land). Count is what was asked for and')
-  console.log('  is the right unit for "how many records"; area is the right one for "how much')
-  console.log('  of the city". Neither is a correction of the other. A dash means the layer')
-  console.log('  publishes no usable area column — unmeasured, not zero.')
+  console.log('\n  ⚠️ The two columns answer different questions and diverge in BOTH directions:')
+  console.log('  Miami 37.04% of land against 68.67% of polygons, San Francisco 41.91% against')
+  console.log('  12.82%. Area orders this list; count is published beside it and never breaks a')
+  console.log('  tie. A city with no area column is UNRANKED — not last, and not zero.')
 
   if (r.offCoverage.length) {
     console.log(`\n  ${r.offCoverage.length} gap(s) measured against a layer that is NOT the city's principal zoning`)
@@ -532,7 +528,15 @@ function runRanking() {
 
   if (r.unranked.length) {
     console.log(`\n  ${r.unranked.length} gap(s) carry no weight and are deliberately absent from the ranking:`)
-    for (const u of r.unranked.slice(0, 20)) console.log(`    ${u.city.padEnd(13)} ${u.code.padEnd(28)} ${u.why}`)
+    const byCityU = new Map<string, { n: number; f: number }>()
+    for (const u of r.unranked) {
+      const p = byCityU.get(u.city) ?? { n: 0, f: 0 }
+      byCityU.set(u.city, { n: p.n + 1, f: p.f + (u.n ?? 0) })
+    }
+    for (const [city, v] of [...byCityU].sort((a, b) => b[1].n - a[1].n)) {
+      const why = r.unranked.find((u) => u.city === city)!.why
+      console.log(`    ${city.padEnd(13)} ${String(v.n).padStart(4)} gap codes · ${String(v.f).padStart(6)} features — ${why}`)
+    }
   }
 
   console.log(`\n  ${r.totalGaps} gaps · ${r.ranked.length} ranked · ${r.offCoverage.length} off-coverage · ${r.unranked.length} unranked`)

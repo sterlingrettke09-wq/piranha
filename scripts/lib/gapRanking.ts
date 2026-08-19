@@ -34,9 +34,13 @@ export interface GapRow {
 }
 
 export interface Ranking {
+  /** Gaps with a measured area share, ordered by it. */
   ranked: GapRow[]
   offCoverage: GapRow[]
-  unranked: Array<{ city: string; code: string; why: string }>
+  /** Gaps carrying no area share. NOT small — unmeasurable on this weighting.
+   *  Kept out of the order rather than given a zero or ranked on the other
+   *  column, which would silently mix two denominators in one list. */
+  unranked: Array<{ city: string; code: string; n: number | null; share: number | null; why: string }>
   missingWeights: string[]
   notReconciled: string[]
   byCity: Array<{ city: string; gapFeatures: number; total: number; gapCodes: number; areaShare: number | null }>
@@ -49,7 +53,7 @@ export interface Ranking {
 export function rank(): Ranking {
   const ranked: GapRow[] = []
   const offCoverage: GapRow[] = []
-  const unranked: Array<{ city: string; code: string; why: string }> = []
+  const unranked: Ranking['unranked'] = []
   const missingWeights: string[] = []
   const notReconciled: string[] = []
   const byCity: Ranking['byCity'] = []
@@ -78,6 +82,10 @@ export function rank(): Ranking {
         unranked.push({
           city: t.city,
           code: g,
+          // null, not 0 — a code whose weight could not be measured has no count
+          // to report, and a 0 here would be the same lie the area column refuses.
+          n: w.confirmedZero.includes(g) ? 0 : null,
+          share: w.confirmedZero.includes(g) ? 0 : null,
           why: w.confirmedZero.includes(g)
             ? 'ZERO features — measured, and an answer about priority'
             : 'weight UNMEASURED — not zero, unknown',
@@ -87,12 +95,29 @@ export function rank(): Ranking {
       gapFeatures += n
       const a = w.areaByCode?.[g]
       if (a != null) gapArea += a
-      ;(citywide ? ranked : offCoverage).push({
+      const row: GapRow = {
         city: t.city, field: t.field, code: g, n,
         share: n / w.totalFeatures,
         areaShare: areaTotal != null && a != null ? a / areaTotal : null,
         citywide,
-      })
+      }
+      if (!citywide) { offCoverage.push(row); continue }
+      // ⚠️ RANKED BY AREA, so a gap with no area column cannot be placed. It is
+      // not last and it is not zero — those both assert something. Ten of the 23
+      // layers publish no usable area column, and two of those cities have gaps:
+      // LA's 440 and Phoenix's 8. Ranking them on the count column instead would
+      // interleave two different denominators in one ordered list, which is the
+      // one thing this file has refused to do since it was written.
+      if (row.areaShare == null) {
+        unranked.push({
+          city: t.city, code: g, n: row.n, share: row.share,
+          why: w.areaField == null
+            ? "layer publishes no area column — this gap's land share is unmeasured, not small"
+            : `area column \`${w.areaField}\` present but unusable (counts did not reconcile against it)`,
+        })
+        continue
+      }
+      ranked.push(row)
     }
     if (citywide) {
       byCity.push({
@@ -102,9 +127,14 @@ export function rank(): Ranking {
     }
   }
 
-  ranked.sort((a, b) => b.share - a.share || b.n - a.n || a.city.localeCompare(b.city))
-  offCoverage.sort((a, b) => b.share - a.share)
-  byCity.sort((a, b) => b.gapFeatures / b.total - a.gapFeatures / a.total)
+  // AREA is the order. `share` (polygon count) rides along as a second column
+  // and never breaks a tie, so the two can never quietly swap roles.
+  ranked.sort((a, b) => b.areaShare! - a.areaShare! || a.city.localeCompare(b.city) || a.code.localeCompare(b.code))
+  offCoverage.sort((a, b) => (b.areaShare ?? -1) - (a.areaShare ?? -1) || b.share - a.share)
+  unranked.sort((a, b) => (b.share ?? -1) - (a.share ?? -1))
+  // Cities with no area column sort to the END and are labelled unranked rather
+  // than appearing to have the smallest share.
+  byCity.sort((a, b) => (b.areaShare ?? -1) - (a.areaShare ?? -1))
   return { ranked, offCoverage, unranked, missingWeights, notReconciled, byCity, totalGaps }
 }
 
