@@ -7612,3 +7612,58 @@ A summary that collapses them inherits the credibility of the second while havin
 only done the first — which is rule 18's asymmetry applied to a status report
 rather than to a figure: a leg that reads as finished gets less scrutiny than one
 that reads as open.
+
+---
+
+## 2026-08-19 — A corroboration that could not be re-run, and the fix
+
+The 2026-08-05 cost corroboration recorded a **verdict** — "inside Cumming's
+published range for 3 of 9 cities", "in all nine" — and not the ranges it was
+drawn from. Two weeks later the constants were re-keyed by product type, which
+made the check newly relevant to exactly one product instead of all of them, and
+at that point the claim **could not be re-examined from the repo at all**. The
+only way forward was to re-obtain the source.
+
+That is "corroboration is not provenance" made concrete, and it is a different
+failure from every earlier one here. Nothing was wrong. The arithmetic held, the
+percentages held, the conclusion held. What was missing was the ability to *ask
+again* — and a claim you cannot re-interrogate decays into a claim you either
+trust or discard, with no third option.
+
+**The fix, and it is small:** Cumming publishes its quarterly market analysis
+openly, so the Q4 2025 edition was reachable without credentials (2,247,549
+bytes, byte-identical to `Content-Length` — rule 22). `src/config/cummingRanges.ts`
+now holds the four relevant per-city rows as data, with the report's own scope
+note quoted verbatim, and `cummingCheck.test.ts` recomputes every published claim
+from them. **The verdict is no longer written down anywhere. It is derived.**
+
+Two things fell out of storing the numbers, neither of which anyone was looking
+for:
+
+**The city count was wrong throughout.** Every count read nine; the table carries
+ten. Washington DC had been omitted. Every percentage and every conclusion
+reproduced exactly — Denver still the worst case at −9.0%, Nashville still the
+lowest apartment low bound at $280 — so this cost nothing except that a
+denominator had been published wrong for two weeks, in a file header, in three
+`source` strings, and in the comment a reader hits first.
+
+**Office's supporting claim had no numbers behind it either.** "Sits between
+Shell & Core and S&C + Tenant Improvement" is the sentence that justifies pricing
+a *complete* building from a shell-and-core benchmark, and the Tenant Improvement
+row had never been transcribed. It was a conclusion resting on a table nobody
+kept. Both rows are stored now and the between-ness is recomputed per city.
+
+The corrected figures: apartment inside in 3 of 10 at the flat tier and **all ten
+at the 5–8 storey tier**, robust across 1.10/1.12/1.15 and 9 of 10 at 1.09 — so
+the "tier artifact" reading does not depend on the exact factor. Office inside
+Shell & Core in 8 of 10 (over the top bound only in Nashville +5.2% and San
+Francisco +1.4%), between S&C and S&C+TI in all ten. Institutional inside the
+K-12 range in all ten.
+
+**The rule.** Rule 9 says external validation is required before any provenance
+claim ships. This adds the half that was missing: *store what the outside source
+said, not what you concluded from it.* An external check whose data was never
+kept is a one-time event masquerading as a standing result — it looks identical
+to a re-runnable check in every file that cites it, and the difference only
+surfaces the day someone needs to change the thing it was checking. Which is the
+day it is most expensive to discover.

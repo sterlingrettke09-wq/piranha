@@ -52,7 +52,7 @@ export type BuildingTier = 'single' | 'multi' | 'apartment'
 //    ⚠️ NO LONGER UNCONTESTED (2026-08-05). That conclusion rested on ONE
 //    external benchmark. A second one now disagrees with the first by roughly
 //    2× on the same product class: Cumming Q4 2025's LOWEST apartment low-bound
-//    across nine metros is Nashville $280/sf — still 1.93× the RSMeans bare
+//    across the ten metros is Nashville $280/sf — still 1.93× the RSMeans bare
 //    $145.01 and 1.43× its fee-inclusive $195.97. So 340 is condemned by one
 //    published source and corroborated by another.
 //    Per rule 1, NO DIRECTION is asserted here: the reconciliation is almost
@@ -191,17 +191,27 @@ export type BuildingTier = 'single' | 'multi' | 'apartment'
 // Analysis Q4 2025 p.27 "Location Cost Impact", per-city, scope-matched to our
 // `hard` line (Cumming excludes land, professional fees, permits, FF&E, soft
 // costs and sitework — all separate addends here or absent from the model):
-//   · residential — inside Cumming's published range for 3 of 9 cities and below
-//     the low bound by 0.3–9.0% for the rest; worst case Denver −9.0%. At the
-//     5–8 storey tier (heightCostFactor 1.12) ALL NINE land inside the range,
+//   · residential — inside Cumming's published range for 3 of the 10 cities and
+//     below the low bound by 0.3–9.0% for the rest; worst case Denver −9.0%. At
+//     the 5–8 storey tier (heightCostFactor 1.12) ALL TEN land inside the range,
 //     so the residual low bias is a tier artifact, not a base-rate error.
-//   · commercial — inside Cumming's office Shell & Core range for 7 of 9;
-//     worst +5.2% (Nashville). Sits between S&C and S&C+TI in all nine, which is
-//     where a complete-building rate belongs.
-//   · institutional — inside Cumming's K-12 range in all 9 cities.
-//   · mixed 365 — UNCHECKED. Cumming publishes no mixed-use row.
+//   · commercial — inside Cumming's office Shell & Core range in 8 of the 10;
+//     over the top bound only in Nashville (+5.2%) and San Francisco (+1.4%).
+//     Sits between S&C and S&C+TI in all ten, which is where a complete-building
+//     rate belongs.
+//   · institutional — inside Cumming's K-12 range in all ten cities.
+//   · mixed 365 — UNCHECKED. Cumming publishes no mixed-use row. (Withdrawn
+//     2026-08-19; `mixed` is now unpriced. See costPerSqFtByProduct.)
 // An independent published source agreeing within tolerance is corroboration. It
 // is not provenance, and it must not be written up as one.
+//
+// ⚠️ CITY COUNT CORRECTED 2026-08-19, and it is the smaller half of the finding.
+// Every "of 9" and "all nine" above read ten in the source table — Washington DC
+// was omitted from the count. The percentages were right and every conclusion
+// reproduces; only the denominator was wrong. What made it findable at all is
+// that the ranges are now stored: `src/config/cummingRanges.ts` holds the
+// per-city table and `cummingCheck.test.ts` recomputes each bullet above from it,
+// so these sentences are no longer the only record of the comparison.
 //
 // NOTE: "institutional" reflects schools/civic (~$450); hospitals run far higher
 // (~$700–975/sf), a known limitation of one bucket — Cumming confirms it.
@@ -276,12 +286,14 @@ export type CostRate =
   | { kind: 'unsourced'; reason: string }
   | { kind: 'unpriced'; reason: string }
 
+// The per-city ranges themselves live in `cummingRanges.ts`; `cummingCheck.test.ts`
+// recomputes every claim below from them rather than restating a verdict.
 const CUMMING =
   'Cumming Group Market Analysis Q4 2025 p.27 (Location Cost Impact), scope-matched to the hard line — Cumming excludes land, professional fees, permits, FF&E, soft costs and sitework'
 
 export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Object.freeze({
   // Its validated home: 340 was checked against Cumming's APARTMENT ranges, and
-  // lands inside all nine metros at the 5–8 storey tier.
+  // lands inside all ten metros at the 5–8 storey tier.
   // ── APARTMENT RE-VALIDATED AGAINST CUMMING, 2026-08-19 ────────────────────
   // Asked for once the key was corrected, and the answer has three parts.
   //
@@ -312,12 +324,17 @@ export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Obj
   //    1.12, and the "tier artifact" explanation stands. Apartment's
   //    corroboration is NOT weakened by RSMeans; it is supported by it.
   //
-  // 3. ⚠️ AND THE CHECK CANNOT BE RE-RUN, because the per-city Cumming ranges
-  //    were never stored — only the conclusion drawn from them. That is
-  //    "corroboration is not provenance" made concrete: a claim recorded in a
-  //    form that cannot be re-examined, so re-validating it means re-obtaining
-  //    the source rather than re-reading the repo. STORE THE RANGES next time,
-  //    not the verdict.
+  // 3. ✅ RESOLVED THE SAME DAY — the ranges are now stored, and this paragraph
+  //    used to say the check could not be re-run. It could not, because only the
+  //    conclusion had been kept and not the numbers it was drawn from; the report
+  //    had to be re-obtained to re-examine a claim already in the repo.
+  //
+  //    Cumming publishes its quarterly market analysis openly, so the Q4 2025
+  //    edition was reachable without credentials. Its per-city ranges are in
+  //    `src/config/cummingRanges.ts` and `cummingCheck.test.ts` recomputes the
+  //    comparison from them on every run. The verdict is no longer written down
+  //    anywhere; it is derived. This is the general fix for "corroboration is not
+  //    provenance": store the source's numbers, never your reading of them.
   //
   //    Also unsettleable from the record: buildingTier puts 5+ units in
   //    'apartment', so a five-unit two-storey walkup takes this rate at factor
@@ -325,8 +342,8 @@ export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Obj
   //    walkups or mid-rise. That is the same product-vs-key question one level
   //    down from the one just fixed.
   apartment: { kind: 'rate', perSqFt: 340, provenance: 'corroborated', source: CUMMING },
-  office: { kind: 'rate', perSqFt: 390, provenance: 'corroborated', source: `${CUMMING} — inside the office Shell & Core range for 7 of 9, and between S&C and S&C+TI in all nine` },
-  institutional: { kind: 'rate', perSqFt: 450, provenance: 'corroborated', source: `${CUMMING} — inside the K-12 range in all nine; hospitals run far higher and are a known limitation of one bucket` },
+  office: { kind: 'rate', perSqFt: 390, provenance: 'corroborated', source: `${CUMMING} — inside the office Shell & Core range in 8 of the 10 cities, and between S&C and S&C+TI in all ten, which is where a complete-building rate belongs` },
+  institutional: { kind: 'rate', perSqFt: 450, provenance: 'corroborated', source: `${CUMMING} — inside the K-12 range in all ten cities; hospitals run far higher and are a known limitation of one bucket` },
 
   // ⚠️⚠️ 340 → 152, AND THIS IS THE MEASUREMENT THE RE-KEY WAS FOR.
   //

@@ -111,8 +111,11 @@ Answered **2026-08-17**, against four options put to Sterling.
 | Per-report purchase | *"Idk, I don't see how this would generate anything good"* | **OPEN — leaning no** |
 | Lead generation | **No** | DECIDED 2026-08-17 |
 
-Both "yes" answers depend on cost-data access above. Nothing here is billable
-while the cost basis is unsourced.
+Both "yes" answers depend on cost-data access above. **Updated 2026-08-19:** the
+free-stack work moved the cost basis from unsourced to sourced-per-product, with
+two products carrying explicit stated absences instead of numbers. What is still
+missing for a billable product is a *spread* — every rate is a point, and a
+point with no range is hard to sell as a feasibility figure.
 
 ---
 
@@ -204,9 +207,27 @@ data count and live code count all six). Where a district publishes a base and a
 bonus, encode the base and label the rest, the way Denver's D-GT went in at 8.0
 with the 15.0 incentive noted (rule 6).
 
-### 2. Cost-data access  — OPEN, blocked on Sterling
+### 2. Cost-data access  — PARTLY DONE 2026-08-19 via the free stack; ranges still open
 
-Nothing proceeds until a source is chosen. Once chosen:
+**Decided 2026-08-19:** take the free-stack path rather than wait on a paid
+subscription. What that produced, in order:
+
+| Step | State |
+|---|---|
+| Re-key cost by PRODUCT TYPE, not use | **DONE.** `detached / small-multi / apartment / office / institutional / mixed`. A detached house was being priced at an apartment rate. |
+| `small-multi` (2–4 unit) | **DONE as an explicit absence.** `kind: 'unsourced'` — no published source covers it at this scope, and interpolating between detached and apartment would be an invented conversion (rule 4). Renders no construction cost with a stated reason. |
+| `mixed` | **DONE as an explicit absence.** `kind: 'unpriced'`; the former figure is withdrawn. Cumming publishes no mixed-use row. |
+| Source `detached` | **DONE.** NAHB *Cost of Constructing a Home in 2024* → $152/sf, scope-matched by subtracting four published line items. A 2.24× reduction from the apartment rate it had been inheriting. |
+| Re-validate `apartment` against Cumming apartment ranges alone | **DONE**, and now **stored as data** — `src/config/cummingRanges.ts` + `cummingCheck.test.ts` recompute it rather than restating a verdict. |
+| Height premium — is it real? | **DONE.** RSMeans three-point series, size-normalised, gives ~1.10 at 4–7 storeys and ~1.40 at 8–24 against this file's 1.12 / 1.28. The premium is real; the 9–20 tier is **modelled low**, recorded as a measured direction and deliberately not changed. |
+| Validate against permit-declared valuations | **DONE**, in the only direction a known-understated source permits. |
+| **Ranges (a spread, not a point)** | **STILL OPEN.** NAHB publishes no spread, so `detached` is a sourced *point* and says so. This is what a paid source would buy. |
+
+*Still blocked on Sterling:* nothing structural — but the RSMeans credential
+pasted into a transcript on 2026-08-17 has not been rotated, and that is his
+action, not one this repo can take.
+
+If a paid source is later chosen:
 
 1. Source each constant in `src/config/estimates.ts` individually, with a
    citation per figure — **composite constants need BOTH inputs sourced** or the
