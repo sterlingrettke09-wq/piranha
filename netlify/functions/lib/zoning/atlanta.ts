@@ -831,6 +831,20 @@ function singleFamily(
 // ── The table ────────────────────────────────────────────────────────────────
 
 const DISTRICTS: Record<string, AtlantaLimits> = {
+  // ⚠️⚠️ TO ANYONE ADDING AN SPI SUBAREA: READ THAT SUBAREA'S OWN SENTENCE.
+  // There is NO unit of Atlanta's zoning code at which the lot-area basis is
+  // uniform. Not the city — §16-29.001(37) scopes itself to R-1 through R-5. Not
+  // the chapter — SPI-20 and SPI-21 each leave exactly one limb unqualified and
+  // it is a different limb. Not the section — SPI-15 §16-18O.028 states
+  // residential against GROSS for Subareas 2 and 4 and against NET for Subarea 3,
+  // in the same sentence form. Only the subarea.
+  //
+  // So a basis copied from a sibling entry below is wrong by default, and the
+  // failure is invisible: every value in AtlantaLotBasis is legal, the types
+  // check, the tests pass, and the parcel gets a floor area computed against the
+  // wrong denominator. Eight distinct mechanisms across eleven chapters, none
+  // predictable from the last — the list is in the per-chapter notes.
+
   // ── SPI SUBAREAS (Chapters 16-18P / 16-18T / 16-18U) ───────────────────────
   //
   // ⚠️ THE BASIS IS ASSIGNED PER LIMB AND PER CHAPTER, AND THE CHAPTERS DISAGREE.
@@ -961,6 +975,324 @@ const DISTRICTS: Record<string, AtlantaLimits> = {
   //   SPI-2   row labels; nonresidential NET and residential GROSS, split
   //   SPI-17  row labels, gross on both, no combined row at all
   // Read every chapter's own sentences. Nothing carries across.
+
+  // ── THE "GROUP HEADER + LETTERED SUB-ROWS" CHAPTERS ────────────────────────
+  // SPI-3, SPI-4, SPI-11 and SPI-19 share a NINTH structural pattern: the FAR
+  // row is an EMPTY group header ("Maximum FAR" / "Base FAR") with the figures in
+  // lettered sub-rows beneath it — "a) Residential", "b) Non-Residential",
+  // "c) Combined". A scan matching FAR-labelled rows finds the header, reads its
+  // blank cells, and reports the chapter as stating no FAR. Three chapters showed
+  // that symptom together, which is what made it an instrument question rather
+  // than three coincidences (rule 25).
+  //
+  // ⚠️ BASIS: 'unqualified' ON THE BASE LIMBS, AND FOR A CONSISTENT REASON. SPI-3
+  // and SPI-19 both state a denominator for the BONUS FAR ("Bonus FAR* net lot
+  // area", "a floor area bonus of one-times net lot area") and none for the base.
+  // SPI-4 states none anywhere. SPI-12's only net/gross sentence governs open
+  // space, not FAR. So the drafting pattern is that the incentive is specified
+  // and the entitlement is not — and reading the bonus basis across to the base
+  // would be an inference from a different provision in the same chapter.
+  // SPI-11 is the exception: §16-18K.008 makes RESIDENTIAL elective outright.
+  'SPI-3 SA1': {
+    ...base('SPI-3 English Avenue (Subarea 1)', '§16-18C.007'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(0.50, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 35,
+    heightSource: '§16-18C.007 Table, "Maximum Building Height"',
+  },
+  'SPI-3 SA2': {
+    ...base('SPI-3 English Avenue (Subarea 2)', '§16-18C.007'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(0.696, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18C.007 Table, "Maximum Building Height"',
+  },
+  'SPI-3 SA3': {
+    ...base('SPI-3 English Avenue (Subarea 3)', '§16-18C.007'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(1.00, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18C.007 Table, "Maximum Building Height"',
+  },
+  'SPI-3 SA4': {
+    ...base('SPI-3 English Avenue (Subarea 4)', '§16-18C.007'),
+    farNonresidential: far(0.50, 'unqualified', '§16-18C.007 Table, "b) Non-Residential"'),
+    farResidential: far(1.00, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: far(1.50, 'unqualified', '§16-18C.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 40,
+    heightSource: '§16-18C.007 Table, "Maximum Building Height"',
+  },
+  'SPI-3 SA5': {
+    ...base('SPI-3 English Avenue (Subarea 5)', '§16-18C.007'),
+    farNonresidential: far(2.00, 'unqualified', '§16-18C.007 Table, "b) Non-Residential"'),
+    farResidential: far(1.30, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: far(3.30, 'unqualified', '§16-18C.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 55,
+    heightSource: '§16-18C.007 Table, "Maximum Building Height"',
+  },
+  'SPI-3 SA6': {
+    ...base('SPI-3 English Avenue (Subarea 6)', '§16-18C.007'),
+    farNonresidential: far(2.00, 'unqualified', '§16-18C.007 Table, "b) Non-Residential"'),
+    farResidential: far(2.00, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: far(4.00, 'unqualified', '§16-18C.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 75,
+    heightSource: '§16-18C.007 Table, "Maximum Building Height"',
+  },
+  'SPI-3 SA7': {
+    ...base('SPI-3 English Avenue (Subarea 7)', '§16-18C.007'),
+    farNonresidential: far(2.00, 'unqualified', '§16-18C.007 Table, "b) Non-Residential"'),
+    farResidential: far(4.00, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: far(6.00, 'unqualified', '§16-18C.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 105,
+    heightSource: '§16-18C.007 Table, "Maximum Building Height"',
+  },
+  'SPI-3 SA8': {
+    ...base('SPI-3 English Avenue (Subarea 8)', '§16-18C.007'),
+    farNonresidential: far(2.00, 'unqualified', '§16-18C.007 Table, "b) Non-Residential"'),
+    farResidential: far(1.30, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: far(3.30, 'unqualified', '§16-18C.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 45,
+    heightSource: '§16-18C.007 Table, "Maximum Building Height"',
+  },
+  'SPI-3 SA9': {
+    ...base('SPI-3 English Avenue (Subarea 9)', '§16-18C.007'),
+    farNonresidential: far(1.10, 'unqualified', '§16-18C.007 Table, "b) Non-Residential"'),
+    farResidential: far(1.10, 'unqualified', '§16-18C.007 Table, "a) Residential"'),
+    farCombined: far(2.20, 'unqualified', '§16-18C.007 Table, "c) Combined" — stated, not derived'),
+    heightSource: '§16-18C.007 Table, "Maximum Building Height Along Streets": Subarea 9 is stated as "Based on Block" — a per-block determination this project cannot resolve',
+  },
+  'SPI-4 SA1': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 1)', '§16-18D.008'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(0.50, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 35,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA2': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 2)', '§16-18D.008'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(1.49, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA3': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 3)', '§16-18D.008'),
+    farNonresidential: far(0.50, 'unqualified', '§16-18D.008 Table, "b) Non-Residential"'),
+    farResidential: far(1.49, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA4': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 4)', '§16-18D.008'),
+    farNonresidential: far(1.00, 'unqualified', '§16-18D.008 Table, "b) Non-Residential"'),
+    farResidential: far(2.00, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 55,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA5': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 5)', '§16-18D.008'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(2.00, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 105,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA6': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 6)', '§16-18D.008'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(2.00, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 55,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA7': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 7)', '§16-18D.008'),
+    farNonresidential: far(0.50, 'unqualified', '§16-18D.008 Table, "b) Non-Residential"'),
+    farResidential: far(1.00, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA8': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 8)', '§16-18D.008'),
+    farNonresidential: far(2.00, 'unqualified', '§16-18D.008 Table, "b) Non-Residential"'),
+    farResidential: far(1.30, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 45,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA9': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 9)', '§16-18D.008'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(0.50, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 35,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA10': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 10)', '§16-18D.008'),
+    farNonresidential: far(2.00, 'unqualified', '§16-18D.008 Table, "b) Non-Residential"'),
+    farResidential: far(4.00, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 105,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA11': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 11)', '§16-18D.008'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(1.00, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-4 SA12': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 12)', '§16-18D.008'),
+    farNonresidential: far(3.00, 'unqualified', '§16-18D.008 Table, "b) Non-Residential"'),
+    farResidential: far(3.20, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightUnconstrained: true,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height (ft)": None',
+  },
+  'SPI-4 SA13': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 13)', '§16-18D.008'),
+    farNonresidential: far(2.00, 'unqualified', '§16-18D.008 Table, "b) Non-Residential"'),
+    farResidential: far(4.00, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightTiers: [
+      { label: 'base', heightFt: 105 },
+      { label: 'alternative stated in the table footnote', heightFt: 290 },
+    ],
+    heightSource: '§16-18D.008 Table, "Maximum Building Height (ft)": "105\' or 290\' **" — two figures, so no single one is resolved',
+  },
+  // The live layer spells Subarea 11 both ways. Enumerated, not pattern-matched.
+  'SPI-4 SA 11': {
+    ...base('SPI-4 Ashview Heights / AUC (Subarea 11)', '§16-18D.008'),
+    farNonresidential: null, // table states N/A
+    farResidential: far(1.00, 'unqualified', '§16-18D.008 Table, "a) Residential"'),
+    farCombined: null,
+    heightFt: 40,
+    heightSource: '§16-18D.008 Table, "Maximum Building Height"',
+  },
+  'SPI-11 SA2': {
+    ...base('SPI-11 Vine City & Ashby Station (Subarea 2)', '§16-18K.008'),
+    farNonresidential: far(1.00, 'unqualified', '§16-18K.008 Table, "b) Non-Residential"'),
+    farResidential: far(2.00, 'net-or-gross', '§16-18K.008 Table, "a) Residential" (§16-18K.008: residential may utilise net or gross lot area)'),
+    farCombined: far(3.00, 'unqualified', '§16-18K.008 Table, "c) Combined" — stated, not derived'),
+    heightFt: 40,
+    heightSource: '§16-18K.008 Table, "Maximum Building Height"',
+  },
+  'SPI-11 SA6': {
+    ...base('SPI-11 Vine City & Ashby Station (Subarea 6)', '§16-18K.008'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(0.50, 'net-or-gross', '§16-18K.008 Table, "a) Residential" (§16-18K.008: residential may utilise net or gross lot area)'),
+    farCombined: null, // table states N/A,
+    heightFt: 35,
+    heightSource: '§16-18K.008 Table, "Maximum Building Height"',
+  },
+  'SPI-11 SA8': {
+    // Subarea 8 states "Max 5% of Res. FAR" for non-residential — a share of another limb, not a ratio on the lot
+    ...base('SPI-11 Vine City & Ashby Station (Subarea 8)', '§16-18K.008'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(1.49, 'net-or-gross', '§16-18K.008 Table, "a) Residential" (§16-18K.008: residential may utilise net or gross lot area)'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18K.008 Table, "Maximum Building Height"',
+  },
+  'SPI-11 SA9': {
+    ...base('SPI-11 Vine City & Ashby Station (Subarea 9)', '§16-18K.008'),
+    farNonresidential: far(1.00, 'unqualified', '§16-18K.008 Table, "b) Non-Residential"'),
+    farResidential: far(1.696, 'net-or-gross', '§16-18K.008 Table, "a) Residential" (§16-18K.008: residential may utilise net or gross lot area)'),
+    farCombined: far(2.696, 'unqualified', '§16-18K.008 Table, "c) Combined" — stated, not derived'),
+    heightFt: 35,
+    heightSource: '§16-18K.008 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA1': {
+    ...base('SPI-19 Vine City (Subarea 1)', '§16-18S.007'),
+    farNonresidential: far(1.00, 'unqualified', '§16-18S.007 Table, "b) Non-Residential"'),
+    farResidential: far(2.00, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: far(3.00, 'unqualified', '§16-18S.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 55,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA2': {
+    ...base('SPI-19 Vine City (Subarea 2)', '§16-18S.007'),
+    farNonresidential: far(1.00, 'unqualified', '§16-18S.007 Table, "b) Non-Residential"'),
+    farResidential: far(2.00, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: far(3.00, 'unqualified', '§16-18S.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 55,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA3': {
+    ...base('SPI-19 Vine City (Subarea 3)', '§16-18S.007'),
+    farNonresidential: far(3.00, 'unqualified', '§16-18S.007 Table, "b) Non-Residential"'),
+    farResidential: far(3.20, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: far(6.20, 'unqualified', '§16-18S.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 55,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA4': {
+    ...base('SPI-19 Vine City (Subarea 4)', '§16-18S.007'),
+    farNonresidential: far(4.00, 'unqualified', '§16-18S.007 Table, "b) Non-Residential"'),
+    farResidential: far(3.20, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: far(7.20, 'unqualified', '§16-18S.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 105,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA5': {
+    ...base('SPI-19 Vine City (Subarea 5)', '§16-18S.007'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(1.00, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA6': {
+    ...base('SPI-19 Vine City (Subarea 6)', '§16-18S.007'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(0.5, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 35,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA7': {
+    ...base('SPI-19 Vine City (Subarea 7)', '§16-18S.007'),
+    farNonresidential: null, // table states N/A or a non-ratio rule,
+    farResidential: far(1.50, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: null, // table states N/A,
+    heightFt: 40,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA8': {
+    ...base('SPI-19 Vine City (Subarea 8)', '§16-18S.007'),
+    farNonresidential: far(2.50, 'unqualified', '§16-18S.007 Table, "b) Non-Residential"'),
+    farResidential: far(1.48, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: far(3.99, 'unqualified', '§16-18S.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 55,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA10': {
+    ...base('SPI-19 Vine City (Subarea 10)', '§16-18S.007'),
+    farNonresidential: far(1, 'unqualified', '§16-18S.007 Table, "b) Non-Residential"'),
+    farResidential: far(0.8, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: far(1.8, 'unqualified', '§16-18S.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 40,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
+  'SPI-19 SA11': {
+    ...base('SPI-19 Vine City (Subarea 11)', '§16-18S.007'),
+    farNonresidential: far(2.00, 'unqualified', '§16-18S.007 Table, "b) Non-Residential"'),
+    farResidential: far(2.00, 'unqualified', '§16-18S.007 Table, "a) Residential"'),
+    farCombined: far(4.00, 'unqualified', '§16-18S.007 Table, "c) Combined" — stated, not derived'),
+    heightFt: 55,
+    heightSource: '§16-18S.007 Table, "Maximum Building Height"',
+  },
 
   // ── SPI-15 LINDBERGH — PROSE *AND* PER-SUBAREA (§16-18O.028 / §16-18O.029) ──
   // The hardest chapter so far: the ratios are written out IN WORDS ("six hundred

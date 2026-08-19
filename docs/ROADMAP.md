@@ -216,6 +216,7 @@ data-publication gap rather than an epistemic one:
 | Phoenix | § 1202.B/C |
 | Charlotte | site-plan basis |
 | **Atlanta (2nd)** | **SPI-9 Buckhead Village "Map Attachment"** — see below |
+| **Atlanta (3rd)** | **SPI-15 Attachment C** — Subarea 9 height maximums |
 
 ⚠️ **SPI-9 is a STRONGER version of this category and should be asked for as
 one.** Every other entry puts the spatial dependency in a *term* — a denominator
@@ -225,6 +226,15 @@ entitlement itself is the map. The only numeric figures the chapter publishes ar
 with-bonus, which are a programme the applicant has not chosen (rule 6). Six live
 zone codes resolve to nothing until that attachment is published as data, and no
 amount of reading the ordinance will change that.
+
+**Atlanta's three asks are not the same KIND of request, and should not be sent
+as one.** ROW width is an existing GIS product published in the wrong form — it
+is drawn on the cadastral map as cartographic annotation, so the ask is "expose
+the layer you already draw". SPI-9's Map Attachment and SPI-15's Attachment C are
+**attachments to the ordinance itself** — documents adopted as part of the code,
+never GIS products at all, so the ask is "publish the adopted attachment as
+data". The second is a records question and probably goes to a different desk
+than the first.
 
 Deliverable per city: a short written request naming the exact layer, why the
 current publication does not serve, and what it unblocks. These are outbound

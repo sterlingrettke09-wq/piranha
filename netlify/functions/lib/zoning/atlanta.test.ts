@@ -62,8 +62,14 @@ describe('parseAtlantaZone', () => {
     // amount of reading will produce one. A fixture for "unread" should name
     // something that cannot become read by doing the planned work.
     //
-    // SPI-22 SA-1 was also removed — it is now an encoded spelling variant.
-    for (const code of ['SPI-9 SA1', 'SPI-4 SA 11', 'HC-20B', 'NC-11', 'Poncey-Highland SA3']) {
+    // SPI-22 SA-1 was also removed — it is now an encoded spelling variant, and
+    // so was SPI-4 SA 11 on the same grounds. THIRD break of this one fixture in
+    // a day. Every removed entry was a SPELLING VARIANT or a queued chapter —
+    // i.e. chosen to illustrate a parsing shape, which is exactly what gets
+    // encoded. What survives is chosen for why it CANNOT be encoded: SPI-9's FAR
+    // is on a map attachment, and HC-20 / NC / Poncey-Highland are declared out
+    // of scope by policy rather than by schedule (see the sweep's partialScope).
+    for (const code of ['SPI-9 SA1', 'HC-20B', 'NC-11', 'Poncey-Highland SA3']) {
       expect(parseAtlantaZone(code).base, code).toBeNull()
     }
     expect(parseAtlantaZone(null).base).toBeNull()

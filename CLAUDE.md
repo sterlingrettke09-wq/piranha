@@ -514,6 +514,25 @@ so no amount of reading produces one. A structural reason outlives a schedule.
 Generalises to any fixture standing for an absent, unsupported or unhandled case:
 name something absent by construction, not something merely absent for now.
 
+**30. A derivation instruction in the source is a claim, and it can be wrong
+about its own table.** Atlanta SPI-15's mixed-use clause reads "floor area ratio
+shall not exceed N times net lot area **[the sum of the nonresidential (i) and
+residential (ii) above]**". The bracket tells the reader how to compute the
+figure. It is true for Subarea 1 (1.0 + 0.696 = 1.696) and Subarea 3 (4.0 + 4.2 =
+8.2), and FALSE for Subarea 2, whose stated figure is 2.0 against a sum of 4.0,
+and Subarea 4, stated 3.0 against 6.0.
+
+Every earlier combined-cap case in this repo was a value that merely happened not
+to be a sum. This one **instructs you to derive it** — so a careful reader
+following the document's own method doubles Subarea 2, and a parser that trusted
+the gloss would do it silently across the chapter.
+
+The operative words are the limit ("shall not exceed N times net lot area"); the
+bracket is explanatory. **Encode what is stated and never compute from a stated
+method**, even the source's own — a derivation instruction is an assertion about
+the table, subject to the same doubt as any other figure in it, and it is not
+checked by anyone before publication.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

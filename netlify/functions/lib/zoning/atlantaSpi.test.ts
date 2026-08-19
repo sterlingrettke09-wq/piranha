@@ -377,3 +377,78 @@ describe('SPI-15 assigns its basis per subarea, not per chapter', () => {
     )
   })
 })
+
+// ── THE GROUP-HEADER CHAPTERS: SPI-3, SPI-4, SPI-11, SPI-19 ────────────────
+describe('a FAR group header with lettered sub-rows still yields figures', () => {
+  it('reads the sub-rows, not the empty header', () => {
+    // "Maximum FAR" / "Base FAR" is an EMPTY row; the figures live in
+    // "a) Residential" / "b) Non-Residential" / "c) Combined" beneath it. A scan
+    // matching FAR-labelled rows finds the header and reports no FAR at all.
+    expect(resolveAtlanta('SPI-19 SA4').farResidential!.far).toBe(3.2)
+    expect(resolveAtlanta('SPI-19 SA4').farNonresidential!.far).toBe(4.0)
+    expect(resolveAtlanta('SPI-19 SA4').farCombined!.far).toBe(7.2)
+    expect(resolveAtlanta('SPI-3 SA7').farCombined!.far).toBe(6.0)
+    expect(resolveAtlanta('SPI-4 SA10').farResidential!.far).toBe(4.0)
+  })
+
+  it('the base limbs are unqualified because only the BONUS basis is stated', () => {
+    // SPI-3 states "Bonus FAR* net lot area" and SPI-19 "a floor area bonus of
+    // one-times net lot area" — both about the incentive, neither about the
+    // entitlement. Reading it across would be an inference from a different
+    // provision of the same chapter.
+    for (const c of ['SPI-3 SA5', 'SPI-4 SA4', 'SPI-19 SA1']) {
+      expect(resolveAtlanta(c).farResidential!.basis, c).toBe('unqualified')
+    }
+    // SPI-11 is the exception: §16-18K.008 makes residential elective outright.
+    expect(resolveAtlanta('SPI-11 SA2').farResidential!.basis).toBe('net-or-gross')
+  })
+
+  it('N/A and "Max 5% of Res. FAR" are not ratios', () => {
+    expect(resolveAtlanta('SPI-11 SA8').farNonresidential).toBeNull()
+    expect(resolveAtlanta('SPI-11 SA8').farResidential!.far).toBe(1.49)
+    expect(resolveAtlanta('SPI-19 SA6').farNonresidential).toBeNull()
+    expect(resolveAtlanta('SPI-19 SA6').farCombined).toBeNull()
+  })
+
+  it('SPI-4 Subarea 12 states None for height — an answer, not a gap', () => {
+    const r = resolveAtlanta('SPI-4 SA12')
+    expect(r.heightUnconstrained).toBe(true)
+    expect(r.heightFt).toBeNull()
+    // and Subarea 13 states two figures, so neither is published
+    expect(resolveAtlanta('SPI-4 SA13').heightFt).toBeNull()
+    expect(resolveAtlanta('SPI-4 SA13').heightTiers!.map((t) => t.heightFt)).toEqual([105, 290])
+  })
+
+  it('SPI-3 Subarea 9 publishes no height — it is determined per block', () => {
+    const r = resolveAtlanta('SPI-3 SA9')
+    expect(r.heightFt).toBeNull()
+    expect(r.heightUnconstrained).toBe(false)
+    expect(r.heightSource).toMatch(/Block/)
+  })
+
+  it('and the -C and spacing variants resolve to their base entries', () => {
+    expect(resolveAtlanta('SPI-3 SA3-C').farResidential!.far).toBe(
+      resolveAtlanta('SPI-3 SA3').farResidential!.far,
+    )
+    expect(resolveAtlanta('SPI-19 SA5-C').farResidential!.far).toBe(1.0)
+    expect(resolveAtlanta('SPI-4 SA 11').farResidential!.far).toBe(1.0)
+  })
+})
+
+describe('what remains unresolved is deliberate, and enumerated', () => {
+  it('is exactly SPI-12, SPI-18, SPI-9, and the two out-of-scope subareas', () => {
+    const spi = LIVE.filter((c) => c.startsWith('SPI-'))
+    const unresolved = spi.filter((c) => resolveAtlanta(c).name == null).sort()
+    expect(spi.length).toBe(123)
+    // Pinned so that a code silently dropping out of coverage goes red rather
+    // than joining a list nobody re-reads.
+    expect(unresolved).toEqual([
+      'SPI-12 SA1', 'SPI-12 SA1-C', 'SPI-12 SA2', 'SPI-12 SA2-C', 'SPI-12 SA3',
+      'SPI-12 SA3-C', 'SPI-12 SA4',
+      'SPI-18 SA1', 'SPI-18 SA10', 'SPI-18 SA2', 'SPI-18 SA3', 'SPI-18 SA4',
+      'SPI-18 SA5', 'SPI-18 SA6', 'SPI-18 SA7', 'SPI-18 SA8', 'SPI-18 SA9',
+      'SPI-5 SA1', 'SPI-7 SA1',
+      'SPI-9 SA1', 'SPI-9 SA2', 'SPI-9 SA2-C', 'SPI-9 SA3', 'SPI-9 SA4', 'SPI-9-C SA1',
+    ])
+  })
+})
