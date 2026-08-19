@@ -59,6 +59,30 @@ export interface ParcelInfo {
      *  (floor area is governed by height/setbacks/coverage instead) from
      *  "we don't know the FAR", which `maxFAR: null` alone conflates. */
     farUnconstrained?: boolean
+    /** TRUE when the code imposes no maximum HEIGHT here at all — a KNOWN
+     *  absence, the exact companion to `farUnconstrained`.
+     *
+     *  ⚠️ ADDED 2026-08-19 TO CLOSE A GAP THAT THREE MODULES HAD ALREADY
+     *  DOCUMENTED AND COULD NOT EXPRESS. `zoning/atlanta.ts`, `zoning/dallas.ts`
+     *  and `zoning/charlotte.ts` each resolve this fact with a citation, and each
+     *  carried a comment saying the shared type had no field for it — so the
+     *  answer was flattened into an `article` sentence and `maxHeightFt: null`
+     *  reached the engine, which rendered it as "no district height limit is
+     *  available in public data". That is the tool disclaiming knowledge it
+     *  demonstrably has, over sixteen Atlanta subareas alone.
+     *
+     *  Rule 5 exactly, and the asymmetry is the tell: FAR got a flag for the same
+     *  distinction and height did not, so one instrument's known absence was an
+     *  answer and the other's was a gap.
+     *
+     *  ⚠️ SET IT ONLY FOR AN UNCONDITIONAL ABSENCE. Denver's D-C/D-TD states
+     *  heights "are not limited EXCEPT in the following height areas as shown on
+     *  Exhibit 8.1" — three mapped areas at 200 ft and 400 ft, on a figure no
+     *  published layer carries. `zoning/denver.ts` deliberately withholds the
+     *  flag there and says so: publishing "no height limit" would be wrong by 2x
+     *  for a Height Area 1 parcel, in the flattering direction. A conditional
+     *  absence is not this flag. */
+    heightUnconstrained?: boolean
     /** The area the code's FAR multiplies, where that is NOT the lot.
      *
      *  A FOURTH STATE, and the one the other three could not express: the ratio

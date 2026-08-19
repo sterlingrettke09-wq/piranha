@@ -321,6 +321,43 @@ decision from un-pinning a year, and one of them is named "beta".
 
 ---
 
+## `heightUnconstrained` — DONE 2026-08-19
+
+`farUnconstrained` and `heightUnconstrained` express the same distinction about
+two instruments: **the code imposes none here** (an answer) versus **we could not
+read one** (a gap). Only FAR had a flag.
+
+The fact was never missing. `zoning/atlanta.ts`, `zoning/dallas.ts` and
+`zoning/charlotte.ts` each resolve it with a citation, and each carried a comment
+saying the shared type had nowhere to put it — so it was flattened into an
+`article` sentence and `maxHeightFt: null` reached the engine, which reported
+**"no district height limit is available in public data"** for sixteen Atlanta
+subareas whose code prints *"Maximum Building Height: None"*. The tool disclaiming
+knowledge the code states plainly.
+
+The asymmetry is the whole failure: nobody decided height's known absence was a
+gap. One instrument got a field, the other did not, and every consumer inherited
+the difference silently.
+
+Now: the flag is on the type, the three providers forward it, `feasibility.ts`
+returns `AS_OF_RIGHT / "no maximum"` instead of INDETERMINATE, and the inverse
+returns `no-limit` and keeps the answer out of `unresolved`. Verified live —
+downtown Atlanta `SPI-1 SA1` resolves it and both directions agree.
+
+**⚠️ Denver Article 8 is NOT one of these, and the correction matters.** § 8.3.1.4.B.2
+states heights *"are not limited **except** in the following height areas as shown
+on Exhibit 8.1"* — 200 ft and 400 ft over three mapped areas, on a figure no
+published layer carries. `zoning/denver.ts` deliberately withholds the flag and
+says so: setting it would be **wrong by 2× for a Height Area 1 parcel, in the
+flattering direction**. A conditional absence is a third state, not this flag, and
+`unconstrainedSymmetry.test.ts` asserts the refusal so a future edit that
+"completes" Denver goes red rather than looking like progress.
+
+Both notes say `heightUnconstrained` still means only that no *ceiling* applies —
+setbacks and the transitional height plane near a protected district still govern.
+
+---
+
 ## Inverse query — DONE 2026-08-19
 
 **"I want 40 units here — what would it take?"** The existing pipeline run
@@ -374,10 +411,9 @@ code imposes none — an answer) · `unknown` (a gap).
 - **Storeys and feet are never converted.** A storey target against a limit in
   feet returns `unknown` and says why — the round trip is what published 87
   storeys for a district whose code says 80 (rule 12).
-- **There is no `heightUnconstrained` on the zoning type**, only
-  `farUnconstrained`. So "the code sets no height limit" and "we could not read
-  one" are genuinely indistinguishable here, and neither is claimed. That is a
-  real gap in the data model, not in this feature.
+- ~~**There is no `heightUnconstrained` on the zoning type**~~ — **FIXED
+  2026-08-19.** The flag now exists beside `farUnconstrained`, three providers
+  forward it, and both the forward pass and the inverse read it. See below.
 - **No district unit cap is read.** `envelope.maxUnits` is derived from floor
   area, so reporting it would restate the FAR constraint as a second problem and
   imply a second hearing. A district that caps units directly would need its own

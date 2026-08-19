@@ -570,6 +570,7 @@ export async function getDallasParcelInfo(lat: number, lng: number): Promise<Par
       // slots, and five different ft/story ratios appear across adjacent
       // districts (zoning/dallas.ts FACT 2).
       maxHeightFt: limits.heightFt,
+      ...(limits.heightUnconstrained ? { heightUnconstrained: true } : {}),
       // Stories where Article IV prints stories. NEVER derived from feet, for
       // the same reason and in the same direction.
       ...(limits.stories != null ? { maxStories: limits.stories } : {}),

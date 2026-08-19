@@ -91,13 +91,17 @@
 // neighbouring protected district's boundary, i.e. a limit on the part of the
 // site near a boundary, not a district ceiling.
 //
-// ⚠️ `ParcelInfo['zoning']` currently has `farUnconstrained` but NO
-// `heightUnconstrained`. This module records the fact in `heightUnconstrained`
-// so that a consumer can render it, and the provider states it in the `article`
-// string. Until the shared type gains the flag, `maxHeightFt: null` on these
-// districts is rendered by the feasibility engine as "no district height limit
-// is available in public data" — which is FALSE here: the limit is known and is
-// "none". That is a shared-type gap, recorded rather than papered over.
+// ✅ RESOLVED 2026-08-19. `ParcelInfo['zoning']` now carries
+// `heightUnconstrained` alongside `farUnconstrained`, the provider forwards it,
+// and the feasibility engine renders it as AS_OF_RIGHT / "no maximum".
+//
+// What this paragraph used to record was that the shared type had a field for
+// FAR's known absence and none for height's, so the fact resolved here reached
+// the engine as `maxHeightFt: null` and was reported as missing public data —
+// the tool disclaiming knowledge the code states plainly, over sixteen subareas.
+// The asymmetry was the whole defect: nobody decided height's known absence was
+// a gap, one instrument simply got a field and the other did not.
+// `unconstrainedSymmetry.test.ts` now holds the pair together.
 //
 // A NOTE ON RG-1 AND RG-2, because the exception runs the other way: §16-08.006
 // opens "The following height limitations shall apply … in all RG zoning

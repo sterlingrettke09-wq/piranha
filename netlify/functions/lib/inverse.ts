@@ -256,17 +256,21 @@ export function whatWouldItTake(parcel: ParcelInfo, city: string, target: Target
     })
     unresolved.push('height')
   } else if (wantFt != null || wantStories != null) {
-    // ⚠️ There is no `heightUnconstrained` on the zoning type, only
-    // `farUnconstrained`, so "this district states no height limit" and "we could
-    // not read one" are NOT distinguishable from here. That is a real gap in the
-    // data model and it is reported as unknown rather than guessed either way —
-    // claiming no limit applies would be the more useful answer and the one with
-    // nothing behind it.
-    constraints.push({
-      dimension: 'height', required: wantFt ?? wantStories, allowed: null, ratio: null, relief: 'unknown',
-      note: 'No height limit for this district is available in public data. That may mean the code sets none, or that it sets one we could not read — the two are not distinguishable here, so neither is claimed.',
-    })
-    unresolved.push('height')
+    if (parcel.zoning.heightUnconstrained === true) {
+      // The code states no ceiling. An ANSWER — height is not what stops you —
+      // and it must not sit in `unresolved`, which would make a complete answer
+      // read as a partial one.
+      constraints.push({
+        dimension: 'height', required: wantFt ?? wantStories, allowed: null, ratio: null, relief: 'no-limit',
+        note: 'This district imposes no maximum building height, so height is not what stops you here. Setbacks and any transitional height plane near a protected district still apply.',
+      })
+    } else {
+      constraints.push({
+        dimension: 'height', required: wantFt ?? wantStories, allowed: null, ratio: null, relief: 'unknown',
+        note: 'No height limit for this district is available in public data, so whether your height fits is unknown.',
+      })
+      unresolved.push('height')
+    }
   }
 
   // ── UNITS, where the district caps them directly ─────────────────────────

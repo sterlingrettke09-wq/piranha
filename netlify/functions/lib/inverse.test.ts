@@ -151,14 +151,31 @@ describe('⚠️ storeys and feet are never converted', () => {
     expect(dim(r, 'height')?.note).toMatch(/invent a floor-to-floor height/)
   })
 
-  it('⚠️ does not claim "no height limit" when it merely could not read one', () => {
-    // There is no `heightUnconstrained` on the zoning type, so "the code sets
-    // none" and "we could not read one" are genuinely indistinguishable from
-    // here. Claiming the first would be the more useful answer with nothing
-    // behind it.
-    const r = ask({ heightFt: 200 }, parcel({ maxHeightFt: null, maxStories: null }))
-    expect(dim(r, 'height')?.relief).toBe('unknown')
-    expect(dim(r, 'height')?.note).toMatch(/not distinguishable here, so neither is claimed/)
+  it('⚠️ separates "the code sets no height limit" from "we could not read one"', () => {
+    // These were indistinguishable until `heightUnconstrained` was added to the
+    // shared type on 2026-08-19. Three zoning modules had already established the
+    // fact with citations and had nowhere to put it, so sixteen Atlanta subareas
+    // whose code says "Maximum Building Height: None" reached the engine as a
+    // GAP. Same distinction `farUnconstrained` has always had; height simply
+    // never got the flag.
+    const gap = ask({ heightFt: 200 }, parcel({ maxHeightFt: null, maxStories: null }))
+    expect(dim(gap, 'height')?.relief).toBe('unknown')
+    expect(gap.unresolved).toContain('height')
+
+    const stated = ask({ heightFt: 200 }, parcel({ maxHeightFt: null, maxStories: null, heightUnconstrained: true }))
+    expect(dim(stated, 'height')?.relief).toBe('no-limit')
+    // And it must NOT sit in `unresolved` — that would make a complete answer
+    // read as a partial one.
+    expect(stated.unresolved).not.toContain('height')
+    expect(dim(stated, 'height')?.note).toMatch(/imposes no maximum building height/)
+  })
+
+  it('and a district with no height limit still names what does govern', () => {
+    // "No ceiling" is not "nothing stops you". Setbacks and a transitional height
+    // plane near a protected district still apply, and Atlanta's own module says
+    // so — the answer would be misleading without it.
+    const r = ask({ heightFt: 900 }, parcel({ maxHeightFt: null, maxStories: null, heightUnconstrained: true }))
+    expect(dim(r, 'height')?.note).toMatch(/Setbacks and any transitional height plane/)
   })
 })
 

@@ -513,6 +513,8 @@ export async function getCharlotteParcelInfo(lat: number, lng: number): Promise<
       // Null on UC — where the code's answer is "Unlimited" — and on every
       // site-plan-governed and unresolved code.
       maxHeightFt: limits.residentialFt,
+      // UC is the case: the UDO's answer is "Unlimited", which is an answer.
+      ...(limits.heightUnconstrained ? { heightUnconstrained: true } : {}),
       // The Charlotte UDO contains no floor-area-ratio instrument at all: zero
       // occurrences of "floor area ratio", "FAR" or "F.A.R." in 1,780,151
       // characters across all 39 articles (zoning module FACT 1).

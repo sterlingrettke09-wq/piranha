@@ -151,6 +151,32 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
       allowed: `max ${statedStories} ${statedStories === 1 ? 'story' : 'stories'}`,
       note: `This district's limit is stated in STORIES (${statedStories}), not feet, so a height in feet cannot be checked against it — converting between the two would invent a floor-to-floor assumption the code does not make. Enter a story count to have this checked.`,
     })
+  } else if (effHeight != null && parcel.zoning.heightUnconstrained === true) {
+    // ⚠️ AN ANSWER, NOT A GAP — and for sixteen Atlanta subareas this branch is
+    // the difference between the truth and its opposite. "Maximum Building
+    // Height: None" is what the code SAYS; before `heightUnconstrained` existed
+    // on the shared type these fell through to the branch below and told the
+    // reader no limit was available in public data, which is the tool
+    // disclaiming knowledge the code states plainly.
+    //
+    // AS_OF_RIGHT rather than INDETERMINATE: nothing about height stops this
+    // project, and grading it as undecidable would drag the overall verdict down
+    // for a district that imposes no ceiling at all.
+    checks.push({
+      dimension: 'height',
+      status: 'AS_OF_RIGHT',
+      proposed: `${effHeight} ft`,
+      allowed: 'no maximum',
+      note: 'This district imposes no maximum building height — that is what the code states, not a gap in the data. Setbacks, transitional height planes near protected districts, and floor-area limits can still govern.',
+    })
+  } else if (project.stories != null && parcel.zoning.heightUnconstrained === true) {
+    checks.push({
+      dimension: 'height',
+      status: 'AS_OF_RIGHT',
+      proposed: `${project.stories} ${project.stories === 1 ? 'story' : 'stories'}`,
+      allowed: 'no maximum',
+      note: 'This district imposes no maximum building height — that is what the code states, not a gap in the data. Setbacks, transitional height planes near protected districts, and floor-area limits can still govern.',
+    })
   } else if (effHeight != null) {
     // A proposed height we genuinely can't check — no limit on record. Worth noting.
     checks.push({ dimension: 'height', status: 'INDETERMINATE', proposed: `${effHeight} ft`, allowed: 'not derivable', note: 'No district height limit is available in public data to check this against.' })

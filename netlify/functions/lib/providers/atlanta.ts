@@ -393,6 +393,13 @@ export async function getAtlantaParcelInfo(lat: number, lng: number): Promise<Pa
       // from a story count — this provider has no story input and the zoning
       // module has no story field (zoning/atlanta.ts FACT 5).
       maxHeightFt: limits.heightFt,
+      // ⚠️ THE KNOWN ABSENCE, now carried structurally instead of only in prose.
+      // Sixteen SPI subareas (SPI-1's seven, SPI-4's, and others) state
+      // "Maximum Building Height: None" outright. Until the shared type gained
+      // this flag they reached the engine as `maxHeightFt: null` and rendered as
+      // "no district height limit is available in public data" — the tool
+      // disclaiming knowledge the code states plainly.
+      ...(limits.heightUnconstrained ? { heightUnconstrained: true } : {}),
       maxFAR,
       allowedUses: usesForZone(code),
       ...(hasFarByUse ? { farByUse } : {}),
