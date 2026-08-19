@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { WatchParcelButton } from '../components/WatchParcelButton'
 import { WhatWouldItTake } from '../components/WhatWouldItTake'
+import { ProForma } from '../components/ProForma'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { recordReport, togglePin, listReports } from '../lib/recentReports'
@@ -527,6 +528,17 @@ export default function BostonResult() {
               </div>
             </>
           )}
+
+          {/* The cost side of a deal. Built from the analysis already in hand —
+              no second request, because the arithmetic needs nothing but numbers
+              the report already carries plus three the user supplies. */}
+          <div className="print-hide mt-12">
+            <ProForma
+              estimate={{ costs: state.data.costs, timeline: { months: state.data.timeline.months } }}
+              units={state.data.project.units ?? null}
+              gfaSqFt={state.data.project.gfa}
+            />
+          </div>
 
           {/* The inverse query. Placed AFTER the report rather than beside the
               inputs, because it answers a question the report provokes: the

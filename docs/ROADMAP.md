@@ -321,6 +321,67 @@ decision from un-pinning a year, and one of them is named "beta".
 
 ---
 
+## Pro forma — DONE 2026-08-19, revenue-free by decision
+
+`src/lib/proForma.ts` + `ProForma.tsx` on the report. Total development cost,
+unit count, cost per unit and per sq ft, plus **carry**.
+
+**In `src/`, not `netlify/`, and that is the point.** The arithmetic needs nothing
+but numbers the analysis already returned, so the client builds it with no second
+round trip and no endpoint. It takes a structural `CostSide` rather than the
+server's `CostEstimate`, because `netlify/` imports from `src/` and never the
+reverse — with a compile-time check that the server's type still fits.
+
+### The revenue side is a stated blank, not an omission
+
+No rents, no sale prices, no cap rate, no IRR, no yield, no residual land value.
+That is not a phase-one simplification: this repo carries no revenue data at any
+granularity and rents are not published per parcel the way construction costs and
+permit feeds are. A pro forma missing those is not a *partial* pro forma — it is
+one where the two numbers that **determine the answer** would be invented, and an
+invented cap rate wearing a computed IRR is exactly rule 4. It would look sourced
+because everything around it is.
+
+So the missing half renders as a first-class block naming what the user would
+have to supply and what each unlocks — never `Revenue: —`, which reads as a
+number we failed to fetch. A test asserts no return metric exists as a *field*.
+
+### Carry cost — and it is a RANGE
+
+Months (from the timeline leg) × rate × loan. Computable precisely *because* the
+two things this repo cannot source come from the caller.
+
+⚠️ **Both drawdown conventions are returned, neither called the answer.** A
+construction loan is not outstanding in full from day one:
+
+| convention | figure | assumption |
+|---|---|---|
+| full balance | `principal × rate × months/12` | whole loan, whole period — an upper bound |
+| average balance | half of that | a linear draw — the common convention |
+
+Picking one silently would be inventing a drawdown schedule with a **2× spread**.
+The UI says the range is the drawdown assumption, not cost uncertainty — a range
+on a cost figure otherwise reads as "we are unsure what this costs".
+
+### Three inputs, all the user's
+
+Interest rate, loan amount, land price. **Nothing is defaulted**: no market rate,
+no loan-to-cost ratio, and an assessed value is not a price. The total is `null`
+until all components exist — `?? 0` is how a missing figure becomes free, and the
+cost engine was rewritten to avoid exactly that.
+
+Caught by running it: with a rate supplied and no loan, the copy still read
+*"needs an interest rate and a loan amount"* — sending the reader back to a field
+they had already filled. The `missing` array was precise and the prose was not,
+and the prose is what people act on.
+
+### Open, and unchanged by this
+
+Revenue stays blocked on a source. If one ever exists at parcel granularity, it
+slots in behind `REVENUE_NEEDS` without touching the cost side.
+
+---
+
 ## `heightUnconstrained` — DONE 2026-08-19
 
 `farUnconstrained` and `heightUnconstrained` express the same distinction about
