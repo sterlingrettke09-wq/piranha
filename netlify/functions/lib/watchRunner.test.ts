@@ -174,8 +174,8 @@ describe('running a list', () => {
   })
 
   it('marks an ambiguous id without diffing it', async () => {
-    // LA's APN matched more than one row for 8 of 8 sampled ids. Taking the first
-    // would watch whichever row came back first.
+    // Chicago's PIN10 `1716405037` carries two rows. Taking the first would watch
+    // whichever the service returned first.
     seed('u1', [row({ city: 'la' })])
     const { rows, results } = await checkList('u1', {
       diffableFor: always,

@@ -132,10 +132,17 @@ export type AddResult =
   | { ok: false; reason: 'unknown-city'; detail: string }
 
 /** ⚠️ Values that LOOK like an id and are not one. Enumerated, not
- *  pattern-matched: `MULTIPLE` is Dallas's condominium placeholder and appears
- *  on 3,660 rows, and a regex broad enough to catch it would eventually catch a
- *  real id. Add to this list only with a measurement behind the entry. */
-const PLACEHOLDER_IDS = new Set(['MULTIPLE', 'UNKNOWN', 'NONE', 'N/A', 'NULL'])
+ *  pattern-matched: a regex broad enough to catch these would eventually catch a
+ *  real id. Every entry carries the count that put it here — add to this list
+ *  only with a measurement behind the entry, never on suspicion. */
+const PLACEHOLDER_IDS = new Set([
+  'MULTIPLE',   // Dallas, 3,660 rows — condominium footprints
+  ' --',        // LA, 19 rows of 2,432,668 — the trimmed form is '--'
+  '--',
+  '0000000000000', // Miami, 5,128 rows of 596,113
+  '-',          // Columbus, ~410 rows
+  'UNKNOWN', 'NONE', 'N/A', 'NULL',
+])
 
 export function usableParcelId(raw: string | null | undefined): string | null {
   if (raw == null) return null

@@ -23,6 +23,13 @@
 import { PARCEL_SOURCES } from '../netlify/functions/lib/parcelLookup'
 import { CITIES } from '../src/config/cities'
 
+/** Values that look like an id and are not one, as a SQL fragment. Enumerated
+ *  from what the layers actually publish — LA's `' --'`, Miami's all-zero folio,
+ *  Dallas's condominium placeholder — never pattern-matched, because a regex
+ *  broad enough to catch them would eventually catch a real id. */
+const PLACEHOLDER_WHERE = (f: string) =>
+  ` OR ${f} = ' --' OR ${f} = '0000000000000' OR ${f} = 'MULTIPLE' OR ${f} = '-'`
+
 interface Row {
   city: string
   /** False only when lookup by id is IMPOSSIBLE — a value that does not match
@@ -32,6 +39,12 @@ interface Row {
   /** Sampled ids that matched exactly one row. */
   unique: number
   sampled: number
+  /** Rows carrying a value that looks like an id and is not one. -1 when the
+   *  count could not be taken — never 0, which would read as "none". */
+  placeholders: number
+  /** The service would not answer enough of the sample to say anything. NOT a
+   *  finding about the city, and not a pass either. */
+  unmeasured?: boolean
   detail: string
 }
 
@@ -49,59 +62,117 @@ async function check(city: string): Promise<Row> {
   let layer: string
   try {
     layer = 'layer' in src ? src.layer : ((await src.resolveLayer()).layerUrl ?? '')
-    if (!layer) return { city, ok: false, unique: 0, sampled: 0, detail: 'layer could not be resolved' }
+    if (!layer) return { city, ok: false, unique: 0, sampled: 0, placeholders: 0, detail: 'layer could not be resolved' }
   } catch (e) {
-    return { city, ok: false, unique: 0, sampled: 0, detail: `layer resolution threw: ${String((e as Error).message).slice(0, 60)}` }
+    return { city, ok: false, unique: 0, sampled: 0, placeholders: 0, detail: `layer resolution threw: ${String((e as Error).message).slice(0, 60)}` }
   }
 
   // 1. Does the field exist? Case-insensitively, because ArcGIS is.
+  let oid = 'OBJECTID'
   try {
     const meta = await json(`${layer}?f=json`)
+    if (typeof meta.objectIdField === 'string' && meta.objectIdField) oid = meta.objectIdField
     const names = ((meta.fields ?? []) as Array<{ name: string }>).map((f) => String(f.name))
-    if (names.length === 0) return { city, ok: false, unique: 0, sampled: 0, detail: 'layer published no field list' }
+    if (names.length === 0) return { city, ok: false, unique: 0, sampled: 0, placeholders: 0, detail: 'layer published no field list' }
     if (!names.some((n) => n.toLowerCase() === idField.toLowerCase())) {
       const near = names.filter((n) => n.toLowerCase().includes(idField.toLowerCase().slice(0, 3)))
-      return { city, ok: false, unique: 0, sampled: 0, detail: `field ${idField} not on layer${near.length ? ` — has ${near.slice(0, 4).join(', ')}` : ''}` }
+      return { city, ok: false, unique: 0, sampled: 0, placeholders: 0, detail: `field ${idField} not on layer${near.length ? ` — has ${near.slice(0, 4).join(', ')}` : ''}` }
     }
   } catch (e) {
-    return { city, ok: false, unique: 0, sampled: 0, detail: `metadata: ${String((e as Error).message).slice(0, 60)}` }
+    return { city, ok: false, unique: 0, sampled: 0, placeholders: 0, detail: `metadata: ${String((e as Error).message).slice(0, 60)}` }
   }
 
-  // 2 + 3. Take REAL ids off the layer and look each one up.
+  // 2 + 3. Take real ids from ACROSS the layer and look each one up.
   //
-  // ⚠️ SEVERAL SAMPLES, NOT ONE. The first version took a single row and reported
-  // three cities as having non-unique ids. Two of those were the sampler's fault:
-  // the first row it drew for LA carried the placeholder APN `' --'` (14 rows) and
-  // for Miami `FOLIO 0000000000000` (4 rows). A single probe is not evidence
-  // (rule 10), and a measurement that implies a lot of work is the instrument's
-  // problem until proven otherwise (rule 25).
+  // ⚠️ SAMPLE THE LAYER, NOT ITS FIRST PAGE — and this instrument got that wrong
+  // in a way that produced a false finding and shipped it. Taking the first N
+  // rows drew the same rows every run, and the top of a layer is exactly where
+  // degenerate records collect: LA's first fourteen carry `APN = ' --'` with a
+  // blank AIN, so the check reported that city as having NO unique ids among
+  // those sampled. Spread across its 2,432,668 rows, LA's APN is unique on every
+  // sample, and only 19 rows in the whole layer carry a placeholder.
   //
-  // The placeholders are a REAL finding and are reported separately — they are
-  // Dallas's `MULTIPLE` in another city's spelling, and a watch keyed on one
-  // would be ambiguous forever. But they are not evidence that the FIELD is
-  // non-unique, which is a different claim about a different thing.
-  const SAMPLES = 8
+  // Miami read the same way for the same reason. Both were the sampler; neither
+  // was the city (rule 25 — when a measurement implies a lot of work, the first
+  // hypothesis is that the measurement is wrong, and this is the third time in
+  // this repo that hypothesis has been right).
+  //
+  // Placeholders are still a REAL finding and are counted separately, because a
+  // watch keyed on one can never resolve. They are simply not evidence about the
+  // FIELD, which is what this check is for.
+  // ⚠️ SAMPLE BY OBJECTID RANGE, NOT BY resultOffset. The offset version was
+  // correct in principle and unusable in practice: an offset of 1.2 million with
+  // an `orderByFields` makes the server sort the whole table, which timed out on
+  // Milwaukee and returned nothing at all on Atlanta, DC, LA, NYC and
+  // Philadelphia — five cities reported as having no id values when they have
+  // millions. The OID is indexed, so a range scan is cheap everywhere.
   try {
-    const sample = await json(
-      `${layer}/query?where=${encodeURIComponent(`${idField} IS NOT NULL`)}&outFields=${encodeURIComponent(idField)}&returnGeometry=false&resultRecordCount=${SAMPLES}&f=json`,
+    const total = Number(
+      (await json(`${layer}/query?where=${encodeURIComponent('1=1')}&returnCountOnly=true&f=json`)).count ?? 0,
     )
-    const feats = (sample.features ?? []) as Array<{ attributes?: Record<string, unknown> }>
-    // rule 20: no sample means every assertion below is vacuous. RED, not green.
-    if (feats.length === 0) return { city, ok: false, unique: 0, sampled: 0, detail: 'layer returned no sample row to test with' }
+    if (total === 0) return { city, ok: false, unique: 0, sampled: 0, placeholders: 0, detail: 'layer is empty' }
+
+    const bad = `${idField} IS NULL OR ${idField} = ''${PLACEHOLDER_WHERE(idField)}`
+    let placeholders = -1
+    try {
+      placeholders = Number((await json(`${layer}/query?where=${encodeURIComponent(bad)}&returnCountOnly=true&f=json`)).count ?? -1)
+    } catch { placeholders = -1 }
+
+    const stat = await json(
+      `${layer}/query?where=${encodeURIComponent('1=1')}&outStatistics=${encodeURIComponent(
+        JSON.stringify([
+          { statisticType: 'min', onStatisticField: oid, outStatisticFieldName: 'lo' },
+          { statisticType: 'max', onStatisticField: oid, outStatisticFieldName: 'hi' },
+        ]),
+      )}&f=json`,
+    )
+    const sa = ((stat.features ?? []) as Array<{ attributes?: Record<string, unknown> }>)[0]?.attributes ?? {}
+    const pick = (k: string) => {
+      const key = Object.keys(sa).find((x) => x.toLowerCase() === k)
+      return key ? Number(sa[key]) : NaN
+    }
+    const lo = pick('lo'), hi = pick('hi')
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) {
+      return { city, ok: false, unique: 0, sampled: 0, placeholders, detail: `could not bound ${oid} to sample from` }
+    }
 
     const ids: string[] = []
-    for (const f of feats) {
-      const attrs = f.attributes ?? {}
-      const key = Object.keys(attrs).find((k) => k.toLowerCase() === idField.toLowerCase())
-      const raw = key ? attrs[key] : null
-      if (raw != null && String(raw).trim() !== '') ids.push(String(raw))
+    let windowErrors = 0
+    for (let k = 0; k < 8; k++) {
+      const from = Math.floor(lo + ((hi - lo) * k) / 8)
+      const q =
+        `${layer}/query?where=${encodeURIComponent(`${oid} >= ${from} AND NOT (${bad})`)}` +
+        `&outFields=${encodeURIComponent(idField)}&returnGeometry=false&resultRecordCount=1&f=json`
+      try {
+        const r = await json(q)
+        const at = ((r.features ?? []) as Array<{ attributes?: Record<string, unknown> }>)[0]?.attributes ?? {}
+        const key = Object.keys(at).find((x) => x.toLowerCase() === idField.toLowerCase())
+        const raw = key ? at[key] : null
+        if (raw != null && String(raw).trim() !== '') ids.push(String(raw))
+      } catch { windowErrors++ }
     }
-    if (ids.length === 0) return { city, ok: false, unique: 0, sampled: 0, detail: 'no sample row carried an id value' }
+    // ⚠️ AN EMPTY SAMPLE AFTER FAILED QUERIES IS "UNMEASURED", NOT "NO IDS".
+    //
+    // This distinction is the whole of rule 5 put inside the instrument, and it
+    // was worth a correction: LA started answering HTTP 302 partway through a run
+    // — throttling, after this script had queried it hard — and the check reported
+    // it as a city whose rows carry no identifier. An isolated re-probe minutes
+    // earlier had found APN unique on 8 of 8 samples across 2.4 million rows
+    // (rule 10: re-probe before recording a live failure).
+    //
+    // So a run that could not ask says so. Only a run that ASKED and got nothing
+    // is a finding about the city.
+    if (ids.length === 0) {
+      return windowErrors > 0
+        ? { city, ok: true, unmeasured: true, unique: 0, sampled: 0, placeholders,
+            detail: `service refused ${windowErrors}/8 sample queries — UNMEASURED, re-run in isolation` }
+        : { city, ok: false, unique: 0, sampled: 0, placeholders, detail: 'the layer answered, and no row carried an id value' }
+    }
 
     let unique = 0
     const notFound: string[] = []
     const duplicated: Array<{ id: string; n: number }> = []
-    for (const id of ids) {
+    for (const id of [...new Set(ids)]) {
       const where = `${idField} = '${id.replace(/'/g, "''")}'`
       const hit = await json(`${layer}/query?where=${encodeURIComponent(where)}&returnCountOnly=true&f=json`)
       const n = Number(hit.count ?? -1)
@@ -109,41 +180,31 @@ async function check(city: string): Promise<Row> {
       else if (n === 1) unique++
       else duplicated.push({ id, n })
     }
+    const sampled = new Set(ids).size
 
-    // A value the layer HANDED US that does not match itself through an equality
-    // filter is the one fatal outcome: trailing whitespace, a numeric column
-    // quoted as a string, or a collation. It means NO lookup by that id can work.
     if (notFound.length) {
       return {
-        city, ok: false, unique, sampled: ids.length,
-        detail: `${notFound.length}/${ids.length} sampled ids do not match themselves (e.g. '${notFound[0]}') — lookup by id is impossible here`,
+        city, ok: false, unique, sampled, placeholders,
+        detail: `${notFound.length}/${sampled} sampled ids do not match themselves (e.g. '${notFound[0]}') — lookup by id is impossible here`,
       }
     }
 
-    // ⚠️ UNIQUENESS IS A MEASURED RATE, NOT A VERDICT, and an earlier version of
-    // this file got that wrong. It classified "most samples unique" as a
-    // placeholder problem and passed the city — which would have laundered
-    // Chicago's genuine duplicate (`1716405037`, two rows, a real-looking PIN
-    // where two polygons share a ten-digit land id) into an OK. That is rule 15
-    // exactly: a well-explained interpretation defending the wrong conclusion.
-    //
-    // So the rate is reported and nothing is decided from it here. A lookup that
-    // returns more than one row is handled where it happens — `findParcelById`
-    // answers `ambiguous`, and the checker refuses to diff an ambiguous parcel,
-    // because it cannot know which of the rows is the one being watched.
+    // ⚠️ UNIQUENESS IS A MEASURED RATE, NOT A VERDICT. Nothing is decided from it
+    // here: a lookup returning several rows answers `ambiguous` at runtime and the
+    // checker refuses to diff it. An earlier version called a low duplicate count
+    // "placeholder-like" and passed the city, which would have hidden Chicago's
+    // genuine duplicate behind a reassuring word (rule 15).
     const worst = duplicated.length ? duplicated.sort((a, b) => b.n - a.n)[0] : null
+    const ph = placeholders < 0 ? 'placeholders unmeasured' : `${placeholders} placeholder of ${total}`
     return {
-      city,
-      ok: true,
-      unique,
-      sampled: ids.length,
+      city, ok: true, unique, sampled, placeholders,
       detail:
         worst == null
-          ? `${idField} unique for all ${ids.length} sampled ids`
-          : `${idField} unique for ${unique}/${ids.length} — worst '${worst.id}' matches ${worst.n} rows`,
+          ? `${idField} unique for all ${sampled} sampled · ${ph}`
+          : `${idField} unique for ${unique}/${sampled} — '${worst.id}' matches ${worst.n} · ${ph}`,
     }
   } catch (e) {
-    return { city, ok: false, unique: 0, sampled: 0, detail: `query: ${String((e as Error).message).slice(0, 70)}` }
+    return { city, ok: false, unique: 0, sampled: 0, placeholders: 0, detail: `query: ${String((e as Error).message).slice(0, 70)}` }
   }
 }
 
@@ -162,15 +223,20 @@ async function main() {
   for (const c of cities) {
     const r = await check(c)
     rows.push(r)
-    const mark = !r.ok ? 'FAIL' : r.unique === r.sampled ? 'OK  ' : 'DUPS'
+    const mark = !r.ok ? 'FAIL' : r.unmeasured ? '????' : r.unique === r.sampled ? 'OK  ' : 'DUPS'
     console.log(`${mark} ${c.padEnd(13)} ${r.detail}`)
   }
 
   const live = CITIES.filter((x) => x.live).map((x) => x.slug)
   const missing = live.filter((c) => !(c in PARCEL_SOURCES)).sort()
   const bad = rows.filter((r) => !r.ok)
-  const dups = rows.filter((r) => r.ok && r.unique < r.sampled)
+  const unmeasured = rows.filter((r) => r.unmeasured)
+  const dups = rows.filter((r) => r.ok && !r.unmeasured && r.unique < r.sampled)
   console.log(`\n[lookup] ${rows.length - bad.length}/${rows.length} can be looked up by id · ${bad.length} cannot`)
+  if (unmeasured.length) {
+    console.log(`[lookup] ${unmeasured.length} UNMEASURED — the service would not answer, which says nothing`)
+    console.log(`[lookup] about the city: ${unmeasured.map((u) => u.city).join(', ')}. Re-run those in isolation.`)
+  }
   if (dups.length) {
     console.log(`[lookup] ⚠️ ${dups.length} carry ids that are NOT unique on the sample:`)
     for (const d of dups) console.log(`           ${d.city.padEnd(13)} unique ${d.unique}/${d.sampled} — ${d.detail}`)

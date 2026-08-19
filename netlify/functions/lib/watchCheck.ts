@@ -48,8 +48,10 @@ export type Reread =
   /** The service did not answer. A fact about the network, and about nothing else. */
   | { kind: 'unreachable'; detail: string }
   /** More than one row carries this id, so the watched parcel is undefined.
-   *  Measured: LA 8/8 sampled ids, Miami 7/8, Chicago 1/8. Diffing would compare
-   *  against whichever row came back first. */
+   *  Rare but real — Chicago's `1716405037` carries two rows, and Charlotte and
+   *  Columbus each show one duplicate in a spread sample. Diffing would compare
+   *  against whichever row came back first. See parcelLookup.ts for the figures
+   *  and for the sampler defect that first overstated them. */
   | { kind: 'ambiguous'; matches: number }
   /** No by-id lookup is wired for this city. NOBODY LOOKED — distinct from both
    *  a failed check and a missing parcel. */

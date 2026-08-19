@@ -269,15 +269,34 @@ decision from un-pinning a year, and one of them is named "beta".
    | verified live, 2026-08-19 | result |
    |---|---|
    | ids round-trip through `WHERE field = id` | **22/22** |
-   | unique across 8 sampled ids | 19/22 |
-   | **not unique** | **LA 8/8 sampled, Miami 7/8, Chicago 1/8** |
+   | unique on a sample spread across the layer | LA, Miami, Dallas, Denver, Austin, Las Vegas, Minneapolis, Nashville and others |
+   | one real duplicate each | Chicago (`1716405037`, 2 rows), Charlotte, Columbus |
    | no by-id lookup at all | boston (its parcel read goes through `_endpoints`) |
 
-   Non-uniqueness is handled, not assumed away: a lookup matching several rows
-   answers `ambiguous` and the checker refuses to diff it, because it cannot know
-   which row is the watched one. An earlier version of the verify script called
-   that "placeholder-like" and passed the city — which would have laundered
-   Chicago's genuine duplicate into an OK (rule 15).
+   **⚠️ CORRECTION, same day.** An earlier run of this check reported LA and Miami
+   as having almost no unique ids, and that was the SAMPLER, not the cities. It
+   drew from the first page of each layer, which is precisely where degenerate
+   rows collect — LA's first fourteen carry a placeholder APN. Sampled across the
+   layer, **LA's APN is unique on every sample of 2,432,668 rows and Miami's
+   FOLIO on every sample of 596,113.** Third time in this repo a result implying
+   a lot of work has turned out to be the instrument (rule 25), and the first
+   time it reached a status table before being caught.
+
+   Two things came out of the corrected run and both are kept:
+
+   - **Placeholder ids, counted per city** and added to the runtime refusal list
+     with the count behind each: LA `' --'` 19 rows, Miami all-zero folio 5,128,
+     Columbus `'-'` ~410, Dallas `MULTIPLE` 3,660. Those parcels are refused at
+     add time with a stated reason.
+   - **`ambiguous` stays**, because Chicago's duplicate is genuine. A lookup
+     matching several rows refuses to diff — taking `features[0]` would watch
+     whichever row came back first and report a change every time that ordering
+     moved.
+
+   The check now separates **UNMEASURED** from **FAIL**: LA began answering HTTP
+   302 midway through a later run (throttling, after this script had queried it
+   hard) and a service that will not answer must never read as a city whose rows
+   carry no identifier.
 
    `no-lookup` is its own state too: nobody looked, which is neither a failed
    check nor a missing parcel.

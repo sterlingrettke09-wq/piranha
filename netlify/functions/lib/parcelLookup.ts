@@ -74,15 +74,25 @@ export type LookupResult =
   | { kind: 'absent'; vintage: ParcelVintage }
   /** More than one row carries this id, so "the" parcel is undefined.
    *
-   *  ⚠️ MEASURED, not hypothetical. Sampling eight real ids per city against the
-   *  live layers on 2026-08-19: LA's `APN` matched more than one row for 8 of 8
-   *  (worst `' --'`, fourteen rows), Miami's `FOLIO` for 7 of 8 (worst
-   *  `0101000000022`, twenty-one), and Chicago's `PIN10` for 1 of 8 — a
-   *  real-looking PIN where two polygons share one ten-digit land id.
+   *  ⚠️ MEASURED, and the first measurement was WRONG — see below, because the
+   *  correction matters more than the number.
    *
-   *  Taking `features[0]` would watch whichever row the service happened to
-   *  return first and report a change every time that ordering moved. So this is
-   *  a state, and the checker refuses to diff it. */
+   *  Standing result, sampled across each layer on 2026-08-19: LA's `APN` is
+   *  unique on every sample of 2,432,668 rows, Miami's `FOLIO` on every sample of
+   *  596,113, and Chicago's `PIN10` on all but one — `1716405037` genuinely
+   *  carries two rows, a real ten-digit land id shared by two polygons. Charlotte
+   *  and Columbus each showed one duplicate too.
+   *
+   *  ⚠️ AN EARLIER RUN REPORTED LA AND MIAMI AS HAVING ALMOST NO UNIQUE IDS, and
+   *  that was the sampler, not the cities. It drew its ids from the FIRST PAGE of
+   *  each layer, which is exactly where degenerate rows collect: LA's first
+   *  fourteen carry a placeholder APN. Spread across the layer the picture
+   *  reverses completely. Third time in this repo that a result implying a lot of
+   *  work has turned out to be the instrument (rule 25).
+   *
+   *  The state stays regardless, because Chicago's duplicate is real: taking
+   *  `features[0]` would watch whichever row the service returned first and
+   *  report a change every time that ordering moved. */
   | { kind: 'ambiguous'; matches: number; vintage: ParcelVintage }
   /** The service did not answer. A fact about the network. */
   | { kind: 'unreachable'; detail: string }
