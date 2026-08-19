@@ -16,9 +16,29 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { runAll, summarise } from '../netlify/functions/lib/watchRunner'
+import { decideDelivery, DELIVERY_NOT_BEFORE } from '../netlify/functions/lib/watchDelivery'
 import { classify, diffable, type Observation, type SourceExpectation } from './lib/sourceStability'
 
 const REGISTER = join(resolve(__dirname, '..'), 'scripts/__fixtures__/sourceStability.json')
+
+/** The longest interval the register has actually observed, in days. Delivery
+ *  needs this as well as the gate date: waiting for 2026-08-26 does not
+ *  re-observe anything, and if nobody ran `--observe` the evidence is exactly as
+ *  thin on the 27th as on the 19th. */
+function registerSpanDays(): number {
+  if (!existsSync(REGISTER)) return 0
+  const reg = JSON.parse(readFileSync(REGISTER, 'utf8')) as Record<
+    string,
+    { expectation: SourceExpectation; observations: Observation[] }
+  >
+  let best = 0
+  for (const [id, v] of Object.entries(reg)) {
+    if (!id.startsWith('zoning-roster:')) continue
+    const c = classify(v.expectation, v.observations)
+    if (c.klass === 'stable') best = Math.max(best, c.spanDays)
+  }
+  return best
+}
 
 /** Which cities the register has observed holding still. A city absent from the
  *  register is NOT diffable — `insufficient` is the default and nobody has
@@ -72,6 +92,24 @@ async function main() {
     }
   }
   for (const e of report.errors) console.log(`  ERROR ${e}`)
+
+  // ── DELIVERY, asked and answered on every run ─────────────────────────────
+  // Printed even when it refuses — a run that silently never mentions delivery
+  // is indistinguishable from one where delivery is quietly broken.
+  const span = registerSpanDays()
+  const decision = decideDelivery(report, {
+    now: new Date(),
+    enabled: process.env.WATCH_DELIVERY_ENABLED === '1',
+    registerSpanDays: span,
+  })
+  console.log(`\n  Delivery (gate opens ${DELIVERY_NOT_BEFORE}; register spans ${span} day(s)):`)
+  if (decision.send) {
+    console.log(`    WOULD SEND ${decision.messages.length} message(s) — this script still does not send.`)
+    for (const m of decision.messages) console.log(`      ${m.city}/${m.parcelId}: ${m.subject}`)
+  } else {
+    console.log(`    refused — ${decision.refusal.reason}: ${decision.refusal.detail}`)
+  }
+
   if (report.errors.length) process.exitCode = 1
 }
 
