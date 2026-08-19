@@ -36,7 +36,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['sandiego', 'seattle'])
+    expect([...ADU_LOCAL_READ]).toEqual(['sandiego', 'sanjose', 'seattle'])
   })
 })
 
@@ -389,5 +389,63 @@ describe('⚠️ every read ordinance declares its baseline', () => {
       const marked = l.maxSizeSqFt.filter((m) => m.kind !== 'not-found' && m.baseline === true)
       expect(marked, c).toHaveLength(1)
     }
+  })
+})
+
+describe('San José, as read from the ordinance', () => {
+  const r = aduRulesFor('sanjose')
+  const local = r.local as Extract<typeof r.local, { kind: 'read' }>
+
+  it('is § 20.80.175, and the ordinance itself cites the recodified chapter', () => {
+    // The section opens "Pursuant to Section 66314 of the Government Code" and
+    // "Pursuant to Section 66321" — the city adopting the recodified chapter by
+    // reference, which independently confirms § 65852.2 is the wrong citation.
+    expect(local.citation).toMatch(/20\.80\.175/)
+  })
+
+  it('headlines 1,000 on the common lot size, not the 1,200 large-lot figure', () => {
+    const e = effectiveMaxSize(r)
+    expect(e.source).toBe('local')
+    expect(e.value).toBe(1000)
+    expect(e.why).toMatch(/up to 9,000 sq ft/)
+  })
+
+  it('⚠️ STATES heights in feet, unlike the first two cities read', () => {
+    // San Diego and Seattle both defer height to the base zone, so two cities in
+    // a row needed no figure and the type quietly implied none exists. San José
+    // states four. Each city read has exposed a shape its predecessors did not.
+    expect(local.heightDefersToBaseZone).toBeNull()
+    expect(local.maxHeightFt.map((h) => h.value)).toEqual([18, 25, 25])
+    expect(local.maxHeightFt.filter((h) => h.baseline)).toHaveLength(1)
+    expect(local.maxHeightFt.find((h) => h.baseline)!.value).toBe(18)
+    expect(local.maxStories?.value).toBe(2)
+  })
+
+  it('exceeds the California floor on height as well as size', () => {
+    const floorHeight = r.stateFloor!.floors.heightFt.find((h) => h.baseline)!.value
+    expect(floorHeight).toBe(16)
+    expect(local.maxHeightFt.find((h) => h.baseline)!.value).toBeGreaterThan(floorHeight)
+  })
+
+  it('⚠️ records the 50%-of-primary rule as a ratio the model cannot hold', () => {
+    // A ratio, not a figure. On a 1,400 sq ft primary it caps an attached ADU at
+    // 700 sq ft — BELOW California's 850 floor. Whether § 66321(b)(2) voids it to
+    // that extent is a question about the statute's reach, and this tool records
+    // the tension rather than adjudicating it.
+    const note = local.notes.find((n) => /50%/.test(n))!
+    expect(note).toMatch(/ratio, not a figure/)
+    expect(note).toMatch(/not computed here/)
+    expect(note).toMatch(/below the 850 sq ft state floor/)
+    expect(note).toMatch(/question for the city/)
+  })
+
+  it('⚠️ its pending check is weaker than Seattle\'s, and says which', () => {
+    // Seattle displayed 17 pending ordinances that could be read and found not to
+    // touch the section. San José displays no list at all — the absence of a list
+    // is not the same as a list containing nothing.
+    if (local.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(local.pending.amendingThisSection).toEqual([])
+    expect(local.pending.note).toMatch(/no pending-ordinance list at all/)
+    expect(local.pending.note).toMatch(/weaker than Seattle/)
   })
 })

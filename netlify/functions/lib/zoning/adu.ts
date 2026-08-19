@@ -105,7 +105,15 @@ export interface LocalLayer {
   /** What the city allows, one entry per configuration the ordinance names. */
   maxSizeSqFt: LocalCap[]
   /** Height as the ordinance states it. Storeys and feet are kept apart and
-   *  never converted (rule 12). */
+   *  never converted (rule 12).
+   *
+   *  ⚠️ `maxHeightFt` was ADDED FOR SAN JOSÉ — the third city read and the third
+   *  structural surprise. San Diego and Seattle both DEFER height to the base
+   *  zone, so two cities in a row needed no figure and the type quietly implied
+   *  none exists. San José states four: 18 ft one-storey detached, 25 ft
+   *  two-storey detached, no more than two storeys detached, 25 ft attached.
+   *  Each new city has exposed a shape its predecessors did not need. */
+  maxHeightFt: AduFloor[]
   maxStories: { value: number; condition: string; cite: string } | null
   heightDefersToBaseZone: { cite: string } | null
   notes: string[]
@@ -304,6 +312,8 @@ const SANDIEGO_LOCAL: LocalLayer = {
     { kind: 'no-maximum', condition: 'built inside an existing accessory structure, plus 150 sq ft for ingress and egress only', cite: '§ 141.0302(a)(7)(D)' },
     { kind: 'no-maximum', condition: 'built inside an existing multiple dwelling unit structure', cite: '§ 141.0302(a)(7)(E)' },
   ],
+  // San Diego states no height in FEET for ADUs — it defers to the base zone.
+  maxHeightFt: [],
   maxStories: { value: 2, condition: 'detached, on a lot permitting single but not multiple dwelling units', cite: '§ 141.0302(a)(8)(A)' },
   // ⚠️ Height in FEET is not stated for ADUs — the section defers to the base
   // zone. So no figure is invented here; the base-zone limit the rest of this
@@ -348,7 +358,8 @@ const SEATTLE_LOCAL: LocalLayer = {
       cite: '§ 23.42.022.G.1.c',
     },
   ],
-  // The section states no storey count for ADUs.
+  // Seattle states neither a height in feet nor a storey count for ADUs.
+  maxHeightFt: [],
   maxStories: null,
   // ⚠️ § 23.42.022.E: an ADU is "subject to the same standards as principal
   // dwelling units" unless otherwise provided, and the section provides no
@@ -378,6 +389,53 @@ const SEATTLE_LOCAL: LocalLayer = {
   },
 }
 
+// ── SAN JOSÉ — the local ordinance, read 2026-08-19 ─────────────────────────
+// SJMC § 20.80.175, Title 20 ch. 20.80 Part 2.75, via Municode. The section
+// opens by citing Gov. Code §§ 66314 and 66321 directly — the city adopting the
+// recodified chapter by reference, which independently confirms that § 65852.2
+// is the wrong citation.
+const SANJOSE_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation: 'San José Municipal Code § 20.80.175 (Accessory Dwelling Units — General), Title 20 ch. 20.80 Part 2.75; Ord. 29447',
+  readOn: '2026-08-19',
+  maxSizeSqFt: [
+    { kind: 'capped', sqFt: 1000, condition: 'An ADU on a lot of up to 9,000 sq ft may be up to 1,000 sq ft', cite: '§ 20.80.175.D.1.b (Table 20-55)', baseline: true },
+    { kind: 'capped', sqFt: 1200, condition: 'on a lot greater than 9,000 sq ft', cite: '§ 20.80.175.D.1.c (Table 20-55)' },
+    { kind: 'no-maximum', condition: 'conversion of an existing DETACHED accessory structure', cite: '§ 20.80.175.D.1.d' },
+  ],
+  maxHeightFt: [
+    { value: 18, condition: 'detached, one storey', cite: '§ 20.80.175.D.2.a', baseline: true },
+    { value: 25, condition: 'detached, two storeys — roof height above grade', cite: '§ 20.80.175.D.2.b' },
+    { value: 25, condition: 'attached — roof height above grade, and no more than two storeys', cite: '§ 20.80.175.D.2.d' },
+  ],
+  maxStories: { value: 2, condition: 'detached', cite: '§ 20.80.175.D.2.c' },
+  heightDefersToBaseZone: null,
+  notes: [
+    'Single-family lot: one attached OR one detached ADU, plus one junior ADU, in any order — two units total. Multifamily lot: one attached or detached ADU per lot (§ 20.80.175.B).',
+    'An ADU is not counted in residential density for General Plan conformance (§ 20.80.175.C).',
+    'Side and rear setbacks are ZERO; the front setback is the zoning district\'s, unless that would prohibit an 800 sq ft ADU. A second storey needs 4 ft from side and rear lot lines (§ 20.80.175.D.3).',
+    'A converted existing structure may keep its existing setbacks (§ 20.80.175.D.3.d).',
+    // ⚠️ A RATIO, NOT A FIGURE, and the type cannot hold it — recorded rather
+    // than dropped. On a 1,400 sq ft primary this caps an attached ADU at 700 sq
+    // ft, which is BELOW California's 850 sq ft floor. Whether § 66321(b)(2)
+    // voids it to that extent is a question about the statute's reach that this
+    // tool does not adjudicate; it is flagged so a reader can.
+    '⚠️ An ATTACHED ADU is separately capped at 50% of the existing primary dwelling (§ 20.80.175.D.1.a). That is a ratio, not a figure, so it is not computed here — and on a small primary it can fall below the 850 sq ft state floor. Whether the floor overrides it is a question for the city.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-19',
+    source: 'Municode code home page for the San José Code of Ordinances',
+    codifiedThrough: 'Ordinance No. 31330, enacted 2026-06-16 (Supp. No. 5, Update 3; content updated 2026-07-21)',
+    amendingThisSection: [],
+    // ⚠️ WEAKER EVIDENCE THAN SEATTLE'S, and said so. Seattle displayed a list of
+    // seventeen pending ordinances that could be read and found not to touch the
+    // section. San José's page displays NO pending list at all, so the absence
+    // may mean none are pending or may mean this view does not show them.
+    note: 'The page displayed no pending-ordinance list at all. That is weaker than Seattle, where a list of 17 existed and was read — here the absence of a list is not the same as a list containing nothing.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -389,7 +447,7 @@ const NOT_READ_LOCAL = (city: string): LocalRead => ({
 const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   la: { city: 'la', stateFloor: CA, local: NOT_READ_LOCAL('Los Angeles') },
   sf: { city: 'sf', stateFloor: CA, local: NOT_READ_LOCAL('San Francisco') },
-  sanjose: { city: 'sanjose', stateFloor: CA, local: NOT_READ_LOCAL('San Jose') },
+  sanjose: { city: 'sanjose', stateFloor: CA, local: SANJOSE_LOCAL },
   sandiego: { city: 'sandiego', stateFloor: CA, local: SANDIEGO_LOCAL },
   seattle: { city: 'seattle', stateFloor: WA, local: SEATTLE_LOCAL },
   ...Object.fromEntries(

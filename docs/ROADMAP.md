@@ -420,7 +420,57 @@ Two absences kept apart on every city: `stateFloor: null` is a finding about the
 | | |
 |---|---|
 | state-preempted | la, sandiego, sanjose, seattle, sf |
-| local ordinance read | **sandiego, seattle** |
+| local ordinance read | **sandiego, sanjose, seattle** |
+
+### The max-summarisation sweep — CLEAN, and recorded because a negative gets re-asked
+
+Checked whether anything else summarises a set of alternatives by taking the
+maximum. **Nothing does.**
+
+| checked | result |
+|---|---|
+| Atlanta / Austin / Dallas / Minneapolis / San Diego / Seattle `farAlternatives` | `envelope.ts` **maps** them — each keeps its own label and figure and the headline stays the base case. The `Math.max` inside is the greater-of-ratio-or-floor rule *within one alternative*, which is what the codes state |
+| Atlanta `heightTiers` | rendered as a list, "35 ft within 150 ft; 52 ft between…" |
+| Miami transects | resolved per code, not summarised across |
+| `redTapeIndex` / `coverageClaim` min-max | normalisation across cities, not alternatives within one code |
+| `cityStories` max | a superlative across cities ("the slowest we measure"), a legitimate extremum |
+
+So rule 6 is already correctly implemented everywhere it applies, and the ADU
+module was the only place it had been re-broken — in both of its layers.
+
+### San José — read 2026-08-19
+
+§ 20.80.175. **The ordinance itself cites Gov. Code §§ 66314 and 66321**, the city
+adopting the recodified chapter by reference — independent confirmation that
+§ 65852.2 is the wrong citation.
+
+| | | |
+|---|---|---|
+| lot up to 9,000 sq ft | **1,000 sq ft** | D.1.b — the baseline |
+| lot over 9,000 sq ft | 1,200 sq ft | D.1.c |
+| conversion of a detached accessory structure | no maximum | D.1.d |
+| detached, one storey | **18 ft** | D.2.a — the baseline |
+| detached, two storeys / attached | 25 ft | D.2.b, D.2.d |
+
+Side and rear setbacks are **zero**; two units on a single-family lot (one ADU
+plus one JADU); ADUs excluded from density.
+
+**⚠️ It STATES heights in feet — the third city and the third structural
+surprise.** San Diego and Seattle both defer height to the base zone, so two
+cities in a row needed no figure and the type quietly implied none exists.
+`maxHeightFt` was added for San José. Each city read has exposed a shape its
+predecessors did not need.
+
+**⚠️ And a ratio the model cannot hold.** D.1.a caps an *attached* ADU at 50% of
+the existing primary dwelling. On a 1,400 sq ft primary that is 700 sq ft —
+**below California's 850 sq ft floor.** Whether § 66321(b)(2) voids it to that
+extent is a question about the statute's reach, and it is recorded as a stated
+tension rather than adjudicated.
+
+**Pending check: weaker than Seattle's, and labelled so.** Seattle displayed 17
+pending ordinances that could be read and found not to touch the section. San
+José's page displays no list at all — the absence of a list is not the same as a
+list containing nothing.
 
 ### Seattle — read 2026-08-19
 
