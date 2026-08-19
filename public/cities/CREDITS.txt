@@ -1,3 +1,7 @@
+================================================================================
+SECTION 1 — WIKIMEDIA COMMONS, OPENLY LICENSED (in use: all 23 cities)
+================================================================================
+
 City hero photos — sourced from Wikimedia Commons, openly licensed.
 Downloaded and resized for web use on the /cities page.
 Licensing is per image, not blanket: CC-BY and CC-BY-SA require attribution,
@@ -45,12 +49,14 @@ carries `Restrictions: trademarked`. A licence that permits reuse of the
 PHOTOGRAPH says nothing about the marks inside it, and those two are separately
 held. Recorded because the licence line alone would have read as clear.
 
-────────────────────────────────────────────────────────────────────────────────
-CONSULTING-FIRM SKYLINE PHOTOGRAPHY — permission on file, NOT YET USED
-────────────────────────────────────────────────────────────────────────────────
+================================================================================
+SECTION 2 — CONSULTING-FIRM PHOTOGRAPHY (staged, NOT in use)
+================================================================================
 
-Written permission was obtained 2026-08-19 from partners at all three firms. The
-grants are recorded verbatim because their SCOPE is the load-bearing part:
+Fetched 2026-08-19 into assets/firm-photos/, which is NOT served. Nothing in
+this section is on the site; public/cities/*.jpg remains entirely Section 1.
+
+PERMISSION, verbatim, because the scope is the load-bearing part:
 
   McKinsey — "Good to use the American city skylines, only. International will
               need additional approval"
@@ -59,20 +65,66 @@ grants are recorded verbatim because their SCOPE is the load-bearing part:
   BCG      — "You can use every city skyline photo on our site besides those in
               Africa"
 
-All three are limited to US cities (BCG's by exclusion rather than by grant).
-Piranha covers 23 US cities, so the scope covers the whole current need and none
-of a future international one. If a non-US city is ever added, NONE of these
-permissions reaches it and all three say so.
+All three are limited to US cities. Piranha's 23 are all US, so the scope
+covers the whole current need and none of a future international one.
 
-⚠️ NO IMAGE FROM ANY OF THE THREE IS IN THIS DIRECTORY. Every file above is
-Wikimedia Commons under an explicit CC licence or public domain. That is a
-deliberate difference in KIND, not a leftover: a CC licence is a public,
-verifiable grant attached to the work itself, while the above is a private
-permission from a party whose own right to grant it is not something this repo
-can check. Both may be perfectly fine; only one of them can be audited later by
-someone who was not on the email thread.
+── WHAT EACH FIRM ACTUALLY HAD ────────────────────────────────────────────────
 
-If these photos are used, record per image: which firm, the page it came from,
-the date, and the sentence above that covers it — the same per-item discipline
-the CC entries get, for the same reason.
+McKinsey — NOTHING TAKEN. The /us/<city> pages carry no city photograph at all:
+  partner headshots, article thumbnails and a careers image. Checked Seattle and
+  New York directly. Their article thumbnails are also the clearest evidence on
+  the licensing question — filenames include `gettyimages-1940527700`,
+  `getty591478743`, `getty…187015053` and `stocksy1474805`. Those are Getty and
+  Stocksy asset ids, i.e. imagery McKinsey licenses IN. A permission to use it
+  cannot convey a licence held under someone else's terms.
 
+Bain — NOTHING TAKEN, AND NOT ESTABLISHED AS ABSENT. A guessed office URL
+  returned 404, which proves the guess wrong and nothing about Bain's site
+  (rule 8). Their office index was not read. This is a gap, not a finding.
+
+BCG — 17 images fetched, listed below, from the office pages linked in their own
+  navigation. Each was verified byte-identical against Content-Length.
+
+Format: file | subject | firm | source page | fetched | bytes
+
+atlanta.jpg | Atlanta | BCG | https://www.bcg.com/offices/atlanta (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/e2/a5/81d2bdc343898026de037d599985/atlanta2-hero-image.jpg) | 2026-08-19 | 424472
+austin.jpg | Austin | BCG | https://www.bcg.com/offices/austin (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/e5/96/c872d1aa4788a68e90eab5c08831/austin-hero-image.jpg) | 2026-08-19 | 442852
+boston.jpg | Boston | BCG | https://www.bcg.com/offices/boston (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/ae/00/a65a946245eb878b5d0df4bd1588/boston-hero-image.jpg) | 2026-08-19 | 536812
+chicago.jpg | Chicago office banner | BCG | https://www.bcg.com/offices/chicago (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/f5/3e/b47afc3e4dd485617a8e89eb0079/chicago-office-banner-image-version-2.jpg) | 2026-08-19 | 376893
+    ⚠ office banner rather than a city view
+dallas.jpg | Dallas | BCG | https://www.bcg.com/offices/dallas (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/5f/eb/5899727206581939433d0fe7c584/dallas-76987968-2360x922-tcm9-33729.jpg) | 2026-08-19 | 309990
+    ⚠ filename carries a stock-style asset id (76987968)
+dc.jpg | Washington DC | BCG | https://www.bcg.com/offices/dc (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/d4/59/22e24d7145c08641bcebd61713d2/washington-dc-hero-image.jpg) | 2026-08-19 | 713075
+denver.jpg | Denver | BCG | https://www.bcg.com/offices/denver (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/4e/94/835f0a8eedbe58ebcb21382efce9/denver-bcg-1050x590-tcm9-37550.jpg) | 2026-08-19 | 286947
+la.jpg | Los Angeles | BCG | https://www.bcg.com/offices/la (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/17/ea/be322fee4eeaa778eb2adff07290/los-angeles2-hero-image.jpg) | 2026-08-19 | 262057
+miami.jpg | Miami | BCG | https://www.bcg.com/offices/miami (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/c2/1c/b0490e5640148297df6b8c1b982e/miami-hero-image.jpg) | 2026-08-19 | 544718
+minneapolis.jpg | Minneapolis | BCG | https://www.bcg.com/offices/minneapolis (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/cd/6b/3143f244444d9eb25c4add0a80e5/minneapolis-hero-image.jpg) | 2026-08-19 | 456278
+nashville.jpg | Nashville | BCG | https://www.bcg.com/offices/nashville (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/c9/fe/c58779d14b11a6cfad946c5e4502/bcg-nashville-hero-image.jpg) | 2026-08-19 | 585550
+nyc.jpg | Lower Manhattan at sunset — a genuine skyline | BCG | https://www.bcg.com/offices/nyc (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/97/75/51c370b2465ca832bd9231652f60/new-york-hero-image.jpg) | 2026-08-19 | 343826
+philadelphia.jpg | Philadelphia | BCG | https://www.bcg.com/offices/philadelphia (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/cf/ea/70d4ce1c443d9fcc9a89f23a3a75/philadelphia-eyeem-26669511-83167983.jpg) | 2026-08-19 | 289732
+    ⚠ filename carries an EyeEm stock-agency asset id (26669511 / 83167983)
+raleigh.jpg | Raleigh-Durham | BCG | https://www.bcg.com/offices/raleigh (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/9d/91/45bb6a6a4225834127c8053fd4fc/raleigh-durham.jpg) | 2026-08-19 | 462840
+sandiego.jpg | San Diego | BCG | https://www.bcg.com/offices/sandiego (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/39/fc/496b1aa441e08042efd10eb1d2e1/san-diego.jpg) | 2026-08-19 | 188132
+seattle.jpg | NOT A SKYLINE — a pedestrian bridge at sunset, not identifiably Seattle | BCG | https://www.bcg.com/offices/seattle (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/3e/38/52adb307f7229328cc102fb58285/seattle-hero-working-in-tcm9-217376.jpg) | 2026-08-19 | 326610
+    ⚠ filename says 'working-in'; the image is an office/campus bridge, not a city view
+sf.jpg | San Francisco | BCG | https://www.bcg.com/offices/sf (asset: http://boston-consulting-group-brightspot.s3.amazonaws.com/ae/ad/3824987f4971b590e4a7555ac9db/san-francisco2-hero-image-darker.jpg) | 2026-08-19 | 622427
+
+── WHY THESE ARE STAGED AND NOT SHIPPED ───────────────────────────────────────
+
+Three things turned up in the fetching that were not known when it was asked
+for, and each one is a reason for a person rather than a script to decide:
+
+  1. Two BCG filenames carry stock-agency asset ids, so those images are
+     licensed in rather than owned — the same pattern McKinsey's whole library
+     shows. Absence of an agency marker in the other filenames is NOT evidence
+     of ownership; it is only absence of evidence.
+  2. Several are not city views. Seattle is a pedestrian bridge; Chicago is an
+     office banner. They would be a downgrade on the photos already shipping.
+  3. Section 1 is a different KIND of provenance: a CC licence is a public grant
+     attached to the work, checkable by anyone, forever. These rest on a private
+     email. Both can be fine; only one can be audited by someone who was not on
+     the thread — which is the test everything else in this repo is held to.
+
+To ship any of them: move the file to public/cities/<slug>.jpg, move its line
+into a 'in use' block here, and move the Section 1 line it replaces into a
+superseded block rather than deleting it.
