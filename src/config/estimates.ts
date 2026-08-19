@@ -294,22 +294,23 @@ export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Obj
   //    and the check covers all of it. The corroboration got stronger by being
   //    narrowed, without a figure moving — which is what re-keying was for.
   //
-  // 2. ⚠️ BUT ITS SUPPORTING EXPLANATION IS CONTRADICTED BY THE OTHER SOURCE IN
-  //    THIS FILE. The note below explains 340 sitting BELOW Cumming's low bound
-  //    in 6 of 9 cities by observing that all nine land inside at the 5–8 storey
-  //    tier, and concludes "the residual low bias is a tier artifact, not a
-  //    base-rate error". That rests entirely on the 1.12 premium being real.
+  // 2. ⚠️ WITHDRAWN THE SAME DAY, BY ME, AND THE WITHDRAWAL WAS THE ERROR.
+  //    What stood here argued that the "tier artifact" explanation below was
+  //    contradicted by RSMeans, on the grounds that its 1-3 storey apartment
+  //    model ($146.52 bare) prices above its 4-7 storey model ($145.01) — taller
+  //    apparently cheaper, against a modelled +12%.
   //
-  //    The RSMeans models quoted at the top of this file price
-  //      Apartment 1-3 Story   bare $146.52
-  //      Apartment 4-7 Story   bare $145.01
-  //    — taller is marginally CHEAPER, about −1%, against a modelled +12%. So
-  //    "all nine land inside at 1.12" is not evidence that 340 is correct. It is
-  //    equally consistent with 381 being correct and the premium being spurious.
-  //    Two sources, one file, opposite signs on the same question.
+  //    Those two figures are not comparable as they stand. RSMeans prices
+  //    building AREA separately from height, and the two models are 22,500 and
+  //    60,000 S.F. against a Multi-Family typical size of 53,600 — size factors
+  //    0.42 and 1.12, carrying cost multipliers of 1.10 and ~0.99. Normalised,
+  //    they read $133.2 and $146.5, a premium of ~10%, not a discount of 1%. The
+  //    full three-point series and its arithmetic are recorded at
+  //    heightFactorTiers below.
   //
-  //    NO DIRECTION IS ASSERTED for either the rate or the premium (rule 1). What
-  //    is established is that one leg of the corroboration does not hold up.
+  //    So the premium is real, ~1.09–1.10 at 4-7 storeys against this file's
+  //    1.12, and the "tier artifact" explanation stands. Apartment's
+  //    corroboration is NOT weakened by RSMeans; it is supported by it.
   //
   // 3. ⚠️ AND THE CHECK CANNOT BE RE-RUN, because the per-city Cumming ranges
   //    were never stored — only the conclusion drawn from them. That is
@@ -577,6 +578,55 @@ export const cityCostIndex: Record<string, number> = {
 // but the premium plateaus rather than compounds. Source: RSMeans 2026 by-height
 // models — the big step is the wood→concrete jump at 4→5 stories; towers amortize
 // cores/elevators over more floor area, so the top tier is ~+45%, not +60%.
+// ── THE HEIGHT PREMIUM, SETTLED 2026-08-19 — AND A SELF-CORRECTION ────────
+// This file recorded that RSMeans priced Apartment 1-3 Story at $146.52 bare and
+// Apartment 4-7 Story at $145.01, i.e. taller marginally CHEAPER, and that was
+// used to doubt the 1.12 premium and, through it, apartment's corroboration.
+//
+// ⚠️ THAT COMPARISON WAS CONFOUNDED, AND SO WAS THE DOUBT. RSMeans model pages
+// are each priced at their own building AREA, and RSMeans prices area as a
+// SEPARATE effect via the Square Foot Project Size Modifier — Size Factor =
+// project area ÷ the type's typical size, then a cost multiplier off the Area
+// Conversion Scale. Multi-Family Housing's typical size is 53,600 S.F. The three
+// apartment models are 22,500 / 60,000 / 145,000 S.F., so they sit at size
+// factors 0.42, 1.12 and 2.71 — a 6.4x spread that the raw $/sf figures fold in
+// silently.
+//
+//   model        area      size factor   multiplier        published   normalised
+//   1-3 story    22,500    0.42          1.10 (STATED)     $146.52     $133.2
+//   4-7 story    60,000    1.12          ~0.99             $145.01     $146.5
+//   8-24 story   145,000   2.71          ~0.92             $171.32     $186.2
+//
+// The 1-3 model is the SMALLEST building carrying the HIGHEST size multiplier —
+// which is precisely what made it look dear beside 4-7 and produced the apparent
+// flatness. Control for size and the premium is real and monotonic.
+//
+//   implied height factor, 1-3 = 1.000:   4-7 ≈ 1.09–1.10 · 8-24 ≈ 1.37–1.43
+//   this file:                            5-8 = 1.12      · 9-20 = 1.28
+//
+// Two multipliers are read off a published CURVE rather than a table, so they are
+// ranges, not points; the only exact one is 1.10, which the PDF states outright
+// for size factors below 0.50. The conclusion is robust across the whole
+// interpolation band, which is why it is stated at all.
+//
+// SO: the 5-8 tier is about right, marginally high (1.12 against ~1.09–1.10),
+// and the 9-20 tier is LOW (1.28 against ~1.37–1.43). No change is made here —
+// one product's model series is not a basis for re-cutting tiers that apply to
+// all six, and rule 1 forbids moving a number on a mechanism argued rather than
+// measured across its own domain. Recorded as a measured direction with its
+// magnitude, which is what a future change would need.
+//
+// ⚠️ AND APARTMENT'S CORROBORATION IS RESTORED. The note above withdrew
+// confidence in the "tier artifact" explanation because RSMeans appeared to
+// contradict the premium. It does not — it supports it, once size is controlled.
+// The withdrawal was mine and it was wrong; the original reasoning stands.
+//
+// The general form is worth more than the number: a published $/sf figure that
+// carries an unstated second variable is not a measurement of the first one. The
+// vendor publishes the size instrument separately precisely because size is a
+// distinct effect, and using the headline figures without it compares buildings
+// that differ in two ways while attributing the difference to one.
+
 export const heightFactorTiers: { label: string; max: number | null; factor: number }[] = [
   { label: 'Up to 4 stories', max: 4, factor: 1.0 },
   { label: '5 to 8 stories', max: 8, factor: 1.12 },
