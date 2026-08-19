@@ -1,6 +1,6 @@
 import type { ParcelInfo } from '../../../src/types/parcel'
 import type { AnalysisInput, Hurdle } from '../../../src/types/analysis'
-import { aduAuthorityFor, summariseAdu } from './zoning/adu'
+import { aduRulesFor, summariseAdu } from './zoning/adu'
 import { PARKING_RULES } from '../../../src/config/parkingRules'
 // Reused, never re-implemented. Both of these normalise a hand-maintained GIS
 // string whose edge cases were measured in the zoning modules (Milwaukee keeps
@@ -781,24 +781,29 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // `zoning/adu.ts` carries that distinction and the status reflects it — a
     // ministerial state right is not the same kind of obstacle as an unread
     // local ordinance, and grading them alike would be the rule 5 collapse.
-    const adu = aduAuthorityFor(project.city)
+    const adu = aduRulesFor(project.city)
     hurdles.push(
-      adu.kind === 'not-established'
+      adu.stateFloor == null && adu.local.kind !== 'read'
         ? {
             category: 'review',
             label: 'ADU-specific rules',
             status: 'likely',
-            note: `${adu.detail} Accessory dwelling units generally carry their own size caps, owner-occupancy and parking rules — confirm the local ADU ordinance before relying on the envelope above.`,
+            note: `${summariseAdu(adu)} Accessory dwelling units generally carry their own size caps, owner-occupancy and parking rules — confirm the local ADU ordinance before relying on the envelope above.`,
           }
         : {
             category: 'review',
-            label: `ADU rules — ${adu.kind === 'state-floor' ? `${adu.state} state law` : 'local ordinance'}`,
+            label: `ADU rules — ${adu.local.kind === 'read' ? 'local ordinance' : `${adu.stateFloor!.state} state law`}`,
             // `info`, not `likely`, where the state mandates MINISTERIAL
             // approval: there is no discretionary review to clear, so it is an
             // entitlement rather than an obstacle. Grading it as a likely hurdle
             // would overstate the bar in a leg that exists to count real ones.
-            status: adu.kind === 'state-floor' ? 'info' : 'likely',
-            note: `${summariseAdu(adu)} ${adu.protections.join(' ')} Source: ${adu.citation}; read ${adu.readOn}.`,
+            status: adu.stateFloor != null ? 'info' : 'likely',
+            note: [
+              summariseAdu(adu),
+              ...(adu.stateFloor ? adu.stateFloor.protections : []),
+              ...(adu.local.kind === 'read' ? adu.local.notes : []),
+              `Sources: ${[adu.stateFloor?.citation, adu.local.kind === 'read' ? adu.local.citation : null].filter(Boolean).join('; ')}.`,
+            ].join(' '),
           },
     )
   } else if (project.projectType === 'change_of_use') {

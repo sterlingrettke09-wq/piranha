@@ -384,10 +384,49 @@ A state-floor city gets `info`, not `likely`: where the state mandates
 entitlement rather than an obstacle. An unread city keeps `likely` and says nobody
 has looked.
 
+### The local layer — STARTED 2026-08-19, 1 of 5 read
+
+**⚠️ The first shape was wrong and could not express the real case.** It carried
+one authority per city — state OR local OR unread — when all five preempted cities
+have BOTH. The type now has two layers, and the buildable figure is
+`max(local, floor)` per dimension, which neither source gives alone.
+
+The asymmetry is the point: a state floor is a minimum the city cannot go below,
+so a local cap *beneath* it is void to that extent and the floor governs, while a
+local cap *above* it is simply what the city allows. Taking the floor in both
+directions understates; taking the local figure in both publishes a cap the state
+has already struck down.
+
+**San Diego is the proof it was worth reading.** SDMC § 141.0302, read from the
+city's own PDF (493,073 bytes, footer dated 7-2026):
+
+| | state floor | San Diego |
+|---|---|---|
+| attached or detached ADU | 850 sq ft | **1,200 sq ft** (a)(7)(B) |
+| inside an existing dwelling | 850 sq ft | **no maximum stated** (a)(7)(C) |
+| inside an existing accessory structure | 850 sq ft | **no maximum**, +150 sq ft for ingress (a)(7)(D) |
+
+Reporting the floor as the answer would have understated by 41% — and for a
+conversion, by an unbounded amount. `null` on a local cap is an ANSWER meaning the
+ordinance states none, and it beats any number; it is not a missing value.
+
+San Diego also states **no ADU height in feet** — § 141.0302(a)(8)(C) defers to
+the base zone — while stating **two storeys** for detached units. Both are kept,
+neither is converted (rule 12).
+
+Two absences kept apart on every city: `stateFloor: null` is a finding about the
+*state* (no statute preempts), and `local: not-read` is a gap in *our* reading.
+
+| | |
+|---|---|
+| state-preempted | la, sandiego, sanjose, seattle, sf |
+| local ordinance read | **sandiego** |
+
 ### Next for ADU
 
-The eighteen unread cities, and the local-ordinance layer for the five read ones —
-state floors say what a city cannot refuse, not what it allows.
+Four local ordinances — LA, SF, San Jose, Seattle — and then the eighteen unread
+cities. Ordinary reading work; `codelibrary.amlegal.com` 403s on curl and needs
+the browser, which is how the LAMC read will have to go.
 
 ---
 

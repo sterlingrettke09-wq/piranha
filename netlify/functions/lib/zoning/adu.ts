@@ -34,26 +34,58 @@
 // pointed at a repealed provision — the citation was read off the live page
 // rather than recalled.
 
-/** Which body of law binds ADUs on this parcel. */
-export type AduAuthority =
-  /** A state statute sets minimums the city may not go below. The figures are
-   *  FLOORS: the city may permit more, and frequently does. */
-  | {
-      kind: 'state-floor'
-      state: string
-      citation: string
-      /** The date the statute text was read, not the date it was enacted. */
-      readOn: string
-      floors: AduFloors
-      /** Conditions the state imposes on the city, which are not size limits but
-       *  change what the applicant faces. */
-      protections: string[]
-    }
-  /** The municipal code is the binding instrument and has been read. */
-  | { kind: 'local'; citation: string; readOn: string; floors: AduFloors; protections: string[] }
-  /** ⚠️ NOBODY HAS READ THIS CITY. Not "this city has no ADU rules" — that would
-   *  be a finding, and no one has looked. */
-  | { kind: 'not-established'; detail: string }
+import { cityName } from '../../../../src/config/cities'
+
+// ── ⚠️ TWO LAYERS, BECAUSE BOTH APPLY ──────────────────────────────────────
+//
+// The first shape here had one authority per city: state OR local OR unread. It
+// could not express the case that actually holds for all five preempted cities —
+// a state floor AND a local ordinance, together.
+//
+// They do different jobs. The state floor is what the city may not go BELOW; the
+// local ordinance is what the city actually allows, which is usually more. So the
+// buildable figure is `max(local, floor)` per dimension, and neither source gives
+// it alone. San Diego is the proof: state law forbids a cap under 850 sq ft and
+// SDMC § 141.0302(a)(7)(B) allows 1,200 — reporting the floor as the answer
+// understates by 41%, in the direction that reads as authoritative (rule 18).
+//
+// Same shape as the `heightUnconstrained` gap one week earlier: a fact that was
+// establishable and had nowhere in the type to live.
+
+/** The state statute that preempts, where one does. */
+export interface StateFloorLayer {
+  state: string
+  citation: string
+  /** The date the statute text was read, not the date it was enacted. */
+  readOn: string
+  floors: AduFloors
+  protections: string[]
+}
+
+/** The city's own ordinance. */
+export interface LocalLayer {
+  kind: 'read'
+  citation: string
+  readOn: string
+  /** What the city allows. `null` on a cap means the ordinance states NO maximum
+   *  — an answer, not a gap, and it beats any state floor. */
+  maxSizeSqFt: { value: number | null; condition: string; cite: string }[]
+  /** Height as the ordinance states it. Storeys and feet are kept apart and
+   *  never converted (rule 12). */
+  maxStories: { value: number; condition: string; cite: string } | null
+  heightDefersToBaseZone: { cite: string } | null
+  notes: string[]
+}
+
+export type LocalRead = LocalLayer | { kind: 'not-read'; detail: string }
+
+export interface AduRules {
+  city: string
+  /** Null where no state statute preempts — an answer for most cities, since
+   *  most states have none. Distinct from not having looked. */
+  stateFloor: StateFloorLayer | null
+  local: LocalRead
+}
 
 /** ⚠️ `baseline` MARKS THE FLOOR THAT APPLIES WITHOUT FURTHER QUALIFICATION, and
  *  it exists because summarising by the LARGEST figure was wrong.
@@ -92,8 +124,7 @@ export interface AduFloors {
 
 // ── CALIFORNIA ──────────────────────────────────────────────────────────────
 // Gov. Code ch. 13 (§ 66310–66342). Read 2026-08-19 from leginfo.legislature.ca.gov.
-const CA: AduAuthority = {
-  kind: 'state-floor',
+const CA: StateFloorLayer = {
   state: 'California',
   citation: 'Cal. Gov. Code §§ 66321, 66323 (Chapter 13, added by Stats. 2024, Ch. 7, Sec. 20; § 66321 amended by Stats. 2025, Ch. 520 (SB 543), effective 2026-01-01)',
   readOn: '2026-08-19',
@@ -149,8 +180,7 @@ const CA: AduAuthority = {
 
 // ── WASHINGTON ──────────────────────────────────────────────────────────────
 // RCW 36.70A.681. Read 2026-08-19 from app.leg.wa.gov.
-const WA: AduAuthority = {
-  kind: 'state-floor',
+const WA: StateFloorLayer = {
   state: 'Washington',
   citation: 'RCW 36.70A.681 — Accessory dwelling units, limitations on local regulation',
   readOn: '2026-08-19',
@@ -193,66 +223,172 @@ const WA: AduAuthority = {
   ],
 }
 
-const NOT_READ = (city: string): AduAuthority => ({
-  kind: 'not-established',
-  detail: `This city's accessory dwelling unit rules have not been read into this tool. That is a gap in our coverage, not a finding that ${city} has no ADU rules — nobody has looked.`,
+// ── SAN DIEGO — the local ordinance, read 2026-08-19 ────────────────────────
+// SDMC ch. 14 art. 1 div. 3, § 141.0302, from the city's own PDF (493,073 bytes,
+// footer dated 7-2026). The ordinance is materially MORE permissive than the
+// state floor, which is the whole reason this layer exists.
+const SANDIEGO_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation: 'San Diego Municipal Code § 141.0302 (Accessory Dwelling Units and Junior Accessory Dwelling Units)',
+  readOn: '2026-08-19',
+  maxSizeSqFt: [
+    { value: 1200, condition: 'attached or detached ADU', cite: '§ 141.0302(a)(7)(B)' },
+    // ⚠️ `null` IS AN ANSWER HERE, and it is the most permissive rule in the
+    // section: a conversion inside the existing house has NO maximum at all. A
+    // number would be wrong in the restrictive direction, and a gap would render
+    // it as unknown — neither is what the code says.
+    { value: null, condition: 'built inside an existing or proposed single dwelling unit structure — no maximum stated', cite: '§ 141.0302(a)(7)(C)' },
+    { value: null, condition: 'built inside an existing accessory structure, plus 150 sq ft for ingress and egress only', cite: '§ 141.0302(a)(7)(D)' },
+    { value: null, condition: 'built inside an existing multiple dwelling unit structure — no maximum stated', cite: '§ 141.0302(a)(7)(E)' },
+  ],
+  maxStories: { value: 2, condition: 'detached, on a lot permitting single but not multiple dwelling units', cite: '§ 141.0302(a)(8)(A)' },
+  // ⚠️ Height in FEET is not stated for ADUs — the section defers to the base
+  // zone. So no figure is invented here; the base-zone limit the rest of this
+  // engine already resolves is the one that applies, floored by the state.
+  heightDefersToBaseZone: { cite: '§ 141.0302(a)(8)(C)' },
+  notes: [
+    'No minimum lot size is required for an ADU (§ 141.0302(a)(5)).',
+    'ADUs are not subject to the base zone density limits (§ 141.0302(a)(6)).',
+    'An 800 sq ft ADU is exempt from maximum lot coverage, floor area ratio, front yard setback and minimum open space of the base zone — the city adopting Gov. Code § 66321(b)(3) directly (§ 141.0302(a)(4)).',
+    'Street side yard setback is 4 feet or the base zone minimum, whichever is LESS (§ 141.0302(a)(9)(B)).',
+    'Minimum ADU size is 150 sq ft (§ 141.0302(a)(7)(A)).',
+  ],
+}
+
+const NOT_READ_LOCAL = (city: string): LocalRead => ({
+  kind: 'not-read',
+  detail: `${city}'s own ADU ordinance has not been read into this tool.`,
 })
 
 /** ⚠️ EVERY LIVE CITY IS LISTED. A city missing from this map would fall through
  *  to a default, and a default here is the thing that must not exist: silence
  *  would render as "no state law applies", which is a claim. */
-const BY_CITY: Readonly<Record<string, AduAuthority>> = Object.freeze({
-  // California — state floors read from the statute.
-  la: CA, sf: CA, sanjose: CA, sandiego: CA,
-  // Washington.
-  seattle: WA,
-  // Not read. Each is its own entry rather than a fallback, so adding a city
-  // without deciding this is a compile-time omission rather than a silent pass.
-  atlanta: NOT_READ('Atlanta'), austin: NOT_READ('Austin'), boston: NOT_READ('Boston'),
-  charlotte: NOT_READ('Charlotte'), chicago: NOT_READ('Chicago'), columbus: NOT_READ('Columbus'),
-  dallas: NOT_READ('Dallas'), dc: NOT_READ('Washington, DC'), denver: NOT_READ('Denver'),
-  lasvegas: NOT_READ('Las Vegas'), miami: NOT_READ('Miami'), milwaukee: NOT_READ('Milwaukee'),
-  minneapolis: NOT_READ('Minneapolis'), nashville: NOT_READ('Nashville'), nyc: NOT_READ('New York City'),
-  philadelphia: NOT_READ('Philadelphia'), phoenix: NOT_READ('Phoenix'), raleigh: NOT_READ('Raleigh'),
+const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
+  la: { city: 'la', stateFloor: CA, local: NOT_READ_LOCAL('Los Angeles') },
+  sf: { city: 'sf', stateFloor: CA, local: NOT_READ_LOCAL('San Francisco') },
+  sanjose: { city: 'sanjose', stateFloor: CA, local: NOT_READ_LOCAL('San Jose') },
+  sandiego: { city: 'sandiego', stateFloor: CA, local: SANDIEGO_LOCAL },
+  seattle: { city: 'seattle', stateFloor: WA, local: NOT_READ_LOCAL('Seattle') },
+  ...Object.fromEntries(
+    ([
+      ['atlanta', 'Atlanta'], ['austin', 'Austin'], ['boston', 'Boston'], ['charlotte', 'Charlotte'],
+      ['chicago', 'Chicago'], ['columbus', 'Columbus'], ['dallas', 'Dallas'], ['dc', 'Washington, DC'],
+      ['denver', 'Denver'], ['lasvegas', 'Las Vegas'], ['miami', 'Miami'], ['milwaukee', 'Milwaukee'],
+      ['minneapolis', 'Minneapolis'], ['nashville', 'Nashville'], ['nyc', 'New York City'],
+      ['philadelphia', 'Philadelphia'], ['phoenix', 'Phoenix'], ['raleigh', 'Raleigh'],
+    ] as const).map(([slug, name]) => [
+      slug,
+      // ⚠️ `stateFloor: null` here means NO STATE STATUTE WAS FOUND TO PREEMPT,
+      // which is a finding about the state. The local ordinance is separately
+      // unread. Two different absences, kept apart.
+      { city: slug, stateFloor: null, local: NOT_READ_LOCAL(name) } satisfies AduRules,
+    ]),
+  ),
 })
 
-export function aduAuthorityFor(city: string): AduAuthority {
-  return BY_CITY[city] ?? NOT_READ(city)
+export function aduRulesFor(city: string): AduRules {
+  return BY_CITY[city] ?? { city, stateFloor: null, local: NOT_READ_LOCAL(city) }
 }
 
-/** Cities whose ADU rules have actually been read. Exported so a coverage claim
- *  is a measurement rather than a sentence someone wrote (rule 20). */
-export const ADU_CITIES_READ: readonly string[] = Object.freeze(
-  Object.entries(BY_CITY)
-    .filter(([, a]) => a.kind !== 'not-established')
-    .map(([c]) => c)
-    .sort(),
+/** Cities whose LOCAL ordinance has been read. Separate from the state list —
+ *  conflating them would let one city's reading imply another's (rule 20). */
+export const ADU_LOCAL_READ: readonly string[] = Object.freeze(
+  Object.entries(BY_CITY).filter(([, r]) => r.local.kind === 'read').map(([c]) => c).sort(),
+)
+/** Cities with a state statute that preempts. */
+export const ADU_STATE_PREEMPTED: readonly string[] = Object.freeze(
+  Object.entries(BY_CITY).filter(([, r]) => r.stateFloor != null).map(([c]) => c).sort(),
 )
 
-/** One line for the report. Says which instrument governs, and — where it is a
- *  state floor — that the figures are minimums rather than the envelope. */
-/** The unconditional floor for a dimension. Throws rather than falling back to
- *  the largest entry: a list with no baseline is a data error, and silently
- *  picking the biggest is the exact mistake this replaced. */
-function baselineOf(list: AduFloor[], what: string): AduFloor {
-  const b = list.find((f) => f.baseline)
-  if (!b) throw new Error(`adu: no baseline ${what} floor — every list needs exactly one unconditional entry`)
-  return b
+// ── THE EFFECTIVE ANSWER ────────────────────────────────────────────────────
+
+export type EffectiveSource = 'local' | 'state-floor' | 'local-no-maximum' | 'floor-only' | 'unresolved'
+
+export interface EffectiveSize {
+  /** Square feet. `null` with source `local-no-maximum` means the ordinance
+   *  states none — an answer. `null` with `unresolved` means nobody knows. */
+  value: number | null
+  source: EffectiveSource
+  why: string
 }
 
-export function summariseAdu(a: AduAuthority): string {
-  if (a.kind === 'not-established') return a.detail
-  const size = baselineOf(a.floors.sizeSqFt, 'size')
-  const height = baselineOf(a.floors.heightFt, 'height')
-  const extras = a.floors.sizeSqFt.length + a.floors.heightFt.length - 2
-  const more = extras > 0 ? ` ${extras} further floors apply in specific cases — a larger unit with more than one bedroom, extra height near transit, and different rules for attached units.` : ''
-  if (a.kind === 'state-floor') {
+/** ⚠️ `max(local, floor)`, and the asymmetry is the point.
+ *
+ *  A state floor is a MINIMUM the city cannot go below, so a local cap beneath it
+ *  is void to that extent and the floor governs. A local cap ABOVE it is simply
+ *  what the city allows, and the floor does nothing. Taking the floor in both
+ *  directions would understate; taking the local figure in both would publish a
+ *  cap the state has already struck down.
+ *
+ *  And a local rule stating NO maximum beats any number — it is not a missing
+ *  value, and treating it as one would be the rule 5 collapse. */
+export function effectiveMaxSize(r: AduRules): EffectiveSize {
+  const floor = r.stateFloor?.floors.sizeSqFt.find((f) => f.baseline) ?? null
+  if (r.local.kind !== 'read') {
+    return floor == null
+      ? { value: null, source: 'unresolved', why: `Neither a state floor nor ${r.city}'s own ordinance has been established.` }
+      : {
+          value: floor.value,
+          source: 'floor-only',
+          why: `Only the state floor is known (${floor.cite}). This is the MINIMUM the city cannot refuse, not what it allows — the local ordinance has not been read.`,
+        }
+  }
+  const unlimited = r.local.maxSizeSqFt.find((m) => m.value == null)
+  if (unlimited) {
+    return {
+      value: null,
+      source: 'local-no-maximum',
+      why: `The city states no maximum for this case (${unlimited.cite}: ${unlimited.condition}). Other configurations have caps — see the full list.`,
+    }
+  }
+  const biggestLocal = r.local.maxSizeSqFt.reduce((m, x) => ((x.value ?? 0) > (m.value ?? 0) ? x : m))
+  if (floor == null) {
+    return { value: biggestLocal.value, source: 'local', why: `${r.local.citation}, ${biggestLocal.cite}.` }
+  }
+  const local = biggestLocal.value as number
+  return local >= floor.value
+    ? {
+        value: local,
+        source: 'local',
+        why: `The city allows more than the state floor requires (${local.toLocaleString()} sq ft at ${biggestLocal.cite}, against a ${floor.value.toLocaleString()} sq ft floor at ${floor.cite}), so the local figure governs.`,
+      }
+    : {
+        value: floor.value,
+        source: 'state-floor',
+        why: `The city's cap of ${local.toLocaleString()} sq ft sits below the state floor of ${floor.value.toLocaleString()} sq ft (${floor.cite}), so it is void to that extent and the floor governs.`,
+      }
+}
+
+
+/** One line for the report. Says which instrument governs, and where the answer
+ *  rests only on a state floor, that the figure is a minimum rather than a cap. */
+export function summariseAdu(r: AduRules): string {
+  const size = effectiveMaxSize(r)
+  if (size.source === 'unresolved') {
+    // The DISPLAY name, not the slug: "not a finding that denver has no ADU
+    // rules" reads as a bug in a sentence whose whole job is to be trusted.
+    return `Accessory dwelling unit rules for this city have not been read into this tool. That is a gap in our coverage, not a finding that ${cityName(r.city)} has no ADU rules — nobody has looked.`
+  }
+  if (size.source === 'floor-only') {
+    const f = r.stateFloor!
+    const h = f.floors.heightFt.find((x) => x.baseline)!
     return (
-      `${a.state} state law sets what this city must allow, and these are FLOORS rather than limits — ` +
-      `the city may permit more and this tool has not read whether it does. Unconditionally: a ` +
-      `${size.value.toLocaleString()} sq ft ADU at ${height.value} ft (${height.condition}) cannot be ` +
-      `refused on size or height grounds.${more}`
+      `${f.state} state law sets what this city must allow, and these are FLOORS rather than limits — ` +
+      `the city may permit more and its own ordinance has not been read. Unconditionally: a ` +
+      `${(size.value as number).toLocaleString()} sq ft ADU at ${h.value} ft (${h.condition}) cannot be refused.`
     )
   }
-  return `The city's own ordinance governs: ${size.value.toLocaleString()} sq ft at ${height.value} ft (${height.condition}).${more}`
+  const head =
+    size.source === 'local-no-maximum'
+      ? 'The city states no maximum size for an ADU built inside an existing structure.'
+      : `Up to ${(size.value as number).toLocaleString()} sq ft.`
+  const stories =
+    r.local.kind === 'read' && r.local.maxStories
+      ? ` Detached ADUs may be ${r.local.maxStories.value} storeys (${r.local.maxStories.cite}).`
+      : ''
+  const height =
+    r.local.kind === 'read' && r.local.heightDefersToBaseZone
+      ? ` The ordinance states no height in feet for ADUs — it defers to the base zone (${r.local.heightDefersToBaseZone.cite}), floored by state law.`
+      : ''
+  return `${head} ${size.why}${stories}${height}`
 }
