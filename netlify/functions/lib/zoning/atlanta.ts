@@ -549,6 +549,33 @@ export type AtlantaLotBasis =
    *  ratio and tells them the denominator is theirs to pick, which is actionable
    *  in a way "we cannot compute this" is not. */
   | 'net-or-gross'
+  /** THE CODE STATES A DENOMINATOR AND DOES NOT QUALIFY IT, and nothing in scope
+   *  resolves which one it means. Established for SPI-20 by slot test 2026-08-18,
+   *  and the result is a THIRD outcome the test's usual two do not cover:
+   *
+   *    §16-18T.010(1)(a) states three parallel sentences drafted together —
+   *      (i)   nonresidential: "the ratio of floor area to LOT AREA"        <- bare
+   *      (ii)  residential:    "the ratio of floor area to NET LOT AREA"
+   *      (iii) combined:       "the ratio of floor area to NET LOT AREA"
+   *      (b)   with bonuses:   "the ratio of floor area to GROSS LOT AREA"
+   *
+   *  So the slot EXISTS and is FILLED — this is not an absence. But:
+   *    · §16-29.001(37), the citywide "Floor area ratio" definition, supplies
+   *      "net lot area" and scopes ITSELF to "any lot within the R-1 through R-5
+   *      district". SPI-20 is not one, so the definition does not reach it.
+   *    · Chapter 29 carries 96 numbered definitions and NONE defines "lot area",
+   *      "net lot area" or "gross lot area" standalone.
+   *    · The section's own citation, §16-29.001(24), is the MIXED-USE definition
+   *      and says nothing about area.
+   *
+   *  Reading "net" across from the sibling sentences is exactly the invented
+   *  conversion rule 4 forbids — it would be indistinguishable from a sourced
+   *  basis in six months, and gross exceeds net, so the error would run in the
+   *  flattering direction. The ratio itself is stated, cited and sound; only its
+   *  denominator is unidentified, which is why this is a limb with a basis rather
+   *  than a missing limb (rule 5: a stated ratio and no ratio must not render the
+   *  same). */
+  | 'unqualified'
 
 /** One floor-area ratio as the code prints it, with its denominator and its
  *  section. A limb cannot be constructed without a citation. */
@@ -796,6 +823,212 @@ function singleFamily(
 // ── The table ────────────────────────────────────────────────────────────────
 
 const DISTRICTS: Record<string, AtlantaLimits> = {
+  // ── SPI SUBAREAS (Chapters 16-18P / 16-18T / 16-18U) ───────────────────────
+  //
+  // ⚠️ THE BASIS IS ASSIGNED PER LIMB AND PER CHAPTER, AND THE CHAPTERS DISAGREE.
+  // Read from each chapter's own text 2026-08-18; NOT carried across, and the
+  // reason that matters is that carrying it across would have been wrong:
+  //
+  //             nonresidential      residential            combined
+  //   SPI-16    gross               gross                  gross      (row labels only)
+  //   SPI-20    UNQUALIFIED         net-or-gross           net        (§16-18T.010)
+  //   SPI-21    net                 net-or-gross           net        (§16-18U.012)
+  //
+  // SPI-20 and SPI-21 each have EXACTLY ONE unqualified limb and it is a
+  // DIFFERENT one — nonresidential in SPI-20, residential in SPI-21. Assuming
+  // the second mirrored the first would have tagged the wrong limb, and nothing
+  // downstream could have detected it: both chapters look identical in shape.
+  // SPI-16 states no bulk-limitations sentence at all; its basis exists only in
+  // the table's row labels ("times gross lot area"). Three chapters, three
+  // mechanisms.
+  //
+  // A NON-RATIO CELL ENCODES AS null. Several subareas state a use-mix cap or a
+  // locational rule where a ratio would go (see parseAtlantaFarCell). null here
+  // means "this subarea states no floor-area RATIO for that use", which is what
+  // the code says; the non-ratio rule itself is not an envelope input and is not
+  // modelled.
+  //
+  // HEIGHTS CONDITIONAL ON A NAMED STREET ARE REFUSED, NOT AVERAGED. SPI-16 SA3
+  // ("100', 60' east of Piedmont Ave.") and SPI-21 SA1 ("225', 72' within 150'
+  // of Ralph David Abernathy Blvd") both depend on distance from a street
+  // centreline — map-keyed, and Atlanta publishes no queryable ROW layer. Both
+  // carry heightFt: null with the figures disclosed as tiers, because publishing
+  // the larger would overstate every parcel in the restricted band (rule 6).
+
+  // SPI-16 Midtown — Ch. 16-18P, "FAR / Height" table, BY-RIGHT columns only.
+  // The bonus columns are a programme the applicant has not chosen (rule 6).
+  'SPI-16 SA1': {
+    ...base('SPI-16 Midtown Mixed Use (Subarea 1)', '§16-18P.010'),
+    farNonresidential: far(5.0, 'gross', '§16-18P.010 Table, "Non-Residential FAR (times gross lot area)", by-right column'),
+    farResidential: far(3.2, 'gross', '§16-18P.010 Table, "Residential FAR (times gross lot area)", by-right column'),
+    farCombined: far(8.2, 'gross', '§16-18P.010 Table, "Max FAR", by-right column'),
+    heightSource: '§16-18P.010 Table, "Maximum Height": none stated except the transitional height plane adjacent to R districts',
+  },
+  'SPI-16 SA2 JSTA': {
+    ...base('SPI-16 Midtown Residential (Subarea 2) — Juniper St. Transition', '§16-18P.010'),
+    farNonresidential: null, // cell is a locational rule, not a ratio
+    farResidential: far(6.4, 'gross', '§16-18P.010 Table, "Residential FAR (times gross lot area)", SA#2 → Juniper St. Transition'),
+    farCombined: far(6.4, 'gross', '§16-18P.010 Table, "Max FAR", SA#2 → Juniper St. Transition'),
+    heightFt: 400,
+    heightSource: '§16-18P.010 Table, "Maximum Height", SA#2 → Juniper St. Transition',
+  },
+  'SPI-16 SA2': {
+    ...base('SPI-16 Midtown Residential (Subarea 2) — Non-Juniper St. Transition', '§16-18P.010'),
+    farNonresidential: null, // cell is a locational rule, not a ratio
+    farResidential: far(3.2, 'gross', '§16-18P.010 Table, "Residential FAR (times gross lot area)", SA#2 → Non-Juniper St.'),
+    farCombined: far(3.2, 'gross', '§16-18P.010 Table, "Max FAR", SA#2 → Non-Juniper St.'),
+    heightFt: 250,
+    heightSource: '§16-18P.010 Table, "Maximum Height", SA#2 → Non-Juniper St. Transition',
+  },
+  'SPI-16 SA3': {
+    ...base('SPI-16 Juniper East (Subarea 3)', '§16-18P.010'),
+    farNonresidential: far(2.0, 'gross', '§16-18P.010 Table, "Non-Residential FAR (times gross lot area)", Juniper East by-right'),
+    farResidential: far(3.2, 'gross', '§16-18P.010 Table, "Residential FAR (times gross lot area)", Juniper East by-right'),
+    farCombined: far(5.2, 'gross', '§16-18P.010 Table, "Max FAR", Juniper East by-right'),
+    heightTiers: [
+      { label: 'east of Piedmont Ave.', heightFt: 60 },
+      { label: 'elsewhere in Subarea 3', heightFt: 100 },
+    ],
+    heightSource: '§16-18P.010 Table, "Maximum Height": 100 ft, 60 ft east of Piedmont Ave. — map-keyed, so no single figure is resolved',
+  },
+
+  // SPI-20 Greenbriar — Ch. 16-18T, Table "Development Controls and Site
+  // Limitations". Six subareas, all six carrying live zone codes.
+  'SPI-20 SA1': {
+    ...base('SPI-20 Greenbriar Town Center (Subarea 1)', '§16-18T.010'),
+    farNonresidential: far(2.5, 'unqualified', '§16-18T.010(1)(a)(i) — states "lot area" without qualifying it; see AtlantaLotBasis'),
+    farResidential: far(0.696, 'net-or-gross', '§16-18T.010(2) — applicant may use net or gross'),
+    farCombined: far(3.196, 'net', '§16-18T.010(1)(a)(iii)'),
+    heightFt: 80,
+    heightSource: '§16-18T.010 Table SPI-20, "Maximum Height"',
+  },
+  'SPI-20 SA2': {
+    ...base('SPI-20 Greenbriar Neighborhood Center (Subarea 2)', '§16-18T.010'),
+    farNonresidential: far(1.5, 'unqualified', '§16-18T.010(1)(a)(i)'),
+    farResidential: far(0.696, 'net-or-gross', '§16-18T.010(2)'),
+    farCombined: far(2.196, 'net', '§16-18T.010(1)(a)(iii)'),
+    heightFt: 52,
+    heightSource: '§16-18T.010 Table SPI-20, "Maximum Height"',
+  },
+  'SPI-20 SA3': {
+    ...base('SPI-20 Campbellton Rd Mixed-Use Corridor (Subarea 3)', '§16-18T.010'),
+    farNonresidential: far(1.0, 'unqualified', '§16-18T.010(1)(a)(i)'),
+    farResidential: far(0.696, 'net-or-gross', '§16-18T.010(2)'),
+    farCombined: far(1.696, 'net', '§16-18T.010(1)(a)(iii)'),
+    heightFt: 52,
+    heightSource: '§16-18T.010 Table SPI-20, "Maximum Height"',
+  },
+  'SPI-20 SA4': {
+    ...base('SPI-20 Greenbriar Residential/Commercial (Subarea 4)', '§16-18T.010'),
+    farNonresidential: null, // table states "20%" — a maximum percentage of development, not a ratio
+    farResidential: far(2.0, 'net-or-gross', '§16-18T.010(2)'),
+    farCombined: far(2.0, 'net', '§16-18T.010(1)(a)(iii)'),
+    heightFt: 80,
+    heightSource: '§16-18T.010 Table SPI-20, "Maximum Height"',
+  },
+  'SPI-20 SA5': {
+    ...base('SPI-20 Greenbriar Medium Density Residential (Subarea 5)', '§16-18T.010'),
+    farNonresidential: null, // table states "5%" — a maximum percentage of development, not a ratio
+    farResidential: far(0.696, 'net-or-gross', '§16-18T.010(2)'),
+    farCombined: far(0.696, 'net', '§16-18T.010(1)(a)(iii)'),
+    heightFt: 52,
+    heightSource: '§16-18T.010 Table SPI-20, "Maximum Height"',
+  },
+  'SPI-20 SA6': {
+    ...base('SPI-20 Greenbriar Single-Family (Subarea 6)', '§16-18T.010'),
+    farNonresidential: null, // table states "None"
+    farResidential: far(0.5, 'net-or-gross', '§16-18T.010(2)'),
+    farCombined: far(0.5, 'net', '§16-18T.010(1)(a)(iii)'),
+    heightFt: 35,
+    heightSource: '§16-18T.010 Table SPI-20, "Maximum Height"',
+  },
+
+  // SPI-21 Historic West End/Adair Park — Ch. 16-18U, ten subareas in the table.
+  // ⚠️ SUBAREA 6 ("Medium Density Residential") IS DELIBERATELY ABSENT BELOW.
+  // The chapter defines subareas 1–10; the 2026-08-17 live enumeration carries
+  // SA1–SA5 and SA7–SA10 and NO SA6. That is not a coverage gap — no parcel
+  // carries the code, so nothing renders wrong — but it cannot be VERIFIED
+  // either: column-path identity is proved by mapping distinct grid columns onto
+  // live zone codes, and there is no code to map column 6 onto. Encoding it would
+  // publish figures whose column mapping was never checked against reality, which
+  // is the DC MU-column off-by-one with nothing able to detect it. Recorded as
+  // READ BUT UNVERIFIABLE, which is a different state from unread.
+  'SPI-21 SA1': {
+    ...base('SPI-21 Historic West End/Adair Park (Subarea 1)', '§16-18U.012'),
+    farNonresidential: far(2.5, 'net', '§16-18U.012(1)(a)(i)'),
+    farResidential: far(2.0, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(3.5, 'net', '§16-18U.012(1)(a)(iii) — STATED, not the sum of the limbs'),
+    heightTiers: [
+      { label: "within 150 ft of Ralph David Abernathy Blvd", heightFt: 72 },
+      { label: 'elsewhere in Subarea 1', heightFt: 225 },
+    ],
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height" 225 ft with the * footnote — map-keyed, so no single figure is resolved',
+  },
+  'SPI-21 SA2': {
+    ...base('SPI-21 Historic West End/Adair Park (Subarea 2)', '§16-18U.012'),
+    farNonresidential: far(2.5, 'net', '§16-18U.012(1)(a)(i)'),
+    farResidential: far(1.0, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(3.5, 'net', '§16-18U.012(1)(a)(iii) — STATED, not the sum of the limbs'),
+    heightFt: 72,
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height"',
+  },
+  'SPI-21 SA3': {
+    ...base('SPI-21 Historic West End/Adair Park (Subarea 3)', '§16-18U.012'),
+    farNonresidential: far(1.5, 'net', '§16-18U.012(1)(a)(i)'),
+    farResidential: far(0.696, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(2.196, 'net', '§16-18U.012(1)(a)(iii)'),
+    heightFt: 46,
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height"',
+  },
+  'SPI-21 SA4': {
+    ...base('SPI-21 Historic West End/Adair Park (Subarea 4)', '§16-18U.012'),
+    farNonresidential: far(1.0, 'net', '§16-18U.012(1)(a)(i)'),
+    farResidential: far(0.696, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(1.696, 'net', '§16-18U.012(1)(a)(iii)'),
+    heightFt: 46,
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height"',
+  },
+  'SPI-21 SA5': {
+    ...base('SPI-21 Historic West End/Adair Park (Subarea 5)', '§16-18U.012'),
+    farNonresidential: null, // table states "20%" — a maximum percentage of development, not a ratio
+    farResidential: far(2.3, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(2.3, 'net', '§16-18U.012(1)(a)(iii)'),
+    heightFt: 72,
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height"',
+  },
+  'SPI-21 SA7': {
+    ...base('SPI-21 Smaller Lot Single-family (Subarea 7)', '§16-18U.012'),
+    farNonresidential: null, // table states "None"
+    farResidential: far(0.5, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(0.5, 'net', '§16-18U.012(1)(a)(iii)'),
+    heightFt: 35,
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height"',
+  },
+  'SPI-21 SA8': {
+    ...base('SPI-21 Institutional/AUC (Subarea 8)', '§16-18U.012'),
+    farNonresidential: far(3.0, 'net', '§16-18U.012(1)(a)(i)'),
+    farResidential: far(3.2, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(3.2, 'net', '§16-18U.012(1)(a)(iii) — STATED, not the sum of the limbs'),
+    heightFt: 72,
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height"',
+  },
+  'SPI-21 SA9': {
+    ...base('SPI-21 Adair Park Live/Work (Subarea 9)', '§16-18U.012'),
+    farNonresidential: far(2.5, 'net', '§16-18U.012(1)(a)(i)'),
+    farResidential: far(0.696, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(3.196, 'net', '§16-18U.012(1)(a)(iii)'),
+    heightFt: 72,
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height"',
+  },
+  'SPI-21 SA10': {
+    ...base('SPI-21 Historic West End/Adair Park (Subarea 10)', '§16-18U.012'),
+    farNonresidential: far(5.0, 'net', '§16-18U.012(1)(a)(i)'),
+    farResidential: far(3.2, 'net-or-gross', '§16-18U.012(2)'),
+    farCombined: far(8.2, 'net', '§16-18U.012(1)(a)(iii)'),
+    heightFt: 225,
+    heightSource: '§16-18U.012 Table SPI-21, "Maximum Height"',
+  },
+
   // ── Single-family (Chapters 3, 4, 4A, 4B, 5, 5A, 6) ─────────────────────
   'R-1': singleFamily('R-1 Single-Family Residential', 0.25, '3', '16-03.008(5)', '16-03.009'),
   'R-2': singleFamily('R-2 Single-Family Residential', 0.3, '4', '16-04.008(5)', '16-04.009'),
@@ -1311,12 +1544,40 @@ export interface AtlantaZoneParts {
  * lookup fails. Stripping it unconditionally would turn 'R-LC' into 'R-L' —
  * a real district silently becoming a gap because its own name ends in "-LC".
  */
+/** Codes whose trailing "C" IS a conditional marker, each enumerated from the
+ *  chapter that defines it. Deliberately not a pattern — see parseAtlantaZone.
+ *  SPI-7's SA2A/SA2B/SA2C are subareas and are correctly absent here. */
+const BARE_C_ALIASES: Record<string, string> = {
+  'SPI-16 SA1C': 'SPI-16 SA1',
+}
+
 export function parseAtlantaZone(code: string | null | undefined): AtlantaZoneParts {
   if (!code) return { base: null, conditional: false, normalized: '' }
   const z = code.replace(/\s+/g, ' ').trim().toUpperCase()
   if (!z) return { base: null, conditional: false, normalized: '' }
 
   if (Object.hasOwn(DISTRICTS, z)) return { base: z, conditional: false, normalized: z }
+
+  // ⚠️ A BARE TRAILING "C" IS NOT A CONDITIONAL SUFFIX, AND THE STRING CANNOT
+  // TELL YOU WHICH IT IS. Two live codes end in digit+C and they mean opposite
+  // things:
+  //     SPI-16 SA1C   a CONDITIONAL variant of Subarea 1 (Ch. 16-18P)
+  //     SPI-7  SA2C   SUBAREA 2C itself — SPI-7 carries SA2A, SA2B and SA2C,
+  //                   a lettered series (Ch. 16-18G)
+  // A rule of "strip a C that follows a digit" resolves the first correctly and
+  // silently turns the second into Subarea 2 — a real district becoming a
+  // different real district. That is rule 27 (a prefix is not a family): test
+  // membership against the SOURCE, not the spelling.
+  //
+  // It is not safe merely because SPI-7 is unencoded today, either. The guard
+  // below would return null now and start returning the wrong district the day
+  // SPI-7 SA2 is added — a trap armed by future work rather than a live bug.
+  // So the aliases are enumerated from the chapters that define them, and
+  // nothing is inferred from shape.
+  if (Object.hasOwn(BARE_C_ALIASES, z)) {
+    const target = BARE_C_ALIASES[z]
+    return { base: Object.hasOwn(DISTRICTS, target) ? target : null, conditional: true, normalized: z }
+  }
 
   if (z.endsWith('-C')) {
     const stripped = z.slice(0, -2)

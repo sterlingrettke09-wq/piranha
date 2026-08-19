@@ -118,6 +118,186 @@ while the cost basis is unsourced.
 
 ---
 
+## How each item gets done
+
+Written 2026-08-18. The *method* for each build-order item, so the work does not
+get re-derived every time it is picked up. Each states what unblocks it, the
+instrument it uses, and the specific way it can go wrong — because in this repo
+the failure is almost never "we could not find the number", it is "we found a
+plausible one".
+
+### 1a. Atlanta SPI  (~15 chapters after 16/20/21)
+
+Per chapter, in order:
+
+1. **Get the nodeId from the Part 16 TOC index**, never by guessing a URL
+   (rule 8). `codesToc/children?nodeId=PTIIICOORANDECO_PT16ZO&productId=10376`.
+2. **Fetch `CodesContent` and confirm the payload parses.** A truncated fetch
+   returns HTTP 200 (rule 22); JSON that parses to completion is the destination
+   check.
+3. **Expand with `scripts/municodeGrid.py`.** Merged headers mean the header and
+   data column counts legitimately differ — reconcile the **column PATH** against
+   live zone codes, never the count.
+4. **Check live coverage before reading**: every column needs a live code, or the
+   uncovered column gets declared read-but-unverifiable (SPI-21 SA6's treatment).
+5. **Read EVERY FAR row**, and record which rows were read and which are declared
+   out of the envelope model. Chapter-level "read" is what produced the SPI-16
+   2.6x defect.
+6. **Apply `parseAtlantaFarCell` to every cell.** Anything not a bare number is
+   not a ratio and is refused, never coerced.
+7. **Slot-test any unstated basis** before assuming one.
+8. **Encode all limbs together** — per-use plus combined — so no district ships
+   half-answered, and run the suite.
+
+*Failure mode to watch:* a chapter that states FAR in prose with no table
+(SPI-6 does) is invisible to the grid parser entirely.
+
+### 1b. San Diego  (78 sweep gaps — the largest readable block)
+
+Same discipline, different source: Municipal Code Chapter 15 planned districts
+plus Table 131-05D. Named blocks — Carmel Valley (20 codes), Central Urbanized
+(13), Old Town (15), Table 131-05D (CR/CO/CV/CP), Division 2 open space, three La
+Jolla sub-areas.
+
+Where headers are NOT merged the column-count cross-check does apply and is the
+strongest available instrument — it is what proved Table 131-05C (header count,
+data count and live code count all six). Where a district publishes a base and a
+bonus, encode the base and label the rest, the way Denver's D-GT went in at 8.0
+with the 15.0 incentive noted (rule 6).
+
+### 2. Cost-data access  — OPEN, blocked on Sterling
+
+Nothing proceeds until a source is chosen. Once chosen:
+
+1. Source each constant in `src/config/estimates.ts` individually, with a
+   citation per figure — **composite constants need BOTH inputs sourced** or the
+   composite is labelled derived (rule 3).
+2. **External benchmark before shipping**, not on request. Every defect ever
+   found here was caught by comparing to something outside the system (rule 9);
+   the test suite has never caught one.
+3. The Methodology page derives its tables from these constants, so changing them
+   changes published math — the disclosure copy has to be re-read in place, not
+   moved (rule 9 corollary).
+
+*Why this is not automatable:* an unattended loop closes the gap by inventing
+constants in the right units, which is the shape that gets the least scrutiny
+(rule 18).
+
+### 3. ~~Permit timing~~ — DONE 2026-08-18
+
+Audited end to end. No live target remains. The only recurring work is
+re-checking that the ten withholdings still hold for current reasons — a
+coverage question, not an accuracy one, and the reason-type sort makes it cheap:
+city-facts cannot expire, measurement-facts can, tool-facts have three times.
+
+### 4. Parcel-weighted coverage
+
+Today coverage counts PARCELS SAMPLED. Parcel-weighted means weighting a city's
+answer rate by the land or parcel count each district actually covers, so "78%
+resolve" describes the city rather than the sample.
+
+Method: per-city parcel counts by district from the same ArcGIS layers the
+providers already read, then re-derive coverage against those weights.
+
+*Failure mode:* this measures the sampler unless the weights come from the live
+layer rather than from the sample itself (rule 11). And the number will move for
+instrument reasons — say which, every time (rule 26).
+
+### 5. Map-layer asks  (five named)
+
+Each is a figure that exists in a code and depends on WHERE, blocked by a
+data-publication gap rather than an epistemic one:
+
+| city | ask |
+|---|---|
+| Atlanta | ROW width as a queryable feature layer (today: cartographic annotation, `/query` 400s) |
+| Denver | Exhibit 8.1 |
+| San Diego | Figure H |
+| Phoenix | § 1202.B/C |
+| Charlotte | site-plan basis |
+
+Deliverable per city: a short written request naming the exact layer, why the
+current publication does not serve, and what it unblocks. These are outbound
+communications — drafted here, sent by Sterling.
+
+### 6. More cities  (deliberately last)
+
+`docs/ADDING-A-CITY.md` is the procedure. Per city: provider adapter, zoning
+module, **live field verification before any encoding** (a layer name is not a
+layer — verify it is queryable at all), enumeration fixture, hurdles, and a
+permit script only if the feed carries an application date.
+
+*Why last:* every city added widens every sweep, and a city added before its
+fields are verified adds gaps that look like coverage.
+
+---
+
+## Feature order — how each would be built
+
+Ranked 2026-08-18. None started. Listed with what each actually requires, because
+the ranking and the difficulty are not the same order.
+
+**1. Change alerts** *(extremely important)* — the largest infrastructure lift on
+the list, and it is first. Needs three things this project does not yet have:
+durable per-user state, scheduled re-runs of saved parcels, and a **diff engine**
+that can say what changed and why. The hard part is not the notification, it is
+that a diff is only meaningful if a re-run is reproducible — and this session
+established that NYC's own population is not (4,394 / 1,040 / 8,103). An alert
+built on an unstable source fires on noise. **So per-source reproducibility is a
+precondition, not a detail.**
+
+**2. Inverse query** *(very important)* — "show me every parcel where X". Needs
+precomputed envelopes in an index rather than per-request computation, which
+means a build step and a store. Bounded and mechanical once the store exists.
+
+**3. Pro forma** *(important)* — **downstream of cost-data.** A pro forma with an
+unsourced cost basis is the same unshippable artifact as a feasibility number
+with one.
+
+**4. ADU** *(yes, not first)* — per-city ADU rules module, same shape as the
+existing zoning modules. Self-contained; no new infrastructure.
+
+**5. Account + favorites** — auth plus storage. **Also the precondition for the
+pro subscription below**, which is worth noting because it is ranked fifth while
+one of the two approved monetization paths depends on it.
+
+**5.1. Assemblage** — a RANKING, not a commitment (see above). Multi-parcel
+envelope math; the interesting part is that combining parcels changes frontage,
+setbacks and sometimes district, so it is not a sum.
+
+---
+
+## Monetization — what each requires
+
+**API / data licensing — YES.** Needs a stable versioned schema, rate limiting
+(`netlify/functions/lib/guard.ts` already exists), and a licence. The valuable
+fields are the derived ones, so this is **gated on cost-data** for anything
+beyond zoning envelope.
+
+**Pro subscription — YES, but hard.** Sterling's own assessment. Requires
+accounts (feature #5) plus a billing integration plus something worth paying for
+monthly — which is change alerts (feature #1). **So the subscription is
+downstream of the two heaviest features**, which is what "hard" means concretely.
+
+**Per-report — OPEN, leaning no.** *"Idk, I don't see how this would generate
+anything good."* Recorded as open rather than closed because it was a doubt, not
+a decision.
+
+**Lead-gen — NO.** Decided 2026-08-17.
+
+---
+
+## Also open — smaller
+
+| Item | Method |
+|---|---|
+| **Minneapolis story paragraph** | Must come from `cityStories.ts` by interpolation. `parkingClause` is guarded so every word except the city name must appear in the verified parking headline — checked mechanically. Target text: parking minimums abolished citywide in 2021; a by-right apartment build ~38 months, +3 once a variance is needed. Both figures already exist on the ranked city object. |
+| **Photos — Dallas, Las Vegas, Phoenix** | Asset acquisition. Sterling. |
+| **#15 LA recodification** | Make the bracketed-format count dynamic. The 151-vs-169 discrepancy is resolved BY the dynamic count, not investigated first. LA is 440 of 731 sweep gaps — the single largest block anywhere. |
+| **RSMeans credential rotation** | Sterling. A password was pasted into a transcript on 2026-08-18. Never used, never entered anywhere. Still needs rotating. |
+
+---
+
 ## Next session — Atlanta SPI encode, two things to settle first
 
 Recorded 2026-08-18. Both are preconditions, not tasks: getting either wrong

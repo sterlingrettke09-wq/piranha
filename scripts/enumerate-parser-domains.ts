@@ -143,7 +143,16 @@ export const TARGETS: Target[] = [
     // variants, MR-3A-C and MR-4-C (conditional forms of curated districts), and
     // PD-H1/PD-H2 are real gaps.
     partiallyScoped: {
-      label: 'SPI / HC-20 / NC / Poncey-Highland / LD deliberately uncurated, plus four codes Part 16 does not establish at all — see zoning/atlanta.ts',
+      // ⚠️ "SPI ... uncurated" WENT STALE THE MOMENT SPI WAS CURATED. On
+      // 2026-08-18 SPI-16, SPI-20 and SPI-21 were encoded — 20 codes — and
+      // Atlanta's unhandled count fell 173 → 153 while the GAP total did not
+      // move at all, because those codes were already excused by this
+      // declaration. So the instrument's own description of the city was false
+      // for exactly as long as nobody re-read it, and the sweep total could
+      // never have revealed that (rule 26: report the composition, not the
+      // bare number). The label now names which chapters are done.
+      label:
+        'SPI curated for 16/20/21 (20 codes); the remaining SPI chapters plus HC-20 / NC / Poncey-Highland / LD deliberately uncurated, plus four codes Part 16 does not establish at all — see zoning/atlanta.ts',
       // ⚠️ THE FOUR ARE NOT UNCURATED — THEY DO NOT EXIST IN THE CODE. Read and
       // recorded in zoning/atlanta.ts with their acreages: PD-H1 (37.2 ac),
       // MR-4-C (16.1), PD-H2 (10.1), MR-3A-C (3.6). Chapter 35 establishes MR-1,

@@ -51,7 +51,11 @@ describe('parseAtlantaZone', () => {
   })
 
   it('returns base null — never a guess — for codes this build has not read', () => {
-    for (const code of ['SPI-16 SA1', 'SPI-22 SA-1', 'SPI-4 SA 11', 'HC-20B', 'NC-11', 'Poncey-Highland SA3']) {
+    // SPI-16 SA1 was the example here until 2026-08-18, when it was encoded and
+    // stopped being unread. Replaced with SPI-1 SA1, which is still uncurated —
+    // a test whose fixture becomes a counterexample of itself is worse than no
+    // test, because it goes red for the right reason and gets 'fixed' wrongly.
+    for (const code of ['SPI-1 SA1', 'SPI-22 SA-1', 'SPI-4 SA 11', 'HC-20B', 'NC-11', 'Poncey-Highland SA3']) {
       expect(parseAtlantaZone(code).base, code).toBeNull()
     }
     expect(parseAtlantaZone(null).base).toBeNull()
@@ -450,7 +454,7 @@ describe('resolveAtlanta — absence vs gap (rule 5)', () => {
   // An unread district must assert nothing whatsoever. This is the assertion
   // that stops 173 mapped codes from silently acquiring a known-absence flag.
   it('an unresolved code asserts nothing — no FAR, no height, no absence flags', () => {
-    for (const code of ['SPI-16 SA1', 'HC-20B', 'NC-11', 'LD Mean Street', 'Poncey-Highland SA1', 'Unknown', 'ZZZ']) {
+    for (const code of ['SPI-1 SA1', 'HC-20B', 'NC-11', 'LD Mean Street', 'Poncey-Highland SA1', 'Unknown', 'ZZZ']) {
       const r = resolveAtlanta(code)
       expect(r.source, code).toBe('')
       expect(r.farUnconstrained, code).toBe(false)
@@ -499,7 +503,12 @@ describe('resolveAtlanta — structural invariants (rule 14)', () => {
       for (const limb of [r.farNonresidential, r.farResidential, r.farCombined]) {
         if (!limb) continue
         expect(limb.source, code).toMatch(/§16-/)
-        expect(['net', 'gross'], code).toContain(limb.basis)
+        // Widened 2026-08-18 for the SPI chapters, which assign a denominator
+        // PER LIMB: 'net-or-gross' where the code lets the applicant elect
+        // (SPI-20/21 residential) and 'unqualified' where the code states a
+        // denominator and nothing in scope says which one it means (SPI-20
+        // nonresidential). Both are answers about the code, not gaps.
+        expect(['net', 'gross', 'net-or-gross', 'unqualified'], code).toContain(limb.basis)
         expect(limb.far, code).toBeGreaterThan(0)
       }
     }
@@ -513,7 +522,19 @@ describe('resolveAtlanta — structural invariants (rule 14)', () => {
       const r = resolveAtlanta(code)
       const saysSomething = r.heightFt != null || r.heightUnconstrained || r.heightTiers != null
       if (!saysSomething) {
-        // Only the plan-governed PD districts may stay silent on height.
+        // A THIRD LEGITIMATE STATE, added 2026-08-18. SPI-16 Subarea 1 states no
+        // numeric height: the chapter's only height provision for it is the
+        // transitional height plane adjacent to R districts (§16-18P.009), which
+        // is a real, citable rule and not a figure. That is neither a plan-governed
+        // district nor an unread one — so the district may be silent on a NUMBER
+        // provided it carries a cited heightSource saying what the code does say.
+        // Requiring the citation is what keeps this from becoming a hole: silence
+        // with no source still fails.
+        if (r.heightSource != null) {
+          expect(r.heightSource, code).toMatch(/§16-/)
+          continue
+        }
+        // Otherwise only the plan-governed PD districts may stay silent on height.
         expect(r.planGoverned, code).toBe(true)
         continue
       }
