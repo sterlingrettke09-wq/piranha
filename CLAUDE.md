@@ -80,6 +80,27 @@ A blank cell is not this. And the method does not generalise past what was read:
 Philadelphia's other ten blanks (CMX-2, CA-1, I-P, SP-*) stay gaps, because **an
 absence is only an answer once someone has looked.**
 
+*The slot test has a THIRD outcome, and it is neither of the two above.* Atlanta
+SPI-20, 2026-08-18: § 16-18T.010(1)(a) states three parallel sentences, and the
+nonresidential one reads "the ratio of floor area to **lot area**" while its two
+siblings read "**net** lot area". So the slot exists and is FILLED — with a term
+that is not qualified. That is not an absence and not a gap in the reading; it is
+a stated value whose meaning is undetermined.
+
+What makes it UNRESOLVABLE rather than merely unstated is the part worth copying:
+§ 16-29.001(37) *does* define floor area ratio against "net lot area" — and
+scopes ITSELF to "any lot within the R-1 through R-5 district". **The definition
+exists and says it does not apply here.** Chapter 29's 96 definitions include no
+standalone "lot area", and the section's own citation (§ 16-29.001(24)) is the
+mixed-use definition. So the resolving instrument was found, read, and found to
+be out of scope — which is a positive finding, not a failed search.
+
+Reading "net" across from the sibling sentences is exactly the invented
+conversion rule 4 forbids, and it runs in the flattering direction because gross
+exceeds net. So this needs its own state: `basis: 'unqualified'`, distinct from
+both a known denominator and an applicant's election. **Three outcomes, not two:
+no slot, empty slot, and a filled slot whose resolving definition excludes you.**
+
 **6. Do not report a maximum across alternatives as if it were a ceiling.**
 Where a code allows either A or B (Austin: 0.40 single-family OR 0.65 for three
 units), reporting the larger assumes a program the user has not chosen and
