@@ -32,7 +32,14 @@
 import { diffSnapshots, type WatchRow, type WatchSnapshot, type WatchResolution } from './watchlist'
 import type { ParcelVintage } from './providers/parcelVintage'
 
-/** What a re-read of the parcel produced. Three cases, deliberately not two. */
+/** What a re-read of the parcel produced. FIVE cases, and each one exists
+ *  because collapsing it into another would produce a false statement:
+ *
+ *    resolved      the answer now
+ *    not-in-layer  the service answered; no row carries this id
+ *    unreachable   the service did not answer
+ *    ambiguous     several rows carry this id, so "the" parcel is undefined
+ *    no-lookup     this city has no by-id lookup; NOBODY LOOKED */
 export type Reread =
   /** The parcel resolved and here is its answer now. */
   | { kind: 'resolved'; snapshot: WatchSnapshot; vintage: ParcelVintage }
@@ -40,6 +47,13 @@ export type Reread =
   | { kind: 'not-in-layer'; vintage: ParcelVintage }
   /** The service did not answer. A fact about the network, and about nothing else. */
   | { kind: 'unreachable'; detail: string }
+  /** More than one row carries this id, so the watched parcel is undefined.
+   *  Measured: LA 8/8 sampled ids, Miami 7/8, Chicago 1/8. Diffing would compare
+   *  against whichever row came back first. */
+  | { kind: 'ambiguous'; matches: number }
+  /** No by-id lookup is wired for this city. NOBODY LOOKED — distinct from both
+   *  a failed check and a missing parcel. */
+  | { kind: 'no-lookup'; detail: string }
 
 export type WatchEvent =
   /** A field the source publishes moved. THE alertable event. */
@@ -99,6 +113,22 @@ export function checkWatch({ row, reread, sourceDiffable }: CheckInput): CheckOu
       events: [],
       alertable: [],
       suppressed: `the parcel could not be re-read (${reread.detail})`,
+    }
+  }
+  // 1b. Nobody looked, which is not the same as looking and failing. A row in a
+  //     city with no by-id lookup must not accumulate `check-failed` forever as
+  //     though something were broken.
+  if (reread.kind === 'no-lookup') {
+    return { resolution: 'no-lookup', events: [], alertable: [], suppressed: reread.detail }
+  }
+  // 1c. More than one row carries this id, so "the" parcel is undefined and any
+  //     diff would be against whichever row the service returned first.
+  if (reread.kind === 'ambiguous') {
+    return {
+      resolution: 'ambiguous',
+      events: [],
+      alertable: [],
+      suppressed: `${reread.matches} rows carry this parcel id, so there is no single parcel to compare`,
     }
   }
 
@@ -175,8 +205,11 @@ export function applyCheck(row: WatchRow, reread: Reread, outcome: CheckOutcome,
     lastCheckedAt: now.toISOString(),
     ...(advance ? { snapshot: reread.snapshot } : {}),
     // The vintage IS advanced on a confirmed rebase, so the next run compares on
-    // one fabric. It is not advanced when the vintage could not be confirmed.
-    ...(reread.kind !== 'unreachable' && reread.vintage.basis !== 'pinned-fallback'
+    // one fabric. It is NOT advanced when the vintage could not be confirmed, and
+    // the kinds that carry no vintage at all — unreachable, ambiguous, no-lookup —
+    // never touch it: none of them read a fabric, so none of them may claim one.
+    ...((reread.kind === 'resolved' || reread.kind === 'not-in-layer') &&
+    reread.vintage.basis !== 'pinned-fallback'
       ? { parcelVintage: reread.vintage }
       : {}),
   }

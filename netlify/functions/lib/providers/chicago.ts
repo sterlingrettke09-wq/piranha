@@ -179,3 +179,20 @@ export async function getChicagoParcelInfo(lat: number, lng: number): Promise<Pa
   console.log({ event: 'parcel.ok', city: 'chicago', durationMs: Date.now() - t0, parcelId: info.parcelId })
   return { ok: true, info }
 }
+
+/** ⚠️ CHICAGO'S PARCEL LAYER IS NOT A CONSTANT, so this one is a function.
+ *
+ *  Cook County publishes the fabric as one layer per tax year and the layer is
+ *  resolved per request (see `parcelVintage.ts`), so a checker re-finding a
+ *  stored parcel must resolve it too rather than reading a URL that would be
+ *  frozen the day 2026 publishes. The vintage it resolves is also what the
+ *  checker compares BEFORE it compares any field.
+ *
+ *  `PIN10` is the ten-digit land-parcel id. Not `PARID`, which is the fourteen-
+ *  digit PIN on Cook County's other two parcel services — those identify condo
+ *  units as well as land, and switching to them would change what a watched
+ *  "parcel" is. */
+export const PARCEL_SOURCE = {
+  idField: 'PIN10',
+  resolveLayer: async () => (await parcelVintageFor('chicago')),
+} as const

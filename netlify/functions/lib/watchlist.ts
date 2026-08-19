@@ -88,6 +88,13 @@ export type WatchResolution =
    *  the other says we do not know, and collapsing them would fire an alert for
    *  every upstream outage. */
   | 'check-failed'
+  /** More than one row in the city's layer carries this id, so there is no
+   *  single parcel to compare. Measured per city, not assumed — see
+   *  `parcelLookup.ts`. */
+  | 'ambiguous'
+  /** This city has no by-id parcel lookup wired, so the row cannot be checked at
+   *  all. NOBODY LOOKED — not a failure, and not a missing parcel. */
+  | 'no-lookup'
   /** Never checked since being added. */
   | 'unchecked'
 

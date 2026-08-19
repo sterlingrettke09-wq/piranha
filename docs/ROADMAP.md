@@ -236,11 +236,59 @@ decision from un-pinning a year, and one of them is named "beta".
    Adopting an uncompared reading as the new baseline would mean the change is
    never reported by anyone — this run suppressed it, the next finds it banked.
 
-   Still to build on top: the runner that fetches each row through the real
-   provider and persists the outcome. The decisions are done; the plumbing is not.
+4. ~~The runner~~ — **DONE 2026-08-19.** `lib/parcelLookup.ts` +
+   `lib/watchRunner.ts` + `scripts/watch-run.ts`.
 
-4. Delivery. Nothing is sent until 3's runner has been observed producing no false
-   positives across at least one re-observation interval.
+   **Re-finding a watched parcel is a different query from the report's.** The
+   report resolves from a point; a row is keyed on `(city, parcelId)`, so the
+   runner looks the id up, takes an **interior point** of the returned polygon
+   (not a centroid — an area centroid falls outside a concave lot, the recorded
+   Charlotte failure) and re-runs `getParcelInfo`, the same function
+   `/api/analyze` calls.
+
+   **⚠️ The first version read the parcel row's attributes instead, and shipped a
+   wrong number within minutes of meeting a live service.** San Francisco's
+   `blklot` lookup reported a lot area of `2.7e-7`, because `Shape__Area` there is
+   in **square degrees** and a regex matching "shape area" had turned an
+   unlabelled projection unit into square feet by assumption. Through the real
+   pipeline the same parcel now returns `districtCode: "P"`, `lotSqFt: 28332`.
+
+   The unit bug was a symptom. A parcel layer carries no zoning, no height, no FAR
+   and no developability at all, so four of the five snapshot fields could never
+   have been compared from attributes — a checker that can never fire.
+
+   **The identity guard.** The interior point came from this parcel's polygon, so
+   the pipeline should land back on it. When it does not — a boundary revision, a
+   sliver — the run is **refused**, not diffed. The premise of keying on the parcel
+   is that one piece of ground is never compared against another.
+
+   The layer/field pairs are **imported from the providers**, not transcribed:
+   each now exports `PARCEL_SOURCE`. Chicago's is a *function*, because its layer
+   is resolved per tax year.
+
+   | verified live, 2026-08-19 | result |
+   |---|---|
+   | ids round-trip through `WHERE field = id` | **22/22** |
+   | unique across 8 sampled ids | 19/22 |
+   | **not unique** | **LA 8/8 sampled, Miami 7/8, Chicago 1/8** |
+   | no by-id lookup at all | boston (its parcel read goes through `_endpoints`) |
+
+   Non-uniqueness is handled, not assumed away: a lookup matching several rows
+   answers `ambiguous` and the checker refuses to diff it, because it cannot know
+   which row is the watched one. An earlier version of the verify script called
+   that "placeholder-like" and passed the city — which would have laundered
+   Chicago's genuine duplicate into an OK (rule 15).
+
+   `no-lookup` is its own state too: nobody looked, which is neither a failed
+   check nor a missing parcel.
+
+   Run it: `npx vite-node scripts/watch-run.ts --dry`. It reports and **sends
+   nothing.**
+
+5. Delivery. Nothing is sent until the runner has been observed producing no false
+   positives across at least one re-observation interval — **the 2026-08-26
+   register re-run is the gate**, and the runner already refuses any city the
+   register does not call diffable.
 
 ### Recurring checks, so they do not get lost
 
@@ -249,6 +297,8 @@ decision from un-pinning a year, and one of them is named "beta".
 | stability register | `npx vite-node scripts/source-stability.ts --observe` | weekly; **next due 2026-08-26** |
 | Cook County tax-year rollover | `npx vite-node scripts/verify-parcel-vintage.ts` | monthly, and before the checker ships |
 | parser-domain sweep | `npx vite-node scripts/enumerate-parser-domains.ts` | when a parser changes |
+| parcel-id lookup + uniqueness | `npx vite-node scripts/verify-parcel-lookup.ts` | before delivery, and when a provider changes |
+| watchlist check (dry) | `npx vite-node scripts/watch-run.ts --dry` | before delivery |
 
 ---
 

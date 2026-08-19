@@ -236,3 +236,13 @@ export async function getNashvilleParcelInfo(lat: number, lng: number): Promise<
   console.log({ event: 'parcel.ok', city: 'nashville', durationMs: Date.now() - t0, parcelId: info.parcelId })
   return { ok: true, info }
 }
+
+/** THE PARCEL LAYER AND THE COLUMN THIS PROVIDER READS ITS ID FROM.
+ *
+ *  Exported rather than transcribed into a registry. The layer URLs here are
+ *  built from per-file base constants, so any second copy would be a hand-typed
+ *  duplicate of a fact this file already holds — and this repo has paid for that
+ *  three times. The watchlist checker re-finds a stored parcel BY ID, which is a
+ *  different query from the point-in-polygon the report uses, and it needs both
+ *  halves from the one place that already knows them. */
+export const PARCEL_SOURCE = { layer: PARCELS, idField: 'APN' } as const
