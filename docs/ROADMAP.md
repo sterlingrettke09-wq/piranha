@@ -420,7 +420,57 @@ Two absences kept apart on every city: `stateFloor: null` is a finding about the
 | | |
 |---|---|
 | state-preempted | la, sandiego, sanjose, seattle, sf |
-| local ordinance read | **sandiego** |
+| local ordinance read | **sandiego, seattle** |
+
+### Seattle — read 2026-08-19
+
+**⚠️ It is SMC 23.42.022, not 23.44.041.** Seattle keeps ADUs in Chapter 23.42
+(General Use Provisions), not the neighbourhood-residential chapter — so two
+guessed node ids missed by CHAPTER, not merely by id encoding. The fix was to read
+the index, which is the whole of rule 8.
+
+| | | |
+|---|---|---|
+| up to two bedrooms | **1,000 sq ft** | § 23.42.022.G.1.a — the baseline |
+| three or more bedrooms | 1,200 sq ft | § 23.42.022.G.1.b |
+| all three: LR zone **and** frequent transit **and** lot not purchased for more than $1,000 in 20 years | 1,500 sq ft | § 23.42.022.G.1.c |
+
+No more than two ADUs per lot (.C), attached/detached/stacked (.D), **no off-street
+parking required** (.I). The section states **no height** — .E sends ADUs to the
+principal dwelling's standards — so height defers to the zone, the same shape San
+Diego has by a different route, and no figure is invented for either.
+
+Seattle's baseline 1,000 **equals** the Washington floor of 1,000 exactly. That
+must read as the city allowing it, not the state overriding the city.
+
+### ⚠️ The pending-ordinance check is now a required field
+
+Municode showed Seattle codified through Ordinance 127423 while listing
+**seventeen pending ordinances**, effective dates running to 2027-01-01. Reading
+the codified section and stopping is how superseded law ships looking current —
+and it applies to **every Municode city**, not to Seattle.
+
+So `PendingCheck` is required on every local ordinance. `checked` with an empty
+`amendingThisSection` is a RESULT; `not-checked` is an admission, and they cannot
+render alike.
+
+| city | pending check |
+|---|---|
+| seattle | **checked, clean** — the only pending ordinance touching Ch. 23.42 is Ord. 127436 (§§ 23.42.054/.056, transitional encampments), which does not reach .022 |
+| sandiego | **not-checked** — read from a city PDF carrying no pending list; the reading is real and its currency is unverified |
+
+### ⚠️ `baseline` was needed on local caps too — the same mistake, one layer down
+
+Caught by running it. Seattle's largest figure is 1,500 sq ft and the summary led
+with it — but it requires all three of an LR zone, frequent transit, and a lot not
+purchased for more than $1,000 in twenty years. San Diego's `no-maximum` entries
+are all **conversions**, so "the city states no maximum" as a headline described a
+configuration most projects are not.
+
+**Twice now, so it is the pattern rather than an incident: in a list of
+alternatives the biggest number is usually the one with the most conditions
+attached, and summarising by the maximum selects for exactly that.** Every read
+ordinance must now declare one baseline, asserted by a test.
 
 ### The `null` ambiguity — FIXED 2026-08-19
 

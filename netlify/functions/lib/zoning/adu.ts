@@ -62,7 +62,20 @@ export interface StateFloorLayer {
   protections: string[]
 }
 
-/** ⚠️ THREE STATES, BECAUSE `null` WAS DOING TWO JOBS.
+/** ⚠️ `baseline` AGAIN, ONE LAYER DOWN — the same mistake, caught the same way.
+ *
+ *  The state floors needed it because the largest figure was the most heavily
+ *  conditioned. Local caps have the identical shape and it was missed until the
+ *  code was run: Seattle's largest is 1,500 sq ft, which requires ALL THREE of an
+ *  LR zone, a frequent transit service area, and a lot not purchased for more
+ *  than $1,000 in twenty years. Almost no lot qualifies, and "up to 1,500 sq ft"
+ *  was the headline.
+ *
+ *  Twice now, so it is the pattern rather than an incident: in a list of
+ *  alternatives the biggest number is usually the one with the most conditions
+ *  attached, and picking a maximum to summarise by selects for exactly that.
+ *
+ * ── AND THE THREE STATES, BECAUSE `null` WAS DOING TWO JOBS ────────────────
  *
  *  The first version used `value: null` to mean "the ordinance states no
  *  maximum" — an answer, and the most permissive rule San Diego has. But it is
@@ -77,9 +90,9 @@ export interface StateFloorLayer {
  *  uncompilable rather than commenting on it). */
 export type LocalCap =
   /** The ordinance states a figure. */
-  | { kind: 'capped'; sqFt: number; condition: string; cite: string }
+  | { kind: 'capped'; sqFt: number; condition: string; cite: string; baseline?: boolean }
   /** The ordinance affirmatively states NO maximum for this configuration. */
-  | { kind: 'no-maximum'; condition: string; cite: string }
+  | { kind: 'no-maximum'; condition: string; cite: string; baseline?: boolean }
   /** We read the section and located no rule covering this configuration. A gap
    *  in the reading, never a permission. */
   | { kind: 'not-found'; condition: string }
@@ -96,7 +109,34 @@ export interface LocalLayer {
   maxStories: { value: number; condition: string; cite: string } | null
   heightDefersToBaseZone: { cite: string } | null
   notes: string[]
+  /** ⚠️ REQUIRED, so a local ordinance cannot be encoded without it. */
+  pending: PendingCheck
 }
+
+/** ⚠️ THE CODIFIED TEXT IS NOT NECESSARILY CURRENT LAW.
+ *
+ *  Municode showed Seattle codified through one ordinance while listing
+ *  seventeen more as pending, with effective dates running to 2027-01-01. Reading
+ *  the codified section and stopping there would publish superseded text that
+ *  looks current — the Seattle-2019-archive failure, and it applies to EVERY
+ *  Municode city rather than to Seattle specifically.
+ *
+ *  So the check is a required field rather than a habit. `amendingThisSection`
+ *  empty is a RESULT (the pending list was read and touches nothing here), and it
+ *  is not the same as `not-checked`, which is an admission. */
+export type PendingCheck =
+  | {
+      kind: 'checked'
+      on: string
+      /** Where the pending list was read. */
+      source: string
+      codifiedThrough: string
+      /** Pending ordinances that amend THIS section. Empty means the list was
+       *  read and none do — a finding, not an absence of effort. */
+      amendingThisSection: string[]
+      note?: string
+    }
+  | { kind: 'not-checked'; detail: string }
 
 export type LocalRead = LocalLayer | { kind: 'not-read'; detail: string }
 
@@ -253,7 +293,9 @@ const SANDIEGO_LOCAL: LocalLayer = {
   citation: 'San Diego Municipal Code § 141.0302 (Accessory Dwelling Units and Junior Accessory Dwelling Units)',
   readOn: '2026-08-19',
   maxSizeSqFt: [
-    { kind: 'capped', sqFt: 1200, condition: 'attached or detached ADU', cite: '§ 141.0302(a)(7)(B)' },
+    // The general case, and therefore the baseline: a purpose-built ADU. The
+    // three `no-maximum` entries below are all CONVERSIONS.
+    { kind: 'capped', sqFt: 1200, condition: 'An attached or detached ADU may be up to 1,200 sq ft', cite: '§ 141.0302(a)(7)(B)', baseline: true },
     // ⚠️ `no-maximum` IS AN ANSWER, and it is the most permissive rule in the
     // section: a conversion inside the existing house has none at all. Each of
     // these three carries the provision that SAYS so — that is what separates
@@ -267,6 +309,14 @@ const SANDIEGO_LOCAL: LocalLayer = {
   // zone. So no figure is invented here; the base-zone limit the rest of this
   // engine already resolves is the one that applies, floored by the state.
   heightDefersToBaseZone: { cite: '§ 141.0302(a)(8)(C)' },
+  // ⚠️ NOT CHECKED, and said so rather than assumed. San Diego was read from a
+  // city-published PDF whose footer is dated 7-2026; that PDF carries no pending
+  // list, and no separate amendment docket was consulted. The reading is real and
+  // its currency is unverified — two different things.
+  pending: {
+    kind: 'not-checked',
+    detail: 'Read from a city PDF dated 7-2026 that carries no pending-ordinance list. No amendment docket was consulted, so the text is current as published and its currency is unverified.',
+  },
   notes: [
     'No minimum lot size is required for an ADU (§ 141.0302(a)(5)).',
     'ADUs are not subject to the base zone density limits (§ 141.0302(a)(6)).',
@@ -274,6 +324,58 @@ const SANDIEGO_LOCAL: LocalLayer = {
     'Street side yard setback is 4 feet or the base zone minimum, whichever is LESS (§ 141.0302(a)(9)(B)).',
     'Minimum ADU size is 150 sq ft (§ 141.0302(a)(7)(A)).',
   ],
+}
+
+// ── SEATTLE — the local ordinance, read 2026-08-19 ──────────────────────────
+// SMC 23.42.022, via Municode. ⚠️ NOT 23.44.041: Seattle keeps ADUs in Chapter
+// 23.42 (General Use Provisions), not in the neighbourhood-residential chapter,
+// so two guessed node ids missed the section by CHAPTER and not merely by id.
+const SEATTLE_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation: 'Seattle Municipal Code § 23.42.022 (Accessory dwelling units) — Ord. 127376 § 21, 2025; Ord. 127211 § 5, 2025',
+  readOn: '2026-08-19',
+  maxSizeSqFt: [
+    { kind: 'capped', sqFt: 1000, condition: 'An ADU with up to two bedrooms may be up to 1,000 sq ft', cite: '§ 23.42.022.G.1.a', baseline: true },
+    { kind: 'capped', sqFt: 1200, condition: 'three or more bedrooms', cite: '§ 23.42.022.G.1.b' },
+    {
+      kind: 'capped',
+      sqFt: 1500,
+      // Kept verbatim because the third limb is unusual enough that a paraphrase
+      // would read as an error: the lot must not have been purchased for more
+      // than $1,000 in the past twenty years.
+      condition:
+        'ALL THREE must hold — the lot is in an LR zone, is in a frequent transit service area, and has not been purchased for more than $1,000 in the past 20 years',
+      cite: '§ 23.42.022.G.1.c',
+    },
+  ],
+  // The section states no storey count for ADUs.
+  maxStories: null,
+  // ⚠️ § 23.42.022.E: an ADU is "subject to the same standards as principal
+  // dwelling units" unless otherwise provided, and the section provides no
+  // height. So height defers to the zone — the same shape San Diego has, reached
+  // by a different route, and no figure is invented for either.
+  heightDefersToBaseZone: { cite: '§ 23.42.022.E' },
+  notes: [
+    'ADUs are allowed as a housing use in every zone where housing uses are allowed (§ 23.42.022.A).',
+    'No lot may have more than two ADUs, and they may be attached, detached or stacked (§ 23.42.022.C, .D).',
+    'No off-street motor vehicle parking is required for an ADU (§ 23.42.022.I).',
+    'Excluded from the floor-area limit: up to 250 sq ft of an attached garage, all underground storeys, and up to 35 sq ft for long-term bicycle parking (§ 23.42.022.G.2).',
+    'An attached ADU may exceed 1,000 sq ft where the portion of the structure it occupies existed as of 2023-07-23 (§ 23.42.022.H.4).',
+    'Converting an existing accessory structure is permitted notwithstanding lot coverage, yard and setback provisions (§ 23.42.022.H.3.b).',
+    'ADUs count toward density (§ 23.42.022.J), and this section prevails over conflicting Title 23 provisions other than Chapter 23.60A (§ 23.42.022.L).',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-19',
+    source: 'Municode "what\'s changed" list for the Seattle Municipal Code',
+    codifiedThrough: 'Ordinance No. 127423, passed 2026-04-14 (Supp. 44, Update 1; content updated 2026-07-15)',
+    // Read and CLEAN — a result, not an absence of effort. Seventeen ordinances
+    // were pending with effective dates to 2027-01-01; the only one touching
+    // Chapter 23.42 is Ord. 127436, amending §§ 23.42.054 and 23.42.056
+    // (transitional encampments), which does not reach § 23.42.022.
+    amendingThisSection: [],
+    note: '17 ordinances pending, effective dates to 2027-01-01. The only one touching Chapter 23.42 is Ord. 127436 (§§ 23.42.054, 23.42.056 — transitional encampments), which does not reach § 23.42.022.',
+  },
 }
 
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
@@ -289,7 +391,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   sf: { city: 'sf', stateFloor: CA, local: NOT_READ_LOCAL('San Francisco') },
   sanjose: { city: 'sanjose', stateFloor: CA, local: NOT_READ_LOCAL('San Jose') },
   sandiego: { city: 'sandiego', stateFloor: CA, local: SANDIEGO_LOCAL },
-  seattle: { city: 'seattle', stateFloor: WA, local: NOT_READ_LOCAL('Seattle') },
+  seattle: { city: 'seattle', stateFloor: WA, local: SEATTLE_LOCAL },
   ...Object.fromEntries(
     ([
       ['atlanta', 'Atlanta'], ['austin', 'Austin'], ['boston', 'Boston'], ['charlotte', 'Charlotte'],
@@ -354,6 +456,32 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
           why: `Only the state floor is known (${floor.cite}). This is the MINIMUM the city cannot refuse, not what it allows — the local ordinance has not been read.`,
         }
   }
+  // ⚠️ THE BASELINE, NOT THE BIGGEST. A `no-maximum` only leads when it is the
+  // general case; San Diego's is a CONVERSION rule, so "the city states no
+  // maximum" as a headline would describe a configuration most projects are not.
+  const baseline = r.local.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline === true)
+  if (baseline?.kind === 'no-maximum') {
+    return {
+      value: null,
+      source: 'local-no-maximum',
+      why: `The city states no maximum (${baseline.cite}: ${baseline.condition}).`,
+    }
+  }
+  if (baseline?.kind === 'capped') {
+    const others = r.local.maxSizeSqFt.length - 1
+    const more = others > 0 ? ` ${others} other configuration${others === 1 ? '' : 's'} the ordinance names allow more — see the full list.` : ''
+    const floorNote =
+      floor != null && baseline.sqFt < floor.value
+        ? ` But this sits below the state floor of ${floor.value.toLocaleString()} sq ft (${floor.cite}), so it is void to that extent and the floor governs.`
+        : ''
+    return floor != null && baseline.sqFt < floor.value
+      ? { value: floor.value, source: 'state-floor', why: `The city's baseline cap is ${baseline.sqFt.toLocaleString()} sq ft (${baseline.cite}).${floorNote}` }
+      : {
+          value: baseline.sqFt,
+          source: 'local',
+          why: `${baseline.condition} (${baseline.cite})${floor != null ? `, at or above the ${floor.value.toLocaleString()} sq ft state floor (${floor.cite})` : ''}.${more}`,
+        }
+  }
   const stated = r.local.maxSizeSqFt.find((m) => m.kind === 'no-maximum')
   if (stated) {
     return {
@@ -362,12 +490,14 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
       why: `The city states no maximum for this case (${stated.cite}: ${stated.condition}). Other configurations have caps — see the full list.`,
     }
   }
-  const caps = r.local.maxSizeSqFt.filter((m): m is Extract<LocalCap, { kind: 'capped' }> => m.kind === 'capped')
+  // No baseline declared — fall back to the largest capped figure, which is the
+  // behaviour `baseline` exists to correct. Reached only for an entry nobody has
+  // marked, and the symmetry test below requires every read city to mark one.
+  const caps2 = r.local.maxSizeSqFt.filter((m): m is Extract<LocalCap, { kind: 'capped' }> => m.kind === 'capped')
   // ⚠️ ONLY `capped` ENTRIES COUNT. A `not-found` is a hole in our reading and
-  // must never be treated as a permission — if the section we read covers no
-  // configuration with a figure, the local layer tells us nothing and the state
-  // floor is all we have.
-  if (caps.length === 0) {
+  // must never be treated as a permission — with nothing capped, the local layer
+  // tells us nothing and the state floor is all we have.
+  if (caps2.length === 0) {
     return floor == null
       ? { value: null, source: 'unresolved', why: `${cityName(r.city)}'s ordinance was read but no size rule was located in it.` }
       : {
@@ -376,7 +506,7 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
           why: `The ordinance was read but no size rule was located in it, so only the state floor is known (${floor.cite}) — a MINIMUM, not what the city allows.`,
         }
   }
-  const biggestLocal = caps.reduce((m, x) => (x.sqFt > m.sqFt ? x : m))
+  const biggestLocal = caps2.reduce((m, x) => (x.sqFt > m.sqFt ? x : m))
   if (floor == null) {
     return { value: biggestLocal.sqFt, source: 'local', why: `${r.local.citation}, ${biggestLocal.cite}.` }
   }

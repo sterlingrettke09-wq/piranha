@@ -36,7 +36,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['sandiego'])
+    expect([...ADU_LOCAL_READ]).toEqual(['sandiego', 'seattle'])
   })
 })
 
@@ -189,9 +189,11 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     // ⚠️ `local-no-maximum` wins over any number: a conversion inside the
     // existing house has NO cap (§ 141.0302(a)(7)(C)), which is an answer and
     // beats 1,200 as well as 850.
-    expect(e.source).toBe('local-no-maximum')
-    expect(e.value).toBeNull()
-    expect(e.why).toMatch(/§ 141\.0302\(a\)\(7\)\(C\)/)
+    // The baseline is the purpose-built 1,200 case; the unlimited conversions are
+    // conditioned and are surfaced in the list rather than as the headline.
+    expect(e.source).toBe('local')
+    expect(e.value).toBe(1200)
+    expect(e.why).toMatch(/§ 141\.0302\(a\)\(7\)\(B\)/)
   })
 
   it('and the capped configurations still carry the larger local figure', () => {
@@ -286,7 +288,106 @@ describe('⚠️ "the code states no maximum" vs "we did not find one"', () => {
   })
 
   it('and a no-maximum still wins over every capped figure', () => {
+    // ⚠️ NO LONGER: San Diego's no-maximum entries are all CONVERSIONS, so the
+    // baseline is the 1,200 sq ft purpose-built case. Leading with "no maximum"
+    // described a configuration most projects are not.
     const e = effectiveMaxSize(sd)
-    expect(e.source).toBe('local-no-maximum')
+    expect(e.source).toBe('local')
+    expect(e.value).toBe(1200)
+  })
+})
+
+describe('Seattle, as read from the ordinance', () => {
+  const r = aduRulesFor('seattle')
+  const local = r.local as Extract<typeof r.local, { kind: 'read' }>
+
+  it('⚠️ is SMC 23.42.022, not 23.44.041 — the chapter itself was the wrong guess', () => {
+    // Seattle keeps ADUs in Chapter 23.42 (General Use Provisions), not in the
+    // neighbourhood-residential chapter. Two guessed node ids missed by CHAPTER,
+    // which is why the fix was to read the index rather than construct a better id.
+    expect(local.citation).toMatch(/23\.42\.022/)
+    expect(local.citation).not.toMatch(/23\.44/)
+  })
+
+  it('carries all three size caps, including the unusual third limb verbatim', () => {
+    const caps = local.maxSizeSqFt.filter((m) => m.kind === 'capped')
+    expect(caps.map((c) => (c.kind === 'capped' ? c.sqFt : 0))).toEqual([1000, 1200, 1500])
+    const top = caps.find((c) => c.kind === 'capped' && c.sqFt === 1500)!
+    // Paraphrasing this would read as a transcription error. It is not.
+    expect(top.condition).toMatch(/not been purchased for more than \$1,000 in the past 20 years/)
+    expect(top.condition).toMatch(/ALL THREE/)
+  })
+
+  it('states no ADU height, and none is invented', () => {
+    // § 23.42.022.E sends ADUs to the principal dwelling's standards and the
+    // section provides no height — the same shape San Diego has, reached by a
+    // different route.
+    expect(local.maxStories).toBeNull()
+    expect(local.heightDefersToBaseZone?.cite).toBe('§ 23.42.022.E')
+  })
+
+  it('⚠️ headlines the BASELINE 1,000, not the 1,500 nobody qualifies for', () => {
+    // Caught by running it, and the same failure as the state floors one layer
+    // down: 1,500 needs an LR zone AND frequent transit AND a lot not purchased
+    // for more than $1,000 in twenty years. "Up to 1,500 sq ft" was the headline.
+    const e = effectiveMaxSize(r)
+    expect(e.source).toBe('local')
+    expect(e.value).toBe(1000)
+    expect(e.why).toMatch(/up to two bedrooms/)
+    // The larger figures are surfaced, not dropped.
+    expect(e.why).toMatch(/2 other configurations/)
+  })
+
+  it('and 1,000 meets the Washington floor exactly, so local still governs', () => {
+    // A boundary worth pinning: the state forbids a cap BELOW 1,000 and Seattle's
+    // baseline IS 1,000. That must read as the city allowing it, not the state
+    // overriding the city.
+    expect(r.stateFloor!.floors.sizeSqFt[0].value).toBe(1000)
+    expect(effectiveMaxSize(r).source).toBe('local')
+  })
+})
+
+describe('⚠️ the pending-ordinance check is structural, not a habit', () => {
+  it('every read local ordinance carries one', () => {
+    // Required on the type, so an ordinance cannot be encoded without recording
+    // whether its currency was checked. Municode showed Seattle codified through
+    // one ordinance while listing seventeen pending — reading the codified text
+    // and stopping is how superseded law ships looking current.
+    for (const c of ADU_LOCAL_READ) {
+      const l = aduRulesFor(c).local
+      if (l.kind !== 'read') throw new Error(`${c} should be read`)
+      expect(['checked', 'not-checked'], c).toContain(l.pending.kind)
+    }
+  })
+
+  it('Seattle was checked and came back CLEAN — a result, not an absence of effort', () => {
+    const l = aduRulesFor('seattle').local as Extract<ReturnType<typeof aduRulesFor>['local'], { kind: 'read' }>
+    if (l.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(l.pending.amendingThisSection).toEqual([])
+    expect(l.pending.codifiedThrough).toMatch(/127423/)
+    expect(l.pending.note).toMatch(/23\.42\.054/)
+  })
+
+  it('⚠️ San Diego says NOT-CHECKED rather than claiming a check it did not do', () => {
+    // The reading is real and its currency is unverified — two different things,
+    // and an empty `amendingThisSection` would have asserted the stronger one.
+    const l = aduRulesFor('sandiego').local as Extract<ReturnType<typeof aduRulesFor>['local'], { kind: 'read' }>
+    expect(l.pending.kind).toBe('not-checked')
+    if (l.pending.kind !== 'not-checked') return
+    expect(l.pending.detail).toMatch(/currency is unverified/)
+  })
+})
+
+describe('⚠️ every read ordinance declares its baseline', () => {
+  it('or the summary silently falls back to the largest, most-conditioned figure', () => {
+    // The fallback still exists for safety, but nothing may rely on it. Twice now
+    // the biggest number in a list of alternatives has been the one with the most
+    // conditions attached — that is the pattern, not an incident.
+    for (const c of ADU_LOCAL_READ) {
+      const l = aduRulesFor(c).local
+      if (l.kind !== 'read') throw new Error(`${c} should be read`)
+      const marked = l.maxSizeSqFt.filter((m) => m.kind !== 'not-found' && m.baseline === true)
+      expect(marked, c).toHaveLength(1)
+    }
   })
 })
