@@ -422,11 +422,49 @@ Two absences kept apart on every city: `stateFloor: null` is a finding about the
 | state-preempted | la, sandiego, sanjose, seattle, sf |
 | local ordinance read | **sandiego** |
 
-### Next for ADU
+### The `null` ambiguity — FIXED 2026-08-19
 
-Four local ordinances — LA, SF, San Jose, Seattle — and then the eighteen unread
-cities. Ordinary reading work; `codelibrary.amlegal.com` 403s on curl and needs
-the browser, which is how the LAMC read will have to go.
+A local cap of `null` meant "the ordinance states no maximum" — an answer, and the
+most permissive rule San Diego has. It was indistinguishable from "our reading did
+not find a maximum for this case", which is a gap in *us*. Same distinction as
+`not-read` one level down: there the whole ordinance is unread, here one
+configuration inside a section we did read.
+
+Now a union, with the asymmetry enforced by the shape rather than by care:
+
+| state | may carry a cite? | meaning |
+|---|---|---|
+| `capped` | required | the ordinance states a figure |
+| `no-maximum` | **required** | you may only claim the code states none if you read the provision saying so |
+| `not-found` | **impossible** | there is no source for a thing you did not find |
+
+`effectiveMaxSize` counts only `capped` entries, so a hole in the reading falls
+back to the state floor labelled a MINIMUM — never rendering as "the city sets no
+maximum", which is the most permissive statement this tool can make.
+
+### Next for ADU — and how to reach the sources
+
+Four local ordinances (LA, SF, San José, Seattle), then the eighteen unread
+cities. Ordinary reading work, but the access notes are worth not rediscovering:
+
+| source | state |
+|---|---|
+| San Diego | **read** — the city publishes a direct PDF, `docs.sandiego.gov/municode/…`, 200 on curl |
+| `codelibrary.amlegal.com` (LA, SF) | **403 to curl.** Browser required |
+| `library.municode.com` (San José, Seattle) | 200 on curl but a **6 KB Angular shell** — the text is JS-rendered. Browser required |
+
+⚠️ **Municode nodeIds are NUMERIC, not mnemonic.** Two guessed mnemonic ids
+(`…_23.44.041ACDWUN` forms) both returned "Content Not Found" — which proves the
+guess wrong and nothing about the section (rule 8). The Seattle code root is
+`nodeId=13857`; the section must be reached by walking the table of contents from
+there, not by constructing an id.
+
+⚠️ **And a vintage caveat for whoever reads Seattle.** Municode shows it codified
+through Ordinance 127423 (passed 2026-04-14, Supp. 44 Update 1, content updated
+2026-07-15) with pending ordinances effective as late as 2027-01-01 already
+listed. The codified text is not the current law on its own — the pending list has
+to be checked against it, which is the Seattle-2019-archive failure waiting to
+happen again.
 
 ---
 
