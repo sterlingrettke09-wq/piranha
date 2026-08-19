@@ -81,6 +81,87 @@ Charlotte site-plan basis. These are data-publication gaps, not epistemic ones.
 
 ---
 
+## Change alerts — STARTED 2026-08-19
+
+Ordered account → watchlist → alerting, because an alert has nowhere to live
+without durable per-parcel state.
+
+### Done
+
+**Accounts.** Passwordless magic link, built here rather than on a hosted
+provider — decided 2026-08-19 so that no third party holds the user table and the
+strict CSP needs no new origin. The raw token is never stored; the store is keyed
+by its SHA-256, so a dump cannot be replayed and there is no secret comparison to
+get wrong. Sessions are opaque and server-side, in a `__Host-` cookie, so they can
+be revoked. `/api/auth-request` answers 204 for every outcome — unknown address,
+throttled, send failed — or it is an account-enumeration oracle. The per-address
+throttle is durable in Blobs, not the in-memory limiter, because this endpoint
+sends mail to an address the *caller* names.
+
+**Watchlist.** Keyed `(city, parcelId)`, stored as two fields. Each row carries
+the answer snapshot at the time of adding, which is what makes a diff possible at
+all.
+
+### ⚠️ The parcel-id check, run BEFORE the schema was written
+
+| city | id | present | unique | permanent |
+|---|---|---|---|---|
+| nyc | `BBL` | 856,614 / 856,614, 0 null | **yes** — distinct count equals row count | not tested |
+| chicago | `PIN10` | 5 null of 1,432,483 | **unmeasured** — the service refuses a distinct-count, so a gap, not a pass | **no** |
+| dallas | `ACCT` | **35,383 of 500,142 (7.1%) unusable** | no | not tested |
+
+Chicago's is the sharpest: Cook County publishes **26 year-versioned parcel
+layers** (2000–2025) plus a *Parcel History 2000-2023* layer carrying `LastTaxed`.
+The county's own data model states the fabric changes between years, and the
+provider pins `/2025` — so every Chicago watch reads a frozen year the moment 2026
+is published. Scheduled, not hypothetical. `layerVintage` is stored on each row so
+a non-resolving id is not ambiguous between "the parcel was retired" and "we are
+reading last year's layer".
+
+Dallas's 7.1% is 3,660 rows carrying the literal string `MULTIPLE` (condominium
+footprints), 29,090 empty and 2,633 null. `addWatch` refuses those and says so, as
+a 200 with a reason — "this parcel has no identifier in its city's records" is an
+answer about the parcel, and a 4xx would render it as "something went wrong".
+
+### The reproducibility precondition — MEASURED, and it gates the alert layer
+
+`scripts/source-stability.ts` + `scripts/__fixtures__/sourceStability.json`.
+A source is `insufficient` until observed twice; the alert layer must refuse
+anything not `stable`.
+
+| source | verdict |
+|---|---|
+| permit-feed:nyc | **UNSTABLE** — 4,394 → 1,040 → 8,103 on one unchanged query |
+| permit-feed:austin | diffable — 11,534 → 11,650 over 12 days, medians unmoved |
+| 18 zoning rosters | diffable, **on a 2-day interval** |
+
+The expected direction is declared before each measurement, which is what gives
+the test power: a fixed lower-bound window over an append-mostly feed can only
+grow, so *any* decrease refutes regardless of magnitude. Without that prior,
++1.0% and −76% are both merely "different".
+
+**⚠️ 18 of the 19 diffable verdicts rest on two days**, which is close to vacuous
+for a near-static source — a zoning roster barely moves in two days whether the
+feed is sound or quietly serving a cached snapshot. What that interval *does* rule
+out is the failure mode already seen: NYC moved an order of magnitude in three
+days. Every verdict carries `evidence: 'weak-short-interval' | 'adequate'` so
+`stable` cannot be read as settled. **Re-run the register in a week** — that is
+the single highest-value follow-up here, and it costs one command.
+
+The one real change across the whole zoning sweep: **Dallas gained `PD-1144`**, a
+new planned development. Exactly the change an alert should fire on.
+
+### Next
+
+1. Re-observe the register (`--observe`) to turn 2-day verdicts into 12-day ones.
+2. The watchlist UI — sign-in, list, add/remove from a parcel report.
+3. The checker: re-resolve each row, `diffSnapshots`, and only for sources the
+   register calls diffable.
+4. Delivery. Nothing is sent until 3 has been observed producing no false
+   positives across at least one re-observation interval.
+
+---
+
 ## Feature order
 
 Ranking set **2026-08-18**. Sterling's own weighting, quoted.
