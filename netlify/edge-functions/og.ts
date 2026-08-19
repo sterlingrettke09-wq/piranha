@@ -78,6 +78,12 @@ function metaFor(pathname: string, params: URLSearchParams): { title: string; de
   if (pathname === '/cities') return { title: `Cities · ${BASE}`, desc: 'The cities we cover, each read from its own public zoning and parcel records — with the measured share of sampled parcels whose zoning we could actually resolve.' }
   if (pathname === '/request-city') return { title: `Request a city · ${BASE}`, desc: 'Tell us where you want to build and we’ll try to add it to our database.' }
   if (pathname === '/privacy') return { title: `Privacy · ${BASE}`, desc: 'What we collect and where it goes, in plain English: searches, request-city emails, and the services we use.' }
+  if (pathname === '/watchlist') {
+    return {
+      title: `Watchlist · ${BASE}`,
+      desc: 'Parcels you are watching, and what their answer was when you added them.',
+    }
+  }
   if (pathname === '/terms') return { title: `Terms · ${BASE}`, desc: 'The plain-English terms of use: estimates not advice, verify with the city, no warranty, acceptable use.' }
   return null // home and everything else keep the default index.html meta
 }
@@ -115,6 +121,7 @@ const KNOWN_ROUTES = new Set([
   '/cities',
   '/privacy',
   '/terms',
+  '/watchlist',
   '/admin',
 ])
 
@@ -151,8 +158,10 @@ export default async function (request: Request, context: { next: () => Promise<
   html = html.replace(/(<link\b[^>]*?rel="canonical"[^>]*?href=")[^"]*(")/, `$1${canonical}$2`)
   html = setMeta(html, 'property', 'og:url', canonical)
 
-  // The owner-only search log should never be indexed.
-  if (url.pathname === '/admin') {
+  // Neither the owner-only search log nor a signed-in user's watchlist should
+  // be indexed. The watchlist renders nothing without a session, so a crawler
+  // would only ever bank a sign-in form under a URL that looks like content.
+  if (url.pathname === '/admin' || url.pathname === '/watchlist') {
     html = html.replace('</head>', '    <meta name="robots" content="noindex, nofollow" />\n  </head>')
   }
 

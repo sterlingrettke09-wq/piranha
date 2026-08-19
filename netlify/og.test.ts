@@ -26,7 +26,7 @@ describe('cityName mirrors the city registry', () => {
 // shell still renders NotFound); known routes keep 200.
 describe('isKnownRoute', () => {
   it('accepts every route in the App.tsx table', () => {
-    for (const p of ['/', '/map', '/start', '/result', '/boston', '/boston/start', '/boston/result', '/ask', '/about', '/math', '/compare', '/request-city', '/cities', '/admin']) {
+    for (const p of ['/', '/map', '/start', '/result', '/boston', '/boston/start', '/boston/result', '/ask', '/about', '/math', '/compare', '/request-city', '/cities', '/watchlist', '/admin']) {
       expect(isKnownRoute(p), p).toBe(true)
     }
   })

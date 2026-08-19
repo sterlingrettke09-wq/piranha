@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { WatchParcelButton } from '../components/WatchParcelButton'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { recordReport, togglePin, listReports } from '../lib/recentReports'
@@ -267,6 +268,23 @@ export default function BostonResult() {
                 ? `${state.data.parcel.lotSqFt.toLocaleString()} sq ft lot`
                 : 'lot size not on file'}
             </p>
+            {/* Watching is offered on EVERY branch, including the blocked and
+                no-coverage ones. A parcel that is not developable today is
+                exactly the kind someone wants to hear about when its zoning
+                moves, and hiding the control there would make the feature
+                useless for the case it is most useful for. */}
+            <div className="mt-5">
+              <WatchParcelButton
+                city={state.data.project.city}
+                parcelId={state.data.parcel.parcelId}
+                address={state.data.parcel.address}
+                districtCode={state.data.parcel.districtCode}
+                maxHeightFt={state.data.parcel.maxHeightFt}
+                maxFAR={state.data.parcel.maxFAR}
+                lotSqFt={state.data.parcel.lotSqFt}
+                developable={state.data.developable ?? null}
+              />
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Pill>{PROJECT_TYPE_LABEL[state.data.project.projectType]}</Pill>
               <Pill>{state.data.project.use}</Pill>

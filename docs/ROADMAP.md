@@ -205,7 +205,15 @@ decision from un-pinning a year, and one of them is named "beta".
    Re-run `npx vite-node scripts/parcel-weight.ts --counts` first if the zoning
    rosters need a fresh vintage to compare against.
 
-2. The watchlist UI — sign-in, list, add/remove from a parcel report.
+2. ~~The watchlist UI~~ — **DONE 2026-08-19.** `/watchlist` (sign-in, list,
+   remove) and `WatchParcelButton` on the report. Three states carry through to
+   the screen rather than collapsing into one: `not-watchable` renders as a
+   neutral fact about the parcel, not a red error, because it *is* one; a failed
+   list load says "not the same as an empty list — nothing has been removed"; and
+   every row prints when it was last checked and which parcel-map year it was
+   read against, so a list that has quietly stopped moving cannot look like a
+   list where nothing changed. `noindex` via the edge function — the page renders
+   nothing without a session, so a crawler would only ever bank a sign-in form.
 3. The checker: re-resolve each row, compare VINTAGE first and then
    `diffSnapshots`, and only for sources the register calls diffable.
 4. Delivery. Nothing is sent until 3 has been observed producing no false

@@ -20,6 +20,7 @@ const Cities = lazy(() => import('./routes/Cities'))
 const Privacy = lazy(() => import('./routes/Privacy'))
 const Terms = lazy(() => import('./routes/Terms'))
 const Admin = lazy(() => import('./routes/Admin'))
+const Watchlist = lazy(() => import('./routes/Watchlist'))
 const NotFound = lazy(() => import('./routes/NotFound'))
 
 function RouteFallback() {
@@ -80,6 +81,7 @@ export default function App() {
             <Route path="/cities" element={<Cities />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/watchlist" element={<Watchlist />} />
             {/* Hidden owner-only search log. Not linked from nav or sitemap. */}
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
