@@ -596,11 +596,32 @@ const MA: StatePreempts = {
   // ⚠️ THE EXPRESS RESERVATION. Massachusetts preempts PROCESS and then hands
   // dimensions back in the same sentence. That is a stated answer, and it is
   // different in kind from Nevada's silence — hence two dimension states.
+  // ⚠️ CORRECTED 2026-08-20. This field previously asserted that the statute
+  // sets out no size at all. That assertion was false, and false because the
+  // reading stopped at the operative section.
+  // § 3 grants the by-right use and reserves "dimensional setbacks and the bulk
+  // and height of structures" to the municipality, so the operative paragraph
+  // really does state no size. The number is in § 1A, in the DEFINITION of the
+  // term § 3 uses: an ADU "is not larger in gross floor area than 1/2 the gross
+  // floor area of the principal dwelling or 900 square feet, whichever is
+  // smaller".
+  //
+  // ⚠️ AND IT RUNS THE OPPOSITE WAY FROM EVERY OTHER FIGURE IN THIS FILE. It is
+  // not a floor. It is the ceiling of the PROTECTED CATEGORY — a unit above it
+  // is simply not an "accessory dwelling unit" for the Act's purposes and gets
+  // no by-right protection. And § 1A(iii) lets a municipality impose "additional
+  // size restrictions", bounded only by a reasonableness standard. So
+  // Massachusetts guarantees no size at all, and recording min(50%, 900) as a
+  // floor would assert a right the statute does not confer.
+  //
+  // The dimension therefore stays `reserved-to-city` — the operative consequence
+  // is that the city sets the size — but the detail carries the figure and its
+  // direction, because burying it was the original error.
   size: {
     kind: 'reserved-to-city',
-    cite: 'M.G.L. c. 40A § 3',
+    cite: 'M.G.L. c. 40A §§ 1A, 3',
     detail:
-      'The statute states no size. It provides that an ADU "may be subject to reasonable regulations, including ... regulations concerning dimensional setbacks and the bulk and height of structures" — an express reservation to the municipality.',
+      '§ 3 reserves "dimensional setbacks and the bulk and height of structures" to the municipality. § 1A caps the PROTECTED CATEGORY at the lesser of 1/2 the principal dwelling\u2019s gross floor area and 900 sq ft — a ceiling on what the by-right use covers, NOT a floor the city must allow. § 1A(iii) expressly permits a municipality to impose additional size restrictions, subject only to not "unreasonably restrict[ing] the creation or rental" of a non-short-term-rental ADU. So no size is guaranteed here.',
   },
   height: {
     kind: 'reserved-to-city',
@@ -621,6 +642,8 @@ const MA: StatePreempts = {
     'Owner occupancy of neither the ADU nor the principal dwelling may be required.',
     'Not more than ONE additional parking space may be required — and NONE where the ADU is within 0.5 miles of a commuter rail station, subway station, ferry terminal or bus station.',
     'Short-term rental may be restricted or prohibited (c. 64G § 1 definition).',
+    '⚠️ THE SIZE FIGURE IS IN THE DEFINITION, NOT THE OPERATIVE SECTION, and it is a ceiling rather than a floor. M.G.L. c. 40A § 1A defines an accessory dwelling unit as one "not larger in gross floor area than 1/2 the gross floor area of the principal dwelling or 900 square feet, whichever is smaller". A unit above that is not an ADU for the Act and carries no by-right protection; it is not thereby prohibited, and the municipality may allow it under its own zoning.',
+    '⚠️ A municipality MAY impose additional size restrictions below the § 1A figure (§ 1A(iii)), bounded only by "no municipality shall unreasonably restrict the creation or rental of an accessory dwelling unit that is not a short-term rental". Whether a particular local cap is "unreasonable" is a question this tool does not adjudicate.',
     '⚠️ The Executive Office of Housing and Livable Communities may issue guidelines or regulations administering this paragraph. Those have NOT been read and may carry operative detail.',
   ],
 }

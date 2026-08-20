@@ -1128,3 +1128,67 @@ describe('⚠️ no live `as number` cast survives in this module', () => {
     expect(planted.filter((l) => !/^\s*(\/\/|\*)/.test(l) && /\bas number\b/.test(l))).toHaveLength(1)
   })
 })
+
+describe('⚠️ Massachusetts — the figure is in the DEFINITION, not the operative section', () => {
+  const st = aduRulesFor('boston').state
+  if (st.kind !== 'preempts') throw new Error('expected preempts')
+
+  it('does not claim the statute is silent on size', () => {
+    // THE CORRECTION. This field asserted that the chapter sets out no size at
+    // all, on a reading that covered § 3 and stopped. § 3 confers the by-right
+    // use; § 1A defines the term the right attaches to, and the definition
+    // carries the number. Reading the granting section without the defining one
+    // produced a confident absence.
+    expect(st.size.kind).toBe('reserved-to-city')
+    if (st.size.kind !== 'reserved-to-city') throw new Error('unreachable')
+    expect(st.size.cite).toMatch(/§§ 1A, 3/)
+    expect(st.size.detail).toMatch(/900 sq ft/)
+    expect(st.size.detail).toMatch(/1\/2 the principal dwelling/)
+    // ⚠️ The retracted assertion must not survive anywhere in the field.
+    expect(st.size.detail).not.toMatch(/states no size/i)
+  })
+
+  it('⚠️ records it as a CEILING on the protected category, never as a floor', () => {
+    // Every other figure in this file is a minimum the city must allow. This one
+    // is the maximum the by-right protection reaches — a unit above it simply is
+    // not an ADU for the Act. Recording it as a floor would assert a right the
+    // statute does not confer, which is rule 18's direction of error exactly.
+    if (st.size.kind !== 'reserved-to-city') throw new Error('unreachable')
+    expect(st.size.detail).toMatch(/ceiling on what the by-right use covers|PROTECTED CATEGORY/i)
+    expect(st.size.detail).toMatch(/NOT a floor/)
+    expect(st.size.detail).toMatch(/no size is guaranteed/i)
+    // And nothing publishes a Massachusetts size figure.
+    const e = effectiveMaxSize(aduRulesFor('boston'))
+    expect(e.value).toBeNull()
+    expect(e.source).toBe('state-no-figure')
+  })
+
+  it('records that a municipality may restrict FURTHER, and the only bound', () => {
+    // § 1A(iii). The bound is a reasonableness standard, not a number — so a
+    // local cap below 900 is not automatically void, and this tool does not
+    // adjudicate which ones are "unreasonable".
+    const n = st.protections.find((x) => /additional size restrictions/.test(x))!
+    expect(n).toMatch(/unreasonably restrict/)
+    expect(n).toMatch(/does not adjudicate/)
+  })
+
+  it('⚠️ the ratio family now has five draftings and five operators', () => {
+    // AZ min(75%, 1000) and MA min(50%, 900) look nearly identical and point in
+    // OPPOSITE directions: Arizona's is the minimum a city must allow,
+    // Massachusetts' the maximum the protection reaches. Pinned together so the
+    // resemblance cannot cause one to be read as the other.
+    const az = aduRulesFor('phoenix').state
+    if (az.kind !== 'preempts' || az.size.kind !== 'floors') throw new Error('expected floors')
+    const azFloor = az.size.floors.find((f) => f.baseline)!
+    expect(azFloor.form).toBe('derived')
+    if (azFloor.form !== 'derived') throw new Error('unreachable')
+    expect(azFloor.rule).toMatch(/WHICHEVER IS LESS/i)
+    expect(azFloor.condition).toMatch(/must allow/i)
+
+    if (st.size.kind !== 'reserved-to-city') throw new Error('unreachable')
+    expect(st.size.detail).toMatch(/NOT a floor/)
+    // Arizona is a floor and is expressed as one; Massachusetts is not and isn't.
+    expect(az.size.kind).toBe('floors')
+    expect(st.size.kind).not.toBe('floors')
+  })
+})

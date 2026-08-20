@@ -138,9 +138,29 @@ codified CRS. That is the Los Angeles exposure exactly — enacted text and curr
 codified law are different instruments. The codified article must be read before
 anything is encoded.
 
-### MA — M.G.L. c. 40A § 3, the accessory-dwelling-unit paragraph
+### MA — M.G.L. c. 40A §§ 1A and 3
 
-Massachusetts preempts **process, not dimensions**, and says so expressly.
+**⚠️ Corrected 2026-08-20.** This entry originally described Massachusetts as
+setting out no ADU size whatever, on a reading that covered only § 3. That was
+wrong: **the figure is in the definition, not the operative section.**
+
+§ 1A defines an accessory dwelling unit as one *"not larger in gross floor area
+than 1/2 the gross floor area of the principal dwelling or 900 square feet,
+whichever is smaller"* — and § 3 then grants the by-right use to that defined
+term. Reading the section that confers the right, and not the section that
+defines what the right attaches to, produced a confident absence.
+
+**⚠️ And the figure runs the opposite way from every other number in this
+survey.** It is not a floor. It is the ceiling of the *protected category*: a
+unit above it is not an ADU for the Act's purposes and gets no by-right
+protection, though nothing prohibits a municipality allowing it under its own
+zoning. § 1A(iii) then expressly permits a municipality to impose *additional*
+size restrictions, bounded only by not "unreasonably restrict[ing] the creation
+or rental" of a non-short-term-rental ADU. So Massachusetts guarantees no size,
+and recording min(50%, 900) as a floor would assert a right the statute does not
+confer.
+
+Massachusetts preempts **process**, and reserves dimensions to the municipality.
 
 No zoning ordinance shall prohibit, unreasonably restrict, or require a special
 permit or other discretionary approval for **a single ADU**, or its rental, **in a
@@ -248,16 +268,30 @@ Two of these need saying plainly because they are easy to collapse and must not 
   of prohibited conditions. Both leave the city free, but the evidentiary basis
   differs and a reader deserves to know which one they have.
 
-### The AZ/SF opposition, kept
+### The ratio family — five draftings, five operators, none publishable
 
-The same two ingredients, opposite operator:
+The same two ingredients — a percentage of the principal dwelling and a
+square-foot figure — recombined differently by every jurisdiction that uses them.
+This began as an AZ/SF opposition and has not stopped growing, so it is now the
+expected result rather than a surprise.
 
-| | rule | effect |
+| | rule | shape |
 |---|---|---|
 | SF § 207.2(d) | 50% of primary **or 850 sq ft, whichever is GREATER** | a ratio **floored** by a figure |
 | AZ § 9-461.18(A)(3) | 75% of primary **or 1,000 sq ft, whichever is LESS** | a ratio **capped** by a figure |
+| Phoenix ZO § 706.A.8 | 75% of primary **AND** a lot-size figure | **both limbs bind** — the answer is their minimum |
+| LVMC 19.12.070 | **100%** — may equal the primary, not exceed it | a **parity** cap |
+| MA c. 40A § 1A(ii) | 50% of principal **or 900 sq ft, whichever is SMALLER** | a **ceiling on the protected category**, not a floor |
 
-Publishing 1,000 for Phoenix overstates on any primary dwelling under 1,333 sq ft.
+**Not one of the five yields a number without a parcel input**, and the two that
+look most alike — Arizona's and Massachusetts' — point in opposite directions:
+Arizona's is the minimum a city must allow, Massachusetts' is the maximum the
+by-right protection reaches. Publishing 1,000 for Phoenix overstates on any
+primary under 1,333 sq ft; publishing 900 for Boston would assert a guarantee
+that does not exist.
+
+**The operating assumption is now that the next jurisdiction drafts it a sixth
+way.**
 
 ## The three closed on 2026-08-20
 
