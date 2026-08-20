@@ -161,7 +161,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -370,19 +370,32 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     // handed it to the city; North Carolina's planning chapter was read whole
     // and has no ADU provision; Nevada preempts but states no size; Georgia has
     // not been looked at. Four facts, and only the last is ignorance.
+    // ⚠️ THIS FIXTURE WAS RALEIGH UNTIL RALEIGH WAS READ — rule 29, third time in
+    // this file. It named a live city for a state ("the statute was read, the
+    // city was not") that is by construction drawn from the front of the work
+    // queue, so it was scheduled to stop qualifying. NO North Carolina city is
+    // unread any more, and none will be again, so the state is BUILT rather than
+    // named. It cannot be read away.
+    const STATE_READ_CITY_UNREAD: AduRules = {
+      city: 'raleigh',
+      state: aduRulesFor('raleigh').state,
+      stateApplies: aduRulesFor('raleigh').stateApplies,
+      local: { kind: 'not-read', detail: 'synthetic fixture — the state layer was read within a named scope; this city was not' },
+    }
+    expect(STATE_READ_CITY_UNREAD.state.kind).toBe('no-provision')
     expect(effectiveMaxSize(STATE_DECLINES).source).toBe('state-declines')
-    expect(effectiveMaxSize(aduRulesFor('raleigh')).source).toBe('unresolved')
+    expect(effectiveMaxSize(STATE_READ_CITY_UNREAD).source).toBe('unresolved')
     expect(effectiveMaxSize(STATE_NO_FIGURE).source).toBe('state-no-figure')
     expect(effectiveMaxSize(NOTHING_ESTABLISHED).source).toBe('unresolved')
     // Every one of them still publishes NO number — the distinction is in the
     // reason, never in a figure invented to fill the gap.
-    for (const r of [STATE_DECLINES, aduRulesFor('raleigh'), STATE_NO_FIGURE, NOTHING_ESTABLISHED]) {
+    for (const r of [STATE_DECLINES, STATE_READ_CITY_UNREAD, STATE_NO_FIGURE, NOTHING_ESTABLISHED]) {
       expect(effectiveMaxSize(r).value, r.city).toBeNull()
     }
 
     // ⚠️ And the two that share a `source` must NOT share a sentence: NC was
     // read within a named scope, the synthetic city was not read at all.
-    const nc = summariseAdu(aduRulesFor('raleigh'))
+    const nc = summariseAdu(STATE_READ_CITY_UNREAD)
     const none = summariseAdu(NOTHING_ESTABLISHED)
     expect(nc).toMatch(/contains no ADU provision/)
     expect(nc).not.toMatch(/nobody has looked/)
@@ -595,7 +608,9 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
                 // ⚠️ Chicago is the strong form too, and by the widest margin: all 44
         // municipal-code amendments with a final action after the codification
         // cut-off were enumerated, and none touches the ADU provisions.
-        expect(['seattle', 'phoenix', 'miami', 'charlotte', 'milwaukee', 'chicago'], c).toContain(c)
+        // ⚠️ Raleigh joins the strong form: a pending text-change docket exists and
+        // was read — TC-1-26 and TC-4-26 are active and neither touches ADUs.
+        expect(['seattle', 'phoenix', 'miami', 'charlotte', 'milwaukee', 'chicago', 'raleigh'], c).toContain(c)
         expect(note, c).not.toMatch(/no (pending[- ]?(ordinance )?)?list/i)
       }
     }
@@ -605,7 +620,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1347,7 +1362,7 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
         ;(m.measure ? withMeasure : without).push(c)
       }
     }
-    expect([...new Set(withMeasure)].sort()).toEqual(['charlotte', 'denver', 'la', 'minneapolis', 'nyc', 'sanjose', 'sf'])
+    expect([...new Set(withMeasure)].sort()).toEqual(['charlotte', 'denver', 'la', 'minneapolis', 'nyc', 'raleigh', 'sanjose', 'sf'])
     // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
     // their measure — declared, so the gap is countable rather than invisible.
     expect([...new Set(without)].sort()).toEqual(['austin', 'phoenix', 'sandiego', 'seattle'])
@@ -2449,5 +2464,102 @@ describe('⚠️ the summary must not name a state floor that does not exist', (
     expect(chi).not.toMatch(/built inside an existing structure/)
     // San Diego still carries its own condition, via `why` rather than the lead.
     expect(summariseAdu(aduRulesFor('sandiego'))).not.toMatch(/no maximum size for an ADU built inside/)
+  })
+})
+
+describe('⚠️ Raleigh: two sections, two figures, and a map that is not in the code', () => {
+  it('⚠️ 1,000 sq ft is reachable only above 40,000 sq ft, so 800 leads', () => {
+    // rule 6: the tiers are LOT-AREA bands, not programmes the applicant elects
+    // between, and two of the three bands state 800. Publishing 1,000 would
+    // assume a lot larger than almost every Raleigh parcel.
+    const l = aduRulesFor('raleigh').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'capped') throw new Error('unreachable')
+    expect(b.sqFt).toBe(800)
+    const big = l.maxSizeSqFt.find((m) => m.kind === 'capped' && m.sqFt === 1000)!
+    if (big.kind !== 'capped') throw new Error('unreachable')
+    expect(big.condition).toMatch(/ONLY on a lot GREATER than 40,000 sq ft/)
+    expect(big.baseline).toBeUndefined()
+    expect(summariseAdu(aduRulesFor('raleigh'))).not.toMatch(/Up to 1,000 sq ft/)
+  })
+
+  it('⚠️ no operator joins the two caps — the "and" joins size to FOUNDATION', () => {
+    // § 2.6.3.D.1 reads "meet both of the following: (a) … gross floor area …
+    // less than … the total principal dwelling; and (b) Shall be affixed to …
+    // a permanent foundation". The conjunction attaches the size limb to the
+    // foundation limb, not one cap to the other. Verified against the source.
+    const l = aduRulesFor('raleigh').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const rel = l.maxSizeSqFt.find((m) => m.kind === 'not-numeric')!
+    if (rel.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(rel.rule).toMatch(/LESS THAN/)
+    expect(rel.rule).toMatch(/STRICT comparison, so equality fails/)
+    expect(rel.condition).toMatch(/joins this limb to the PERMANENT FOUNDATION limb/)
+    // ⚠️ Unlike Charlotte, this comparison IS measure-consistent: gross floor
+    // area on both sides, and the term is defined in Art. 12.2.
+    expect(rel.measure).toMatch(/measure-consistent/)
+  })
+
+  it('⚠️ but the footnote qualifies the measure with an undefined criterion', () => {
+    // Art. 12.2 defines gross floor area and includes attached garages. The
+    // table's footnote 1 adds "all conditioned space", which is nowhere in that
+    // definition and would exclude them, then switches to "accessory structure
+    // floor area" — a phrase occurring only in the two footnotes, pointing at a
+    // section ADUs are exempt from. Disclosed, not reconciled (rule 4).
+    const l = aduRulesFor('raleigh').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'capped') throw new Error('unreachable')
+    expect(b.measure).toMatch(/appears nowhere in that definition/)
+    expect(b.measure).toMatch(/ACCESSORY STRUCTURE FLOOR AREA/)
+    expect(b.measure).toMatch(/Unresolved/)
+  })
+
+  it('⚠️ the mixed-use cell states a bare figure with NO UNIT', () => {
+    // Every other cell in § 3.6.2's table carries one — 10', 5', 26'. G1 holds
+    // "800". Read as square feet because the row is headed "Gross Floor Area
+    // (max)" and the residential twin says sq ft — recorded because the cell
+    // itself does not say so.
+    const l = aduRulesFor('raleigh').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const mx = l.maxSizeSqFt.find((m) => m.kind === 'capped' && /MIXED USE/.test(m.condition))!
+    if (mx.kind !== 'capped') throw new Error('unreachable')
+    expect(mx.cite).toMatch(/NO UNIT stated/)
+    // ⚠️ And the scope is four districts, not "everything else" as the city's
+    // own permit page says.
+    expect(mx.condition).toMatch(/RX, OX, NX and CX only/)
+    expect(mx.condition).toMatch(/DX and IX are NOT included/)
+    expect(l.notes.find((x) => /PERMIT PAGE OVERSTATES THE ORDINANCE/.test(x))).toBeTruthy()
+  })
+
+  it('⚠️ the second ADU depends on a map that is not in the UDO', () => {
+    // "Frequent Transit Area as shown on the City's Comprehensive Plan" — the
+    // term is undefined in the UDO and the map was not read, so no parcel's ADU
+    // count is resolvable from the zoning code alone. A structural gap, not a
+    // failed lookup, and it is stated as one.
+    const l = aduRulesFor('raleigh').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /SECOND ADU DEPENDS ON A MAP/.test(x))!
+    expect(n).toMatch(/NOT defined in the UDO/)
+    expect(n).toMatch(/no parcel.s ADU count is resolvable from the zoning code alone/)
+  })
+
+  it('⚠️ Raleigh is the first city in five where the obvious noun is right', () => {
+    // Boston, DC, NYC and Chicago each used a different term. Pinned as a run,
+    // so the streak is visible rather than restated city by city — and so this
+    // goes red if any of the four is ever re-encoded under the usual noun.
+    expect(ADU_VOCABULARY_CHECK.raleigh.canonical).toMatch(/Accessory Dwelling Unit \(ADU\)/)
+    expect(ADU_VOCABULARY_CHECK.raleigh.distinguishedBy).toMatch(/breaks the run/)
+    for (const c of ['dc', 'nyc', 'chicago']) {
+      expect(ADU_VOCABULARY_CHECK[c].canonical, c).toMatch(/⚠️/)
+    }
+    // ⚠️ What Raleigh separates instead is FORM from USE: a Tiny House is what
+    // the ADU is accessory TO, and a Manufactured Home is a permitted ADU form
+    // with its own tighter cap — neither is a competing term.
+    expect(ADU_VOCABULARY_CHECK.raleigh.distinguishedBy).toMatch(/PRINCIPAL use in Raleigh/)
+    const rl = aduRulesFor('raleigh').local
+    if (rl.kind !== 'read') throw new Error('expected read')
+    expect(rl.notes.find((x) => /600 square feet/.test(x))).toBeTruthy()
   })
 })

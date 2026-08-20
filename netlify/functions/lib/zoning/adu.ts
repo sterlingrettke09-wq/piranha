@@ -2215,6 +2215,98 @@ const CHICAGO_LOCAL: LocalLayer = {
   },
 }
 
+// ── RALEIGH ─────────────────────────────────────────────────────────────────
+//
+// ⚠️ TWO OPERATIVE SECTIONS WITH DIFFERENT SCOPES AND DIFFERENT FIGURES.
+// § 2.6.3 governs the residential districts (R-1, R-2, R-4, R-6, R-10) with a
+// LOT-AREA-TIERED cap; § 3.6.2 governs mixed use and reaches RX, OX, NX and CX
+// ONLY — DX and IX are excluded. ⚠️ The city's own permit page says § 3.6.2
+// applies "for all others", which overstates the ordinance.
+//
+// ⚠️ AND THE 2020 STATE IS NOT THE CURRENT STATE. The well-publicised change is
+// TC-16-19 (eff. 2020-07-22), but BOTH sections were amended again by TC-1-25,
+// adopted 2026-01-06. Verified by rendering the ordinance page as an IMAGE,
+// because pdftotext discards the underline/strikethrough the meaning depends on.
+const RALEIGH_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Raleigh Unified Development Ordinance §§ 2.6.3 (residential) and 3.6.2 (mixed use), with the Art. 12.2 definitions; as amended by TC-1-25, adopted 2026-01-06',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ THE TIERS ARE LOT-AREA BANDS, NOT APPLICANT ALTERNATIVES, so the
+    // general case leads (rule 6). 1,000 sq ft is reachable only above 40,000
+    // sq ft — and TWO of the three bands are 800, so 800 is what nearly every
+    // Raleigh lot gets.
+    {
+      kind: 'capped',
+      sqFt: 800,
+      condition: 'residential districts R-1, R-2, R-4, R-6 and R-10, on a lot UP TO 40,000 sq ft — both the "10,000 sf to 40,000 sf" and "Less than 10,000 sf" bands state 800',
+      cite: '§ 2.6.3 table row G1',
+      measure:
+        '⚠️ "Gross floor area" IS defined at Art. 12.2 — but the table\u2019s own footnote 1 qualifies it as including "all conditioned space", a criterion that appears nowhere in that definition, and then switches term: "Attached unconditioned space shall be included in the calculation of ACCESSORY STRUCTURE FLOOR AREA", a phrase occurring exactly twice in the whole UDO (both footnotes) and pointing at a section ADUs are EXEMPT from. Art. 12.2 includes attached garages; the conditioned-space test would exclude them. Unresolved',
+      baseline: true,
+    },
+    {
+      kind: 'capped',
+      sqFt: 1000,
+      condition: '⚠️ residential districts, ONLY on a lot GREATER than 40,000 sq ft — not a general allowance',
+      cite: '§ 2.6.3 table row G1',
+      measure: 'gross floor area, subject to the same footnote-1 ambiguity as the 800 sq ft band',
+    },
+    {
+      kind: 'capped',
+      sqFt: 800,
+      // ⚠️ THE CELL STATES NO UNIT. Every other cell in the same table carries
+      // one ("10\u2019", "5\u2019", "26\u2019"); G1 holds a bare "800". Read as square
+      // feet because the row is headed "Gross Floor Area (max)" and the
+      // residential twin states sq ft — recorded because the cell itself does not.
+      condition: 'MIXED USE districts RX, OX, NX and CX only — a flat figure with no lot-area tiers. ⚠️ DX and IX are NOT included',
+      cite: '§ 3.6.2 table row G1 — ⚠️ the cell reads "800" with NO UNIT stated, where every other cell in the table carries one',
+      measure: 'gross floor area, subject to the same footnote-1 ambiguity',
+    },
+    {
+      kind: 'not-numeric',
+      // ⚠️ NO OPERATOR JOINS THE TWO CAPS. The "and" in § 2.6.3.D.1 joins the
+      // size limb to the FOUNDATION limb, not one cap to the other — so this is
+      // a separate constraint that binds alongside the table, not an alternative.
+      rule: 'a RELATIVE cap binding alongside the table figure: "The gross floor area of the accessory dwelling shall be LESS THAN the gross floor area of the total principal dwelling" — a STRICT comparison, so equality fails',
+      condition: '⚠️ every ADU. No operator joins this to the table cap: § 2.6.3.D.1\u2019s "meet both of the following … and" joins this limb to the PERMANENT FOUNDATION limb, not to the square-foot table',
+      cite: '§ 2.6.3.D.1.a',
+      measure: 'gross floor area on BOTH sides of the comparison, so unlike Charlotte this limb is measure-consistent',
+    },
+  ],
+  maxHeightFt: [
+    { form: 'figure', value: 26, condition: 'overall height, IDENTICAL across all three lot-area bands and in both the residential and mixed-use tables', cite: '§ 2.6.3 row I1; § 3.6.2 row I1', baseline: true },
+  ],
+  maxStories: null,
+  heightDefersToBaseZone: null,
+  notes: [
+    // ⚠️ THE COUNT RULE IS NOT RESOLVABLE FROM THE ZONING CODE. This is the
+    // largest gap in Raleigh and it is structural, not a failed lookup.
+    '⚠️ THE SECOND ADU DEPENDS ON A MAP THAT IS NOT IN THE UDO. "There shall be no more than one ADU on the same lot as a principal dwelling unless it is located in a Frequent Transit Area AS SHOWN ON THE CITY\u2019S COMPREHENSIVE PLAN, which would then allow for up to two ADUs." "Frequent Transit Area" is NOT defined in the UDO and the map was NOT read, so no parcel\u2019s ADU count is resolvable from the zoning code alone.',
+    'Within a Frequent Transit Area only ONE of the two may be attached to the principal dwelling. And a townhouse development gets one ADU per townhouse lot "whether within a Frequent Transit Area or not".',
+    '⚠️ NO OWNER-OCCUPANCY REQUIREMENT — established by the slot test with a working positive control, not by failing to find one. But ownership of an ADU "shall not be transferred apart from its principal dwelling unit" (§ 2.6.3.D.4), which is a transfer restriction, not an occupancy one.',
+    'Process is a Tier One Site Plan — administrative, with no special use permit.',
+    'ADUs are exempt from density and minimum lot size (§ 1.5.2.F), and are not subject to §§ 6.7.1 and 6.7.2 except 6.7.2.B.',
+    'A separation rule that TC-1-25 rewrote: "Unless horizontally or vertically integrated into another building, an ADU must be separated by at least 6\u2019 from any other building on the lot." The phrase "horizontally or vertically integrated" was ADDED and "attached thereto by a common wall" STRUCK by TC-1-25.',
+    '⚠️ ADUs ARE NOT PERMITTED ON FLAG LOTS (§ 2.6.3.D). A parcel-level exclusion that no district code carries.',
+    'An ADU may be a Manufactured Home if it meets five construction criteria AND is "no greater than 600 square feet in gross floor area" — a SIXTH size figure, tighter than every other limb and applying only to that form.',
+    'Each unit gets its own cap where two are allowed: "If two ADUs are located on one lot, each ADU shall be permitted a maximum gross floor area as described in Section 2.6.3.G" — the cap is per unit, not shared.',
+    '⚠️ OVERLAY CARVE-OUTS: the -AOD overlay prohibits "all household living", which reaches ADUs; two of Raleigh\u2019s 21 -NCOD neighbourhoods carry accessory-structure rules, and Forest Park names ADUs expressly (600 sq ft footprint / 1,200 sq ft GFA); historic overlays require a Certificate of Appropriateness.',
+    '⚠️ THE DEFINITION CARRIES NO SUBSTANCE HERE — the opposite of Massachusetts and NYC. Art. 12.2\u2019s ADU entry states no size, no count and no carve-out, and points only at § 2.6.3.D, so it UNDER-describes the mixed-use regime governed by § 3.6.2. Both were read; the operative sections carry everything.',
+    '⚠️ THE COUNT RULE IS STATED FOUR TIMES WITH CONFLICTING WORDING — "attached" in some places, "attached or internal" in others. Recorded as found rather than harmonised.',
+    '⚠️ THE CITY\u2019S PERMIT PAGE OVERSTATES THE ORDINANCE, saying § 3.6.2 applies "for all others" when that section reaches RX, OX, NX and CX only. Not adopted (rule 4) — the fourth city whose guidance page contradicts its own code.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'udo.raleighnc.gov — ⚠️ the ONLY current publisher found; see the note on how badly the alternatives disagree',
+    codifiedThrough: 'current text reflects TC-1-25, adopted 2026-01-06',
+    amendingThisSection: [],
+    note: '⚠️ FOUR PUBLISHERS AND ONLY ONE IS CURRENT. The city\u2019s own history table stops at Supplement 35 / September 2024 and does NOT contain TC-1-25; the flipbook is the 33rd Supplement; Municode\u2019s readable chapter PDFs are Supplements 8 and 11. Municode\u2019s current text was not machine-readable (403 to WebFetch, a 6 KB JS shell on two isolated curl re-probes) — recorded as a SOURCE-ACCESS LIMITATION, not an absence (rule 10). A pending list EXISTS and was read: TC-1-26 and TC-4-26 are active and neither touches ADUs, so `amendingThisSection: []` is the strong form. ⚠️ One overhang NOT read: NC Session Law 2024-57 (SB 382), which prompted the TC-1-25 readoption.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -2290,7 +2382,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   // ── Read, and the state does not preempt ─────────────────────────────────
   miami: { city: 'miami', state: FL, stateApplies: NA, local: MIAMI_LOCAL },
   charlotte: { city: 'charlotte', state: NO_PROVISION.nc, stateApplies: NA, local: CHARLOTTE_LOCAL },
-  raleigh: { city: 'raleigh', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Raleigh') },
+  raleigh: { city: 'raleigh', state: NO_PROVISION.nc, stateApplies: NA, local: RALEIGH_LOCAL },
   austin: { city: 'austin', state: NO_PROVISION.tx, stateApplies: NA, local: AUSTIN_LOCAL },
   dallas: { city: 'dallas', state: NO_PROVISION.tx, stateApplies: NA, local: DALLAS_LOCAL },
   columbus: { city: 'columbus', state: NO_PROVISION.oh, stateApplies: NA, local: COLUMBUS_LOCAL },
@@ -2351,6 +2443,12 @@ export interface VocabularyCheck {
 }
 
 export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = Object.freeze({
+  raleigh: {
+    canonical: 'Accessory Dwelling Unit (ADU) — defined at Art. 12.2 and used as the section title in both § 2.6.3 and § 3.6.2. ⚠️ The FIRST city in five where the obvious noun is the right one',
+    competing: ['Cottage Court — a distinct UDO building type', 'Tiny House — a principal use here, not an ADU', 'Manufactured Home — a permitted ADU FORM, not a competitor'],
+    distinguishedBy:
+      '⚠️ Raleigh breaks the run: after Boston, DC, NYC and Chicago each used a different noun, the obvious term is correct here and is the code\u2019s own. What needs separating instead is the FORM from the USE. "Tiny House" is a PRINCIPAL use in Raleigh — § 2.6.3 permits an ADU "on a lot with an existing Detached House or TINY HOUSE", so a tiny house is what the ADU is accessory TO, not the ADU itself. "Manufactured Home" is the reverse: not a competing term but a permitted ADU form, admitted by § 2.6.3.D.6 subject to five construction criteria and its own 600 sq ft cap. "Cottage Court" is a separate building type in the UDO and does not carry ADU standards. ⚠️ Instrument correction worth keeping: `grep -oi "ADU"` returned 74, contaminated by "adult" and "graduate"; the word-bounded count is 50.',
+  },
   chicago: {
     canonical: '⚠️ TWO defined terms, not one: "Coach House" (§ 17-17-0234.6) and "Conversion Unit" (§ 17-17-0240.6). Neither is called an accessory dwelling unit',
     competing: ['Additional Dwelling Unit / ADU — defined in TITLE 2, not Title 17', 'Accessory dwelling unit — ordinary English, one occurrence'],
