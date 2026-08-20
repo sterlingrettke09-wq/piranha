@@ -1057,6 +1057,98 @@ const SF_LOCAL: LocalLayer = {
   },
 }
 
+// ── PHOENIX ─────────────────────────────────────────────────────────────────
+//
+// The first city read under a NON-CALIFORNIAN floor, and the first where the
+// local cap and the state floor share a mechanism: Arizona guarantees
+// min(75% of primary, 1,000 sq ft) and Phoenix caps at 75% of primary AND a
+// lot-size figure. The ratio is the same 75% in both instruments.
+//
+// ⚠️ PHOENIX DID ADOPT, so A.R.S. § 9-461.18(F) — which would allow ADUs on all
+// residential lots WITHOUT LIMITS against a city that missed the 2025-01-01
+// deadline — does not apply here. § 706 was last amended by Ord. G-7317 § 11 in
+// 2024, inside the deadline. That was the fork worth resolving before reading
+// any figure, because the two regimes are nothing like each other.
+const PHOENIX_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Phoenix Zoning Ordinance § 706.A (Accessory Dwelling Units), ch. 7 Development Standards of General Applicability; Ord. No. G-7317 § 11 (2024)',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ A COMPOUND CAP: BOTH constraints bind, so the answer is their MINIMUM
+    // and neither half alone is publishable. § 706.A.8 reads "shall not have a
+    // gross floor area which exceeds 75 percent of the gross floor area of the
+    // primary dwelling unit, AND: a. ... 1,000 square feet. b. ... the lesser of
+    // 3,000 square feet or ten percent of the net lot area."
+    //
+    // Publishing 1,000 (or 3,000) would overstate on every lot whose primary
+    // dwelling is small enough for the ratio to bind first — the same failure as
+    // publishing 1,000 for the Arizona statute.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the LESSER of 75% of the primary dwelling\u2019s gross floor area and a lot-size cap — 1,000 sq ft on a lot up to 10,000 sq ft net area, or on a larger lot the lesser of 3,000 sq ft and 10% of net lot area',
+      condition: 'every ADU, attached or detached; both limbs apply together',
+      cite: '§ 706.A.8',
+      baseline: true,
+    },
+    // The lot-size limb's own ceilings, recorded because they are real stated
+    // figures — but they are UPPER BOUNDS on one limb, never the answer.
+    {
+      kind: 'capped',
+      sqFt: 1000,
+      condition: 'upper bound of the lot-size limb, for a lot up to 10,000 sq ft net area — the 75% ratio may bind lower',
+      cite: '§ 706.A.8.a',
+    },
+    {
+      kind: 'capped',
+      sqFt: 3000,
+      condition:
+        'upper bound of the lot-size limb on a lot over 10,000 sq ft net area, and only where 10% of net lot area reaches 3,000 sq ft — the 75% ratio may bind lower',
+      cite: '§ 706.A.8.b',
+    },
+  ],
+  maxHeightFt: [
+    { form: 'figure', value: 15, condition: 'detached, when located within a required rear or side yard — a greater height needs a use permit under § 307', cite: '§ 706.A.4.c(1)', baseline: true },
+    { form: 'parity', withUse: 'the primary dwelling unit', condition: 'detached, when NOT located within any required yard — the same height the primary dwelling may reach', cite: '§ 706.A.4.c(2)' },
+    { form: 'parity', withUse: 'the primary dwelling unit', condition: 'attached — the same height regulations and setbacks as the primary dwelling unit', cite: '§ 706.A.6' },
+  ],
+  maxStories: null,
+  // ⚠️ NOT set, even though two of the three height cases defer to the primary
+  // dwelling. This flag means the ordinance states NO height in feet at all;
+  // Phoenix states 15 ft for the required-yard case, so setting it would erase a
+  // real figure. The deferral lives on the `parity` entries instead — the form
+  // added for exactly this.
+  heightDefersToBaseZone: null,
+  notes: [
+    'Setbacks: minimum 5 ft from a street side property line, 3 ft from an interior side or rear line, none adjacent to a fully dedicated alley; front setbacks per the zoning district (§ 706.A.4.b). All within the 5 ft ceiling A.R.S. § 9-461.18(B)(6) puts on what a municipality may require.',
+    'A detached ADU may sit within a required rear or side yard, or within an on-lot perimeter setback that is not also the front yard (§ 706.A.4.a).',
+    '⚠️ HOW MANY ADUs IS NOT ANSWERED HERE. § 706.A.1 applies "when a lot ... is permitted one or more ADUs per the underlying zoning district" — the count comes from the district, not from this section. One attached ADU per lot is capped (§ 706.A.2.a), but the total is not stated, so the Arizona floor of one attached plus one detached is the minimum and the local total is unresolved.',
+    'A garage, attached shade structure or attached carport built as part of a DETACHED ADU does not count toward the ADU\u2019s gross floor area (§ 706.A.8).',
+    'Any ADU must comply with the lot coverage requirements applicable to the property (§ 706.A.7).',
+    'A detached ADU may not sit between the primary dwelling and the front property line without a use permit under § 307 (§ 706.A.5).',
+    'Design guidelines are marked (P) — an attached ADU must read as part of one single-family home rather than a duplex, and a detached ADU visible from the street should be residential in appearance. The ordinance states expressly that these do NOT require matching exterior design, roof pitch or finishing materials (§ 706.A.3), which is Phoenix implementing A.R.S. § 9-461.18(B)(4).',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'phoenix.municipal.codes Legislative History, "Pending Codification" filter, plus the Zoning Ordinance currency line',
+    codifiedThrough: 'Phoenix Zoning Ordinance current through Ordinance G-7461, passed 2025-12-03',
+    amendingThisSection: [],
+    // ⚠️ THE STRONG FORM, and only the second in the file after Seattle. Phoenix
+    // publishes an actual pending-codification list, it was queried, and it
+    // returned nothing — which is different from Los Angeles, San Francisco and
+    // San Diego, where no list exists to query.
+    //
+    // And the empty result was CONTROLLED: an unfiltered enactments view returns
+    // 25 ordinances through G-7524 (2026-06-17), so the view works and the empty
+    // filter is a measurement. Rule 20 — an empty list and a broken query look
+    // identical, and on this same site a code search for "zoning" returned zero,
+    // which is how the search was caught as unusable.
+    note: 'STRONG form: a real "Pending Codification" list exists, was queried, and returned no enactments — verified by a positive control, since the unfiltered view returns 25 ordinances through G-7524 (2026-06-17). None of those 25 amends the Zoning Ordinance or § 706. ⚠️ Scope: the first page of the enactments list was scanned, not every page, and the Zoning Ordinance carries its own currency (G-7461) separate from the City Code.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -1083,7 +1175,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
     city: 'phoenix',
     state: AZ,
     stateApplies: QUALIFIES('Phoenix is far above the 75,000 population threshold in § 9-461.18(H)'),
-    local: NOT_READ_LOCAL('Phoenix'),
+    local: PHOENIX_LOCAL,
   },
   lasvegas: {
     city: 'lasvegas',

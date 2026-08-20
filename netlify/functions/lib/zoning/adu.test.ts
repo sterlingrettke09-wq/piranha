@@ -132,7 +132,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['la', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -551,8 +551,11 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       if (weak.includes(c)) {
         expect(note, c).toMatch(/no (pending-ordinance )?list/i)
       } else {
-        // Seattle: a real list was read and found not to touch the section.
-        expect(c).toBe('seattle')
+        // ⚠️ The STRONG form: a real list existed, was queried, and came back
+        // without anything touching the section. Seattle read a list of 17;
+        // Phoenix queried a "Pending Codification" view that returned nothing
+        // AND controlled that emptiness against an unfiltered view returning 25.
+        expect(['seattle', 'phoenix'], c).toContain(c)
         expect(note, c).not.toMatch(/no (pending-ordinance )?list/i)
       }
     }
@@ -562,7 +565,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['la', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -866,5 +869,107 @@ describe('San Francisco — Planning Code §§ 207.1 and 207.2', () => {
     // The empty array means something different in every city, so each says which.
     expect(local.pending.note).toMatch(/no list exists to read/i)
     expect(local.pending.note).toMatch(/nine days before this reading/)
+  })
+})
+
+describe('Phoenix — Zoning Ordinance § 706.A, under the Arizona floor', () => {
+  const rules = aduRulesFor('phoenix')
+  if (rules.local.kind !== 'read') throw new Error('expected a read local layer')
+  const local = rules.local
+
+  it('⚠️ Phoenix ADOPTED, so the without-limits sanction does not apply', () => {
+    // A.R.S. § 9-461.18(F): a municipality that missed the 2025-01-01 deadline
+    // must allow ADUs on all residentially zoned lots WITHOUT LIMITS. The two
+    // regimes are nothing alike, so which one applies had to be settled before
+    // any figure was read. § 706 was amended by Ord. G-7317 in 2024 — inside it.
+    expect(local.citation).toMatch(/G-7317/)
+    expect(local.citation).toMatch(/2024/)
+    const st = rules.state
+    if (st.kind !== 'preempts') throw new Error('expected preempts')
+    expect(st.protections.join(' ')).toMatch(/WITHOUT LIMITS/)
+    expect(st.protections.join(' ')).toMatch(/2025-01-01/)
+  })
+
+  it('⚠️ the size cap is COMPOUND, so no figure is publishable', () => {
+    // § 706.A.8 caps at 75% of the primary dwelling AND a lot-size figure. Both
+    // limbs bind, so the answer is their minimum and neither half alone is it.
+    // Publishing 1,000 would overstate on every lot whose primary is small
+    // enough for the ratio to bite first.
+    const baseline = local.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(baseline.kind).toBe('not-numeric')
+    if (baseline.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(baseline.rule).toMatch(/LESSER of 75%/)
+    expect(baseline.rule).toMatch(/1,000 sq ft/)
+    expect(baseline.rule).toMatch(/10% of net lot area/)
+    expect(baseline.cite).toBe('§ 706.A.8')
+
+    const e = effectiveMaxSize(rules)
+    expect(e.value).toBeNull()
+    expect(e.source).toBe('local-non-numeric')
+  })
+
+  it('⚠️ the stated figures are UPPER BOUNDS on one limb, never the answer', () => {
+    // They are recorded because they are real, and marked so they cannot be
+    // mistaken for the cap. Neither carries `baseline`.
+    const caps = local.maxSizeSqFt.filter((m) => m.kind === 'capped')
+    expect(caps.map((c) => (c as Extract<typeof c, { kind: 'capped' }>).sqFt)).toEqual([1000, 3000])
+    for (const c of caps) {
+      expect(c.baseline, String((c as Extract<typeof c, { kind: 'capped' }>).sqFt)).toBeUndefined()
+      expect(c.condition).toMatch(/upper bound/)
+      expect(c.condition).toMatch(/75% ratio may bind lower/)
+    }
+  })
+
+  it('⚠️ the SAME 75% ratio appears in both instruments, capped both times', () => {
+    // Arizona guarantees min(75% of primary, 1,000). Phoenix caps at
+    // min(75% of primary, lot figure). Same ratio, same direction — and both
+    // are `whichever is LESS`, the opposite of San Francisco's
+    // "50% ... whichever is GREATER". Neither yields a number on its own.
+    const st = rules.state
+    if (st.kind !== 'preempts' || st.size.kind !== 'floors') throw new Error('expected floors')
+    const f = st.size.floors.find((x) => x.baseline)!
+    expect(f.form).toBe('derived')
+    if (f.form !== 'derived') throw new Error('unreachable')
+    expect(f.rule).toMatch(/75%/)
+    expect(f.rule).toMatch(/WHICHEVER IS LESS/i)
+    // And the SF drafting runs the other way — pinned so the pair cannot drift.
+    const sf = aduRulesFor('sf')
+    if (sf.local.kind !== 'read') throw new Error('expected read')
+    expect(sf.local.notes.find((n) => /WHICHEVER IS GREATER/.test(n))).toBeTruthy()
+  })
+
+  it('keeps the 15 ft figure and the parity cases apart', () => {
+    // Two of three height cases defer to the primary dwelling and one states a
+    // figure. `heightDefersToBaseZone` would erase the figure, so the deferral
+    // lives on `parity` entries — the form the state survey forced into the type.
+    expect(local.heightDefersToBaseZone).toBeNull()
+    const b = local.maxHeightFt.find((h) => h.baseline)!
+    expect(b.form).toBe('figure')
+    if (b.form !== 'figure') throw new Error('unreachable')
+    expect(b.value).toBe(15)
+    expect(local.maxHeightFt.filter((h) => h.form === 'parity')).toHaveLength(2)
+  })
+
+  it('⚠️ says the ADU COUNT is not answered by this section', () => {
+    // § 706.A.1 applies "per the underlying zoning district" — the count comes
+    // from the district. Reading one attached ADU (§ 706.A.2.a) as the total
+    // would be a cap invented from a partial rule.
+    const n = local.notes.find((x) => /HOW MANY ADUs/.test(x))!
+    expect(n).toMatch(/not stated/)
+    expect(n).toMatch(/underlying zoning district/)
+    expect(n).toMatch(/Arizona floor/)
+  })
+
+  it('⚠️ its pending check is STRONG, and the emptiness was controlled', () => {
+    // Only the second strong-form check in the file. On this very site a code
+    // search for "zoning" returned zero — the search is unusable — so an empty
+    // result here had to be proved against a working view before it counted.
+    if (local.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(local.pending.amendingThisSection).toEqual([])
+    expect(local.pending.note).toMatch(/STRONG form/)
+    expect(local.pending.note).toMatch(/positive control/)
+    expect(local.pending.note).toMatch(/G-7524/)
+    expect(local.pending.note).not.toMatch(/no list exists to read/i)
+    expect(local.pending.codifiedThrough).toMatch(/G-7461/)
   })
 })
