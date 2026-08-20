@@ -1504,6 +1504,73 @@ const MIAMI_LOCAL: LocalLayer = {
   },
 }
 
+// ── AUSTIN ──────────────────────────────────────────────────────────────────
+//
+// ⚠️ AUSTIN SAYS "SECONDARY APARTMENT", and does not use the ADU abbreviation at
+// all. The vocabulary check found it: "accessory dwelling unit" returns eight
+// hits, EVERY ONE inside Chapter 25-3 (Traditional Neighborhood District), a
+// niche chapter — while the operative instrument is §§ 25-2-1461 to 25-2-1463 in
+// Chapter 25-2, the main zoning chapter, under a different noun. Reading the
+// eight hits and stopping would have produced a rule that governs almost no
+// Austin parcel. Third city in a row whose noun differs (Boston "Additional",
+// Miami "Ancillary", Austin "Secondary").
+//
+// Source designated by the city: Austin's own City and Land Development Code
+// page links to Municode, so here the standing publisher check confirms the
+// obvious source rather than overturning it — unlike Miami, where it mattered.
+const AUSTIN_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Austin City Code §§ 25-2-1461 to 25-2-1463 (Secondary Apartment Special Use), Land Development Code Title 25 ch. 25-2 (Zoning); as amended by Ord. No. 20250227-039 Pt. 3, effective 2025-10-01',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ EIGHTH RATIO DRAFTING, AND THE FIRST EXPRESSED AS A FAR. § 25-2-1463(C)(5)(a):
+    // "may not exceed 1,100 total square feet or a floor-to-area ratio of 0.15,
+    // whichever is SMALLER." Structurally Miami's shape — a LOT-based ratio capped
+    // by a figure — but written as a floor-area ratio rather than a percentage.
+    // FAR 0.15 binds below 1,100 sq ft on any lot under about 7,333 sq ft, which
+    // is a great many Austin lots, so publishing 1,100 would overstate widely.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the SMALLER of 1,100 total sq ft and a floor-to-area ratio of 0.15 — the FAR is against LOT area, so it binds below 1,100 sq ft on any lot under roughly 7,333 sq ft',
+      condition: 'total size of the secondary apartment',
+      cite: '§ 25-2-1463(C)(5)(a)',
+      baseline: true,
+    },
+    {
+      kind: 'capped',
+      sqFt: 550,
+      condition: 'the SECOND STORY only, if any — a separate cap that applies on top of the total',
+      cite: '§ 25-2-1463(C)(5)(b)',
+    },
+  ],
+  // ⚠️ Austin states BOTH a height in feet and a storey count, which is unusual —
+  // most cities in this file state one or the other. Both are carried and nothing
+  // is converted (rule 12).
+  maxHeightFt: [
+    { form: 'figure', value: 30, condition: 'maximum height of a secondary apartment; it is separately limited to two storeys', cite: '§ 25-2-1463(C)(4)', baseline: true },
+  ],
+  maxStories: { value: 2, condition: 'stated alongside the 30 ft limit, not derived from it', cite: '§ 25-2-1463(C)(4)' },
+  heightDefersToBaseZone: null,
+  notes: [
+    '⚠️ DETACHED ONLY. A secondary apartment "must be located in a structure other than the principal structure" (§ 25-2-1463(B), repeated at (C)(1)) — so unlike most cities read here, Austin permits no attached or interior ADU under this article.',
+    'Placement: at least 10 feet to the rear or side of the principal structure, or above a detached garage; it may be connected to the principal structure by a covered walkway (§ 25-2-1463(C)(2)–(3)).',
+    'Permitted in SF-1, SF-2, SF-3, SF-5, SF-6, MF-1 through MF-6, and the MU combining district (§ 25-2-1462). ⚠️ SF-4 is absent from that list, which is the section\u2019s own enumeration and not an omission inferred here.',
+    'Site-wide limits accompany the unit: impervious cover may not exceed 45 percent and building cover 40 percent (§ 25-2-1463(D)–(E)). These bind the whole site, not the apartment, so they can constrain an otherwise-compliant unit.',
+    'Not permitted in combination with a cottage or urban home special use (§ 25-2-1463(A)).',
+    '⚠️ IT IS A "SPECIAL USE", and what that means procedurally was NOT read. § 25-2-1461 states the article "applies to a secondary apartment special use"; whether that is by right, by permit, or by discretionary approval is defined elsewhere in ch. 25-2 and is unestablished here. That distinction is the difference between an entitlement and an obstacle, so it is left open rather than assumed.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'Municode Austin Code of Ordinances — the publication Austin\u2019s own City and Land Development Code page designates',
+    codifiedThrough: 'Supplement 173, codified through Ordinance No. 20260226-050, online content updated 2026-04-23',
+    amendingThisSection: [],
+    note: 'Municode publishes a codified-through date and supplement number but no pending-ordinance list, so `amendingThisSection: []` records that no list exists to read. The section\u2019s own source line ends at Ord. No. 20250227-039 (effective 2025-10-01), which is inside the codified-through window, so the text read is current as published.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -1580,7 +1647,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   miami: { city: 'miami', state: FL, stateApplies: NA, local: MIAMI_LOCAL },
   charlotte: { city: 'charlotte', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Charlotte') },
   raleigh: { city: 'raleigh', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Raleigh') },
-  austin: { city: 'austin', state: NO_PROVISION.tx, stateApplies: NA, local: NOT_READ_LOCAL('Austin') },
+  austin: { city: 'austin', state: NO_PROVISION.tx, stateApplies: NA, local: AUSTIN_LOCAL },
   dallas: { city: 'dallas', state: NO_PROVISION.tx, stateApplies: NA, local: NOT_READ_LOCAL('Dallas') },
   columbus: { city: 'columbus', state: NO_PROVISION.oh, stateApplies: NA, local: NOT_READ_LOCAL('Columbus') },
   milwaukee: { city: 'milwaukee', state: NO_PROVISION.wi, stateApplies: NA, local: NOT_READ_LOCAL('Milwaukee') },
@@ -1687,6 +1754,12 @@ export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = O
     competing: ['carriage house', 'granny flat', 'guest house', 'Carriage Lot'],
     distinguishedBy:
       'Nothing to distinguish on the dwelling term: "carriage house", "granny flat" and "guest house" appear ZERO times in DZC Articles 11 and 13. ⚠️ "Carriage Lot" IS a live DZC term (§ 11.8.2.1.D allows an ADU on one even with no primary use, subject to § 12.10.4) — but it names a LOT TYPE, not a dwelling, so it does not compete with the ADU term. Checked in the current code only; Former Chapter 59 was amended by the same measure and its own vocabulary was NOT separately checked.',
+  },
+  austin: {
+    canonical: 'Secondary Apartment — Austin City Code §§ 25-2-1461 to 25-2-1463',
+    competing: ['accessory dwelling unit', 'garage apartment'],
+    distinguishedBy:
+      '⚠️ THE OPERATIVE TERM IS NEITHER "ACCESSORY" NOR "ADU". "accessory dwelling unit" returns eight hits, every one inside Chapter 25-3 (Traditional Neighborhood District) — a niche chapter — while the governing article sits in Chapter 25-2, the main zoning chapter, under "Secondary Apartment". Austin does not use the ADU abbreviation for it at all, so unlike Miami there is not even a shared acronym to hint at the match.',
   },
   miami: {
     canonical: 'Ancillary Dwelling Unit (ADU) — Miami 21 § 3.18, defined in Article 1',

@@ -161,7 +161,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'miami', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'denver', 'la', 'lasvegas', 'miami', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -571,7 +571,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
     // Only Seattle earned the strong form. The other four each disclose, in
     // their own wording, that no list was available — so the assertion matches
     // the DISCLOSURE, not one city's phrasing.
-    const weak = ['boston', 'denver', 'la', 'lasvegas', 'sandiego', 'sanjose', 'sf']
+    const weak = ['austin', 'boston', 'denver', 'la', 'lasvegas', 'sandiego', 'sanjose', 'sf']
     for (const c of ADU_LOCAL_READ) {
       const l = aduRulesFor(c).local
       if (l.kind !== 'read' || l.pending.kind !== 'checked') continue
@@ -597,7 +597,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['boston', 'denver', 'la', 'lasvegas', 'miami', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['austin', 'boston', 'denver', 'la', 'lasvegas', 'miami', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1342,7 +1342,7 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
     expect([...new Set(withMeasure)].sort()).toEqual(['denver', 'la', 'sanjose', 'sf'])
     // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
     // their measure — declared, so the gap is countable rather than invisible.
-    expect([...new Set(without)].sort()).toEqual(['phoenix', 'sandiego', 'seattle'])
+    expect([...new Set(without)].sort()).toEqual(['austin', 'phoenix', 'sandiego', 'seattle'])
   })
 })
 
@@ -1689,5 +1689,82 @@ describe('Miami — Miami 21 § 3.18, and the city that says ANCILLARY', () => {
     const n = local.notes.find((x) => /does not say whether Lot Area is net or gross/.test(x))!
     expect(n).toMatch(/was NOT read/)
     expect(n).toMatch(/no reading is assumed/)
+  })
+})
+
+describe('Austin — "Secondary Apartment", and the term shares no acronym', () => {
+  const rules = aduRulesFor('austin')
+  if (rules.local.kind !== 'read') throw new Error('expected a read local layer')
+  const local = rules.local
+
+  it('⚠️ the eight "accessory dwelling unit" hits are ALL the wrong chapter', () => {
+    // Every one sits in Chapter 25-3, Traditional Neighborhood District — a niche
+    // chapter. The operative article is in Chapter 25-2, the main zoning chapter,
+    // under a different noun. Reading the eight and stopping would have produced
+    // a rule governing almost no Austin parcel.
+    const v = ADU_VOCABULARY_CHECK.austin
+    expect(v.canonical).toMatch(/Secondary Apartment/)
+    expect(v.distinguishedBy).toMatch(/Chapter 25-3/)
+    expect(v.distinguishedBy).toMatch(/Chapter 25-2/)
+    // ⚠️ And the part that makes Austin harder than Miami.
+    expect(v.distinguishedBy).toMatch(/not even a shared acronym/)
+    expect(local.citation).toMatch(/Secondary Apartment/)
+  })
+
+  it('⚠️ the eighth ratio, and the first written as a FAR', () => {
+    // "1,100 total square feet or a floor-to-area ratio of 0.15, whichever is
+    // SMALLER". Miami's shape — a lot-based ratio capped by a figure — but as a
+    // FAR. It binds below 1,100 on any lot under roughly 7,333 sq ft, so
+    // publishing 1,100 would overstate widely.
+    const b = local.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(b.kind).toBe('not-numeric')
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/floor-to-area ratio of 0\.15/)
+    expect(b.rule).toMatch(/against LOT area/)
+    expect(b.rule).toMatch(/7,333/)
+    expect(effectiveMaxSize(rules).value).toBeNull()
+  })
+
+  it('carries the second-storey cap as a SEPARATE limit, not an alternative', () => {
+    // 550 sq ft on the second storey applies on top of the total, not instead of
+    // it. Treating it as an alternative would let a two-storey unit read as
+    // capped at 550 overall.
+    const c = local.maxSizeSqFt.find((m) => m.kind === 'capped')!
+    if (c.kind !== 'capped') throw new Error('unreachable')
+    expect(c.sqFt).toBe(550)
+    expect(c.condition).toMatch(/on top of the total/)
+    expect(c.baseline).toBeUndefined()
+  })
+
+  it('⚠️ states BOTH feet and storeys, and neither is derived from the other', () => {
+    // Unusual in this file — most cities state one. Both are carried as printed
+    // (rule 12), so nothing is converted in either direction.
+    const h = local.maxHeightFt.find((x) => x.baseline)!
+    if (h.form !== 'figure') throw new Error('unreachable')
+    expect(h.value).toBe(30)
+    expect(local.maxStories?.value).toBe(2)
+    expect(local.maxStories?.condition).toMatch(/not derived from it/)
+  })
+
+  it('⚠️ DETACHED ONLY — no attached or interior unit under this article', () => {
+    const n = local.notes.find((x) => /DETACHED ONLY/.test(x))!
+    expect(n).toMatch(/other than the principal structure/)
+    expect(n).toMatch(/no attached or interior ADU/)
+  })
+
+  it('⚠️ leaves "special use" unresolved rather than assuming it is by right', () => {
+    // The difference between an entitlement and an obstacle. § 25-2-1461 says the
+    // article applies to a "secondary apartment special use"; what that means
+    // procedurally is defined elsewhere and was not read.
+    const n = local.notes.find((x) => /IT IS A "SPECIAL USE"/.test(x))!
+    expect(n).toMatch(/was NOT read/)
+    expect(n).toMatch(/entitlement and an obstacle/)
+  })
+
+  it('records the site-wide covers that can bind an otherwise-compliant unit', () => {
+    const n = local.notes.find((x) => /impervious cover/.test(x))!
+    expect(n).toMatch(/45 percent/)
+    expect(n).toMatch(/40 percent/)
+    expect(n).toMatch(/bind the whole site/)
   })
 })
