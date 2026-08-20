@@ -321,7 +321,7 @@ decision from un-pinning a year, and one of them is named "beta".
 
 ---
 
-## ADU — DONE 2026-08-19, five cities read, eighteen declared unread
+## ADU — DONE 2026-08-19; all five preempted cities' LOCAL layer read, eighteen declared unread
 
 `netlify/functions/lib/zoning/adu.ts`, wired into the ADU hurdle.
 
@@ -504,10 +504,72 @@ So `PendingCheck` is required on every local ordinance. `checked` with an empty
 `amendingThisSection` is a RESULT; `not-checked` is an admission, and they cannot
 render alike.
 
-| city | pending check |
+| city | pending check | codified through |
+|---|---|---|
+| seattle | **checked, clean, and the only STRONG one** — a list of 17 pending ordinances existed and was read; the only one touching Ch. 23.42 is Ord. 127436 (§§ 23.42.054/.056, transitional encampments), which does not reach .022 | Ord. 127423 |
+| sanjose | checked — the page displayed **no pending list at all**, which is not the same as a list containing nothing | Ord. 31330, 2026-06-16 |
+| la | checked — amlegal publishes **no pending list for Chapter I**; its only amending table is scoped to Chapter 1A, a different instrument. And five months stale. | legislation effective 2026-03-31 |
+| sf | checked — no pending list either, but the **narrowest gap of the four**: nine days | Ord. 128-26, effective 2026-08-10 |
+| sandiego | checked (backfilled 2026-08-19) — no pending list on the code index; closed instead by the section's **own inline amendment history** | O-22109 N.S., effective 2026-07-15 |
+
+**⚠️ An empty `amendingThisSection` means something different in every row, and
+only Seattle earned the strong form.** Four of the five records "no list exists to
+read"; one records "a list was read and was empty". A test asserts the disclosure
+per city and pins the membership, so a city added without one goes red rather than
+passing vacuously (rule 20).
+
+### ⚠️ The recodification check produces OPPOSITE results in two cities of one state
+
+Recorded because a clean negative that is not written down gets re-asked, and next
+time someone will assume it was never run.
+
+| city | what its ordinance cites | verdict |
+|---|---|---|
+| sf | Gov. Code **§§ 66314–66333** (§ 207.2(a), (b)) | ✓ tracked the 2024 recodification |
+| la | Gov. Code **§ 65852.2 and § 65852.22** (§ 12.22 A.33(a), (b)(4)–(6)) | ⚠️ superseded — and it does not merely reference them, it **delegates whole ADU categories** to them |
+
+LA's § 12.22 A.33 was added by Ord. 186,481 in 2019 and carries no later amendment
+note, which is why it never followed the chapter. How its delegating paragraphs
+now operate is a question for the city; the tool records it and does not resolve it.
+
+### ⚠️ The 50%-of-primary rule, drafted three ways
+
+The same substantive cap on an attached ADU, with three different degrees of
+self-resolution. This is only visible because four cities were read the same way.
+
+| city | drafting | resolved? |
+|---|---|---|
+| sanjose | 50% of the existing primary, and nothing further (§ 20.80.175.D.1.a) | **no** — on a 1,400 sq ft primary it caps at 700, below the 850 floor. Left as a question for the city. |
+| la | 50% (§ 12.22 A.33(e)(1)), then a **separate paragraph**: nothing in this subdivision shall prohibit 850 / 1,000 (e)(3) | yes, indirectly |
+| sf | 50% **or 850 sq ft, whichever is greater** — in the same sentence | yes, in-sentence |
+
+### ⚠️ San Francisco codifies the two-layer split ITSELF
+
+Every other city has one ADU section with the state floor underneath. SF has two
+parallel sections — § 207.1 *Local ADU Program* and § 207.2 *State Mandated ADU
+Program* — and they are **mutually exclusive**: § 207.1(b) applies citywide
+"except ADUs regulated by the State-Mandated Program". Which governs follows from
+how the unit is built, so merging them into one envelope would be rule 6 exactly.
+
+**And § 207.1's size limit is not a number.** It states no square-foot cap in any
+of its nine subsections; the binding rule is geometric (§ 207.1(c)(5) — within the
+existing lot's buildable area with no vertical addition, or inside an existing
+detached structure's built envelope), and it is frequently **tighter** than 850 sq
+ft. All three existing `LocalCap` states mis-describe that, and `no-maximum` is the
+dangerous one — it reads as permission. Hence a fourth state, `not-numeric`, and
+`effectiveMaxSize` gains `local-non-numeric`, which reports the state floor and
+says in terms that the local limit is not a quantity and not headroom.
+
+| city read | what it forced into the type |
 |---|---|
-| seattle | **checked, clean** — the only pending ordinance touching Ch. 23.42 is Ord. 127436 (§§ 23.42.054/.056, transitional encampments), which does not reach .022 |
-| sandiego | **not-checked** — read from a city PDF carrying no pending list; the reading is real and its currency is unverified |
+| sandiego | the `no-maximum` / `not-found` split — `null` was doing two jobs |
+| seattle | `baseline` on local caps |
+| sanjose | `maxHeightFt` — the first city to state ADU height in feet |
+| la | — (fitted the existing shape) |
+| sf | `not-numeric` — a stated limit that is not a quantity |
+
+Four of five cities forced a new shape. That is the honest signal about how much
+of this domain the type had covered.
 
 ### ⚠️ `baseline` was needed on local caps too — the same mistake, one layer down
 
