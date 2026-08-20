@@ -337,13 +337,27 @@ const SANDIEGO_LOCAL: LocalLayer = {
   // zone. So no figure is invented here; the base-zone limit the rest of this
   // engine already resolves is the one that applies, floored by the state.
   heightDefersToBaseZone: { cite: '§ 141.0302(a)(8)(C)' },
-  // ⚠️ NOT CHECKED, and said so rather than assumed. San Diego was read from a
-  // city-published PDF whose footer is dated 7-2026; that PDF carries no pending
-  // list, and no separate amendment docket was consulted. The reading is real and
-  // its currency is unverified — two different things.
+  // ⚠️ BACKFILLED 2026-08-19, from `not-checked`. The earlier state was honest —
+  // the PDF had been read and no docket consulted — but it was left open rather
+  // than closed, and an admission that stays put indefinitely becomes furniture.
+  //
+  // What closed it is the division PDF's own amendment history, which nobody had
+  // looked at: § 141.0302 carries amendment notes inline, and the latest inside
+  // the section's own span is O-22109, effective 2026-07-15. That is a month
+  // before this reading, and it is the latest amendment anywhere in the division
+  // (checked across all of them, not just the ones near the section). The footer
+  // revision (7-2026) agrees. The download was verified byte-identical against
+  // Content-Length before parsing — rule 22, after a 37 MB PDF once arrived short
+  // with HTTP 200.
   pending: {
-    kind: 'not-checked',
-    detail: 'Read from a city PDF dated 7-2026 that carries no pending-ordinance list. No amendment docket was consulted, so the text is current as published and its currency is unverified.',
+    kind: 'checked',
+    on: '2026-08-19',
+    source:
+      'City of San Diego municipal code index (city-clerk/officialdocs/municipal-code/chapter-14) and the Ch14Art01Division03.pdf amendment history it links',
+    codifiedThrough:
+      'O-22109 N.S., adopted 2026-06-15, effective 2026-07-15 — the latest amendment inside § 141.0302 and the latest anywhere in the division; PDF footer revision (7-2026)',
+    amendingThisSection: [],
+    note: 'San Diego publishes division PDFs with no pending-ordinance list anywhere on the code index, so `amendingThisSection: []` records that NO LIST EXISTS TO READ — the same weaker form as Los Angeles and San Francisco, not Seattle\'s read-and-empty. What carries the confidence here is instead the section\'s own inline amendment history running to an ordinance effective one month before this reading.',
   },
   notes: [
     'No minimum lot size is required for an ADU (§ 141.0302(a)(5)).',

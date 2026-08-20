@@ -382,13 +382,50 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
     expect(l.pending.note).toMatch(/23\.42\.054/)
   })
 
-  it('⚠️ San Diego says NOT-CHECKED rather than claiming a check it did not do', () => {
-    // The reading is real and its currency is unverified — two different things,
-    // and an empty `amendingThisSection` would have asserted the stronger one.
+  it('⚠️ San Diego, backfilled — closed by the PDF\'s own amendment history', () => {
+    // Was `not-checked`, which was honest but open-ended, and an admission left
+    // in place indefinitely becomes furniture. Closed by the thing nobody had
+    // looked at: § 141.0302 carries inline amendment notes, and the latest inside
+    // its own span is O-22109, effective 2026-07-15 — a month before the reading,
+    // and the latest anywhere in the division.
     const l = aduRulesFor('sandiego').local as Extract<ReturnType<typeof aduRulesFor>['local'], { kind: 'read' }>
-    expect(l.pending.kind).toBe('not-checked')
-    if (l.pending.kind !== 'not-checked') return
-    expect(l.pending.detail).toMatch(/currency is unverified/)
+    if (l.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(l.pending.codifiedThrough).toMatch(/O-22109/)
+    expect(l.pending.codifiedThrough).toMatch(/2026-07-15/)
+    expect(l.pending.note).toMatch(/NO LIST EXISTS TO READ/)
+  })
+
+  it('⚠️ an empty amendingThisSection means something different in every city', () => {
+    // rule 20 inside the instrument: `[]` is vacuously true wherever no list
+    // exists, and green would read as "nothing pending" when it means "nothing to
+    // read". Only Seattle earned the strong form — a list of 17 existed and was
+    // read. Every other city must say so in its note, and this asserts the
+    // distinction structurally rather than trusting four separate notes to keep
+    // saying it. Pinned by membership so a city added without a note goes RED.
+    // Only Seattle earned the strong form. The other four each disclose, in
+    // their own wording, that no list was available — so the assertion matches
+    // the DISCLOSURE, not one city's phrasing.
+    const weak = ['la', 'sandiego', 'sanjose', 'sf']
+    for (const c of ADU_LOCAL_READ) {
+      const l = aduRulesFor(c).local
+      if (l.kind !== 'read' || l.pending.kind !== 'checked') continue
+      if (l.pending.amendingThisSection.length > 0) continue
+      const note = l.pending.note ?? ''
+      if (weak.includes(c)) {
+        expect(note, c).toMatch(/no (pending-ordinance )?list/i)
+      } else {
+        // Seattle: a real list was read and found not to touch the section.
+        expect(c).toBe('seattle')
+        expect(note, c).not.toMatch(/no (pending-ordinance )?list/i)
+      }
+    }
+    // ⚠️ And the set is non-empty and pinned, so this cannot pass by finding
+    // nothing (rule 20) — the failure mode the rule exists for.
+    const checked = ADU_LOCAL_READ.filter((c) => {
+      const l = aduRulesFor(c).local
+      return l.kind === 'read' && l.pending.kind === 'checked'
+    })
+    expect(checked).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
