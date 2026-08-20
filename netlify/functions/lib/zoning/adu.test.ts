@@ -2051,3 +2051,44 @@ describe('⚠️ the third fan-out batch: Columbus, Milwaukee, Minneapolis', () 
     expect(summariseAdu(NON_NUMERIC_UNDER_FLOOR)).toMatch(/still applies as a minimum the city cannot refuse/)
   })
 })
+
+describe('⚠️ New York: an absence of the TERM is not an absence of constraint', () => {
+  it('stays no-provision — the MDL is not an ADU statute and sets no floor', () => {
+    // Zero occurrences of "accessory dwelling unit" across a 182-section corpus,
+    // with positive controls that fired. So New York genuinely does not preempt,
+    // and NYC's own code remains the source of the ADU rules themselves.
+    const st = aduRulesFor('nyc').state
+    expect(st.kind).toBe('no-provision')
+    if (st.kind !== 'no-provision') throw new Error('unreachable')
+    expect(st.basis).toMatch(/ZERO for "accessory dwelling"/)
+    expect(st.basis).toMatch(/positive controls that fired/)
+  })
+
+  it('⚠️ but names BOTH chapters read, because the zoning act alone was rule 23', () => {
+    // The scope originally recorded was the zoning enabling act — a thorough read
+    // of the right document that was not the only document. The Multiple Dwelling
+    // Law is not a zoning law and reclassifies a two-family house that adds a
+    // third unit, which no zoning search would ever surface.
+    const st = aduRulesFor('nyc').state
+    if (st.kind !== 'no-provision') throw new Error('expected no-provision')
+    expect(st.scopeRead).toMatch(/General City Law article 5-A/)
+    expect(st.scopeRead).toMatch(/Multiple Dwelling Law/)
+    expect(st.scopeRead).toMatch(/not a zoning law at all/)
+    // ⚠️ The constraint runs in the RESTRICTIVE direction. Every other state in
+    // this file either sets a minimum the city cannot refuse or says nothing;
+    // this one makes an ADU harder without mentioning ADUs, and the state layer
+    // has no shape for it. Pinned so the gap stays visible rather than settling.
+    expect(st.basis).toMatch(/NOT a floor and NOT a preemption/)
+    expect(st.basis).toMatch(/RESTRICTIVE direction/)
+  })
+
+  it('⚠️ no state in the file claims to model a restrictive constraint', () => {
+    // rule 20: this cannot pass by the category being empty — it asserts the
+    // partition. Every state layer is one of the four kinds, and `preempts` is
+    // defined as a floor. If a restrictive shape is ever added, this goes red and
+    // whoever adds it has to revisit New York rather than leave it in a string.
+    const kinds = new Set(ADU_LOCAL_READ.map((c) => aduRulesFor(c).state.kind))
+    for (const k of kinds) expect(['preempts', 'declines', 'no-provision', 'not-established']).toContain(k)
+    expect(kinds.size).toBeGreaterThanOrEqual(2)
+  })
+})
