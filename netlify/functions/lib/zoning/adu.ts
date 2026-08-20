@@ -1270,6 +1270,68 @@ const LASVEGAS_LOCAL: LocalLayer = {
   },
 }
 
+// ── BOSTON ──────────────────────────────────────────────────────────────────
+//
+// ⚠️ THE ONLY CITY IN THIS FILE WHERE NEITHER LAYER STATES A SIZE. Massachusetts
+// guarantees none (c. 40A § 3 reserves bulk and dimensions to the municipality;
+// § 1A's figure is a ceiling on the protected category, not a floor), and
+// Boston's own code states none either. So there is no publishable ADU size for
+// Boston from any instrument — an answer arrived at by reading both, not a gap.
+//
+// ⚠️ AND THE PROVISION IS PER-DISTRICT, NOT CITYWIDE. Boston zones through
+// neighborhood district articles that expressly supersede the citywide use
+// regulations: Article 60 states that its provisions "supersede Section 8-3 (Use
+// Regulations) and Articles 13 through 24 of this Code" and govern "where
+// conflicts exist". A full-text search of the whole code — controlled first, see
+// `pending` — finds "accessory dwelling" in exactly TWO of roughly twenty
+// neighborhood districts. Reading a figure before establishing that would have
+// produced a citywide claim from a two-district rule.
+const BOSTON_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Boston Zoning Code Article 60 (Greater Mattapan Neighborhood District) §§ 60-2, 60-3 and Article 53 (East Boston Neighborhood District); Text Amd. No. 467 § 3 (2024-02-07), No. 471 § 14g (2024-04-03), No. 474 § 1a (2024-05-30)',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    {
+      kind: 'not-numeric',
+      rule:
+        'no ADU-specific square-foot cap exists. An ADU is a Dwelling Unit and is bound by the subdistrict\u2019s own dimensional regulations — the same envelope, FAR, height and lot-coverage limits that bind any dwelling there',
+      condition:
+        '⚠️ and only in the two neighborhood districts whose articles provide for ADUs at all — Greater Mattapan R1/R2 and East Boston residential subdistricts',
+      cite: 'Boston Zoning Code art. 60 § 60-2; art. 53 Tables A–E',
+      baseline: true,
+    },
+  ],
+  maxHeightFt: [],
+  maxStories: null,
+  // Height comes from the subdistrict's dimensional tables like any other
+  // dwelling; the ADU provisions state none of their own.
+  heightDefersToBaseZone: { cite: 'Boston Zoning Code art. 60 § 60-3 and the subdistrict dimensional tables' },
+  notes: [
+    '⚠️ COVERAGE IS GEOGRAPHIC AND NARROW. A controlled full-text search of the entire Boston Zoning Code returns 18 hits for "accessory dwelling", every one of them inside Article 53 (East Boston) or Article 60 (Greater Mattapan). No citywide article — including Article 8, Regulation of Uses — names accessory dwelling units. For the rest of Boston the zoning code does not provide for them.',
+    'Greater Mattapan Residential 1: a lot may have two Dwelling Units exclusive of any ADU, and three including ADUs — so one ADU above the base (art. 60 § 60-2.1). Residential 2: three exclusive, four including — again one ADU (§ 60-2.2).',
+    '⚠️ The 2F, 3F and Multifamily Residential subdistricts of Greater Mattapan are NOT given ADU allowances by § 60-2. Their unit maxima are stated without the "exclusive of any ADU" language the R1 and R2 subdistricts carry, and no ADU provision appears for them. That is the section\u2019s own structure, read — not an inference from silence elsewhere.',
+    'The code distinguishes a "Detached Accessory Dwelling Unit" from a "Non-Detached Accessory Dwelling Unit", and both are excluded from the rule applying yard requirements at each actual lot line where several main buildings share a lot (art. 60 § 60-*, Two or More Main Buildings on One Lot).',
+    'Where a detached or non-detached ADU sits beside another dwelling on the same lot, the distance between them must be at least twice the minimum side yard depth the article requires for that other dwelling.',
+    // ⚠️ A LIVE TENSION BETWEEN THE TWO LAYERS, recorded because it is real and
+    // because resolving it is not this tool's job.
+    '⚠️ AN UNRESOLVED TENSION BETWEEN THE LAYERS. M.G.L. c. 40A § 3 forbids any zoning ordinance from prohibiting or requiring a special permit for a single ADU "in a single-family residential zoning district", and Boston is subject to c. 40A — the chapter contains no exclusion for it, checked across all 24 sections. Boston\u2019s code provides for ADUs in two neighborhood districts. Whether that is a conflict depends on whether Boston HAS "single-family residential zoning districts" within the statute\u2019s meaning: its residential subdistricts are R1, R2, 2F, 3F and MFR, and Greater Mattapan R1 permits two dwelling units. That is a question of statutory construction this tool records and does not answer.',
+    '⚠️ Article 53 (East Boston) was identified as carrying ADU provisions across its Tables A–E but its substantive text has NOT been read. The figures and conditions above come from Article 60. East Boston is a located source, not a read one.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'Municode "Redevelopment Authority" (Boston Zoning Code) code page and full-text search',
+    codifiedThrough: 'Text Amd. No. 494, effective 2026-01-12 (Update 46; online content updated 2026-03-03)',
+    amendingThisSection: [],
+    // ⚠️ The control ran BEFORE the query, per the Phoenix lesson: on Phoenix's
+    // own site a search for "zoning" returned zero and every absence from it was
+    // worthless. Here "dwelling" returns 450 results, so the search works and the
+    // narrow ADU spread is a measurement rather than a broken instrument.
+    note: 'Municode publishes a codified-through date but no pending-ordinance list, so `amendingThisSection: []` records that no list exists to read. ⚠️ The search was CONTROLLED before use: "dwelling" returns 450 results across this code, so the 18-hit ADU spread confined to two articles is a real measurement. That control exists because Phoenix\u2019s own code site returned zero for "zoning" and would have yielded a false absence. Online content was updated 2026-03-03, roughly five months before this reading.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -1308,7 +1370,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
     city: 'boston',
     state: MA,
     stateApplies: QUALIFIES('c. 40A § 3 binds any zoning ordinance or by-law; there is no population test'),
-    local: NOT_READ_LOCAL('Boston'),
+    local: BOSTON_LOCAL,
   },
   denver: {
     city: 'denver',

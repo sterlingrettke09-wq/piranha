@@ -147,7 +147,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['boston', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -557,7 +557,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
     // Only Seattle earned the strong form. The other four each disclose, in
     // their own wording, that no list was available — so the assertion matches
     // the DISCLOSURE, not one city's phrasing.
-    const weak = ['la', 'lasvegas', 'sandiego', 'sanjose', 'sf']
+    const weak = ['boston', 'la', 'lasvegas', 'sandiego', 'sanjose', 'sf']
     for (const c of ADU_LOCAL_READ) {
       const l = aduRulesFor(c).local
       if (l.kind !== 'read' || l.pending.kind !== 'checked') continue
@@ -580,7 +580,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['boston', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1158,9 +1158,15 @@ describe('⚠️ Massachusetts — the figure is in the DEFINITION, not the oper
     expect(st.size.detail).toMatch(/NOT a floor/)
     expect(st.size.detail).toMatch(/no size is guaranteed/i)
     // And nothing publishes a Massachusetts size figure.
+    // ⚠️ Boston's LOCAL layer is now read too, and states no size either — so
+    // the source is `local-non-numeric` rather than `state-no-figure`. Both
+    // publish nothing; what changed is which instrument was consulted last.
     const e = effectiveMaxSize(aduRulesFor('boston'))
     expect(e.value).toBeNull()
-    expect(e.source).toBe('state-no-figure')
+    expect(e.source).toBe('local-non-numeric')
+    // The state-only shape is still exercised, by construction.
+    expect(effectiveMaxSize({ ...aduRulesFor('boston'), local: { kind: 'not-read', detail: 'x' } }).source)
+      .toBe('state-no-figure')
   })
 
   it('records that a municipality may restrict FURTHER, and the only bound', () => {
@@ -1322,3 +1328,95 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
     expect([...new Set(without)].sort()).toEqual(['phoenix', 'sandiego', 'seattle'])
   })
 })
+
+describe('Boston — the only city where NEITHER layer states a size', () => {
+  const rules = aduRulesFor('boston')
+  if (rules.local.kind !== 'read') throw new Error('expected a read local layer')
+  const local = rules.local
+
+  it('⚠️ publishes no size, and that is an ANSWER from both instruments', () => {
+    // Massachusetts guarantees none — § 3 reserves bulk and dimensions, and
+    // § 1A's figure caps the protected category rather than granting a right.
+    // Boston's own articles state none either. Every other city in this file
+    // has a figure on at least one side; Boston has none on either, and both
+    // were read (rule 5 — an established absence, not a gap).
+    const e = effectiveMaxSize(rules)
+    expect(e.value).toBeNull()
+    const b = local.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(b.kind).toBe('not-numeric')
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/no ADU-specific square-foot cap exists/)
+    expect(b.rule).toMatch(/subdistrict’s own dimensional regulations/)
+  })
+
+  it('⚠️ the provision is PER-DISTRICT, covering two of about twenty', () => {
+    // The fork that had to be settled before reading a figure — the same shape
+    // as Phoenix's § 9-461.18(F) adoption question. Boston's neighborhood
+    // district articles expressly supersede the citywide use regulations, and
+    // only Articles 53 and 60 provide for ADUs at all.
+    const n = local.notes.find((x) => /COVERAGE IS GEOGRAPHIC AND NARROW/.test(x))!
+    expect(n).toMatch(/Article 53/)
+    expect(n).toMatch(/Article 60/)
+    expect(n).toMatch(/No citywide article/)
+    expect(n).toMatch(/Article 8/)
+    // The condition on the size entry carries the same scope, so a reader who
+    // reaches only for the cap still sees where it applies.
+    expect(b_condition(local)).toMatch(/only in the two neighborhood districts/)
+  })
+
+  it('records the count rule, which is what Article 60 actually regulates', () => {
+    // R1: two units exclusive of any ADU, three including — one ADU. R2: three
+    // exclusive, four including. The article states counts, not sizes.
+    const n = local.notes.find((x) => /Residential 1/.test(x))!
+    expect(n).toMatch(/exclusive of any ADU/)
+    expect(n).toMatch(/§ 60-2\.1/)
+    expect(n).toMatch(/§ 60-2\.2/)
+  })
+
+  it('⚠️ does not read ADU rights into the subdistricts that lack them', () => {
+    // 2F, 3F and MFR state unit maxima WITHOUT the "exclusive of any ADU"
+    // language R1 and R2 carry. That is the section's own structure; extending
+    // the R1 rule to them would be an inference from silence.
+    const n = local.notes.find((x) => /2F, 3F and Multifamily/.test(x))!
+    expect(n).toMatch(/NOT given ADU allowances/)
+    expect(n).toMatch(/not an inference from silence/)
+  })
+
+  it('⚠️ records the c. 40A tension without resolving it', () => {
+    // The state forbids requiring a special permit for one ADU "in a
+    // single-family residential zoning district"; Boston's residential
+    // subdistricts are R1/R2/2F/3F/MFR and R1 permits two units. Whether that
+    // is a conflict turns on statutory construction, which this tool does not do.
+    const n = local.notes.find((x) => /UNRESOLVED TENSION/.test(x))!
+    expect(n).toMatch(/single-family residential zoning district/)
+    expect(n).toMatch(/no exclusion for it, checked across all 24 sections/)
+    expect(n).toMatch(/records and does not answer/)
+  })
+
+  it('⚠️ says East Boston is LOCATED but not READ', () => {
+    // Article 53 carries ADU provisions across Tables A–E and its substantive
+    // text was not opened. A located source and a read one must not render
+    // alike, and the citation names both while the note says which is which.
+    // ⚠️ Matched on the distinguishing phrase, not on "Article 53" — the
+    // coverage note names that article too, so the loose predicate silently
+    // asserted against the wrong string.
+    const n = local.notes.find((x) => /has NOT been read/.test(x))!
+    expect(n).toMatch(/Article 53 \(East Boston\)/)
+    expect(n).toMatch(/located source, not a read one/)
+    expect(local.citation).toMatch(/Article 53/)
+  })
+
+  it('⚠️ its search was CONTROLLED before any absence was trusted', () => {
+    if (local.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(local.pending.note).toMatch(/CONTROLLED before use/)
+    expect(local.pending.note).toMatch(/450 results/)
+    // And it names why the control exists, so the habit survives the author.
+    expect(local.pending.note).toMatch(/Phoenix/)
+    expect(local.pending.codifiedThrough).toMatch(/Text Amd\. No\. 494/)
+  })
+})
+
+function b_condition(l: Extract<ReturnType<typeof aduRulesFor>['local'], { kind: 'read' }>): string {
+  const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+  return b.kind === 'not-found' ? '' : b.condition
+}
