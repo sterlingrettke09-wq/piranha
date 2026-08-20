@@ -3,7 +3,22 @@ import {
   aduRulesFor, summariseAdu, effectiveMaxSize, ADU_LOCAL_READ, ADU_STATE_PREEMPTED,
 } from './adu'
 import { CITIES } from '../../../../src/config/cities'
-import type { AduRules } from './adu'
+import type { AduRules, AduFloor, StateLayer, StatePreempts } from './adu'
+
+/** Narrowing helpers. The dimension shape is a union now, so a test that wants
+ *  numeric floors has to say so — which is the point of the redesign. */
+const stateOf = (c: string): StatePreempts => {
+  const st = aduRulesFor(c).state
+  if (st.kind !== 'preempts') throw new Error(`${c} is not preempted`)
+  return st
+}
+const dimFloors = (d: StatePreempts['size']): AduFloor[] => (d.kind === 'floors' ? d.floors : [])
+const sizeFloors = (f: StatePreempts) => dimFloors(f.size)
+const heightFloors = (f: StatePreempts) => dimFloors(f.height)
+const setbackFigure = (f: StatePreempts): number | null => {
+  const b = dimFloors(f.setback).find((x) => x.baseline)
+  return b && b.form === 'figure' ? b.value : null
+}
 
 // ⚠️ SYNTHETIC ON PURPOSE (rule 29). Three tests below used San Francisco as the
 // stand-in for "state floor known, local ordinance unread" — and San Francisco was
@@ -14,7 +29,8 @@ import type { AduRules } from './adu'
 // stable fixture: it exercises the branch by construction and cannot be read away.
 const FLOOR_ONLY: AduRules = {
   city: 'sf',
-  stateFloor: aduRulesFor('sf').stateFloor,
+  state: aduRulesFor('sf').state,
+  stateApplies: aduRulesFor('sf').stateApplies,
   local: { kind: 'not-read', detail: 'synthetic fixture — see the note above' },
 }
 
@@ -23,22 +39,41 @@ describe('which body of law governs', () => {
     // The first place this tool reads a source ABOVE the city. Getting it wrong
     // produces a confident number from the wrong instrument.
     for (const c of ['la', 'sf', 'sanjose', 'sandiego']) {
-      expect(aduRulesFor(c).stateFloor?.state, c).toBe('California')
+      expect(stateOf(c).state, c).toBe('California')
     }
   })
 
   it('routes Seattle to Washington state law', () => {
-    expect(aduRulesFor('seattle').stateFloor?.state).toBe('Washington')
+    expect(stateOf('seattle').state).toBe('Washington')
   })
 
   it('⚠️ says nobody has looked, rather than that the city has no rules', () => {
-    // rule 5. "Denver has no ADU rules" would be a finding; nobody has looked.
-    const a = aduRulesFor('denver')
-    // TWO different absences, kept apart: no state statute preempts (a finding
-    // about the state) and the local ordinance is unread (nobody looked).
-    expect(a.stateFloor).toBeNull()
+    // rule 5. "Atlanta has no ADU rules" would be a finding; nobody has looked.
+    // ⚠️ The fixture moved from Denver to Atlanta because DENVER STOPPED
+    // QUALIFYING — Colorado's statute was found on 2026-08-20, so Denver is no
+    // longer a nothing-established city. Rule 29 in action: a fixture chosen for
+    // being unread is drawn from the front of the work queue. Atlanta is a
+    // structurally better example only while Georgia stays blocked, and the
+    // guard below pins that set so this cannot rot silently.
+    const a = aduRulesFor('atlanta')
+    expect(a.state.kind).toBe('not-established')
     expect(a.local.kind).toBe('not-read')
     expect(summariseAdu(a)).toMatch(/nobody has looked/)
+  })
+
+  it('⚠️ Denver has a STATUTE but an unverified applicability, and says which', () => {
+    // rule 24 at the state layer: Colorado's mandate is real and cited, and
+    // whether it reaches Denver turns on an MPO test nobody checked. Claiming
+    // the floor for Denver would be a jurisdiction-level truth applied to a city
+    // that was never tested against it.
+    const d = aduRulesFor('denver')
+    expect(d.state.kind).toBe('preempts')
+    expect(d.stateApplies.kind).toBe('not-established')
+    if (d.stateApplies.kind !== 'not-established') throw new Error('unreachable')
+    expect(d.stateApplies.why).toMatch(/metropolitan planning organisation/i)
+    expect(d.stateApplies.why).toMatch(/must not be assumed from size/)
+    // And nothing is published for it.
+    expect(effectiveMaxSize(d).value).toBeNull()
   })
 
   it('covers every live city explicitly, with no silent default', () => {
@@ -49,7 +84,7 @@ describe('which body of law governs', () => {
     for (const slug of live) expect(aduRulesFor(slug).city, slug).toBe(slug)
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
-    expect([...ADU_STATE_PREEMPTED]).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
     expect([...ADU_LOCAL_READ]).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
@@ -69,11 +104,20 @@ describe('⚠️ a state floor is a floor, not an envelope', () => {
 
   it('every dimension list has exactly one baseline, or summarising throws', () => {
     // A list with no baseline used to fall back to the largest entry, silently.
+    // ⚠️ Only where the dimension IS a list of floors. Massachusetts reserves
+    // both dimensions to the city and Nevada addresses neither, so requiring a
+    // baseline there would demand a number the statute does not have.
+    let checked = 0
     for (const c of ADU_STATE_PREEMPTED) {
-      const f = aduRulesFor(c).stateFloor!
-      expect(f.floors.sizeSqFt.filter((x) => x.baseline), c).toHaveLength(1)
-      expect(f.floors.heightFt.filter((x) => x.baseline), c).toHaveLength(1)
+      const f = stateOf(c)
+      for (const d of [f.size, f.height, f.setback]) {
+        if (d.kind !== 'floors') continue
+        expect(d.floors.filter((x) => x.baseline), c).toHaveLength(1)
+        checked++
+      }
     }
+    // rule 20: this must not pass by finding nothing.
+    expect(checked).toBeGreaterThanOrEqual(12)
   })
 
   it('says so in the summary, in the same sentence as the numbers', () => {
@@ -91,13 +135,14 @@ describe('⚠️ a state floor is a floor, not an envelope', () => {
     for (const c of ADU_STATE_PREEMPTED) {
       if (aduRulesFor(c).local.kind === 'read') continue // a local cap IS a maximum
       const t = summariseAdu(aduRulesFor(c))
+      if (/does not address|reserves|not a fixed figure|states no floor|may not reach/.test(t)) continue
       expect(t, c).not.toMatch(/maximum of|at most|no larger than|cannot exceed/)
     }
   })
 })
 
 describe('California, as read from the statute', () => {
-  const a = aduRulesFor('sf').stateFloor!
+  const a = stateOf('sf')
 
   it('⚠️ keeps 850 and 800 apart — they are different provisions', () => {
     // § 66321(b)(2) caps how low a city's max-size ordinance may go. § 66321(b)(3)
@@ -105,26 +150,26 @@ describe('California, as read from the statute', () => {
     // buildable NOTWITHSTANDING lot coverage, FAR, open space, front setbacks and
     // minimum lot size. One constrains a number, the other overrides a family of
     // standards — collapsing them to a single figure loses the more useful half.
-    const sizes = a.floors.sizeSqFt
-    expect(sizes.map((s) => s.value).sort((x, y) => x - y)).toEqual([800, 850, 1000])
-    const eight = sizes.find((s) => s.value === 800)!
+    const sizes = sizeFloors(a)
+    expect(sizes.map((s) => (s as Extract<AduFloor,{form:'figure'}>).value).sort((x, y) => x - y)).toEqual([800, 850, 1000])
+    const eight = sizes.find((s) => s.form === 'figure' && s.value === 800)!
     expect(eight.cite).toBe('§ 66321(b)(3)')
     expect(eight.condition).toMatch(/regardless of lot coverage, FAR, open space/)
-    expect(sizes.find((s) => s.value === 850)!.cite).toBe('§ 66321(b)(2)(A)')
+    expect(sizes.find((s) => s.form === 'figure' && s.value === 850)!.cite).toBe('§ 66321(b)(2)(A)')
   })
 
   it('carries all four height floors with their conditions', () => {
-    expect(a.floors.heightFt.map((h) => h.value)).toEqual([16, 18, 18, 25])
+    expect(heightFloors(a).map((h) => (h as Extract<AduFloor,{form:'figure'}>).value)).toEqual([16, 18, 18, 25])
     // The two 18s are different provisions — transit proximity and multifamily
     // multistory — and are NOT deduplicated.
-    expect(a.floors.heightFt.filter((h) => h.value === 18).map((h) => h.cite)).toEqual([
+    expect(heightFloors(a).filter((h) => h.form === 'figure' && h.value === 18).map((h) => h.cite)).toEqual([
       '§ 66321(b)(4)(B)',
       '§ 66321(b)(4)(C)',
     ])
     // ⚠️ The attached case is the one that can go DOWN: 25 ft or the primary
     // dwelling's own limit, whichever is LOWER. Reading it as a flat 25 would
     // overstate on a low-rise lot.
-    expect(a.floors.heightFt.find((h) => h.value === 25)!.condition).toMatch(/whichever is LOWER/)
+    expect(heightFloors(a).find((h) => h.form === 'figure' && h.value === 25)!.condition).toMatch(/whichever is LOWER/)
   })
 
   it('cites the recodified chapter, not the repealed section', () => {
@@ -139,36 +184,36 @@ describe('California, as read from the statute', () => {
 
   it('records ministerial approval, which is what makes it an entitlement', () => {
     expect(a.protections.join(' ')).toMatch(/MINISTERIALLY/)
-    expect(a.floors.maxSetbackFt?.value).toBe(4)
+    expect(setbackFigure(a)).toBe(4)
   })
 })
 
 describe('Washington, as read from the statute', () => {
-  const a = aduRulesFor('seattle').stateFloor!
+  const a = stateOf('seattle')
 
   it('carries the size, height and count floors', () => {
-    expect(a.floors.sizeSqFt[0].value).toBe(1000)
-    expect(a.floors.heightFt[0].value).toBe(24)
-    expect(a.floors.count[0].value).toBe(2)
+    expect((sizeFloors(a)[0] as Extract<AduFloor,{form:'figure'}>).value).toBe(1000)
+    expect((heightFloors(a)[0] as Extract<AduFloor,{form:'figure'}>).value).toBe(24)
+    expect(a.count[0].value).toBe(2)
   })
 
   it('⚠️ keeps the urban-growth-area scope clause on the count', () => {
     // The statute binds lots "within an urban growth area" in districts allowing
     // single-family homes. Dropping that states the rule more broadly than the
     // legislature wrote it — rule 23, absence within a scope.
-    expect(a.floors.count[0].condition).toMatch(/inside an urban growth area/)
+    expect(a.count[0].condition).toMatch(/inside an urban growth area/)
   })
 
   it('⚠️ leaves maxSetbackFt null, because the statute sets no figure', () => {
     // It forbids setbacks MORE RESTRICTIVE than the principal unit's, which is a
     // different instrument entirely. Inventing a number here — 4 ft, say, by
     // analogy with California — is exactly rule 4.
-    expect(a.floors.maxSetbackFt).toBeNull()
+    expect(setbackFigure(a)).toBeNull()
     expect(a.protections.join(' ')).toMatch(/more restrictive than for the principal unit/i)
   })
 
   it('records the height floor deferring to a lower principal-unit limit', () => {
-    expect(a.floors.heightFt[0].condition).toMatch(/unless the principal unit’s own limit is lower/)
+    expect(heightFloors(a)[0].condition).toMatch(/unless the principal unit’s own limit is lower/)
   })
 
   it('records the owner-occupancy ban, which changes who can build', () => {
@@ -179,12 +224,20 @@ describe('Washington, as read from the statute', () => {
 describe('every read entry carries its citation and date', () => {
   it('so a figure can never be traced to nobody', () => {
     for (const c of ADU_STATE_PREEMPTED) {
-      const a = aduRulesFor(c).stateFloor!
+      const a = stateOf(c)
       expect(a.citation.length, c).toBeGreaterThan(20)
       expect(a.readOn, c).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-      for (const f of [...a.floors.sizeSqFt, ...a.floors.heightFt, ...a.floors.count]) {
-        expect(f.cite.length, `${c} ${String(f.value)}`).toBeGreaterThan(4)
-        expect(f.condition.length, `${c} ${String(f.value)}`).toBeGreaterThan(10)
+      expect(a.effectiveFrom, c).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(a.appliesTo.length, c).toBeGreaterThan(20)
+      for (const f of [...sizeFloors(a), ...heightFloors(a), ...dimFloors(a.setback), ...a.count]) {
+        expect(f.cite.length, `${c} ${f.condition}`).toBeGreaterThan(4)
+        expect(f.condition.length, `${c} ${f.cite}`).toBeGreaterThan(10)
+      }
+      // ⚠️ And a dimension that is NOT a list still has to explain itself —
+      // otherwise `not-addressed` becomes a silent shrug.
+      for (const d of [a.size, a.height, a.setback]) {
+        if (d.kind === 'reserved-to-city') expect(d.detail.length + d.cite.length, c).toBeGreaterThan(30)
+        if (d.kind === 'not-addressed') expect(d.detail.length, c).toBeGreaterThan(30)
       }
     }
   })
@@ -197,7 +250,7 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     // the answer understates by 41%, in the direction that reads as
     // authoritative (rule 18).
     const r = aduRulesFor('sandiego')
-    expect(r.stateFloor?.state).toBe('California')
+    expect(stateOf('sandiego').state).toBe('California')
     expect(r.local.kind).toBe('read')
     const e = effectiveMaxSize(r)
     // ⚠️ `local-no-maximum` wins over any number: a conversion inside the
@@ -227,9 +280,48 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
   })
 
   it('a city with neither is unresolved, not zero and not permissive', () => {
-    const e = effectiveMaxSize(aduRulesFor('denver'))
+    // ⚠️ Atlanta, not Denver. Denver acquired a statute on 2026-08-20 and now
+    // returns `state-no-figure` — a live preemption whose reach is unverified —
+    // which is a DIFFERENT nothing from Atlanta's, where nobody has looked.
+    const e = effectiveMaxSize(aduRulesFor('atlanta'))
     expect(e.source).toBe('unresolved')
     expect(e.value).toBeNull()
+  })
+
+  it('⚠️ the four nothings are four different sources, never one null', () => {
+    // THE POINT OF THE REDESIGN. Under `stateFloor: X | null` all four of these
+    // produced an identical shrug. Florida's legislature read the question and
+    // handed it to the city; North Carolina's planning chapter was read whole
+    // and has no ADU provision; Nevada preempts but states no size; Georgia has
+    // not been looked at. Four facts, and only the last is ignorance.
+    const seen = new Map<string, string>()
+    for (const c of ['miami', 'charlotte', 'lasvegas', 'atlanta']) {
+      seen.set(c, effectiveMaxSize(aduRulesFor(c)).source)
+    }
+    expect(seen.get('miami')).toBe('state-declines')
+    expect(seen.get('charlotte')).toBe('unresolved')
+    expect(seen.get('lasvegas')).toBe('state-no-figure')
+    expect(seen.get('atlanta')).toBe('unresolved')
+    // Every one of them still publishes NO number — the distinction is in the
+    // reason, never in a figure invented to fill the gap.
+    for (const c of seen.keys()) expect(effectiveMaxSize(aduRulesFor(c)).value, c).toBeNull()
+
+    // ⚠️ And the two that share a `source` must NOT share a sentence: NC was
+    // read and Georgia was not.
+    const nc = summariseAdu(aduRulesFor('charlotte'))
+    const ga = summariseAdu(aduRulesFor('atlanta'))
+    expect(nc).toMatch(/contains no ADU provision/)
+    expect(nc).not.toMatch(/nobody has looked/)
+    expect(ga).toMatch(/nobody has looked/)
+    expect(ga).not.toMatch(/contains no ADU provision/)
+  })
+
+  it('⚠️ Florida is an ANSWER about Florida, not a gap in our reading', () => {
+    const s = summariseAdu(aduRulesFor('miami'))
+    expect(s).toMatch(/163\.31771/)
+    expect(s).toMatch(/MAY adopt an ordinance/i)
+    expect(s).toMatch(/leaves the decision to the city/)
+    expect(s).not.toMatch(/nobody has looked/)
   })
 
   it('⚠️ a local cap BELOW the floor would be overridden, not published', () => {
@@ -356,7 +448,7 @@ describe('Seattle, as read from the ordinance', () => {
     // A boundary worth pinning: the state forbids a cap BELOW 1,000 and Seattle's
     // baseline IS 1,000. That must read as the city allowing it, not the state
     // overriding the city.
-    expect(r.stateFloor!.floors.sizeSqFt[0].value).toBe(1000)
+    expect((sizeFloors(stateOf('seattle'))[0] as Extract<AduFloor,{form:'figure'}>).value).toBe(1000)
     expect(effectiveMaxSize(r).source).toBe('local')
   })
 })
@@ -466,16 +558,16 @@ describe('San José, as read from the ordinance', () => {
     // a row needed no figure and the type quietly implied none exists. San José
     // states four. Each city read has exposed a shape its predecessors did not.
     expect(local.heightDefersToBaseZone).toBeNull()
-    expect(local.maxHeightFt.map((h) => h.value)).toEqual([18, 25, 25])
+    expect(local.maxHeightFt.map((h) => (h as Extract<AduFloor,{form:'figure'}>).value)).toEqual([18, 25, 25])
     expect(local.maxHeightFt.filter((h) => h.baseline)).toHaveLength(1)
-    expect(local.maxHeightFt.find((h) => h.baseline)!.value).toBe(18)
+    expect((local.maxHeightFt.find((h) => h.baseline)! as Extract<AduFloor,{form:'figure'}>).value).toBe(18)
     expect(local.maxStories?.value).toBe(2)
   })
 
   it('exceeds the California floor on height as well as size', () => {
-    const floorHeight = r.stateFloor!.floors.heightFt.find((h) => h.baseline)!.value
+    const floorHeight = (heightFloors(stateOf('sanjose')).find((h) => h.baseline)! as Extract<AduFloor,{form:'figure'}>).value
     expect(floorHeight).toBe(16)
-    expect(local.maxHeightFt.find((h) => h.baseline)!.value).toBeGreaterThan(floorHeight)
+    expect((local.maxHeightFt.find((h) => h.baseline)! as Extract<AduFloor,{form:'figure'}>).value).toBeGreaterThan(floorHeight)
   })
 
   it('⚠️ records the 50%-of-primary rule as a ratio the model cannot hold', () => {
@@ -585,8 +677,8 @@ describe('Los Angeles — LAMC § 12.22 A.33', () => {
     expect(note).not.toMatch(/question for the city/)
     expect(note).toMatch(/not an uncertainty in this tool's reading/)
     // And our OWN citation still points at the live chapter.
-    expect(rules.stateFloor!.citation).toMatch(/66321/)
-    expect(rules.stateFloor!.citation).not.toMatch(/65852\.2/)
+    expect((rules.state as Extract<StateLayer,{kind:'preempts'}>).citation).toMatch(/66321/)
+    expect((rules.state as Extract<StateLayer,{kind:'preempts'}>).citation).not.toMatch(/65852\.2/)
   })
 
   it('⚠️ its pending check is the weakest of the three, and says so', () => {
@@ -648,7 +740,8 @@ describe('San Francisco — Planning Code §§ 207.1 and 207.2', () => {
     // branch nothing reaches is a branch nothing checks (rule 20).
     const synthetic: AduRules = {
       city: 'sf',
-      stateFloor: rules.stateFloor,
+      state: rules.state,
+      stateApplies: rules.stateApplies,
       local: {
         ...local,
         maxSizeSqFt: [
@@ -675,10 +768,10 @@ describe('San Francisco — Planning Code §§ 207.1 and 207.2', () => {
   it('carries the four heights, with the roof-pitch bonus as its own entry', () => {
     // 18 + 2 for an aligned roof pitch is a CONDITIONAL 20, not a flat one, and
     // the 16 ft belongs to the local rear-yard exception rather than to § 207.2.
-    expect(local.maxHeightFt.map((h) => h.value)).toEqual([18, 20, 25, 16])
-    expect(local.maxHeightFt.find((h) => h.baseline)!.value).toBe(18)
-    expect(local.maxHeightFt.find((h) => h.value === 20)!.condition).toMatch(/roof pitch/)
-    expect(local.maxHeightFt.find((h) => h.value === 16)!.cite).toMatch(/207\.1/)
+    expect(local.maxHeightFt.map((h) => (h as Extract<AduFloor,{form:'figure'}>).value)).toEqual([18, 20, 25, 16])
+    expect((local.maxHeightFt.find((h) => h.baseline)! as Extract<AduFloor,{form:'figure'}>).value).toBe(18)
+    expect(local.maxHeightFt.find((h) => h.form === 'figure' && h.value === 20)!.condition).toMatch(/roof pitch/)
+    expect(local.maxHeightFt.find((h) => h.form === 'figure' && h.value === 16)!.cite).toMatch(/207\.1/)
   })
 
   it('⚠️ records the local programme allowing UNLIMITED ADUs above four units', () => {

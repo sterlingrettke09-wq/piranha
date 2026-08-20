@@ -52,15 +52,113 @@ import { cityName } from '../../../../src/config/cities'
 // Same shape as the `heightUnconstrained` gap one week earlier: a fact that was
 // establishable and had nowhere in the type to live.
 
-/** The state statute that preempts, where one does. */
-export interface StateFloorLayer {
+// ── ⚠️ FOUR FACTS, NOT ONE NULLABLE FIELD ──────────────────────────────────
+//
+// This union replaced `stateFloor: StateFloorLayer | null`, and it is the main
+// result of surveying the sixteen jurisdictions behind the eighteen unread
+// cities. `null` was carrying four different facts that a reader cannot tell
+// apart, and two of them are ANSWERS while two are not:
+//
+//   • Florida HAS an ADU statute (§ 163.31771) which says a local government
+//     "MAY adopt an ordinance to allow" ADUs. That is the legislature declining
+//     to preempt — a finding about Florida, arrived at by reading it.
+//   • North Carolina's entire planning chapter was read, 494 KB of it, and
+//     contains no ADU provision. Also a finding, but a different one: an
+//     absence within a scope somebody named.
+//   • Georgia has not been looked at. Its official code is behind LexisNexis
+//     and the reachable mirrors are stale. Not a finding at all.
+//   • And where a statute DOES preempt, it may bind only some cities — three of
+//     the four preempting statutes carry a population or geography test.
+//
+// Rendering the first three identically is rule 5 at the state layer, one level
+// up from where `farUnconstrained` already solved it for zoning. The old comment
+// on the fallback said `stateFloor: null` meant "no state statute was found to
+// preempt, which is a finding about the state" — which was simply false for
+// Georgia and Tennessee, where nobody had looked.
+export type StateLayer = StatePreempts | StateDeclines | StateNoProvision | StateNotEstablished
+
+/** A state statute that sets rules the city may not go below. */
+export interface StatePreempts {
+  kind: 'preempts'
   state: string
   citation: string
   /** The date the statute text was read, not the date it was enacted. */
   readOn: string
-  floors: AduFloors
+  /** ⚠️ Effective date, carried because it is load-bearing. Nevada's mandate
+   *  took effect 2026-07-01 and Colorado's obligations began 2025-06-30 — a
+   *  statute that is on the books but not yet operative is not a floor. */
+  effectiveFrom: string
+  /** Who the statute binds. AZ reaches municipalities over 75,000; NV cities of
+   *  60,000 or more; CO "subject jurisdictions" inside an MPO. A city failing
+   *  the test is not preempted, so this cannot live in a per-state constant
+   *  alone — see `AduRules.stateApplies`. */
+  appliesTo: string
+  size: StateDimension
+  height: StateDimension
+  /** How many units the city must allow, and on what. */
+  count: Array<{ value: number | string; condition: string; cite: string }>
+  /** Maximum setback the city may require. `parity` where the statute pegs it
+   *  to the primary dwelling rather than stating a number. */
+  setback: StateDimension
   protections: string[]
 }
+
+/** ⚠️ THE STATUTE EXISTS AND DECLINES. Florida § 163.31771(3): a local
+ *  government "may adopt an ordinance to allow" ADUs. Enabling, not mandating.
+ *  This is an answer about the state and must never render as an absence. */
+export interface StateDeclines {
+  kind: 'declines'
+  state: string
+  citation: string
+  readOn: string
+  /** What the statute does instead of preempting. */
+  detail: string
+}
+
+/** We read a NAMED scope and found no ADU provision in it. An absence, and only
+ *  as good as the scope — which is why `scopeRead` is required and is prose a
+ *  reader can check rather than a boolean (rule 23). */
+export interface StateNoProvision {
+  kind: 'no-provision'
+  state: string
+  readOn: string
+  scopeRead: string
+  /** How the reading was verified, so a false absence from a broken fetch is
+   *  visible. Texas produced five identical 250,874-byte shells before this
+   *  field existed. */
+  basis: string
+}
+
+/** ⚠️ NOBODY HAS LOOKED. Not a finding; the absence of one. */
+export interface StateNotEstablished {
+  kind: 'not-established'
+  state: string
+  /** Why it is still open, so this does not read as neglect when it is a
+   *  blocked source. */
+  detail: string
+}
+
+// ── ⚠️ A DIMENSION IS NOT ALWAYS A LIST OF NUMBERS ─────────────────────────
+//
+// The old shape assumed every floor was `{ value: number }`, because the only
+// states read at the time were California and Washington, which both state
+// constants. Two of the four preempting statutes state neither dimension as a
+// number, and one addresses dimensions only to hand them back:
+//
+//   MA c. 40A § 3 preempts PROCESS and expressly reserves "dimensional setbacks
+//   and the bulk and height of structures" to the municipality — a stated
+//   answer.
+//   NV § 278.257(2) lists six conditions an ordinance may not impose, and size
+//   and height are not among them — the slot is filled and they are absent from
+//   it, which is a structural answer of a different and weaker kind.
+//
+// Both leave the city free; a reader deserves to know which one they have.
+export type StateDimension =
+  | { kind: 'floors'; floors: AduFloor[] }
+  /** The statute addresses this dimension and leaves it to the city. */
+  | { kind: 'reserved-to-city'; cite: string; detail: string }
+  /** The statute does not address this dimension at all. */
+  | { kind: 'not-addressed'; detail: string }
 
 /** ⚠️ `baseline` AGAIN, ONE LAYER DOWN — the same mistake, caught the same way.
  *
@@ -166,11 +264,30 @@ export type PendingCheck =
 
 export type LocalRead = LocalLayer | { kind: 'not-read'; detail: string }
 
+/** ⚠️ WHETHER THE STATUTE REACHES THIS CITY, which is a separate fact from
+ *  whether the statute exists. Rule 24 exactly: a reason code is a claim, and a
+ *  claim true of the jurisdiction can be false of the parcel — here, of the city.
+ *
+ *  Arizona binds municipalities over 75,000 and Phoenix plainly clears it.
+ *  Nevada binds cities of 60,000 or more and Las Vegas plainly clears it.
+ *  Colorado binds "subject jurisdictions" — a municipality of 1,000 or more
+ *  INSIDE A METROPOLITAN PLANNING ORGANISATION — and Denver has NOT been checked
+ *  against that test. It is obviously large enough; the MPO half is the part
+ *  nobody verified, and assuming it from size is how a city-level claim becomes
+ *  wrong about the one city it is applied to. */
+export type StateApplies =
+  | { kind: 'qualifies'; why: string }
+  | { kind: 'not-established'; why: string }
+  /** The state layer is not a preemption, so the question does not arise. */
+  | { kind: 'n-a' }
+
 export interface AduRules {
   city: string
-  /** Null where no state statute preempts — an answer for most cities, since
-   *  most states have none. Distinct from not having looked. */
-  stateFloor: StateFloorLayer | null
+  /** ⚠️ Never nullable. See the union's own note — `null` was carrying four
+   *  different facts, two of which are answers. */
+  state: StateLayer
+  /** Only meaningful when `state.kind === 'preempts'`. */
+  stateApplies: StateApplies
   local: LocalRead
 }
 
@@ -187,76 +304,102 @@ export interface AduRules {
  *  alternatives as though it were the figure, when the user has not chosen the
  *  programme it depends on. The baseline entry is what the city cannot refuse
  *  outright; the rest are named alongside it with their conditions intact. */
-export interface AduFloor {
-  value: number
-  condition: string
-  cite: string
-  /** True on the one entry that applies with no further qualification. */
-  baseline?: boolean
-}
+// ── ⚠️ AND A FLOOR IS NOT ALWAYS A CONSTANT ────────────────────────────────
+//
+// Arizona § 9-461.18(A)(3) guarantees an ADU of "75% of the gross floor area of
+// the single-family dwelling ... or 1,000 square feet, WHICHEVER IS LESS". That
+// is a function of a parcel input, so no figure can be published for Arizona
+// without the primary dwelling's size — and publishing 1,000 would OVERSTATE on
+// every lot whose primary is under 1,333 sq ft.
+//
+// ⚠️ Note the opposition with San Francisco, because the ingredients are
+// identical and the operator is not:
+//
+//     SF  § 207.2(d)     50% of primary OR   850 sq ft, whichever is GREATER
+//     AZ  § 9-461.18(A)(3)  75% of primary OR 1,000 sq ft, whichever is LESS
+//
+// A ratio FLOORED by a figure, against a ratio CAPPED by one. Same two
+// ingredients, opposite direction, opposite effect on a small primary dwelling.
+//
+// Colorado is a third form again: C.R.S. tit. 29 art. 35 does not state a floor
+// at all, it forbids a local law that "does not allow for accessory dwelling
+// unit sizes between five hundred and seven hundred fifty square feet". That
+// bars a cap at 400 and permits one at 750, and says nothing determinate about a
+// cap at 600 — so `band` carries the range AND the unresolved question, and no
+// figure is derived from it (rule 4).
+export type AduFloor =
+  /** The statute states a number. */
+  | { form: 'figure'; value: number; condition: string; cite: string; baseline?: boolean }
+  /** The statute states a rule that resolves only against a parcel input. */
+  | { form: 'derived'; rule: string; condition: string; cite: string; baseline?: boolean }
+  /** The statute forbids excluding a range. NOT a floor — see above. */
+  | { form: 'band'; low: number; high: number; unresolved: string; condition: string; cite: string; baseline?: boolean }
+  /** The statute pegs this dimension to another use rather than to a number. */
+  | { form: 'parity'; withUse: string; condition: string; cite: string; baseline?: boolean }
 
-export interface AduFloors {
-  /** Minimum maximum-size the city must allow, in sq ft of interior livable
-   *  space. Several states state more than one; each is kept with its own
-   *  condition rather than collapsed to the largest. */
-  sizeSqFt: AduFloor[]
-  /** Minimum height the city must allow, in feet, by configuration. */
-  heightFt: AduFloor[]
-  /** How many units the city must allow, and on what. */
-  count: Array<{ value: number | string; condition: string; cite: string }>
-  /** Maximum setback the city may require, in feet. Null where the statute sets
-   *  none — an answer, distinct from not having read it. */
-  maxSetbackFt: { value: number; cite: string } | null
-}
+
 
 // ── CALIFORNIA ──────────────────────────────────────────────────────────────
 // Gov. Code ch. 13 (§ 66310–66342). Read 2026-08-19 from leginfo.legislature.ca.gov.
-const CA: StateFloorLayer = {
+const CA: StatePreempts = {
+  kind: 'preempts',
   state: 'California',
   citation: 'Cal. Gov. Code §§ 66321, 66323 (Chapter 13, added by Stats. 2024, Ch. 7, Sec. 20; § 66321 amended by Stats. 2025, Ch. 520 (SB 543), effective 2026-01-01)',
   readOn: '2026-08-19',
-  floors: {
-    // ⚠️ 850 AND 800 ARE DIFFERENT PROVISIONS DOING DIFFERENT WORK, and
-    // collapsing them to one number would lose the more useful half. § 66321(b)(2)
-    // caps how low a city's MAX-SIZE ordinance may go. § 66321(b)(3) is stronger
-    // and narrower: an 800 sq ft ADU with four-foot setbacks must be buildable
-    // NOTWITHSTANDING lot coverage, FAR, open space, front setbacks and minimum
-    // lot size. One constrains a number; the other overrides a whole family of
-    // standards.
-    sizeSqFt: [
-      { value: 850, condition: 'a city may not cap an ADU below this', cite: '§ 66321(b)(2)(A)', baseline: true },
-      { value: 1000, condition: 'for an ADU with more than one bedroom', cite: '§ 66321(b)(2)(B)' },
+  effectiveFrom: '2026-01-01',
+  appliesTo: 'every city and county in the state — the chapter states no population threshold',
+  // ⚠️ 850 AND 800 ARE DIFFERENT PROVISIONS DOING DIFFERENT WORK, and
+  // collapsing them to one number would lose the more useful half. § 66321(b)(2)
+  // caps how low a city's MAX-SIZE ordinance may go. § 66321(b)(3) is stronger
+  // and narrower: an 800 sq ft ADU with four-foot setbacks must be buildable
+  // NOTWITHSTANDING lot coverage, FAR, open space, front setbacks and minimum
+  // lot size. One constrains a number; the other overrides a whole family of
+  // standards.
+  size: {
+    kind: 'floors',
+    floors: [
+      { form: 'figure', value: 850, condition: 'a city may not cap an ADU below this', cite: '§ 66321(b)(2)(A)', baseline: true },
+      { form: 'figure', value: 1000, condition: 'for an ADU with more than one bedroom', cite: '§ 66321(b)(2)(B)' },
       {
+        form: 'figure',
         value: 800,
         condition:
           'must be buildable with four-foot side and rear setbacks regardless of lot coverage, FAR, open space, front setbacks or minimum lot size',
         cite: '§ 66321(b)(3)',
       },
     ],
-    heightFt: [
-      { value: 16, condition: 'detached, on a single-family or multifamily lot', cite: '§ 66321(b)(4)(A)', baseline: true },
+  },
+  height: {
+    kind: 'floors',
+    floors: [
+      { form: 'figure', value: 16, condition: 'detached, on a single-family or multifamily lot', cite: '§ 66321(b)(4)(A)', baseline: true },
       {
+        form: 'figure',
         value: 18,
         condition:
-          'detached, within half a mile walking distance of a major transit stop or high-quality transit corridor; plus two more feet to match the primary dwelling’s roof pitch',
+          'detached, within half a mile walking distance of a major transit stop or high-quality transit corridor; plus two more feet to match the primary dwelling\u2019s roof pitch',
         cite: '§ 66321(b)(4)(B)',
       },
-      { value: 18, condition: 'detached, on a lot with a multifamily multistory dwelling', cite: '§ 66321(b)(4)(C)' },
+      { form: 'figure', value: 18, condition: 'detached, on a lot with a multifamily multistory dwelling', cite: '§ 66321(b)(4)(C)' },
       {
+        form: 'figure',
         value: 25,
         condition:
-          'attached to the primary dwelling — or the primary dwelling’s own limit, whichever is LOWER, and never more than two storeys',
+          'attached to the primary dwelling — or the primary dwelling\u2019s own limit, whichever is LOWER, and never more than two storeys',
         cite: '§ 66321(b)(4)(D)',
       },
     ],
-    count: [
-      { value: '1 ADU + 1 JADU', condition: 'within the existing or proposed space of a single-family dwelling or accessory structure (up to 150 sq ft of expansion, for ingress and egress only)', cite: '§ 66323(a)(1)' },
-      { value: 1, condition: 'detached new construction, on a single-family lot', cite: '§ 66323(a)(2)' },
-      { value: '25% of existing units, at least 1', condition: 'converted from non-livable space inside an existing multifamily building', cite: '§ 66323(a)(3)' },
-      { value: 8, condition: 'detached, on a lot with an existing multifamily dwelling — never more than the number of existing units', cite: '§ 66323(a)(4)(A)(ii)' },
-      { value: 2, condition: 'detached, on a lot with a proposed multifamily dwelling', cite: '§ 66323(a)(4)(A)(iii)' },
-    ],
-    maxSetbackFt: { value: 4, cite: '§ 66323(a)(2), § 66321(b)(3)' },
+  },
+  count: [
+    { value: '1 ADU + 1 JADU', condition: 'within the existing or proposed space of a single-family dwelling or accessory structure (up to 150 sq ft of expansion, for ingress and egress only)', cite: '§ 66323(a)(1)' },
+    { value: 1, condition: 'detached new construction, on a single-family lot', cite: '§ 66323(a)(2)' },
+    { value: '25% of existing units, at least 1', condition: 'converted from non-livable space inside an existing multifamily building', cite: '§ 66323(a)(3)' },
+    { value: 8, condition: 'detached, on a lot with an existing multifamily dwelling — never more than the number of existing units', cite: '§ 66323(a)(4)(A)(ii)' },
+    { value: 2, condition: 'detached, on a lot with a proposed multifamily dwelling', cite: '§ 66323(a)(4)(A)(iii)' },
+  ],
+  setback: {
+    kind: 'floors',
+    floors: [{ form: 'figure', value: 4, condition: 'the maximum side and rear setback a city may require', cite: '§ 66323(a)(2), § 66321(b)(3)', baseline: true }],
   },
   protections: [
     'The city must approve a qualifying application MINISTERIALLY — no hearing, no discretionary review (§ 66323(a)).',
@@ -267,38 +410,58 @@ const CA: StateFloorLayer = {
 
 // ── WASHINGTON ──────────────────────────────────────────────────────────────
 // RCW 36.70A.681. Read 2026-08-19 from app.leg.wa.gov.
-const WA: StateFloorLayer = {
+const WA: StatePreempts = {
+  kind: 'preempts',
   state: 'Washington',
   citation: 'RCW 36.70A.681 — Accessory dwelling units, limitations on local regulation',
   readOn: '2026-08-19',
-  floors: {
-    sizeSqFt: [
-      { value: 1000, condition: 'a city may not cap gross floor area below this', cite: 'RCW 36.70A.681(1)(f)', baseline: true },
+  effectiveFrom: '2024-06-06',
+  appliesTo: 'cities and counties planning under the Growth Management Act — the count provision is further scoped to lots inside an urban growth area',
+  size: {
+    kind: 'floors',
+    floors: [
+      { form: 'figure', value: 1000, condition: 'a city may not cap gross floor area below this', cite: 'RCW 36.70A.681(1)(f)', baseline: true },
     ],
-    heightFt: [
+  },
+  height: {
+    kind: 'floors',
+    floors: [
       {
+        form: 'figure',
         value: 24,
         condition:
-          'roof height — unless the principal unit’s own limit is lower, in which case the ADU may not be held below THAT',
+          'roof height — unless the principal unit\u2019s own limit is lower, in which case the ADU may not be held below THAT',
         cite: 'RCW 36.70A.681(1)(g)',
         baseline: true,
       },
     ],
-    count: [
+  },
+  count: [
+    {
+      value: 2,
+      // ⚠️ The scope clause is kept. The statute binds lots "within an urban
+      // growth area" in districts allowing single-family homes — dropping that
+      // would state the rule more broadly than the legislature wrote it.
+      condition:
+        'on any lot inside an urban growth area in a district that allows single-family homes; as one attached + one detached, two attached, or two detached',
+      cite: 'RCW 36.70A.681(1)(c)',
+    },
+  ],
+  // ⚠️ The statute sets no maximum setback FIGURE; it forbids setbacks more
+  // restrictive than the principal unit's. Under the old shape that had to be
+  // `maxSetbackFt: null` — indistinguishable from "we did not read it" — with
+  // the real rule demoted to a prose protection. `parity` says it directly.
+  setback: {
+    kind: 'floors',
+    floors: [
       {
-        value: 2,
-        // ⚠️ The scope clause is kept. The statute binds lots "within an urban
-        // growth area" in districts allowing single-family homes — dropping that
-        // would state the rule more broadly than the legislature wrote it.
-        condition:
-          'on any lot inside an urban growth area in a district that allows single-family homes; as one attached + one detached, two attached, or two detached',
-        cite: 'RCW 36.70A.681(1)(c)',
+        form: 'parity',
+        withUse: 'the principal unit',
+        condition: 'setbacks may not be more restrictive than for the principal unit; no figure is stated',
+        cite: 'RCW 36.70A.681(1)(h)',
+        baseline: true,
       },
     ],
-    // The statute sets no maximum setback figure; it forbids setbacks MORE
-    // restrictive than the principal unit's. That is a different instrument, so
-    // it is a protection rather than a number, and this stays null.
-    maxSetbackFt: null,
   },
   protections: [
     'No owner-occupancy requirement — the city may not require the owner to live on the lot (RCW 36.70A.681(1)(b)).',
@@ -314,6 +477,242 @@ const WA: StateFloorLayer = {
 // SDMC ch. 14 art. 1 div. 3, § 141.0302, from the city's own PDF (493,073 bytes,
 // footer dated 7-2026). The ordinance is materially MORE permissive than the
 // state floor, which is the whole reason this layer exists.
+// ── ARIZONA ─────────────────────────────────────────────────────────────────
+// A.R.S. § 9-461.18. Found by reading the Title 9 section index, not by guessing.
+const AZ: StatePreempts = {
+  kind: 'preempts',
+  state: 'Arizona',
+  citation: 'A.R.S. § 9-461.18 — Accessory dwelling units; regulation; applicability; definitions',
+  readOn: '2026-08-20',
+  effectiveFrom: '2025-01-01',
+  appliesTo: 'a municipality with a population of more than 75,000 (subsection H)',
+  // ⚠️ THE FIRST NON-CONSTANT FLOOR IN THIS FILE. See the note on `AduFloor`.
+  size: {
+    kind: 'floors',
+    floors: [
+      {
+        form: 'derived',
+        rule: '75% of the gross floor area of the single-family dwelling on the same lot, or 1,000 sq ft, WHICHEVER IS LESS',
+        condition: 'the size the municipality must allow; resolves only against the primary dwelling\u2019s floor area',
+        cite: '§ 9-461.18(A)(3)',
+        baseline: true,
+      },
+    ],
+  },
+  // ⚠️ No height figure anywhere in the section. (B)(5) pegs height, setbacks,
+  // lot size, coverage and frontage to single-family standards in the same zone,
+  // which resolves against the base zone this engine already computes.
+  height: {
+    kind: 'floors',
+    floors: [
+      {
+        form: 'parity',
+        withUse: 'single-family dwellings in the same zoning area',
+        condition: 'the municipality may not set height restrictions more restrictive than for single-family dwellings',
+        cite: '§ 9-461.18(B)(5)',
+        baseline: true,
+      },
+    ],
+  },
+  count: [
+    { value: '1 attached + 1 detached', condition: 'on any lot or parcel where a single-family dwelling is allowed, as a permitted use', cite: '§ 9-461.18(A)(1)' },
+    { value: 1, condition: 'one ADDITIONAL detached ADU on a lot of one acre or more, where at least one ADU on the lot is a restricted-affordable dwelling unit', cite: '§ 9-461.18(A)(2)' },
+  ],
+  setback: {
+    kind: 'floors',
+    floors: [
+      { form: 'figure', value: 5, condition: 'the maximum rear or side setback from the property line a municipality may require', cite: '§ 9-461.18(B)(6)', baseline: true },
+    ],
+  },
+  protections: [
+    '⚠️ A municipality that failed to adopt conforming regulations by 2025-01-01 must allow ADUs on ALL residentially zoned lots WITHOUT LIMITS (§ 9-461.18(F)). Whether Phoenix adopted in time determines which regime applies and has not been established here.',
+    '"Permitted use" is defined to mean approval without a public hearing, variance, conditional use permit, special permit or special exception (§ 9-461.18(I)(5)).',
+    'No additional parking may be required, nor fees in lieu of it (§ 9-461.18(B)(3)).',
+    'No familial, marital or employment relationship may be required between the occupants (§ 9-461.18(B)(2)).',
+    'The exterior design, roof pitch and finishing materials need not match the primary dwelling (§ 9-461.18(B)(4)).',
+    'Long-term rental of either unit may not be prohibited, nor its advertisement (§ 9-461.18(B)(1)).',
+    'A commercial building code or fire sprinkler may not be required (§ 9-461.18(D)).',
+    'Does not apply on tribal land, near a military airport, or in certain airport noise areas above 65 dB (§ 9-461.18(G)).',
+  ],
+}
+
+// ── COLORADO ────────────────────────────────────────────────────────────────
+const CO: StatePreempts = {
+  kind: 'preempts',
+  state: 'Colorado',
+  citation: 'C.R.S. title 29, article 35 (§§ 29-35-101 to 29-35-105), added by HB24-1152',
+  readOn: '2026-08-20',
+  effectiveFrom: '2025-06-30',
+  appliesTo:
+    'a "subject jurisdiction" — a municipality of 1,000 or more inside a metropolitan planning organisation, or the portion of a county within a census-designated place of 40,000 or more and inside an MPO',
+  // ⚠️ NOT A FLOOR. Colorado states no minimum the city must allow; it forbids a
+  // local law that EXCLUDES the 500–750 band. See the `band` note on AduFloor.
+  size: {
+    kind: 'floors',
+    floors: [
+      {
+        form: 'band',
+        low: 500,
+        high: 750,
+        unresolved:
+          'the statute bars a local law that "does not allow for accessory dwelling unit sizes between five hundred and seven hundred fifty square feet". That plainly bars a cap at 400 and plainly permits a cap at 750 or more. Whether a cap at 600 complies is NOT resolved by the text, since such a law does allow some sizes in the band — so no figure is published for Colorado.',
+        condition: 'a local law excluding this range is a prohibited "restrictive design or dimension standard"',
+        cite: '§ 29-35-103(18)(b)',
+        baseline: true,
+      },
+    ],
+  },
+  height: {
+    kind: 'not-addressed',
+    detail:
+      'The list of prohibited "restrictive design or dimension standards" covers architecture and materials, size, side setbacks, rear setbacks, minimum lot size and factory-built structures. Height is not among them.',
+  },
+  count: [
+    { value: 1, condition: 'one ADU as an accessory use to a single-unit detached dwelling, anywhere the jurisdiction allows single-unit detached dwellings, subject to an administrative approval process', cite: '§ 29-35-104' },
+  ],
+  setback: {
+    kind: 'floors',
+    floors: [
+      { form: 'parity', withUse: 'the primary dwelling unit in the same zoning district', condition: 'side setbacks may not be larger than the primary dwelling\u2019s', cite: '§ 29-35-103(18)(c)', baseline: true },
+      { form: 'figure', value: 5, condition: 'rear setback may not exceed the GREATER of five feet or the rear setback for other accessory building types in the same district', cite: '§ 29-35-103(18)(d)' },
+    ],
+  },
+  protections: [
+    '⚠️ Two different size numbers appear in this act doing different jobs. The MANDATE is the 500–750 band. A separate 500–800 figure belongs to the list of actions qualifying a local government as a "supportive jurisdiction" — an optional incentive tier, not the baseline obligation. Conflating them publishes the incentive number as the mandate.',
+    'A minimum lot size more restrictive for an ADU than for a single-unit detached dwelling is prohibited (§ 29-35-103(18)(e)).',
+    'Architectural style, building material and landscaping requirements more restrictive than for a single-unit detached dwelling are prohibited (§ 29-35-103(18)(a)).',
+    '⚠️ The text read was the SESSION LAW (HB24-1152 as enacted), not the codified CRS. The codified article must be read before these figures are relied on — the Los Angeles finding is exactly this exposure.',
+  ],
+}
+
+// ── MASSACHUSETTS ───────────────────────────────────────────────────────────
+const MA: StatePreempts = {
+  kind: 'preempts',
+  state: 'Massachusetts',
+  citation: 'M.G.L. c. 40A § 3, the accessory-dwelling-unit paragraph',
+  readOn: '2026-08-20',
+  effectiveFrom: '2025-02-02',
+  appliesTo: 'any zoning ordinance or by-law, in a single-family residential zoning district',
+  // ⚠️ THE EXPRESS RESERVATION. Massachusetts preempts PROCESS and then hands
+  // dimensions back in the same sentence. That is a stated answer, and it is
+  // different in kind from Nevada's silence — hence two dimension states.
+  size: {
+    kind: 'reserved-to-city',
+    cite: 'M.G.L. c. 40A § 3',
+    detail:
+      'The statute states no size. It provides that an ADU "may be subject to reasonable regulations, including ... regulations concerning dimensional setbacks and the bulk and height of structures" — an express reservation to the municipality.',
+  },
+  height: {
+    kind: 'reserved-to-city',
+    cite: 'M.G.L. c. 40A § 3',
+    detail: 'Reserved by the same clause: "the bulk and height of structures" remain the municipality\u2019s to regulate.',
+  },
+  count: [
+    { value: 1, condition: 'a single ADU, or its rental, in a single-family residential zoning district — no special permit or other discretionary approval may be required', cite: 'M.G.L. c. 40A § 3' },
+    { value: 'more than 1 needs a special permit', condition: 'for more than one ADU in a single-family residential zoning district', cite: 'M.G.L. c. 40A § 3' },
+  ],
+  setback: {
+    kind: 'reserved-to-city',
+    cite: 'M.G.L. c. 40A § 3',
+    detail: 'Expressly reserved — "regulations concerning dimensional setbacks" remain available to the municipality.',
+  },
+  protections: [
+    'No special permit or other discretionary zoning approval may be required for a single ADU in a single-family residential district, and it may not be prohibited or unreasonably restricted.',
+    'Owner occupancy of neither the ADU nor the principal dwelling may be required.',
+    'Not more than ONE additional parking space may be required — and NONE where the ADU is within 0.5 miles of a commuter rail station, subway station, ferry terminal or bus station.',
+    'Short-term rental may be restricted or prohibited (c. 64G § 1 definition).',
+    '⚠️ The Executive Office of Housing and Livable Communities may issue guidelines or regulations administering this paragraph. Those have NOT been read and may carry operative detail.',
+  ],
+}
+
+// ── NEVADA ──────────────────────────────────────────────────────────────────
+// ⚠️ The newest instrument in the survey, in force seven weeks at time of
+// reading. Any approach resting on recall would have reported Nevada as
+// non-preempting with complete confidence.
+const NV: StatePreempts = {
+  kind: 'preempts',
+  state: 'Nevada',
+  citation: 'NRS 278.257 — Ordinance authorizing development and use of accessory dwelling unit on residential property (added by 2025 Nev. Stats. p. 2376)',
+  readOn: '2026-08-20',
+  effectiveFrom: '2026-07-01',
+  appliesTo: 'a county with a population of 100,000 or more, and a city with a population of 60,000 or more (subsection 1)',
+  // ⚠️ NOT ADDRESSED, and that is a structural finding rather than a failed
+  // search: subsection 2 is a list of conditions the ordinance may not impose,
+  // it is filled with six items, and size and height are not among them.
+  size: {
+    kind: 'not-addressed',
+    detail:
+      'Subsection 2 enumerates six conditions an ADU ordinance must not impose — separate kitchens, parking, setbacks, street improvements, rental use. Size is not among them, so Nevada leaves it to the city without saying so.',
+  },
+  height: {
+    kind: 'not-addressed',
+    detail: 'Height appears nowhere in the section, including in the subsection 2 list of prohibited conditions.',
+  },
+  count: [
+    { value: 1, condition: 'the governing body must authorise the development and use of an accessory dwelling unit on property zoned single-family residential', cite: 'NRS 278.257(1)' },
+    { value: 'no more than 2', condition: '⚠️ a CEILING on the statute, not a floor — nothing in the section authorises more than two ADUs on any residential property', cite: 'NRS 278.257(4)(b)' },
+  ],
+  setback: {
+    kind: 'floors',
+    floors: [
+      {
+        form: 'parity',
+        withUse: 'the primary residence',
+        condition: 'no side or rear setback more restrictive than the primary residence\u2019s; no figure is stated',
+        cite: 'NRS 278.257(2)(c)',
+        baseline: true,
+      },
+    ],
+  },
+  protections: [
+    'Separate kitchen facilities may not be prohibited (NRS 278.257(2)(a)).',
+    'No more than one additional parking space may be required, where existing and street parking meet anticipated need (NRS 278.257(2)(b)).',
+    'Public street improvements may not be required except to repair damage caused by the construction, or for health and safety (NRS 278.257(2)(d)).',
+    'Use as rental housing may not be prohibited — though transient lodging may be (NRS 278.257(2)(e)).',
+    'An approved ADU need not meet commercial building code, including any commercial fire-sprinkler requirement (NRS 278.257(3)(b)).',
+    'Does not apply in a region governed by an interstate-compact regional planning agency whose regional plan regulates housing — the Tahoe carve-out (NRS 278.257(5)).',
+  ],
+}
+
+// ── THE STATE LAYER FOR THE REST ────────────────────────────────────────────
+//
+// ⚠️ THREE DIFFERENT FACTS, and the whole point of the union. Florida read and
+// declined; nine states read within a stated scope and found nothing; two not
+// looked at. Under the old `stateFloor: null` all three rendered identically.
+
+/** FL — the statute exists and hands the decision to the city. */
+const FL: StateDeclines = {
+  kind: 'declines',
+  state: 'Florida',
+  citation: 'Fla. Stat. § 163.31771 — Accessory dwelling units',
+  readOn: '2026-08-20',
+  detail:
+    'Subsection (3): "A local government MAY adopt an ordinance to allow accessory dwelling units in any area zoned for single-family residential use." Enabling, not mandating — no standard is imposed on the city. A permit application for an ADU allowed under such an ordinance must carry an affidavit that the unit will be rented at an affordable rate (subsection 4), and such units count toward the affordable-housing component of the local comprehensive plan (subsection 5).',
+}
+
+const noProvision = (state: string, scopeRead: string, basis: string): StateNoProvision => ({
+  kind: 'no-provision', state, readOn: '2026-08-20', scopeRead, basis,
+})
+
+const NO_PROVISION: Readonly<Record<string, StateNoProvision>> = Object.freeze({
+  nc: noProvision('North Carolina', 'G.S. Chapter 160D, "Local Planning and Development Regulation" — the whole chapter', 'rendered text of 494,602 characters, zero occurrences of "accessory dwelling"'),
+  tx: noProvision('Texas', 'Local Government Code chapters 211 (Municipal Zoning Authority), 214 (Municipal Regulation of Housing) and 218 (Mixed-Use and Multifamily) — three chapters, not the whole code', 'read in the browser after curl returned five identical 250,874-byte navigation shells; ch. 211 carries the legislature\u2019s recent subchapter of zoning limits (§§ 211.051–211.058, minimum lot sizes) and has no ADU section'),
+  oh: noProvision('Ohio', 'Ohio Revised Code chapter 713 (Planning Commissions)', 'full section text, 61,012 characters, zero hits'),
+  wi: noProvision('Wisconsin', 'Wis. Stat. chapter 66 (General Municipality Law), titled section index — ch. 62.23, the city planning and zoning section, was NOT read', 'titled index of 51 sections, zero hits'),
+  mn: noProvision('Minnesota', 'Minn. Stat. chapter 462 (Housing, Redevelopment, Planning, Zoning), titled section index', 'titled index of 208 sections, zero hits. ⚠️ An earlier probe of § 462.357 was a GUESSED section number and was discarded rather than recorded — it disproves the guess, not Minnesota (rule 8)'),
+  dc: noProvision('District of Columbia', 'D.C. Code title 6 chapter 6 (Zoning and Height of Buildings)', 'chapter index, six subchapters, no ADU provision. DC zoning is delegated to the Zoning Commission and lives in 11 DCMR, which is the LOCAL instrument — DC has no legislature above it for this purpose'),
+  il: noProvision('Illinois', '65 ILCS 5/11-13, Division 13 (Zoning) of the Illinois Municipal Code', 'rendered text of 64,113 characters and 103 section references, zero hits. ⚠️ Reached by clicking the index\u2019s own link after the legacy URL scheme returned a page byte-identical to one already held; the length moving 19,259 → 64,113 is what proved a different page was served'),
+  ny: noProvision('New York', 'General City Law article 5-A (Buildings and Use Districts) — the zoning article of the law applicable to cities', 'seven sections and none of the chapter\u2019s 22 article titles mention accessory dwellings'),
+  pa: noProvision('Pennsylvania', 'the Pennsylvania Municipalities Planning Code (Act 247 of 1968), read whole', '398,886 characters, zero ADU occurrences. ⚠️ And it resolves on SCOPE regardless: the MPC\u2019s enacting clause empowers "cities of the second class A, and third class" and omits cities of the FIRST class entirely — the phrase appears nowhere in the act. Philadelphia is Pennsylvania\u2019s only first-class city, so the MPC does not reach it; its zoning authority runs through the First Class City Home Rule Act'),
+})
+
+const notEstablished = (state: string): StateNotEstablished => ({
+  kind: 'not-established',
+  state,
+  detail:
+    `${state} publishes its official code through LexisNexis behind a session, and the freely reachable routes failed: lexisnexis.com/hottopics was denied and the mirrors that render carry stale snapshots. ⚠️ A stale mirror must not establish a 2026 absence — Nevada is the proof, since NRS 278.257 took effect 2026-07-01 and any source frozen before then reports Nevada as non-preempting with complete confidence. Recorded as unlooked-at rather than as an absence.`,
+})
+
 const SANDIEGO_LOCAL: LocalLayer = {
   kind: 'read',
   citation: 'San Diego Municipal Code § 141.0302 (Accessory Dwelling Units and Junior Accessory Dwelling Units)',
@@ -436,9 +835,9 @@ const SANJOSE_LOCAL: LocalLayer = {
     { kind: 'no-maximum', condition: 'conversion of an existing DETACHED accessory structure', cite: '§ 20.80.175.D.1.d' },
   ],
   maxHeightFt: [
-    { value: 18, condition: 'detached, one storey', cite: '§ 20.80.175.D.2.a', baseline: true },
-    { value: 25, condition: 'detached, two storeys — roof height above grade', cite: '§ 20.80.175.D.2.b' },
-    { value: 25, condition: 'attached — roof height above grade, and no more than two storeys', cite: '§ 20.80.175.D.2.d' },
+    { form: 'figure', value: 18, condition: 'detached, one storey', cite: '§ 20.80.175.D.2.a', baseline: true },
+    { form: 'figure', value: 25, condition: 'detached, two storeys — roof height above grade', cite: '§ 20.80.175.D.2.b' },
+    { form: 'figure', value: 25, condition: 'attached — roof height above grade, and no more than two storeys', cite: '§ 20.80.175.D.2.d' },
   ],
   maxStories: { value: 2, condition: 'detached', cite: '§ 20.80.175.D.2.c' },
   heightDefersToBaseZone: null,
@@ -599,14 +998,15 @@ const SF_LOCAL: LocalLayer = {
     },
   ],
   maxHeightFt: [
-    { value: 18, condition: 'state-mandated: detached, on a lot with an existing or proposed dwelling', cite: '§ 207.2(d)(9)(A)', baseline: true },
+    { form: 'figure', value: 18, condition: 'state-mandated: detached, on a lot with an existing or proposed dwelling', cite: '§ 207.2(d)(9)(A)', baseline: true },
     {
+      form: 'figure',
       value: 20,
       condition: 'state-mandated: detached, where the extra two feet accommodate a roof pitch aligned with the primary dwelling\'s',
       cite: '§ 207.2(d)(9)(A)',
     },
-    { value: 25, condition: 'state-mandated: attached to the primary dwelling', cite: '§ 207.2(d)(9)(B)' },
-    { value: 16, condition: 'local programme: a detached ADU placed in the required REAR YARD, with four-foot side and rear setbacks', cite: '§ 207.1(c)' },
+    { form: 'figure', value: 25, condition: 'state-mandated: attached to the primary dwelling', cite: '§ 207.2(d)(9)(B)' },
+    { form: 'figure', value: 16, condition: 'local programme: a detached ADU placed in the required REAR YARD, with four-foot side and rear setbacks', cite: '§ 207.1(c)' },
   ],
   maxStories: null,
   heightDefersToBaseZone: null,
@@ -651,31 +1051,86 @@ const NOT_READ_LOCAL = (city: string): LocalRead => ({
 /** ⚠️ EVERY LIVE CITY IS LISTED. A city missing from this map would fall through
  *  to a default, and a default here is the thing that must not exist: silence
  *  would render as "no state law applies", which is a claim. */
+const QUALIFIES = (why: string): StateApplies => ({ kind: 'qualifies', why })
+const NA: StateApplies = { kind: 'n-a' }
+
 const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
-  la: { city: 'la', stateFloor: CA, local: LA_LOCAL },
-  sf: { city: 'sf', stateFloor: CA, local: SF_LOCAL },
-  sanjose: { city: 'sanjose', stateFloor: CA, local: SANJOSE_LOCAL },
-  sandiego: { city: 'sandiego', stateFloor: CA, local: SANDIEGO_LOCAL },
-  seattle: { city: 'seattle', stateFloor: WA, local: SEATTLE_LOCAL },
-  ...Object.fromEntries(
-    ([
-      ['atlanta', 'Atlanta'], ['austin', 'Austin'], ['boston', 'Boston'], ['charlotte', 'Charlotte'],
-      ['chicago', 'Chicago'], ['columbus', 'Columbus'], ['dallas', 'Dallas'], ['dc', 'Washington, DC'],
-      ['denver', 'Denver'], ['lasvegas', 'Las Vegas'], ['miami', 'Miami'], ['milwaukee', 'Milwaukee'],
-      ['minneapolis', 'Minneapolis'], ['nashville', 'Nashville'], ['nyc', 'New York City'],
-      ['philadelphia', 'Philadelphia'], ['phoenix', 'Phoenix'], ['raleigh', 'Raleigh'],
-    ] as const).map(([slug, name]) => [
-      slug,
-      // ⚠️ `stateFloor: null` here means NO STATE STATUTE WAS FOUND TO PREEMPT,
-      // which is a finding about the state. The local ordinance is separately
-      // unread. Two different absences, kept apart.
-      { city: slug, stateFloor: null, local: NOT_READ_LOCAL(name) } satisfies AduRules,
-    ]),
-  ),
+  // California — no population threshold, so every city qualifies.
+  la: { city: 'la', state: CA, stateApplies: QUALIFIES('the chapter states no population threshold'), local: LA_LOCAL },
+  sf: { city: 'sf', state: CA, stateApplies: QUALIFIES('the chapter states no population threshold'), local: SF_LOCAL },
+  sanjose: { city: 'sanjose', state: CA, stateApplies: QUALIFIES('the chapter states no population threshold'), local: SANJOSE_LOCAL },
+  sandiego: { city: 'sandiego', state: CA, stateApplies: QUALIFIES('the chapter states no population threshold'), local: SANDIEGO_LOCAL },
+  seattle: { city: 'seattle', state: WA, stateApplies: QUALIFIES('Seattle plans under the Growth Management Act and lies inside an urban growth area'), local: SEATTLE_LOCAL },
+
+  // ── The four preemptions found by the 2026-08-20 survey ──────────────────
+  // Local ordinances NOT yet read for any of these — the state layer is the
+  // only one established, and `summariseAdu` says so.
+  phoenix: {
+    city: 'phoenix',
+    state: AZ,
+    stateApplies: QUALIFIES('Phoenix is far above the 75,000 population threshold in § 9-461.18(H)'),
+    local: NOT_READ_LOCAL('Phoenix'),
+  },
+  lasvegas: {
+    city: 'lasvegas',
+    state: NV,
+    stateApplies: QUALIFIES('Las Vegas is far above the 60,000 population threshold for cities in NRS 278.257(1)'),
+    local: NOT_READ_LOCAL('Las Vegas'),
+  },
+  boston: {
+    city: 'boston',
+    state: MA,
+    stateApplies: QUALIFIES('c. 40A § 3 binds any zoning ordinance or by-law; there is no population test'),
+    local: NOT_READ_LOCAL('Boston'),
+  },
+  denver: {
+    city: 'denver',
+    state: CO,
+    // ⚠️ NOT ASSUMED FROM SIZE. Rule 24: a claim true of the jurisdiction can be
+    // false of the city it is applied to. Colorado's test has two halves —
+    // population of 1,000 or more AND inside a metropolitan planning
+    // organisation. Denver obviously clears the first. The MPO half was never
+    // verified against the statute, and "it is a big city in the Denver metro"
+    // is a plausible inference, not a reading. So the statute is recorded and
+    // its application to Denver is not claimed.
+    stateApplies: {
+      kind: 'not-established',
+      why: 'Colorado binds a "subject jurisdiction" — a municipality of 1,000 or more INSIDE a metropolitan planning organisation. Denver clears the population half plainly. The MPO half has not been checked against the statute\u2019s own test and must not be assumed from size.',
+    },
+    local: NOT_READ_LOCAL('Denver'),
+  },
+
+  // ── Read, and the state does not preempt ─────────────────────────────────
+  miami: { city: 'miami', state: FL, stateApplies: NA, local: NOT_READ_LOCAL('Miami') },
+  charlotte: { city: 'charlotte', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Charlotte') },
+  raleigh: { city: 'raleigh', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Raleigh') },
+  austin: { city: 'austin', state: NO_PROVISION.tx, stateApplies: NA, local: NOT_READ_LOCAL('Austin') },
+  dallas: { city: 'dallas', state: NO_PROVISION.tx, stateApplies: NA, local: NOT_READ_LOCAL('Dallas') },
+  columbus: { city: 'columbus', state: NO_PROVISION.oh, stateApplies: NA, local: NOT_READ_LOCAL('Columbus') },
+  milwaukee: { city: 'milwaukee', state: NO_PROVISION.wi, stateApplies: NA, local: NOT_READ_LOCAL('Milwaukee') },
+  minneapolis: { city: 'minneapolis', state: NO_PROVISION.mn, stateApplies: NA, local: NOT_READ_LOCAL('Minneapolis') },
+  dc: { city: 'dc', state: NO_PROVISION.dc, stateApplies: NA, local: NOT_READ_LOCAL('Washington, DC') },
+  chicago: { city: 'chicago', state: NO_PROVISION.il, stateApplies: NA, local: NOT_READ_LOCAL('Chicago') },
+  nyc: { city: 'nyc', state: NO_PROVISION.ny, stateApplies: NA, local: NOT_READ_LOCAL('New York City') },
+  philadelphia: { city: 'philadelphia', state: NO_PROVISION.pa, stateApplies: NA, local: NOT_READ_LOCAL('Philadelphia') },
+
+  // ── ⚠️ Nobody has looked. Two facts short, and they say so. ──────────────
+  atlanta: { city: 'atlanta', state: notEstablished('Georgia'), stateApplies: NA, local: NOT_READ_LOCAL('Atlanta') },
+  nashville: { city: 'nashville', state: notEstablished('Tennessee'), stateApplies: NA, local: NOT_READ_LOCAL('Nashville') },
 })
 
+/** ⚠️ The fallback is `not-established`, never `no-provision`. A city absent
+ *  from the map is one nobody has considered, and saying "no state statute
+ *  applies" about it would be a claim manufactured by a default. */
 export function aduRulesFor(city: string): AduRules {
-  return BY_CITY[city] ?? { city, stateFloor: null, local: NOT_READ_LOCAL(city) }
+  return (
+    BY_CITY[city] ?? {
+      city,
+      state: { kind: 'not-established', state: 'unknown', detail: `${city} is not in the ADU jurisdiction map; nobody has established which body of law governs.` },
+      stateApplies: { kind: 'n-a' },
+      local: NOT_READ_LOCAL(city),
+    }
+  )
 }
 
 /** Cities whose LOCAL ordinance has been read. Separate from the state list —
@@ -685,7 +1140,12 @@ export const ADU_LOCAL_READ: readonly string[] = Object.freeze(
 )
 /** Cities with a state statute that preempts. */
 export const ADU_STATE_PREEMPTED: readonly string[] = Object.freeze(
-  Object.entries(BY_CITY).filter(([, r]) => r.stateFloor != null).map(([c]) => c).sort(),
+  Object.entries(BY_CITY).filter(([, r]) => r.state.kind === 'preempts').map(([c]) => c).sort(),
+)
+/** ⚠️ Cities whose STATE LAYER is still unknown. Exported so the gap is
+ *  countable rather than something a reader has to notice (rule 20). */
+export const ADU_STATE_NOT_ESTABLISHED: readonly string[] = Object.freeze(
+  Object.entries(BY_CITY).filter(([, r]) => r.state.kind === 'not-established').map(([c]) => c).sort(),
 )
 
 // ── THE EFFECTIVE ANSWER ────────────────────────────────────────────────────
@@ -700,6 +1160,13 @@ export type EffectiveSource =
    *  we can honestly publish alongside it. */
   | 'local-non-numeric'
   | 'floor-only'
+  /** ⚠️ A state statute preempts, and states no publishable figure — because it
+   *  derives one, states a band, reserves the dimension, or omits it. Distinct
+   *  from `unresolved`, which is ignorance. */
+  | 'state-no-figure'
+  /** ⚠️ A state statute EXISTS and declines to preempt (Florida). An answer
+   *  about the state, and it must never render as `unresolved`. */
+  | 'state-declines'
   | 'unresolved'
 
 export interface EffectiveSize {
@@ -720,16 +1187,52 @@ export interface EffectiveSize {
  *
  *  And a local rule stating NO maximum beats any number — it is not a missing
  *  value, and treating it as one would be the rule 5 collapse. */
+/** ⚠️ THE PUBLISHABLE STATE SIZE FLOOR, or null with a reason.
+ *
+ *  Four of the six preempting statutes yield NO figure, and for four different
+ *  reasons: Arizona's is derived from the primary dwelling, Colorado's is a band
+ *  that does not resolve to a cap, Massachusetts reserves size to the city, and
+ *  Nevada does not address it. Only California and Washington state a constant.
+ *
+ *  A consumer that wanted "the number" would have had to invent one for four
+ *  states. This returns the reason instead. */
+export function stateSizeFloor(r: AduRules): { floor: Extract<AduFloor, { form: 'figure' }> | null; why: string | null } {
+  if (r.state.kind !== 'preempts') return { floor: null, why: null }
+  if (r.stateApplies.kind !== 'qualifies') {
+    return { floor: null, why: `${r.state.state}'s statute may not reach this city: ${r.stateApplies.kind === 'not-established' ? r.stateApplies.why : 'not applicable'}` }
+  }
+  const dim = r.state.size
+  if (dim.kind === 'reserved-to-city') return { floor: null, why: `${r.state.state} states no ADU size — it expressly reserves bulk and dimensions to the city (${dim.cite}).` }
+  if (dim.kind === 'not-addressed') return { floor: null, why: `${r.state.state}'s statute does not address ADU size. ${dim.detail}` }
+  const b = dim.floors.find((f) => f.baseline) ?? dim.floors[0]
+  if (b == null) return { floor: null, why: null }
+  if (b.form === 'figure') return { floor: b, why: null }
+  if (b.form === 'derived') return { floor: null, why: `${r.state.state} guarantees a size that is not a fixed figure — ${b.rule} (${b.cite}). It resolves only against the primary dwelling, so no state number is published here.` }
+  if (b.form === 'band') return { floor: null, why: `${r.state.state} states no floor. ${b.unresolved} (${b.cite})` }
+  return { floor: null, why: `${r.state.state} pegs this to ${b.withUse} rather than to a figure (${b.cite}).` }
+}
+
 export function effectiveMaxSize(r: AduRules): EffectiveSize {
-  const floor = r.stateFloor?.floors.sizeSqFt.find((f) => f.baseline) ?? null
+  const { floor, why: floorWhy } = stateSizeFloor(r)
   if (r.local.kind !== 'read') {
-    return floor == null
-      ? { value: null, source: 'unresolved', why: `Neither a state floor nor ${cityName(r.city)}'s own ordinance has been established.` }
-      : {
-          value: floor.value,
-          source: 'floor-only',
-          why: `Only the state floor is known (${floor.cite}). This is the MINIMUM the city cannot refuse, not what it allows — the local ordinance has not been read.`,
-        }
+    if (floor != null) {
+      return {
+        value: floor.value,
+        source: 'floor-only',
+        why: `Only the state floor is known (${floor.cite}). This is the MINIMUM the city cannot refuse, not what it allows — the local ordinance has not been read.`,
+      }
+    }
+    // ⚠️ FOUR DIFFERENT NOTHINGS, and they must not read alike.
+    if (r.state.kind === 'preempts') {
+      return { value: null, source: 'state-no-figure', why: `${floorWhy ?? ''} The local ordinance has not been read either, so no size can be published for ${cityName(r.city)}.`.trim() }
+    }
+    if (r.state.kind === 'declines') {
+      return { value: null, source: 'state-declines', why: `${r.state.state} has an ADU statute and it leaves the decision to the city (${r.state.citation}). ${r.state.detail} So the binding rule is ${cityName(r.city)}'s own ordinance, which has not been read.` }
+    }
+    if (r.state.kind === 'no-provision') {
+      return { value: null, source: 'unresolved', why: `No ADU provision exists in ${r.state.scopeRead}, so the binding rule is ${cityName(r.city)}'s own ordinance — which has not been read.` }
+    }
+    return { value: null, source: 'unresolved', why: `Nobody has established which body of law governs ADUs in ${cityName(r.city)}. ${r.state.detail}` }
   }
   // ⚠️ THE BASELINE, NOT THE BIGGEST. A `no-maximum` only leads when it is the
   // general case; San Diego's is a CONVERSION rule, so "the city states no
@@ -819,18 +1322,43 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
  *  rests only on a state floor, that the figure is a minimum rather than a cap. */
 export function summariseAdu(r: AduRules): string {
   const size = effectiveMaxSize(r)
+  // ⚠️ THE NON-ANSWERS ARE DIFFERENT SENTENCES, and the ORDER matters — the
+  // generic "nobody has looked" line used to sit first and swallow every one of
+  // them. It is true of Georgia and false of Florida, Nevada and Massachusetts.
+  if (size.source === 'state-declines' || size.source === 'state-no-figure') {
+    return size.why
+  }
+  if (r.state.kind === 'no-provision' && r.local.kind !== 'read') {
+    return (
+      `No state ADU statute governs here — ${r.state.scopeRead} contains no ADU provision — so ` +
+      `${cityName(r.city)}'s own ordinance is the binding rule, and it has not been read.`
+    )
+  }
   if (size.source === 'unresolved') {
     // The DISPLAY name, not the slug: "not a finding that denver has no ADU
     // rules" reads as a bug in a sentence whose whole job is to be trusted.
     return `Accessory dwelling unit rules for this city have not been read into this tool. That is a gap in our coverage, not a finding that ${cityName(r.city)} has no ADU rules — nobody has looked.`
   }
-  if (size.source === 'floor-only') {
-    const f = r.stateFloor!
-    const h = f.floors.heightFt.find((x) => x.baseline)!
+  if (size.source === 'floor-only' && r.state.kind === 'preempts') {
+    const f = r.state
+    const hs = f.height
+    const h = hs.kind === 'floors' ? (hs.floors.find((x) => x.baseline) ?? hs.floors[0]) : null
+    const heightPhrase =
+      h == null
+        ? hs.kind === 'reserved-to-city'
+          ? `${f.state} leaves height to the city (${hs.cite})`
+          : `${f.state} does not address height`
+        : h.form === 'figure'
+          ? `at ${h.value} ft (${h.condition})`
+          : h.form === 'parity'
+            ? `at whatever height ${h.withUse} may reach (${h.cite})`
+            : h.form === 'derived'
+              ? `at a height given by ${h.rule}`
+              : `within ${h.low}–${h.high} ft`
     return (
       `${f.state} state law sets what this city must allow, and these are FLOORS rather than limits — ` +
       `the city may permit more and its own ordinance has not been read. Unconditionally: a ` +
-      `${(size.value as number).toLocaleString()} sq ft ADU at ${h.value} ft (${h.condition}) cannot be refused.`
+      `${(size.value as number).toLocaleString()} sq ft ADU ${heightPhrase} cannot be refused.`
     )
   }
   const head =

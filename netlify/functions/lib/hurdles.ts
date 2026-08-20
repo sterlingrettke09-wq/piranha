@@ -782,8 +782,16 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
     // ministerial state right is not the same kind of obstacle as an unread
     // local ordinance, and grading them alike would be the rule 5 collapse.
     const adu = aduRulesFor(project.city)
+    // ⚠️ THE STATE LAYER IS NO LONGER A BOOLEAN. `adu.stateFloor == null` used to
+    // mean "grade this as a likely hurdle", which lumped Florida — whose
+    // legislature read the question and handed it to the city — together with
+    // Georgia, where nobody has looked. Only a live preemption that actually
+    // REACHES this city earns the `info` grade, because only then is there a
+    // ministerial entitlement rather than an obstacle to clear.
+    const preempted = adu.state.kind === 'preempts' && adu.stateApplies.kind === 'qualifies'
+    const nothingEstablished = adu.state.kind === 'not-established' && adu.local.kind !== 'read'
     hurdles.push(
-      adu.stateFloor == null && adu.local.kind !== 'read'
+      nothingEstablished
         ? {
             category: 'review',
             label: 'ADU-specific rules',
@@ -792,17 +800,28 @@ export function assessHurdles(city: string, parcel: ParcelInfo, project: Analysi
           }
         : {
             category: 'review',
-            label: `ADU rules — ${adu.local.kind === 'read' ? 'local ordinance' : `${adu.stateFloor!.state} state law`}`,
+            label: `ADU rules — ${
+              adu.local.kind === 'read'
+                ? 'local ordinance'
+                : preempted
+                  ? `${(adu.state as { state: string }).state} state law`
+                  : 'local ordinance (unread)'
+            }`,
             // `info`, not `likely`, where the state mandates MINISTERIAL
             // approval: there is no discretionary review to clear, so it is an
             // entitlement rather than an obstacle. Grading it as a likely hurdle
             // would overstate the bar in a leg that exists to count real ones.
-            status: adu.stateFloor != null ? 'info' : 'likely',
+            status: preempted ? 'info' : 'likely',
             note: [
               summariseAdu(adu),
-              ...(adu.stateFloor ? adu.stateFloor.protections : []),
+              ...(adu.state.kind === 'preempts' ? adu.state.protections : []),
               ...(adu.local.kind === 'read' ? adu.local.notes : []),
-              `Sources: ${[adu.stateFloor?.citation, adu.local.kind === 'read' ? adu.local.citation : null].filter(Boolean).join('; ')}.`,
+              `Sources: ${[
+                adu.state.kind === 'preempts' || adu.state.kind === 'declines' ? adu.state.citation : null,
+                adu.local.kind === 'read' ? adu.local.citation : null,
+              ]
+                .filter(Boolean)
+                .join('; ')}.`,
             ].join(' '),
           },
     )
