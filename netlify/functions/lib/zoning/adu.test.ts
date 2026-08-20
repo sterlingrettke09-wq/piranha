@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   aduRulesFor, summariseAdu, effectiveMaxSize, ADU_LOCAL_READ, ADU_STATE_PREEMPTED,
-  ADU_STATE_NOT_ESTABLISHED,
+  ADU_STATE_NOT_ESTABLISHED, ADU_VOCABULARY_CHECK,
 } from './adu'
 import { CITIES } from '../../../../src/config/cities'
 import { readFileSync } from 'node:fs'
@@ -1403,3 +1403,59 @@ describe('Boston — ⚠️ this entry published a WRONG answer, and these pin t
   })
 })
 
+
+describe('⚠️ the vocabulary check — every read city, prompted by East Boston', () => {
+  it('covers every city whose ordinance has been read, with none missing', () => {
+    // rule 20: pinned by membership, so a city read later without a vocabulary
+    // check turns this red instead of slipping through. The East Boston failure
+    // is exactly what slipping through looks like.
+    expect(Object.keys(ADU_VOCABULARY_CHECK).sort()).toEqual([...ADU_LOCAL_READ].sort())
+    expect(ADU_LOCAL_READ.length).toBeGreaterThanOrEqual(8)
+  })
+
+  it('every entry names a canonical term and what was checked against it', () => {
+    for (const [city, v] of Object.entries(ADU_VOCABULARY_CHECK)) {
+      expect(v.canonical.length, city).toBeGreaterThan(15)
+      expect(v.competing.length, city).toBeGreaterThan(0)
+      expect(v.distinguishedBy.length, city).toBeGreaterThan(60)
+    }
+  })
+
+  it('⚠️ the kitchen is the dividing line where the code states one', () => {
+    // LA and San Diego both define the competing use as having NO kitchen, and
+    // an ADU as requiring cooking facilities. That is a criterion a reader can
+    // apply to a new city, not a fact about these two.
+    for (const city of ['la', 'sandiego']) {
+      expect(ADU_VOCABULARY_CHECK[city].distinguishedBy, city).toMatch(/kitchen/i)
+    }
+    expect(ADU_VOCABULARY_CHECK.la.distinguishedBy).toMatch(/cooking/)
+    expect(ADU_VOCABULARY_CHECK.sandiego.distinguishedBy).toMatch(/complete, independent living facilities/)
+  })
+
+  it('⚠️ records Boston as the one city NOT resolved by such a test', () => {
+    // The exception that motivated the sweep. Everywhere else the code supplies
+    // a criterion separating the terms; in Boston they are two live routes with
+    // opposite effects, and reading the wrong one published "forbidden" for a
+    // neighbourhood where ADUs are allowed.
+    const b = ADU_VOCABULARY_CHECK.boston
+    expect(b.canonical).toMatch(/Additional Dwelling Unit/)
+    expect(b.competing).toContain('Accessory Dwelling Unit')
+    expect(b.distinguishedBy).toMatch(/NOT distinguished by any definitional test/)
+    expect(b.distinguishedBy).toMatch(/OPPOSITE effects/)
+  })
+
+  it('⚠️ records San Diego’s repealed former title, so it is never cited', () => {
+    // "Companion Unit" was § 141.0302's own former name, repealed in 2020. The
+    // recodification hazard in miniature: the term exists, means the right
+    // thing, and points at text that is gone.
+    expect(ADU_VOCABULARY_CHECK.sandiego.distinguishedBy).toMatch(/REPEALED former title/)
+    expect(ADU_VOCABULARY_CHECK.sandiego.distinguishedBy).toMatch(/O-21254/)
+  })
+
+  it('⚠️ names what is still unread, rather than implying completeness', () => {
+    // San José's Guest House content was not opened — only established as not
+    // being the ADU instrument. A sweep that hid its own gaps would be the same
+    // failure one level up.
+    expect(ADU_VOCABULARY_CHECK.sanjose.distinguishedBy).toMatch(/was not read/)
+  })
+})

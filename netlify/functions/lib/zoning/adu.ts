@@ -1435,6 +1435,87 @@ export function aduRulesFor(city: string): AduRules {
   )
 }
 
+// ── ⚠️ THE VOCABULARY CHECK ─────────────────────────────────────────────────
+//
+// Run 2026-08-20 across every city whose ordinance had been read, prompted by
+// the East Boston failure: Boston calls the thing an "Additional Dwelling Unit",
+// a search for "accessory dwelling unit" found a DIFFERENT and forbidden use,
+// and the absence of the phrase was published as the absence of the concept.
+//
+// Every city here had been searched on a term taken from the California statute.
+// The question this answers is the one that should have been asked first: WHAT
+// DOES THIS JURISDICTION CALL IT, established from its own definitions.
+//
+// ⚠️ THE RESULT WAS CLEAN, WHICH IS WHY IT IS RECORDED. An unwritten negative
+// gets re-asked, and next time someone will assume it was never run. Six of the
+// seven turned up a competing term; in every case the code itself distinguishes
+// them, and in four cases it does so by the SAME criterion — a kitchen.
+//
+// That criterion is worth carrying: an ADU must provide complete independent
+// living facilities including cooking, so a use defined as having no kitchen is
+// definitionally not one. Boston is the exception that motivated the sweep
+// precisely because its two terms are NOT distinguished by such a test — they
+// are two live routes with opposite effects.
+export interface VocabularyCheck {
+  /** The term the jurisdiction's own code uses. */
+  canonical: string
+  /** Other terms that could denote the same thing, and were checked. */
+  competing: string[]
+  /** How the code itself keeps them apart — or why there is nothing to keep apart. */
+  distinguishedBy: string
+}
+
+export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = Object.freeze({
+  phoenix: {
+    canonical: 'Dwelling Unit, Accessory (ADU) — the inverted form, defined at Phoenix ZO § 202',
+    competing: ['Guesthouse', 'Casita'],
+    distinguishedBy:
+      'Nothing to distinguish: § 202 defines "Guesthouse: See \'Dwelling Unit, Accessory.\'" — an express cross-reference making them the same use. "Casita" is not a defined term.',
+  },
+  seattle: {
+    canonical: 'accessory dwelling unit (SMC 23.42.022, and definitions at 23.58B.060, 23.58C.020, 23.60A.934)',
+    competing: ['backyard cottage', 'DADU', 'AADU'],
+    distinguishedBy:
+      '"backyard cottage" returns hits only under Ordinances, never in code text — it is vernacular in legislative titles. The code uses "accessory dwelling unit" throughout, in 27 places.',
+  },
+  lasvegas: {
+    canonical: 'Residential Accessory Dwelling Unit (LVMC 19.18.020; use description at 19.12.070)',
+    competing: ['guest house', 'casita'],
+    distinguishedBy:
+      'Neither is a defined use. The sole occurrence of "casita" is inside LVMC 19.10.050, listing what a special-area district\u2019s own design standards may address — not a citywide use permission.',
+  },
+  sandiego: {
+    canonical: 'Accessory Dwelling Units (ADUs) and Junior ADUs (SDMC § 141.0302)',
+    competing: ['Companion Unit', 'Guest Quarters or Habitable Accessory Buildings (§ 141.0307)'],
+    distinguishedBy:
+      '⚠️ THE KITCHEN. § 141.0307 guest quarters "do not provide complete, independent living facilities", "shall not contain a kitchen", and "shall not be rented, leased, or sold as a separate dwelling unit" — the exact inverse of an ADU. And "Companion Unit" is the REPEALED former title of § 141.0302 itself, replaced by O-21254 effective 2020-11-29, so citing it would point at dead text.',
+  },
+  la: {
+    canonical: 'Accessory Dwelling Unit (ADU), defined at LAMC § 12.03',
+    competing: ['Accessory Living Quarters', 'Guest House'],
+    distinguishedBy:
+      '⚠️ THE KITCHEN, stated twice. § 12.03 defines Accessory Living Quarters as "having no kitchen facilities and not rented or otherwise used as a separate dwelling unit", and Guest House as "a dwelling containing not more than five guest rooms or suites of rooms, but with no kitchen facilities". An ADU must include "permanent provisions for living, sleeping, eating, cooking, and sanitation".',
+  },
+  sf: {
+    canonical: 'Accessory Dwelling Unit (SF Planning Code §§ 207.1, 207.2)',
+    competing: ['in-law unit', 'secondary unit'],
+    distinguishedBy:
+      'The code partitions the field itself and leaves no room for a third instrument: § 207.1(b) applies "to the construction of ADUs on ALL lots located within the City and County of San Francisco in areas that allow residential use, EXCEPT ADUs regulated by the State-Mandated Program under Section 207.2". Both programmes are read here, so both halves of the partition are covered.',
+  },
+  sanjose: {
+    canonical: 'Accessory Dwelling Unit (SJMC § 20.80.175)',
+    competing: ['Guest House'],
+    distinguishedBy:
+      'The code names both in one sentence and treats them differently: § 20.80.160 allows Incidental Transient Occupancy in a "Guest House" and provides that it "shall not be allowed in an Accessory Dwelling Unit". Distinct co-existing categories. ⚠️ What a Guest House IS in San José was not read — only that it is not the ADU instrument.',
+  },
+  boston: {
+    canonical: 'Additional Dwelling Unit (Boston Zoning Code § 53-5.2 and ten other district articles)',
+    competing: ['Accessory Dwelling Unit'],
+    distinguishedBy:
+      '⚠️ NOT distinguished by any definitional test — these are two live routes with OPPOSITE effects, which is why this city produced a wrong published answer. "Accessory Dwelling Unit" is forbidden in East Boston\u2019s tables; "Additional Dwelling Unit" is allowed by § 53-5.2 notwithstanding those tables. Every other city in this sweep separates its terms by a criterion; Boston does not.',
+  },
+})
+
 /** Cities whose LOCAL ordinance has been read. Separate from the state list —
  *  conflating them would let one city's reading imply another's (rule 20). */
 export const ADU_LOCAL_READ: readonly string[] = Object.freeze(

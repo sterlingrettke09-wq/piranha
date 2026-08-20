@@ -437,3 +437,44 @@ region and mean different things.
 
 Search for the concept under at least two names, or read a definitions section,
 before any absence based on vocabulary is written down.
+
+
+## The vocabulary check, run across all seven other read cities
+
+Prompted by East Boston. Every city had been searched on "accessory dwelling
+unit" — a term taken from the California statute — so the sweep asked the
+question that should have come first: **what does this jurisdiction call it,
+established from its own definitions.**
+
+| city | canonical term | competing term found | how the code separates them |
+|---|---|---|---|
+| Phoenix | Dwelling Unit, Accessory (ADU) | Guesthouse | § 202: *"Guesthouse: See 'Dwelling Unit, Accessory.'"* — same use |
+| Seattle | accessory dwelling unit | backyard cottage | appears only in ordinance titles, never in code text |
+| Las Vegas | Residential Accessory Dwelling Unit | guest house / casita | neither is a defined use |
+| San Diego | Accessory Dwelling Units | Guest Quarters (§ 141.0307); Companion Unit | **no kitchen**, no independent living facilities, no separate rental; Companion Unit is the *repealed* former title |
+| LA | Accessory Dwelling Unit | Accessory Living Quarters; Guest House | **no kitchen facilities** in both definitions; an ADU requires cooking |
+| SF | Accessory Dwelling Unit | in-law / secondary unit | § 207.1(b) partitions **all** city ADUs between the local and state programmes; both read |
+| San José | Accessory Dwelling Unit | Guest House | § 20.80.160 names both and treats them differently |
+
+**Nothing else was wrong.** Six of seven turned up a competing term, and in every
+case the code itself distinguishes them — four times by the same criterion.
+
+### The criterion worth carrying
+
+**The kitchen.** An ADU must provide complete independent living facilities
+including cooking, so a use defined as having no kitchen is definitionally not
+one. LA and San Diego both state it outright.
+
+**Boston is the exception that motivated the sweep**, and it is the exception
+precisely because its two terms are *not* separated by any such test. "Accessory
+Dwelling Unit" and "Additional Dwelling Unit" are two live routes with opposite
+effects in the same code. That is what made searching the wrong noun fatal there
+and harmless everywhere else.
+
+### Recorded because it came back clean
+
+An unwritten negative gets re-asked, and next time someone assumes it was never
+run. The result is encoded as `ADU_VOCABULARY_CHECK`, pinned by membership
+against the read-city list, so a city read later without a vocabulary check
+fails the build rather than slipping through — which is what slipping through
+looked like.
