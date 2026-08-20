@@ -161,7 +161,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'columbus', 'dallas', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -602,7 +602,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'columbus', 'dallas', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1903,7 +1903,16 @@ describe('the fan-out three — Charlotte, Dallas, Nashville', () => {
       const x = aduRulesFor(c).local
       return x.kind === 'read' && x.pending.kind === 'checked' && x.pending.amendingThisSection.length > 0
     })
-    expect(nonEmpty).toEqual(['nashville'])
+    // ⚠️ DC is the SECOND, and it is a different kind of entry. Nashville's
+    // pending bill renumbers subsections, so every G-citation recorded will
+    // shift. DC's amends § 253.13 only, swapping a renamed agency — real, and
+    // touching no figure, scope or operator. Both are listed; neither is
+    // smoothed into "nothing pending", which is what an empty list would say.
+    expect(nonEmpty).toEqual(['dc', 'nashville'])
+    const dc = aduRulesFor('dc').local
+    if (dc.kind !== 'read' || dc.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(dc.pending.amendingThisSection[0]).toMatch(/Department of Buildings/)
+    expect(dc.pending.amendingThisSection[0]).toMatch(/No figure, scope or operator changes/)
   })
 })
 
@@ -2090,5 +2099,94 @@ describe('⚠️ New York: an absence of the TERM is not an absence of constrain
     const kinds = new Set(ADU_LOCAL_READ.map((c) => aduRulesFor(c).state.kind))
     for (const k of kinds) expect(['preempts', 'declines', 'no-provision', 'not-established']).toContain(k)
     expect(kinds.size).toBeGreaterThanOrEqual(2)
+  })
+})
+
+describe('⚠️ Washington, DC: the noun is different and the publisher matters', () => {
+  it('⚠️ the canonical term is "accessory apartment", and the usual noun returns zero', () => {
+    // Searching Title 11 DCMR for "accessory dwelling unit" returns nothing —
+    // which reads as "DC has no ADU rule" rather than "DC calls it something
+    // else". The official section is captioned ACCESSORY APARTMENT (R).
+    expect(ADU_VOCABULARY_CHECK.dc.canonical).toMatch(/NOT "accessory dwelling unit"/)
+    expect(ADU_VOCABULARY_CHECK.dc.distinguishedBy).toMatch(/ZERO times in Title 11 DCMR/)
+    // ⚠️ rule 20: the zero is behind a positive control, so it is a measurement
+    // rather than a broken instrument.
+    expect(ADU_VOCABULARY_CHECK.dc.distinguishedBy).toMatch(/positive control of 2,833/)
+    // And the term IS defined in DC law — just in a different statute.
+    expect(ADU_VOCABULARY_CHECK.dc.distinguishedBy).toMatch(/§ 42-3401\.03/)
+    const l = aduRulesFor('dc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.citation).toMatch(/ACCESSORY APARTMENT \(R\)/)
+  })
+
+  it('⚠️ both height units are STATED, so neither is derived', () => {
+    // rule 12: Miami published 87 storeys for a district whose code says 80, by
+    // converting through a ft/storey constant twice. DC states both — "two (2)
+    // stories and twenty-two feet (22 ft.)" — joined by `and`, so both bind and
+    // no conversion is available or needed.
+    const l = aduRulesFor('dc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.maxHeightFt[0]?.form).toBe('figure')
+    expect(l.maxStories?.value).toBe(2)
+    expect(l.maxStories?.condition).toMatch(/CUMULATIVE with the 22 ft limit/)
+    expect(l.maxStories?.condition).toMatch(/neither is derived from the other/)
+  })
+
+  it('⚠️ the detached branch is a KNOWN absence, and its envelope is a FOOTPRINT', () => {
+    // § 253.7 creates a size slot for the in-dwelling branch; the parallel branch
+    // at § 253.8 has none. That is an answer, not a gap (rule 5). And 11-D § 5003
+    // caps BUILDING AREA — multiplying it by the two-storey limit to manufacture
+    // a floor area would be inventing a conversion (rule 4).
+    const l = aduRulesFor('dc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const nf = l.maxSizeSqFt.find((m) => m.kind === 'not-found')!
+    expect(nf.condition).toMatch(/KNOWN ABSENCE by the slot test/)
+    expect(nf.condition).toMatch(/FOOTPRINT, not a floor area/)
+    expect(nf.condition).toMatch(/must not be multiplied/)
+    // The in-dwelling baseline is a percentage, so no absolute figure is published.
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/thirty-five percent \(35%\)/)
+    expect(summariseAdu(aduRulesFor('dc'))).not.toMatch(/\b650\b|\b550\b/)
+  })
+
+  it('⚠️ the courtesy export invented an R-3 row, and it blocks rather than permits', () => {
+    // DCOZ's 2025-10-01 export renders Table U § 253.7(a) as "R-2, R-3", which
+    // imposes a 1,200 sq ft MINIMUM HOUSE SIZE in R-3. The official 11U253.doc has
+    // exactly two data rows and scopes the requirement to "the following zones".
+    // DCOZ's own 2024-03-04 export agrees with the official text.
+    // ⚠️ Rule 18's direction: this one produces a plausible number that
+    // DISQUALIFIES a compliant house, so nothing about it looks like an error.
+    const l = aduRulesFor('dc').local
+    if (l.kind !== 'read' || l.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(l.pending.note).toMatch(/RESOLVED AGAINST THE COURTESY TEXT/)
+    expect(l.pending.note).toMatch(/verified against Content-Length/)
+    expect(l.pending.note).toMatch(/BLOCKING direction/)
+    // The official publisher is the one recorded as the source of the read.
+    expect(l.citation).toMatch(/OFFICIAL ODAI text at dcregs\.dc\.gov/)
+    expect(l.pending.source).toMatch(/courtesy version/)
+  })
+
+  it('⚠️ the pending-list search box FAILED its own positive control', () => {
+    // It returned all 11 rows for a selective term, so it cannot discriminate.
+    // The list was enumerated instead of searched — the difference between a
+    // measurement and an instrument reporting on itself (rule 11).
+    const l = aduRulesFor('dc').local
+    if (l.kind !== 'read' || l.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(l.pending.note).toMatch(/FAILED its positive control/)
+    expect(l.pending.note).toMatch(/enumerated rather than searched/)
+  })
+
+  it('⚠️ DC is not citywide, and the RF exclusion was only explicit in 2026', () => {
+    // Before 2026-07-10, 11-U § 310.1(a) imported R-zone accessory uses into RF by
+    // reference, against Subtitle E's prohibition, with no stated priority rule
+    // covering an E-versus-U conflict. Reading the courtesy corpus alone would
+    // have produced a wrong answer for RF and RA.
+    const l = aduRulesFor('dc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.notes.find((x) => /NOT CITYWIDE — R zones only/.test(x))).toBeTruthy()
+    const rf = l.notes.find((x) => /RF EXCLUSION WAS ONLY MADE EXPLICIT/.test(x))!
+    expect(rf).toMatch(/73 DCR 009999/)
+    expect(rf).toMatch(/no stated priority rule/)
   })
 })

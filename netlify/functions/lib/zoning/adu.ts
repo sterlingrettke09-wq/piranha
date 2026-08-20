@@ -1983,6 +1983,75 @@ const MINNEAPOLIS_LOCAL: LocalLayer = {
   },
 }
 
+// ── WASHINGTON, DC ──────────────────────────────────────────────────────────
+//
+// ⚠️ THE NOUN IS "ACCESSORY APARTMENT", AND "ACCESSORY DWELLING UNIT" APPEARS
+// ZERO TIMES IN TITLE 11 DCMR. Searching DC's zoning code for the usual term
+// returns nothing and reads as "DC has no ADU rule". The official section is
+// captioned "ACCESSORY APARTMENT (R)" — confirmed at the official publisher.
+//
+// ⚠️ AND "ACCESSORY DWELLING UNIT" *IS* A DEFINED DC TERM — at D.C. Official
+// Code § 42-3401.03, in the Rental Housing Conversion and Sale Act. A different
+// body of law, a different scope, and no size figure. Two defined terms in two
+// statutes: the Boston hazard, in a shape Boston did not have.
+const DC_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Title 11 DCMR (Zoning Regulations of 2016), Subtitle U § 253 "ACCESSORY APARTMENT (R)" (eff. 2023-08-25) with Subtitle D §§ 201, 5000, 5002, 5003 (§ 5003 eff. 2026-07-10) — read from the OFFICIAL ODAI text at dcregs.dc.gov, not the DCOZ courtesy export',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ TWO REGIMES, AND THEY ARE NOT ALTERNATIVES THE APPLICANT ELECTS BETWEEN
+    // (rule 6 does not apply here) — which one binds follows from WHERE the unit
+    // is. Reporting the larger would assume a siting the user has not chosen.
+    {
+      kind: 'not-numeric',
+      rule:
+        'no absolute square-foot cap — the unit "may not occupy more than thirty-five percent (35%) of the gross floor area of the house", so the ceiling scales with the house',
+      condition: 'accessory apartment INSIDE the principal dwelling. ⚠️ Cumulative with a MINIMUM house size, joined by "and": the house itself must have at least 2,000 sq ft of gross floor area in R-1 and 1,200 sq ft in R-2, exclusive of garage space',
+      cite: '§ 253.7(b), with the minimum at Table U § 253.7(a)',
+      measure: 'gross floor area (11-B § 100.2, measured under 11-B § 304) — ⚠️ INCLUDES basements (§ 304.7) and EXCLUDES cellars (§ 304.8), split by a five-foot test',
+      baseline: true,
+    },
+    {
+      kind: 'not-found',
+      condition:
+        '⚠️ accessory apartment in an ACCESSORY BUILDING — § 253.8 states NO size limit for the apartment. This is a KNOWN ABSENCE by the slot test, not a missing lookup: § 253.7 creates a size slot for the in-dwelling branch and the parallel branch at § 253.8 has none. The detached unit is bounded by the accessory-building ENVELOPE instead — a maximum BUILDING AREA of the greater of 30% of the required rear yard area or 650 sq ft (R-1/R-2), or 550 sq ft (R-3), at 11-D § 5003 — which is a FOOTPRINT, not a floor area, and must not be multiplied by the two-storey height limit to manufacture one',
+    },
+  ],
+  // ⚠️ THE CODE STATES BOTH UNITS, SO NEITHER IS DERIVED (rule 12). "Two (2)
+  // stories AND twenty-two feet (22 ft.)" — the operator is `and`, both limbs
+  // bind, and no ft/storey constant is needed or permitted.
+  maxHeightFt: [
+    { form: 'figure', value: 22, condition: 'accessory building in an R zone — cumulative with a two-storey limit, joined by "and"', cite: '11-D § 5002.1 (eff. 2021-03-19)', baseline: true },
+  ],
+  maxStories: { value: 2, condition: 'accessory building in an R zone — CUMULATIVE with the 22 ft limit, not an alternative to it: the code says "two (2) stories and twenty-two feet (22 ft.)", so both bind and neither is derived from the other', cite: '11-D § 5002.1' },
+  heightDefersToBaseZone: { cite: '⚠️ applies to the DETACHED case only. For an accessory apartment inside the principal dwelling, § 253 imposes no height limit at all — a no-slot absence — and the house\u2019s own zone envelope governs' },
+  notes: [
+    'One accessory apartment, stated three times across three subtitles and consistent in all three: § 253.1 ("One (1) accessory apartment may be established in an R zone"), 11-D § 201.1 (one principal dwelling unit AND one accessory apartment per LOT OF RECORD — additive, not an alternative), and 11-D § 5000.2(b).',
+    '⚠️ OWNER-OCCUPANCY IS REQUIRED and cannot be waived: "Either the principal dwelling or accessory apartment unit shall be owner-occupied for the duration of the accessory apartment use" (§ 253.5), and § 253.10(a) provides that this requirement "shall not be waived in any R zones".',
+    '⚠️ A PERSONS CAP, SEPARATE FROM THE UNIT COUNT: not more than three (3) persons may occupy the accessory apartment, except in R-1B/GT or R-3/GT where the house and apartment COMBINED may not exceed six (6) (§ 253.6).',
+    '⚠️ NOT CITYWIDE — R zones only (§ 253.1), and the exclusions are express rather than inferred: prohibited in all RF zones (11-E § 201.6, 11-U § 310.1(a)), all RA zones (11-U § 410.1(a)), and on Alley Lots (11-U §§ 600.1(f)(3), 601.1(f)(3)).',
+    // ⚠️ A CONFLICT THAT WAS LIVE UNTIL 2026 AND IS NOW CLOSED — and the point is
+    // that reading the courtesy export alone would have produced a wrong answer.
+    '⚠️ THE RF EXCLUSION WAS ONLY MADE EXPLICIT ON 2026-07-10. Before that, 11-U § 310.1(a) permitted in RF zones "any accessory use permitted in the R zones under Subtitle U § 250" — and § 250.1(a) IS the accessory apartment — which read as importing the use into RF by reference, against Subtitle E\u2019s prohibition. Subtitle A §§ 201.3–201.4 resolve conflicts only between a land-use subtitle and Subtitle C, so no stated priority rule covered an E-versus-U conflict. The 2026 rulemaking (73 DCR 009999) closed it in all three places.',
+    'Georgetown is a special-exception zone in both locations (§ 253.4, R-1B/GT and R-3/GT), and there the apartment "shall only be permitted on the second story of a detached accessory building" (§ 253.9(a)) — a placement rule that operates as a height constraint.',
+    '⚠️ TWO LIMITS THAT ARE FILLED BUT UNQUANTIFIED — the Atlanta SPI-20 third outcome, not absences and not gaps in the reading. An accessory building must "be secondary in size compared to the principal building" (11-D § 5000.2(c)), and the apartment must be "secondary to the principal single household dwelling unit in terms of gross floor area" (11-B § 100.2). Neither states a ratio.',
+    '⚠️ AN UNRESOLVED CONSEQUENCE FOR DC\u2019S ARCHETYPAL CASE, recorded as a gap rather than guessed. The below-grade unit is the common DC form, and whether that space is a BASEMENT (inside GFA) or a CELLAR (outside it) turns on the five-foot test at 11-B § 100.2. § 253.7(b) expresses the cap as a share of GFA, so in a cellar both the unit and the denominator would exclude the space. The text does not state how that case is computed, and no agency FAQ gloss is adopted for it (rule 4).',
+    '⚠️ "ACCESSORY DWELLING UNIT" OCCURS ZERO TIMES IN TITLE 11 DCMR — across 1,159 pages in two independent extractions, behind a positive control of 2,833 for "zoning" and 385 for "dwelling". The absence is of the TERM, not of the rule. And the term IS defined elsewhere in DC law, at D.C. Official Code § 42-3401.03 (Rental Housing Conversion and Sale Act), with near-identical wording, a different scope and no size figure.',
+    '⚠️ THE WIDELY-CITED "450 sq. ft." DETACHED FIGURE IS SUPERSEDED. It is what the DCOZ courtesy export still shows as a single un-districted subsection. 11-D § 5003 has been amended twice since (72 DCR 009494 eff. 2025-09-05; 73 DCR 009999 eff. 2026-07-10) and is now per-district at 650/550. Caught only by reading the official publisher rather than the city\u2019s own PDF.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'dcregs.dc.gov (ODAI) — the publisher DCOZ itself designates as official, its own copies being captioned "courtesy version" — plus the DCOZ Text Amendment Dashboard',
+    codifiedThrough: 'U § 253 effective 2023-08-25 (70 DCR 011297); D § 5003 effective 2026-07-10 (73 DCR 009999); D § 5002 effective 2021-03-19',
+    // ⚠️ NON-EMPTY, and the second city in the file to be so. The amendment is
+    // real but touches nothing this module publishes.
+    amendingThisSection: ['Z.C. Case No. 08-06R, NOPR published 2025-06-20 (72 DCR Vol 72/25) — amends § 253.13 ONLY, replacing "Department of Consumer and Regulatory Affairs" with "Department of Buildings". No figure, scope or operator changes.'],
+    note: 'A maintained pending list EXISTS (the DCOZ Text Amendment Dashboard, exactly 11 cases, all enumerated) — ⚠️ its free-text search box FAILED its positive control, returning all 11 rows for a selective term, so the list was enumerated rather than searched. ⚠️ A PUBLISHER CONFLICT WAS FOUND AND RESOLVED AGAINST THE COURTESY TEXT: DCOZ\u2019s 2025-10-01 export renders Table U § 253.7(a)\u2019s second row as "R-2, R-3", which would impose a 1,200 sq ft minimum house size in R-3. The official 11U253.doc (49,664 bytes, verified against Content-Length) has exactly two data rows, R-1 and R-2, and its lead-in scopes the requirement to "the following zones" — so R-3 carries NO minimum. DCOZ\u2019s own 2024-03-04 export agrees with the official text, making the 2025 export the outlier. ⚠️ The invented R-3 row runs in the BLOCKING direction: it would disqualify small R-3 houses the code permits.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -2064,7 +2133,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   columbus: { city: 'columbus', state: NO_PROVISION.oh, stateApplies: NA, local: COLUMBUS_LOCAL },
   milwaukee: { city: 'milwaukee', state: NO_PROVISION.wi, stateApplies: NA, local: MILWAUKEE_LOCAL },
   minneapolis: { city: 'minneapolis', state: NO_PROVISION.mn, stateApplies: NA, local: MINNEAPOLIS_LOCAL },
-  dc: { city: 'dc', state: NO_PROVISION.dc, stateApplies: NA, local: NOT_READ_LOCAL('Washington, DC') },
+  dc: { city: 'dc', state: NO_PROVISION.dc, stateApplies: NA, local: DC_LOCAL },
   chicago: { city: 'chicago', state: NO_PROVISION.il, stateApplies: NA, local: NOT_READ_LOCAL('Chicago') },
   nyc: { city: 'nyc', state: NO_PROVISION.ny, stateApplies: NA, local: NOT_READ_LOCAL('New York City') },
   philadelphia: { city: 'philadelphia', state: NO_PROVISION.pa, stateApplies: NA, local: NOT_READ_LOCAL('Philadelphia') },
@@ -2119,6 +2188,13 @@ export interface VocabularyCheck {
 }
 
 export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = Object.freeze({
+  dc: {
+    canonical:
+      '⚠️ "Accessory apartment" — NOT "accessory dwelling unit". The official section is captioned "ACCESSORY APARTMENT (R)" (11-U § 253)',
+    competing: ['Accessory dwelling unit — a defined term in a DIFFERENT statute', 'Additional dwelling unit — checked and NOT a term here', 'English basement'],
+    distinguishedBy:
+      '⚠️ THE USUAL NOUN RETURNS ZERO. "Accessory dwelling unit" occurs ZERO times in Title 11 DCMR — 1,159 pages, two independent extractions, behind a positive control of 2,833 for "zoning" and 385 for "dwelling" — so searching DC\u2019s zoning code for the standard term returns nothing and reads as "DC has no ADU rule". ⚠️ AND THE TERM IS DEFINED ELSEWHERE IN DC LAW: D.C. Official Code § 42-3401.03, in the Rental Housing Conversion and Sale Act, defines "accessory dwelling unit" in near-identical words but with a different scope and NO size figure. Two defined terms in two bodies of law — the Boston hazard in a shape Boston did not have, since here the competing term lives outside the zoning code entirely. "Additional dwelling unit" occurs once, as ordinary English in an apartment-house density rule, and is NOT a second track as it is in Boston. "English basement" is vernacular with zero occurrences — but it points at the split that decides DC\u2019s archetypal case: GFA includes BASEMENTS (11-B § 304.7) and excludes CELLARS (§ 304.8), separated by a five-foot test.',
+  },
   columbus: {
     canonical:
       '"Accessory dwelling unit or ADU" — defined SEPARATELY in each of the two live instruments: Title 33 § 3303.01 and Title 34 § B.40.020.A',
