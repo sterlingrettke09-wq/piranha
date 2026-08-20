@@ -514,6 +514,33 @@ so no amount of reading produces one. A structural reason outlives a schedule.
 Generalises to any fixture standing for an absent, unsupported or unhandled case:
 name something absent by construction, not something merely absent for now.
 
+**⚠️ AND DOCUMENTING THE HAZARD DOES NOT PREVENT IT — this is the strengthening,
+learned by trying.** The ADU work hit this a third and fourth time. The "nobody
+has looked" fixture named Denver until Colorado's statute was found; it was moved
+to Atlanta *with a comment naming the exact condition* — "Atlanta is a
+structurally better example only while Georgia stays blocked" — and Georgia was
+closed within the hour, by following the legislature's own link instead of
+assuming a paywall.
+
+So the prediction was correct, written down, and adjacent to the fixture, and the
+test broke anyway. **A fixture chosen because work has not happened yet is
+scheduled to break no matter how well the choice is explained**, because the
+explanation is not what holds it — the state of the work is, and that is exactly
+what you are trying to change. This is rule 15's shape pointed at fixtures: a
+well-written rationale makes a doomed choice *look* considered.
+
+The only stable answer is to **construct the state rather than name a case that
+has it.** Both ADU fixtures ended as literals — `FLOOR_ONLY` and
+`NOTHING_ESTABLISHED` — built in the test file, exercising the branch by
+construction, unable to be read away. If no live example can be named that is
+absent *by construction*, do not name a live example at all.
+
+Corollary for the guard: when the last real instance disappears, the inventory
+that tracked it goes empty and any "all clear" assertion over it becomes
+vacuously true (rule 20). Pin the partition, not the exception — count every
+member and assert each bucket's membership, so the check fails when something is
+added rather than passing because nothing is left.
+
 **30. A derivation instruction in the source is a claim, and it can be wrong
 about its own table.** Atlanta SPI-15's mixed-use clause reads "floor area ratio
 shall not exceed N times net lot area **[the sum of the nonresidential (i) and
