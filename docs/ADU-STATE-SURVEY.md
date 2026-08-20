@@ -18,7 +18,7 @@ it sets a floor the city may not go below.
 Eighteen cities sit in sixteen jurisdictions: AZ, CO, DC, FL, GA, IL, MA, MN, NC
 (×2 cities), NV, NY, OH, PA, TN, TX (×2 cities), WI.
 
-## Status — 14 of 16 established, 16 of 18 cities have a determined state layer
+## Status — COMPLETE. 16 of 16 established, all 18 cities have a determined state layer
 
 | jurisdiction | city | preempts? | instrument | basis |
 |---|---|---|---|---|
@@ -36,10 +36,11 @@ Eighteen cities sit in sixteen jurisdictions: AZ, CO, DC, FL, GA, IL, MA, MN, NC
 | IL | chicago | **no** | 65 ILCS 5/11-13 (Div. 13, Zoning) | rendered text, 0 hits |
 | NY | nyc | **no** | Gen. City Law art. 5-A | 7 sections, 0 hits |
 | PA | philadelphia | **no — and the MPC does not reach Philadelphia** | Act 247 of 1968 | 398 KB, 0 hits |
-| GA | atlanta | — | — | **not established — source blocked** |
-| TN | nashville | — | — | **not established — source blocked** |
+| GA | atlanta | **no** | the **entire** OCGA | whole-code search, 0 hits, positive control 370 |
+| TN | nashville | **no** | the **entire** Tennessee Code | whole-code search, 0 hits, positive control 235 |
 
-**⚠️ "Not established" means nobody has looked, not that the state has no statute.**
+**Four preempt** (AZ, CO, MA, NV). **Twelve do not**, of which Florida's is an
+express legislative "may" and Pennsylvania's resolves on scope. None is unlooked-at.
 
 ---
 
@@ -292,24 +293,42 @@ That is the slot test applied to a statute's **scope clause** rather than to its
 contents: the instrument that would carry a Pennsylvania ADU mandate for cities
 excludes Philadelphia by its own terms, so its contents are moot for this city.
 
-## The two that remain, and why
+## ⚠️ The two that "remained" were the two strongest, and the block was my route
 
-**GA and TN are not established, and the reason is source access rather than
-effort.** Both publish their official codes through LexisNexis behind a session.
-The freely reachable routes failed: `lexisnexis.com/hottopics/gacode/` was denied,
-`ga.elaws.us` returned Service Unavailable, and Justia's Georgia Title 36 index
-did not render a chapter list.
+Georgia and Tennessee were recorded as `not-established` on the ground that their
+codes sit behind LexisNexis. That was true of the route I had tried and false of
+the resource.
 
-Justia does carry a Georgia Chapter 66 (Zoning Procedures) page — **as a 2022
-snapshot**, with 2023/2024/2025 versions offered separately. **A stale mirror must
-not be used to establish a 2026 absence.** That is precisely the failure Nevada
-demonstrates: NRS 278.257 took effect 2026-07-01, and any source frozen before
-then reports Nevada as non-preempting with complete confidence. A 2022 Georgia
-snapshot has four legislative sessions of the same exposure.
+**Georgia's own General Assembly publishes no code text.** `legis.ga.gov`'s
+"Georgia Code" link points AT `lexisnexis.com/hottopics/gacode` — so the
+commercial host *is* the enacting body's designated publication, maintained for
+the Georgia Code Revision Commission under contract. Following the legislature's
+own link rendered a public-access portal with a working full-code search. The
+same pattern holds for Tennessee at `/hottopics/tncode`.
 
-So both are recorded as unlooked-at rather than as absences. Closing them needs a
-current authoritative text — a LexisNexis session, or a state-published
-alternative not yet identified.
+The earlier denial came from a URL I constructed (`.../gacode/`, with a trailing
+slash, via a different host spelling), not from a paywall. **"It is behind
+LexisNexis" was an inference about a 403, and the fix was to ask who publishes
+the code rather than to assume who blocks it** — the same shape as rule 8, where
+a 404 on a guessed path proves the guess wrong and nothing else.
+
+The result is that these two are the **strongest** entries in the survey. Every
+other `no-provision` row rests on a chapter-scoped read; these are searches over
+the whole code:
+
+| state | query | result |
+|---|---|---|
+| GA | `"accessory dwelling unit"` over the entire OCGA | **0 documents** |
+| GA | `"zoning"` — positive control | **370 documents** |
+| TN | `"accessory dwelling unit"` over the entire Tennessee Code | **0 documents** |
+| TN | `"zoning"` — positive control | **235 documents**, from Title 13 ch. 7, citing Tenn. Code Ann. § 13-7-307 |
+
+**⚠️ The positive controls are the point, not decoration.** A search returning
+nothing and a search that is not working are indistinguishable, which is rule 20
+inside the instrument. The Tennessee control did double duty: the results page
+chrome still read "Georgia General Assembly" while the TOC scope read "Tennessee
+Code", and only the control's citation to a Tennessee section confirmed the
+search was actually scoped to Tennessee.
 
 ## What the survey established about method
 

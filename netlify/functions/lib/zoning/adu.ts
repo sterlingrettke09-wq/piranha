@@ -702,16 +702,30 @@ const NO_PROVISION: Readonly<Record<string, StateNoProvision>> = Object.freeze({
   mn: noProvision('Minnesota', 'Minn. Stat. chapter 462 (Housing, Redevelopment, Planning, Zoning), titled section index', 'titled index of 208 sections, zero hits. ⚠️ An earlier probe of § 462.357 was a GUESSED section number and was discarded rather than recorded — it disproves the guess, not Minnesota (rule 8)'),
   dc: noProvision('District of Columbia', 'D.C. Code title 6 chapter 6 (Zoning and Height of Buildings)', 'chapter index, six subchapters, no ADU provision. DC zoning is delegated to the Zoning Commission and lives in 11 DCMR, which is the LOCAL instrument — DC has no legislature above it for this purpose'),
   il: noProvision('Illinois', '65 ILCS 5/11-13, Division 13 (Zoning) of the Illinois Municipal Code', 'rendered text of 64,113 characters and 103 section references, zero hits. ⚠️ Reached by clicking the index\u2019s own link after the legacy URL scheme returned a page byte-identical to one already held; the length moving 19,259 → 64,113 is what proved a different page was served'),
+  ga: noProvision('Georgia', 'the entire Official Code of Georgia Annotated', 'full-code phrase search on the public-access portal the Georgia General Assembly itself links to, maintained for the Georgia Code Revision Commission: 0 documents for "accessory dwelling unit". ⚠️ Positive control — "zoning" returns 370 documents, so the search works and the zero is a measurement rather than a broken instrument'),
+  tn: noProvision('Tennessee', 'the entire Tennessee Code', 'full-code phrase search on the Tennessee Code Unannotated free public access portal: 0 documents for "accessory dwelling unit". ⚠️ Positive control — "zoning" returns 235 documents, from Title 13 ch. 7 and citing Tenn. Code Ann. § 13-7-307, which also confirmed the scope was Tennessee despite stale "Georgia General Assembly" page chrome'),
   ny: noProvision('New York', 'General City Law article 5-A (Buildings and Use Districts) — the zoning article of the law applicable to cities', 'seven sections and none of the chapter\u2019s 22 article titles mention accessory dwellings'),
   pa: noProvision('Pennsylvania', 'the Pennsylvania Municipalities Planning Code (Act 247 of 1968), read whole', '398,886 characters, zero ADU occurrences. ⚠️ And it resolves on SCOPE regardless: the MPC\u2019s enacting clause empowers "cities of the second class A, and third class" and omits cities of the FIRST class entirely — the phrase appears nowhere in the act. Philadelphia is Pennsylvania\u2019s only first-class city, so the MPC does not reach it; its zoning authority runs through the First Class City Home Rule Act'),
 })
 
-const notEstablished = (state: string): StateNotEstablished => ({
-  kind: 'not-established',
-  state,
-  detail:
-    `${state} publishes its official code through LexisNexis behind a session, and the freely reachable routes failed: lexisnexis.com/hottopics was denied and the mirrors that render carry stale snapshots. ⚠️ A stale mirror must not establish a 2026 absence — Nevada is the proof, since NRS 278.257 took effect 2026-07-01 and any source frozen before then reports Nevada as non-preempting with complete confidence. Recorded as unlooked-at rather than as an absence.`,
-})
+// ⚠️ GA AND TN ARE THE STRONGEST RESULTS IN THE SURVEY, AND WERE ALMOST THE
+// WEAKEST. Both were briefly recorded as `not-established` on the ground that
+// their codes sit behind LexisNexis — which was true of the ROUTE I had tried
+// and false of the resource. Georgia's own General Assembly site publishes no
+// code text; its "Georgia Code" link points AT LexisNexis, so the commercial
+// host IS the enacting body's designated publication, maintained for the
+// Georgia Code Revision Commission. Following the legislature's own link
+// rendered a public-access portal with a working full-code search.
+//
+// So these two are whole-code searches rather than the chapter-scoped reads
+// every other `no-provision` entry rests on — a stronger instrument, reached by
+// asking who publishes the code rather than by assuming a paywall.
+//
+// ⚠️ AND EACH CARRIES A POSITIVE CONTROL, because a search returning nothing and
+// a search that is not working are indistinguishable (rule 20). "zoning"
+// returns 370 in the OCGA and 235 in the Tennessee Code, the latter citing
+// Tenn. Code Ann. § 13-7-307 — which also confirmed the scope was really
+// Tennessee, since the page chrome still read "Georgia General Assembly".
 
 const SANDIEGO_LOCAL: LocalLayer = {
   kind: 'read',
@@ -1114,9 +1128,9 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   nyc: { city: 'nyc', state: NO_PROVISION.ny, stateApplies: NA, local: NOT_READ_LOCAL('New York City') },
   philadelphia: { city: 'philadelphia', state: NO_PROVISION.pa, stateApplies: NA, local: NOT_READ_LOCAL('Philadelphia') },
 
-  // ── ⚠️ Nobody has looked. Two facts short, and they say so. ──────────────
-  atlanta: { city: 'atlanta', state: notEstablished('Georgia'), stateApplies: NA, local: NOT_READ_LOCAL('Atlanta') },
-  nashville: { city: 'nashville', state: notEstablished('Tennessee'), stateApplies: NA, local: NOT_READ_LOCAL('Nashville') },
+  // ── Georgia and Tennessee: whole-code searches, both clean ──────────────
+  atlanta: { city: 'atlanta', state: NO_PROVISION.ga, stateApplies: NA, local: NOT_READ_LOCAL('Atlanta') },
+  nashville: { city: 'nashville', state: NO_PROVISION.tn, stateApplies: NA, local: NOT_READ_LOCAL('Nashville') },
 })
 
 /** ⚠️ The fallback is `not-established`, never `no-provision`. A city absent

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   aduRulesFor, summariseAdu, effectiveMaxSize, ADU_LOCAL_READ, ADU_STATE_PREEMPTED,
+  ADU_STATE_NOT_ESTABLISHED,
 } from './adu'
 import { CITIES } from '../../../../src/config/cities'
 import type { AduRules, AduFloor, StateLayer, StatePreempts } from './adu'
@@ -27,6 +28,25 @@ const setbackFigure = (f: StatePreempts): number | null => {
 // whatever is next off the work queue. Every preempted city is now read, so there
 // is no live example left to name and constructing the state directly is the only
 // stable fixture: it exercises the branch by construction and cannot be read away.
+// ⚠️ THE SAME TRAP, SPRUNG A FOURTH TIME AND INSIDE ONE COMMIT.
+//
+// The "nobody has looked" test named Denver, until Colorado was found. It was
+// moved to Atlanta with a comment saying Atlanta worked "only while Georgia
+// stays blocked" — and Georgia was closed the next hour, by following the
+// legislature's own link instead of assuming a paywall. The prediction was
+// written down and the fixture rotted anyway.
+//
+// With 16 of 16 jurisdictions established there is now NO live city in this
+// state, so there is nothing left to name. Same resolution as FLOOR_ONLY:
+// construct the state. Rule 29 says pick a fixture by WHY it cannot be done, and
+// the only durable answer here is "because it is built that way".
+const NOTHING_ESTABLISHED: AduRules = {
+  city: 'atlanta',
+  state: { kind: 'not-established', state: 'Nowhere', detail: 'synthetic fixture — see the note above' },
+  stateApplies: { kind: 'n-a' },
+  local: { kind: 'not-read', detail: 'synthetic fixture' },
+}
+
 const FLOOR_ONLY: AduRules = {
   city: 'sf',
   state: aduRulesFor('sf').state,
@@ -55,10 +75,13 @@ describe('which body of law governs', () => {
     // being unread is drawn from the front of the work queue. Atlanta is a
     // structurally better example only while Georgia stays blocked, and the
     // guard below pins that set so this cannot rot silently.
-    const a = aduRulesFor('atlanta')
+    const a = NOTHING_ESTABLISHED
     expect(a.state.kind).toBe('not-established')
     expect(a.local.kind).toBe('not-read')
     expect(summariseAdu(a)).toMatch(/nobody has looked/)
+    // And the resolver's own fallback for an unknown city is this state, never
+    // `no-provision` — a default must not manufacture a claim.
+    expect(aduRulesFor('atlantis').state.kind).toBe('not-established')
   })
 
   it('⚠️ Denver has a STATUTE but an unverified applicability, and says which', () => {
@@ -74,6 +97,30 @@ describe('which body of law governs', () => {
     expect(d.stateApplies.why).toMatch(/must not be assumed from size/)
     // And nothing is published for it.
     expect(effectiveMaxSize(d).value).toBeNull()
+  })
+
+  it('⚠️ the state survey is COMPLETE, and the guard cannot pass by finding nothing', () => {
+    // 16 of 16 jurisdictions established on 2026-08-20. `ADU_STATE_NOT_ESTABLISHED`
+    // is now empty — and an empty set makes an "everything is established"
+    // assertion vacuously true, which is exactly the rule 20 failure. So the
+    // input set is pinned by size and by composition, and a city added without a
+    // state layer turns this RED rather than sliding through.
+    expect([...ADU_STATE_NOT_ESTABLISHED]).toEqual([])
+    const live = CITIES.filter((c) => c.live).map((c) => c.slug)
+    const byKind: Record<string, string[]> = {}
+    for (const slug of live) {
+      const k = aduRulesFor(slug).state.kind
+      ;(byKind[k] ??= []).push(slug)
+    }
+    // Non-empty, and every live city accounted for in exactly one bucket.
+    expect(live.length).toBe(23)
+    expect(Object.values(byKind).flat().sort()).toEqual([...live].sort())
+    expect(byKind['not-established'] ?? []).toEqual([])
+    expect((byKind['preempts'] ?? []).sort()).toEqual(
+      ['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'],
+    )
+    expect(byKind['declines']).toEqual(['miami'])
+    expect((byKind['no-provision'] ?? []).length).toBe(13)
   })
 
   it('covers every live city explicitly, with no silent default', () => {
@@ -283,7 +330,7 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     // ⚠️ Atlanta, not Denver. Denver acquired a statute on 2026-08-20 and now
     // returns `state-no-figure` — a live preemption whose reach is unverified —
     // which is a DIFFERENT nothing from Atlanta's, where nobody has looked.
-    const e = effectiveMaxSize(aduRulesFor('atlanta'))
+    const e = effectiveMaxSize(NOTHING_ESTABLISHED)
     expect(e.source).toBe('unresolved')
     expect(e.value).toBeNull()
   })
@@ -294,26 +341,24 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     // handed it to the city; North Carolina's planning chapter was read whole
     // and has no ADU provision; Nevada preempts but states no size; Georgia has
     // not been looked at. Four facts, and only the last is ignorance.
-    const seen = new Map<string, string>()
-    for (const c of ['miami', 'charlotte', 'lasvegas', 'atlanta']) {
-      seen.set(c, effectiveMaxSize(aduRulesFor(c)).source)
-    }
-    expect(seen.get('miami')).toBe('state-declines')
-    expect(seen.get('charlotte')).toBe('unresolved')
-    expect(seen.get('lasvegas')).toBe('state-no-figure')
-    expect(seen.get('atlanta')).toBe('unresolved')
+    expect(effectiveMaxSize(aduRulesFor('miami')).source).toBe('state-declines')
+    expect(effectiveMaxSize(aduRulesFor('charlotte')).source).toBe('unresolved')
+    expect(effectiveMaxSize(aduRulesFor('lasvegas')).source).toBe('state-no-figure')
+    expect(effectiveMaxSize(NOTHING_ESTABLISHED).source).toBe('unresolved')
     // Every one of them still publishes NO number — the distinction is in the
     // reason, never in a figure invented to fill the gap.
-    for (const c of seen.keys()) expect(effectiveMaxSize(aduRulesFor(c)).value, c).toBeNull()
+    for (const r of [aduRulesFor('miami'), aduRulesFor('charlotte'), aduRulesFor('lasvegas'), NOTHING_ESTABLISHED]) {
+      expect(effectiveMaxSize(r).value, r.city).toBeNull()
+    }
 
     // ⚠️ And the two that share a `source` must NOT share a sentence: NC was
-    // read and Georgia was not.
+    // read within a named scope, the synthetic city was not read at all.
     const nc = summariseAdu(aduRulesFor('charlotte'))
-    const ga = summariseAdu(aduRulesFor('atlanta'))
+    const none = summariseAdu(NOTHING_ESTABLISHED)
     expect(nc).toMatch(/contains no ADU provision/)
     expect(nc).not.toMatch(/nobody has looked/)
-    expect(ga).toMatch(/nobody has looked/)
-    expect(ga).not.toMatch(/contains no ADU provision/)
+    expect(none).toMatch(/nobody has looked/)
+    expect(none).not.toMatch(/contains no ADU provision/)
   })
 
   it('⚠️ Florida is an ANSWER about Florida, not a gap in our reading', () => {
