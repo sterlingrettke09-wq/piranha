@@ -329,11 +329,23 @@ recorded for each.
 
 **The eighteen remaining cities are started but not done.** The state-preemption
 survey that must precede any encoding lives in
-[`docs/ADU-STATE-SURVEY.md`](./ADU-STATE-SURVEY.md) — 3 of 16 jurisdictions
-established (AZ, CO, MA — all three preempt), 13 not yet looked at. Nothing from
-that survey is wired into the engine, deliberately: three of the first three
-states state their rules in forms the current type cannot hold, and the redesign
-should happen once with the full picture rather than once per state.
+[`docs/ADU-STATE-SURVEY.md`](./ADU-STATE-SURVEY.md) — **11 of 16 jurisdictions
+established** as of 2026-08-20, giving 13 of the 18 cities a determined state
+layer. Five preempt (AZ, CO, MA, NV — and NV's statute took effect 2026-07-01);
+six do not, of which Florida's is an express legislative "may" rather than an
+absence. GA, IL, NY, PA and TN remain unlooked-at.
+
+Nothing from that survey is wired into the engine, deliberately: the resolved
+jurisdictions state their rules in **eight structurally different forms**, and
+`StateFloorLayer | null` expresses two of them. The redesign happens once, with
+the full picture.
+
+⚠️ Two instrument failures were caught mid-survey, both of which had already
+produced confident false absences: Texas returned a JS navigation shell to curl
+for five different chapters at **identical byte counts**, and Illinois served the
+article index **byte-identical** to a request for the zoning division. Exit code
+0 and HTTP 200 in every case. The signal that caught both was a suspicious byte
+count compared across requests that should have differed.
 
 ### The five, as read
 
