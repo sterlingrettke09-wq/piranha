@@ -760,7 +760,7 @@ const NO_PROVISION: Readonly<Record<string, StateNoProvision>> = Object.freeze({
   mn: noProvision('Minnesota', 'Minn. Stat. chapter 462 (Housing, Redevelopment, Planning, Zoning), titled section index', 'titled index of 208 sections, zero hits. ⚠️ An earlier probe of § 462.357 was a GUESSED section number and was discarded rather than recorded — it disproves the guess, not Minnesota (rule 8)'),
   dc: noProvision('District of Columbia', 'D.C. Code title 6 chapter 6 (Zoning and Height of Buildings)', 'chapter index, six subchapters, no ADU provision. DC zoning is delegated to the Zoning Commission and lives in 11 DCMR, which is the LOCAL instrument — DC has no legislature above it for this purpose'),
   il: noProvision('Illinois', '65 ILCS 5/11-13, Division 13 (Zoning) of the Illinois Municipal Code', 'rendered text of 64,113 characters and 103 section references, zero hits. ⚠️ Reached by clicking the index\u2019s own link after the legacy URL scheme returned a page byte-identical to one already held; the length moving 19,259 → 64,113 is what proved a different page was served'),
-  ga: noProvision('Georgia', 'the entire Official Code of Georgia Annotated', 'full-code phrase search on the public-access portal the Georgia General Assembly itself links to, maintained for the Georgia Code Revision Commission: 0 documents for "accessory dwelling unit". ⚠️ Positive control — "zoning" returns 370 documents, so the search works and the zero is a measurement rather than a broken instrument'),
+  ga: noProvision('Georgia', 'the entire Official Code of Georgia Annotated', 'full-code phrase search on the public-access portal the Georgia General Assembly itself links to, maintained for the Georgia Code Revision Commission: 0 documents for "accessory dwelling unit". ⚠️ Positive control — "zoning" returns 370 documents, so the search works and the zero is a measurement rather than a broken instrument. \u26a0\ufe0f AND THE ABSENCE UNDERSTATES THE ACTIVITY: HB 1166, which would have preempted local ADU rules at 400 sq ft, PASSED THE HOUSE in March 2026 and died in the Senate. No statute is in force, so `no-provision` stands — but this is a live legislative area, not a settled one. \u26a0\ufe0f Reported from a SECONDARY account only: legis.ga.gov returned HTTP 401 on every API endpoint, so the bill history is not primary-sourced here'),
   tn: noProvision('Tennessee', 'the entire Tennessee Code', 'full-code phrase search on the Tennessee Code Unannotated free public access portal: 0 documents for "accessory dwelling unit". ⚠️ Positive control — "zoning" returns 235 documents, from Title 13 ch. 7 and citing Tenn. Code Ann. § 13-7-307, which also confirmed the scope was Tennessee despite stale "Georgia General Assembly" page chrome'),
   // ⚠️ TWO CHAPTERS READ, AND THE SECOND ONE BINDS WITHOUT NAMING ADUs. The
   // original scope here was the zoning enabling act alone, which is rule 23's
@@ -2307,6 +2307,87 @@ const RALEIGH_LOCAL: LocalLayer = {
   },
 }
 
+// ── ATLANTA ─────────────────────────────────────────────────────────────────
+//
+// ⚠️ THE DEFINITION CARRIES EVERY FIGURE — third instance of the Massachusetts
+// pattern, after MA itself and NYC. § 16-29.001(12)(a)7 states the size, the
+// detachment requirement and the height cross-reference; the operative
+// accessory-use sections state NO size and NO height at all.
+//
+// ⚠️ AND THE COMPETING USE IS PERMITTED WHERE THE ADU IS NOT. "Guest house" is
+// separately defined and allowed in EVERY single-family district including R-1,
+// and the only thing separating it from an ADU is the kitchen. Reading "guest
+// house permitted" as "ADU permitted" would publish a wrong answer for the nine
+// districts where ADUs are not allowed.
+const ATLANTA_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Atlanta Code of Ordinances Part III Part 16, § 16-29.001(12)(a)7 (the definition, which carries the figures) with §§ 16-06.004, 16-06A.004, 16-07.004 and 16-28.004; Municode Supplement 106, jobId 494611',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    {
+      kind: 'capped',
+      sqFt: 750,
+      // ⚠️ NO OPERATOR — a single limb, and it sits inside the definition of
+      // what an ADU IS rather than in any rule about what may be built.
+      condition:
+        'citywide default — R-4, R-4A and R-5, and any SPI or historic district that does not state its own. A single limb with no operator, stated as part of the definition: "A detached dwelling unit … having a floor area of 750 square feet or less"',
+      cite: '§ 16-29.001(12)(a)7',
+      measure:
+        '⚠️ "floor area" — AND THE CODE SUPPLIES NO METHOD FOR IT. § 16-29.001(13)(a) says that for single-family dwellings "the floor area is defined as indicated in section 16-29.001" — a bare SELF-REFERENCE to the section being read, with no subsection, verified in raw HTML where the cross-reference links back to its own chunk. The only residential measurement method in the code, § 16-28.010(3), scopes ITSELF to the R-G district. This is the THIRD slot-test outcome: the slot exists, it is FILLED, and what fills it does not resolve',
+      baseline: true,
+    },
+    {
+      kind: 'capped',
+      sqFt: 1200,
+      condition:
+        '⚠️ THREE NAMED HISTORIC DISTRICTS ONLY, and each states its own operator: Inman Park HD Core Subarea 1 — "1,200 square feet or 40 percent of the area of the principal building, whichever is less" (§ 16-20L.006(5)b i); Bonaventure-Somerset HD — the same with 50 percent (§ 16-20U.011(1)a); Poncey-Highland HD Subareas 1, 2 and 6 — 50 percent "whichever is less, WITH A MINIMUM OF 750 SQUARE FEET ALLOWED", a cap-AND-FLOOR drafting (§ 16-20V.012(2)(b)(ii)). ⚠️ Not a citywide allowance — the citywide figure is 750',
+      cite: '§§ 16-20L.006(5)b i, 16-20U.011(1)a, 16-20V.012(2)(b)(ii)',
+      measure: 'floor area, subject to the same unresolved measurement problem as the citywide figure',
+    },
+    {
+      kind: 'not-numeric',
+      // ⚠️ A LIVE INTERPRETIVE GAP THAT CHANGES THE ANSWER DOWNWARD. Five
+      // district-specific chapters expressly carve ADU square footage out of the
+      // 30% accessory-building cap. The BASE districts carry no such carve-out.
+      rule:
+        'possibly ALSO capped at 30 percent of the main structure. § 16-28.004(3) provides that accessory buildings in R-1 through R-5 "shall not exceed 20 feet in height, AND shall not cover more than 25 percent of the area of the rear yard, AND shall not contain a total floor area greater than 30 percent of the main structure" — three limbs, all binding. ⚠️ Five district-specific chapters (SPI-5, Adair Park, Inman Park, Bonaventure-Somerset, Poncey-Highland) EXPRESSLY exclude ADU square footage from that calculation; R-4, R-4A and R-5 carry NO equivalent carve-out. Whether the floor-area limb reaches an ADU in a base district is not resolved by the text: the ADU definition incorporates only "the height requirement of section 16-28.004", arguably selecting one limb, while § 16-28.004(3) applies to accessory buildings in R-1 through R-5 by its own terms and excludes nothing',
+      condition:
+        '⚠️ base districts R-4, R-4A and R-5. If the limb applies, the binding size is min(750 sq ft, 30% of the main structure) — which for a 2,000 sq ft house is 600 sq ft, NOT 750. Reported as an open question rather than resolved in either direction',
+      cite: '§ 16-28.004(3), against §§ 16-18E.009(2)c, 16-20I.006(3)d2, 16-20L.006(5)b ii, 16-20U.011(1)b, 16-20V.012(2)(b)(iii)',
+    },
+  ],
+  maxHeightFt: [
+    { form: 'figure', value: 20, condition: 'accessory buildings in R-1 through R-5 — reached by the ADU definition\u2019s own cross-reference to "the height requirement of section 16-28.004", and CUMULATIVE with a 25%-of-rear-yard coverage limit joined by "and"', cite: '§ 16-28.004(3)', baseline: true },
+    { form: 'figure', value: 25, condition: '⚠️ NOT a larger allowance — SPI-5 Inman Park states "25 feet in height, OR the height of the main structure, whichever is less", so 25 ft binds only when it is the smaller', cite: '§ 16-18E.009(2)b' },
+  ],
+  maxStories: null,
+  heightDefersToBaseZone: null,
+  notes: [
+    // ⚠️ THE SCOPE FINDING, AND IT IS AN ANSWER RATHER THAN A GAP.
+    '⚠️ PERMITTED IN THREE BASE DISTRICTS ONLY — R-4, R-4A and R-5 — and this is a KNOWN ABSENCE established by the slot test, not a failed lookup. All twelve residential chapters have a "Permitted accessory uses and structures" section; the enumerations were read in full, and in nine of them the list simply ENDS without an ADU item, in exactly the position where R-4 (item 12), R-4A (item 11) and R-5 (item 12) append theirs.',
+    '⚠️ AND THE OPEN-ENDED PREFACE DOES NOT REOPEN IT. Those lists are prefaced "These include but are not limited to the following", which read alone would suggest the enumeration is not exhaustive. The closing instrument is § 16-28.004(1): "Except as otherwise specifically provided in this part, use of accessory buildings as dwellings or lodgings is prohibited." A district must specifically provide, and nine do not. Both halves are recorded because the first sentence alone would mislead.',
+    '⚠️ SPI DISTRICTS VARY, AND ONE PROHIBITS ADUs BY SUBAREA. SPI-3 English Avenue permits them in all nine subareas and SPI-4 AUC in all thirteen, but SPI-19 Vine City permits them in Subareas 4, 5 and 6 ONLY and marks them "X" — prohibited — in Subareas 1, 2, 3, 7, 8, 9, 10 and 11. No other SPI chapter contains any accessory-dwelling text.',
+    '⚠️ SPI-5\u2019s PERMISSION IS NOT FINDABLE BY THE ADU NOUN. § 16-18E.008(1) permits "Single-family dwellings" as an ACCESSORY use in Subareas 2 and 3, and only the limitation section at § 16-18E.009(2) calls the thing an accessory dwelling unit. Searching for the ADU term alone finds the limits and misses the permission.',
+    // ⚠️ AN OPERATOR THAT CANNOT BE READ AS INTENDED WITHOUT INVENTING IT.
+    '⚠️ SPI-5 JOINS A SIZE LIMB AND A HEIGHT LIMB WITH "OR". § 16-18E.009(2) reads "a. The accessory dwelling unit shall not exceed 750 square feet or 40 percent of the area of the principal building, whichever is less, OR b. The accessory building … shall not exceed 25 feet in height, or the height of the main structure, whichever is less." Read literally an applicant satisfies EITHER the size cap or the height cap. That is almost certainly not the intent — but reading "and" across from a sibling limb is exactly the move rule 4 forbids, and Atlanta is the city that taught this file that lesson. Recorded as an unresolved operator.',
+    '⚠️ HISTORIC DISTRICTS SPLIT ON WHETHER THEY PERMIT OR MERELY CONSTRAIN. § 16-20.003(a) lets a Chapter 20 designation either SUPPLANT the underlying district or SUPPLEMENT it, and each district\u2019s own § .002 says which. Adair Park, Inman Park and Bonaventure-Somerset are OVERLAYS — an ADU must first be permitted by the underlying R-4/R-4A/R-5. Only MLK Jr Landmark (Subareas 1–2) and Poncey-Highland incorporate a base ADU-enabling section by cross-reference; a corpus-wide search for the incorporating phrase returned exactly two matches in two nodes.',
+    '⚠️ R-5 COUNTS THE ADU INSIDE ITS FAR: "The maximum floor area ratio including accessory dwelling units shall not exceed 0.50 of the net lot area" (§ 16-07.008(5)a), and on a sub-minimum lot the limit is "the lesser of either: (i) 3,750 square feet of floor area; or (ii) a maximum floor area ratio of 0.65 of the net lot area" (§ 16-07.008(5)b).',
+    '⚠️ THE 1,000 SQ FT FIGURE IN CIRCULATION IS AN UNADOPTED PROPOSAL, from the city\u2019s own Planning page — and its "from 750 → 1000" framing independently CONFIRMS that 750 is current law. Corpus check: "1,000" occurs ZERO times in § 16-29.001.',
+    '⚠️ THE CITY\u2019S GUIDANCE CONTRADICTS THE CODE ON WHAT COUNTS. The Planning page says only conditioned space counts; § 16-28.004(3) says the opposite for the accessory building\u2019s own area — "all gross floor area of the accessory building shall be included whether or not it is conditioned or habitable". The code governs. Fifth city whose guidance page conflicts with its own ordinance.',
+    '"Secondary dwelling unit" is used OPERATIVELY in the FAR definition and is never defined anywhere in the code.',
+    'ADUs are named outside Part 16 in exactly two places, found by sweeping the whole 6,785-node corpus rather than the zoning part alone (rule 23): § 158-54(b), tree protection, which applies to single-family lots "with or without accessory dwelling units"; and Appendix B § 101.9(b)(1), requiring EV-ready wiring "When a new Accessory Dwelling Unit (ADU) is constructed with a garage".',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'Municode — designated by the city\u2019s own ATL311 knowledge base ("The Code is maintained online by Municode, a 3rd party company that publishes municipal codes"), reached that way because atlantaga.gov and citycouncil.atlantaga.gov return HTTP 403 (Akamai) to every automated tool',
+    codifiedThrough: 'Supplement 106, jobId 494611, online post date 2026-08-04',
+    amendingThisSection: [],
+    note: '⚠️ EXTERNAL VALIDATION PERFORMED (rule 9): the SIGNED ordinance PDFs (Ord. 2017-19 and 2019-09) were pulled from Municode\u2019s OrdBank and the enacted § 16-29.001(12)(a)7 text matches the publisher WORD FOR WORD — a source outside the codified text entirely. The three most recent amendments to the definitions chapter were checked and none touches ADUs. ⚠️ Two publishers were unreachable and are recorded as GAPS, not absences (rule 10): American Legal returned a Cloudflare 403 and atlanta.elaws.us timed out at 100 s. ⚠️ Instrument note: `grep -c` under-reports here by 2.7× — 517 nodes against 1,384 real matches for "zoning" — so every count came from a whole-corpus grep flattened to one line per node, over all 6,785 TOC nodes fetched in 294 requests with zero errors.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -2394,7 +2475,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   philadelphia: { city: 'philadelphia', state: NO_PROVISION.pa, stateApplies: NA, local: NOT_READ_LOCAL('Philadelphia') },
 
   // ── Georgia and Tennessee: whole-code searches, both clean ──────────────
-  atlanta: { city: 'atlanta', state: NO_PROVISION.ga, stateApplies: NA, local: NOT_READ_LOCAL('Atlanta') },
+  atlanta: { city: 'atlanta', state: NO_PROVISION.ga, stateApplies: NA, local: ATLANTA_LOCAL },
   nashville: { city: 'nashville', state: NO_PROVISION.tn, stateApplies: NA, local: NASHVILLE_LOCAL },
 })
 
@@ -2443,6 +2524,12 @@ export interface VocabularyCheck {
 }
 
 export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = Object.freeze({
+  atlanta: {
+    canonical: '⚠️ "Dwelling: Accessory" — the INVERTED form, at § 16-29.001(12)(a)7. The usual noun is otherwise correct here',
+    competing: ['Guest house (§ 16-29.001(10)(c))', "Servants' quarters (§ 16-29.001(10)(f))", 'Secondary dwelling unit — used operatively and NEVER defined'],
+    distinguishedBy:
+      '⚠️ THE KITCHEN, AND THE COMPETING USE IS ALLOWED WHERE THE ADU IS NOT. A "guest house" is "a lodging unit for temporary guests in an accessory building. NO SUCH LODGING UNIT SHALL CONTAIN INDEPENDENT KITCHEN FACILITIES", while an ADU is a dwelling unit "with independent kitchen facilities" — a single criterion, stated on both sides. ⚠️ The danger is directional: guest houses are permitted in EVERY single-family district INCLUDING R-1, where ADUs are not, so reading "guest house permitted" as "ADU permitted" would publish a wrong answer for the nine districts that do not allow ADUs. Servants\u2019 quarters carry the same kitchen bar with a conditional release — "except in districts and on lots where additional dwelling or lodging units are authorized" — and both are expressly excluded from dwelling-unit computations. ⚠️ "Secondary dwelling unit" appears OPERATIVELY inside the FAR definition and is defined nowhere in the code.',
+  },
   raleigh: {
     canonical: 'Accessory Dwelling Unit (ADU) — defined at Art. 12.2 and used as the section title in both § 2.6.3 and § 3.6.2. ⚠️ The FIRST city in five where the obvious noun is the right one',
     competing: ['Cottage Court — a distinct UDO building type', 'Tiny House — a principal use here, not an ADU', 'Manufactured Home — a permitted ADU FORM, not a competitor'],

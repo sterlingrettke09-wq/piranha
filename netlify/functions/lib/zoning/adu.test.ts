@@ -161,7 +161,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -610,7 +610,10 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
         // cut-off were enumerated, and none touches the ADU provisions.
         // ⚠️ Raleigh joins the strong form: a pending text-change docket exists and
         // was read — TC-1-26 and TC-4-26 are active and neither touches ADUs.
-        expect(['seattle', 'phoenix', 'miami', 'charlotte', 'milwaukee', 'chicago', 'raleigh'], c).toContain(c)
+        // ⚠️ Atlanta joins by the strongest route in the file: the SIGNED ordinance
+        // PDFs were pulled from Municode's OrdBank and matched word for word —
+        // a source outside the codified text entirely (rule 9).
+        expect(['seattle', 'phoenix', 'miami', 'charlotte', 'milwaukee', 'chicago', 'raleigh', 'atlanta'], c).toContain(c)
         expect(note, c).not.toMatch(/no (pending[- ]?(ordinance )?)?list/i)
       }
     }
@@ -620,7 +623,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1362,7 +1365,7 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
         ;(m.measure ? withMeasure : without).push(c)
       }
     }
-    expect([...new Set(withMeasure)].sort()).toEqual(['charlotte', 'denver', 'la', 'minneapolis', 'nyc', 'raleigh', 'sanjose', 'sf'])
+    expect([...new Set(withMeasure)].sort()).toEqual(['atlanta', 'charlotte', 'denver', 'la', 'minneapolis', 'nyc', 'raleigh', 'sanjose', 'sf'])
     // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
     // their measure — declared, so the gap is countable rather than invisible.
     expect([...new Set(without)].sort()).toEqual(['austin', 'phoenix', 'sandiego', 'seattle'])
@@ -2561,5 +2564,128 @@ describe('⚠️ Raleigh: two sections, two figures, and a map that is not in th
     const rl = aduRulesFor('raleigh').local
     if (rl.kind !== 'read') throw new Error('expected read')
     expect(rl.notes.find((x) => /600 square feet/.test(x))).toBeTruthy()
+  })
+})
+
+describe('⚠️ Atlanta: the definition carries everything, and a rival use outranks it', () => {
+  it('⚠️ 750 sits in the DEFINITION — third instance of the Massachusetts pattern', () => {
+    // § 16-29.001(12)(a)7 states the size, the detachment requirement and the
+    // height cross-reference. The operative accessory-use sections state no size
+    // and no height at all, so reading them alone finds nothing.
+    const l = aduRulesFor('atlanta').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'capped') throw new Error('unreachable')
+    expect(b.sqFt).toBe(750)
+    expect(b.cite).toMatch(/§ 16-29\.001\(12\)\(a\)7/)
+    expect(b.condition).toMatch(/stated as part of the definition/)
+    expect(l.citation).toMatch(/the definition, which carries the figures/)
+  })
+
+  it('⚠️ 1,200 belongs to three named historic districts, not the city', () => {
+    // rule 6: reporting the maximum across alternatives as a ceiling. The
+    // citywide figure is 750; 1,200 exists only in Inman Park, Bonaventure-
+    // Somerset and Poncey-Highland, each with its own operator, and one of them
+    // is a cap-AND-floor drafting.
+    const l = aduRulesFor('atlanta').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const big = l.maxSizeSqFt.find((m) => m.kind === 'capped' && m.sqFt === 1200)!
+    if (big.kind !== 'capped') throw new Error('unreachable')
+    expect(big.baseline).toBeUndefined()
+    expect(big.condition).toMatch(/THREE NAMED HISTORIC DISTRICTS ONLY/)
+    expect(big.condition).toMatch(/cap-AND-FLOOR drafting/)
+    expect(summariseAdu(aduRulesFor('atlanta'))).not.toMatch(/Up to 1,200 sq ft/)
+    // ⚠️ And the figure in wide circulation is neither — it is an unadopted
+    // proposal, and its own framing confirms 750 is current law.
+    expect(l.notes.find((x) => /1,000 SQ FT FIGURE IN CIRCULATION IS AN UNADOPTED PROPOSAL/.test(x))).toBeTruthy()
+  })
+
+  it('⚠️ the measure is the THIRD slot-test outcome — filled, and unresolving', () => {
+    // § 16-29.001(13)(a) defines single-family floor area as "indicated in
+    // section 16-29.001" — the section being read, no subsection, verified in
+    // raw HTML as linking to its own chunk. The only residential measurement
+    // method in the code scopes itself to R-G. Not "no slot", not "we could not
+    // find one": the resolving instrument was found and does not resolve.
+    const l = aduRulesFor('atlanta').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'capped') throw new Error('unreachable')
+    expect(b.measure).toMatch(/bare SELF-REFERENCE/)
+    expect(b.measure).toMatch(/THIRD slot-test outcome/)
+    expect(b.measure).toMatch(/scopes ITSELF to the R-G district/)
+  })
+
+  it('⚠️ the rival use is permitted where the ADU is NOT, and only a kitchen separates them', () => {
+    // "Guest house" is allowed in every single-family district including R-1,
+    // where ADUs are not. The separator is a single criterion stated on both
+    // sides. Reading one as the other publishes a wrong answer for nine
+    // districts — and it errs toward saying yes, which is the blocking-inverse
+    // of East Boston and just as wrong.
+    expect(ADU_VOCABULARY_CHECK.atlanta.distinguishedBy).toMatch(/THE COMPETING USE IS ALLOWED WHERE THE ADU IS NOT/)
+    expect(ADU_VOCABULARY_CHECK.atlanta.distinguishedBy).toMatch(/NO SUCH LODGING UNIT SHALL CONTAIN INDEPENDENT KITCHEN FACILITIES/)
+    expect(ADU_VOCABULARY_CHECK.atlanta.distinguishedBy).toMatch(/INCLUDING R-1/)
+    // ⚠️ The canonical heading is inverted, which is why the noun search alone
+    // is not enough even where the noun is right.
+    expect(ADU_VOCABULARY_CHECK.atlanta.canonical).toMatch(/INVERTED form/)
+  })
+
+  it('⚠️ three base districts, established by enumeration and closed by a catch-all', () => {
+    // All twelve residential chapters have the accessory-use section; nine end
+    // without an ADU item exactly where three append theirs. The lists say
+    // "include but are not limited to", which alone would reopen it —
+    // § 16-28.004(1) closes it. Both halves recorded.
+    const l = aduRulesFor('atlanta').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /PERMITTED IN THREE BASE DISTRICTS ONLY/.test(x))!
+    expect(n).toMatch(/KNOWN ABSENCE established by the slot test/)
+    const open = l.notes.find((x) => /OPEN-ENDED PREFACE DOES NOT REOPEN IT/.test(x))!
+    expect(open).toMatch(/§ 16-28\.004\(1\)/)
+    expect(open).toMatch(/would mislead/)
+    // ⚠️ And one SPI district prohibits by SUBAREA, not by district.
+    expect(l.notes.find((x) => /SPI-19 Vine City permits them in Subareas 4, 5 and 6 ONLY/.test(x))).toBeTruthy()
+  })
+
+  it('⚠️ SPI-5 joins a size limb to a HEIGHT limb with "or", and it stays unresolved', () => {
+    // Read literally an applicant satisfies either the size cap or the height
+    // cap. Almost certainly not the intent — and reading "and" across from a
+    // sibling limb is the move rule 4 forbids. Atlanta is the city that taught
+    // this file that lesson, in the SPI-20 "lot area" finding.
+    const l = aduRulesFor('atlanta').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /SPI-5 JOINS A SIZE LIMB AND A HEIGHT LIMB WITH "OR"/.test(x))!
+    expect(n).toMatch(/unresolved operator/)
+    expect(n).toMatch(/Atlanta is the city that taught this file that lesson/)
+  })
+
+  it('⚠️ the 30% carve-out asymmetry is surfaced, not resolved either way', () => {
+    // Five district-specific chapters exclude ADU square footage from the
+    // accessory-building cap; the base districts carry no equivalent. If the
+    // limb applies, the binding size for a 2,000 sq ft house is 600, not 750 —
+    // so the open question runs in the restrictive direction.
+    const l = aduRulesFor('atlanta').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const g = l.maxSizeSqFt.find((m) => m.kind === 'not-numeric')!
+    if (g.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(g.rule).toMatch(/NO equivalent carve-out/)
+    expect(g.condition).toMatch(/600 sq ft, NOT 750/)
+    expect(g.condition).toMatch(/rather than resolved in either direction/)
+    expect(g.baseline).toBeUndefined()
+  })
+
+  it('⚠️ Georgia still does not preempt, but the entry no longer reads as settled', () => {
+    // The survey's basis was accurate about enacted law and understated the
+    // activity: HB 1166 would have preempted local ADU rules at 400 sq ft and
+    // passed the House before dying in the Senate. No statute in force, so
+    // no-provision stands — and the bill history is secondary-sourced, which is
+    // said rather than implied, because legis.ga.gov returned 401 throughout.
+    const st = aduRulesFor('atlanta').state
+    expect(st.kind).toBe('no-provision')
+    if (st.kind !== 'no-provision') throw new Error('unreachable')
+    expect(st.basis).toMatch(/HB 1166/)
+    expect(st.basis).toMatch(/No statute is in force/)
+    expect(st.basis).toMatch(/not primary-sourced here/)
+    // ⚠️ The positive control that made the original zero a measurement is still
+    // there — the addition must not have displaced it (rule 20).
+    expect(st.basis).toMatch(/Positive control/)
   })
 })
