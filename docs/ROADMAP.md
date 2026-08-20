@@ -321,7 +321,21 @@ decision from un-pinning a year, and one of them is named "beta".
 
 ---
 
-## ADU — DONE 2026-08-19; all five preempted cities' LOCAL layer read, eighteen declared unread
+## ADU — the preempted five are DONE; the eighteen are IN PROGRESS
+
+**Feature #4 closed for the five state-floor cities** (la, sf, sanjose, sandiego,
+seattle) on 2026-08-19: state floor read, local ordinance read, pending check
+recorded for each.
+
+**The eighteen remaining cities are started but not done.** The state-preemption
+survey that must precede any encoding lives in
+[`docs/ADU-STATE-SURVEY.md`](./ADU-STATE-SURVEY.md) — 3 of 16 jurisdictions
+established (AZ, CO, MA — all three preempt), 13 not yet looked at. Nothing from
+that survey is wired into the engine, deliberately: three of the first three
+states state their rules in forms the current type cannot hold, and the redesign
+should happen once with the full picture rather than once per state.
+
+### The five, as read
 
 `netlify/functions/lib/zoning/adu.ts`, wired into the ADU hurdle.
 
