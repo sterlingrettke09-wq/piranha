@@ -321,14 +321,43 @@ decision from un-pinning a year, and one of them is named "beta".
 
 ---
 
-## ADU — the preempted five are DONE; the eighteen are IN PROGRESS
+## ADU — ALL 23 CITIES READ, as of 2026-08-20
 
-**Feature #4 closed for the five state-floor cities** (la, sf, sanjose, sandiego,
-seattle) on 2026-08-19: state floor read, local ordinance read, pending check
-recorded for each.
+**Feature #4 is closed for every city in the map.** Each has its state layer
+classified, its local ordinance read, a vocabulary check recorded and a pending
+check either performed or explicitly declared not-performed. `ADU_ALL_CITIES`
+plus a partition guard means a city added without a read turns the suite RED —
+the "unread" bucket is empty, so an assertion over it would now be vacuously
+true (rule 20, rule 29's corollary).
 
-**The eighteen remaining cities are started but not done.** The state-preemption
-survey that must precede any encoding lives in
+**What the sweep cost, and what it caught.** Five of the twenty-three cities do
+not use the obvious noun, and in two of them a search for "accessory dwelling
+unit" returns ZERO: DC calls it an *accessory apartment*, NYC an *ancillary
+dwelling unit*, Chicago uses *coach house* and *conversion unit* with the
+umbrella term defined in another Title, Atlanta inverts the heading to *Dwelling:
+Accessory*, and Boston — the case that started this — has a rival term with the
+OPPOSITE effect. That set is a field, `departsFromObviousNoun`, not something
+inferred from prose.
+
+Three widely-circulated figures turned out not to be law: Chicago's detached cap
+was REPEALED effective 2026-04-01 (items 14 and 15 of the section now read
+"Reserved"), Atlanta's 1,000 sq ft is an unadopted proposal, and DC's 450 sq ft
+was superseded per-district in 2026. Two cities' answers changed after 2020 in
+ways every secondary source still misses. Five cities' guidance pages contradict
+or overstate their own ordinances; none was adopted.
+
+Two priors in the briefs were WRONG and the researchers overturned them:
+Philadelphia does permit ADUs (§ 14-604(11)) though no NEW-BUILD one exists —
+the unit must sit inside a structure standing as of 2012-08-22 — and Chicago's
+pilot is over, with the geographic restriction surviving only in RS districts.
+
+**Still open, and stated rather than closed:** NYC's pending list was not
+enumerated; Raleigh's second ADU depends on a Frequent Transit Area map that is
+not in the UDO; Atlanta's floor-area measure is a self-reference; Philadelphia's
+and Atlanta's measures are unqualified in the SPI-20 sense. Each is encoded as a
+gap, not as a number.
+
+**The state-preemption survey** that preceded the encoding lives in
 [`docs/ADU-STATE-SURVEY.md`](./ADU-STATE-SURVEY.md) — **COMPLETE, 16 of 16
 jurisdictions**, as of 2026-08-20. Four preempt (AZ, CO, MA, NV — Nevada's took
 effect 2026-07-01). Twelve do not, of which Florida's is an express legislative
