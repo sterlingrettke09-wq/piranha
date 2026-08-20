@@ -161,7 +161,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'dallas', 'denver', 'la', 'lasvegas', 'miami', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'columbus', 'dallas', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -571,7 +571,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
     // Only Seattle earned the strong form. The other four each disclose, in
     // their own wording, that no list was available — so the assertion matches
     // the DISCLOSURE, not one city's phrasing.
-    const weak = ['austin', 'boston', 'dallas', 'denver', 'la', 'lasvegas', 'nashville', 'sandiego', 'sanjose', 'sf']
+    const weak = ['austin', 'boston', 'columbus', 'dallas', 'denver', 'la', 'lasvegas', 'minneapolis', 'nashville', 'sandiego', 'sanjose', 'sf']
     for (const c of ADU_LOCAL_READ) {
       const l = aduRulesFor(c).local
       if (l.kind !== 'read' || l.pending.kind !== 'checked') continue
@@ -587,7 +587,12 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
         // ⚠️ Miami joins the strong form: Miami 21 carries its own "Amendments
         // to Miami 21" table, which was read — the ordinance that rewrote the
         // ADU section is in it, and nothing later in it names ADUs.
-        expect(['seattle', 'phoenix', 'miami', 'charlotte'], c).toContain(c)
+        // ⚠️ Milwaukee joins the strong form by a route no other city has: the
+        // code's own Historical References file is a per-section amendment
+        // inventory, and every ADU section carries the stamp for file 240999
+        // with nothing dated after it — cross-checked against the Legistar API,
+        // which is where the Substitute-6 trap was caught.
+        expect(['seattle', 'phoenix', 'miami', 'charlotte', 'milwaukee'], c).toContain(c)
         expect(note, c).not.toMatch(/no (pending[- ]?(ordinance )?)?list/i)
       }
     }
@@ -597,7 +602,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'dallas', 'denver', 'la', 'lasvegas', 'miami', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'columbus', 'dallas', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1339,7 +1344,7 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
         ;(m.measure ? withMeasure : without).push(c)
       }
     }
-    expect([...new Set(withMeasure)].sort()).toEqual(['charlotte', 'denver', 'la', 'sanjose', 'sf'])
+    expect([...new Set(withMeasure)].sort()).toEqual(['charlotte', 'denver', 'la', 'minneapolis', 'sanjose', 'sf'])
     // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
     // their measure — declared, so the gap is countable rather than invisible.
     expect([...new Set(without)].sort()).toEqual(['austin', 'phoenix', 'sandiego', 'seattle'])
@@ -1899,5 +1904,150 @@ describe('the fan-out three — Charlotte, Dallas, Nashville', () => {
       return x.kind === 'read' && x.pending.kind === 'checked' && x.pending.amendingThisSection.length > 0
     })
     expect(nonEmpty).toEqual(['nashville'])
+  })
+})
+
+describe('⚠️ the third fan-out batch: Columbus, Milwaukee, Minneapolis', () => {
+  it('⚠️ Milwaukee: the HIGHEST-numbered substitute is not the law', () => {
+    // Legistar attachment IDs increase monotonically, so "Substitute 6" looks
+    // final. Substitute 4 was enacted. Sub 6 carries an RS1–RS6 special-use
+    // requirement that is in neither the enacted text nor the published code —
+    // so a reader taking the last attachment publishes a permit that does not
+    // exist. Confirmed independently against the Legistar API: MatterVersion 4.
+    const l = aduRulesFor('milwaukee').local
+    if (l.kind !== 'read' || l.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(l.pending.note).toMatch(/HIGHEST-NUMBERED SUBSTITUTE IS NOT THE LAW/)
+    expect(l.pending.note).toMatch(/MatterVersion 4/)
+    expect(l.citation).toMatch(/Substitute 4/)
+  })
+
+  it('⚠️ Milwaukee: the measure CHANGES inside one sentence, so no figure is published', () => {
+    // "1,300 sq. ft. of habitable and parking areas on all levels" against a
+    // 1,600 sq. ft. cap in "floor area", which § 295-205-7-b defines to EXCLUDE
+    // parking. The two limbs are not commensurable — this is why the entry is
+    // `not-numeric` and carries NO `measure`, rather than naming one of the two.
+    const l = aduRulesFor('milwaukee').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/INCLUDES parking/)
+    expect(b.rule).toMatch(/EXCLUDES it/)
+    // ⚠️ The absent `measure` is the assertion, not an omission — see the note
+    // on LocalCap's not-numeric form. Minneapolis is the contrasting case.
+    expect(b.measure).toBeUndefined()
+    const mn = aduRulesFor('minneapolis').local
+    if (mn.kind !== 'read') throw new Error('expected read')
+    const mb = mn.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (mb.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(mb.measure).toMatch(/§ 565\.70/)
+  })
+
+  it('⚠️ Columbus: the height rule states NO OPERATOR, and stays unresolved', () => {
+    // "must not exceed the height of the principal dwelling, or 25 feet."
+    // The size rule immediately above says "whichever is greater" and this rule's
+    // own Exception immediately below says "whichever is greater". Only the
+    // operative limb omits it. Reading one in would be an invented rule.
+    const l = aduRulesFor('columbus').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.maxHeightFt).toEqual([])
+    expect(l.heightDefersToBaseZone?.cite).toMatch(/with no operator joining the two limbs/)
+    const n = l.notes.find((x) => /STATES NO OPERATOR/.test(x))!
+    expect(n).toMatch(/conspicuous rather than inferred/)
+  })
+
+  it('⚠️ Columbus: a second instrument PERMITS ADUs and regulates nothing', () => {
+    // Title 34 marks the use "Allowed" in every district column it has and
+    // carries no size, height or count standard anywhere. § 3304.01 leaves
+    // unrezoned parcels under Title 33, so Title 33 is what binds — a reader who
+    // found the newer code first would come away with a permission and no rules.
+    const l = aduRulesFor('columbus').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.citation).toMatch(/Title 34 \(2024 Zoning Code\) permits the use but states no standards/)
+    expect(l.notes.find((x) => /TITLE 34 PERMITS ADUs AND REGULATES NOTHING/.test(x))).toBeTruthy()
+  })
+
+  it('⚠️ Minneapolis and Milwaukee share a formula to the constant', () => {
+    // 1,300 sq ft / 16% of lot area / 1,600 sq ft, same order, same two
+    // operators, two states apart. Recorded as a fact about the texts — NOT as a
+    // claim about copying, and NOT smoothed into one shared rule.
+    for (const c of ['minneapolis', 'milwaukee']) {
+      const l = aduRulesFor(c).local
+      if (l.kind !== 'read') throw new Error('expected read')
+      const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+      if (b.kind !== 'not-numeric') throw new Error('unreachable')
+      expect(b.rule, c).toMatch(/1,300/)
+      expect(b.rule, c).toMatch(/16 ?(percent|%)/)
+      expect(b.rule, c).toMatch(/1,600/)
+    }
+    // And each city says so in its own notes, so neither can be read alone and
+    // mistaken for an error in the other.
+    const mn = aduRulesFor('minneapolis').local
+    if (mn.kind !== 'read') throw new Error('expected read')
+    expect(mn.notes.find((x) => /SAME constants in the same order/.test(x))).toBeTruthy()
+  })
+
+  it('⚠️ Minneapolis: three-family dwellings are EXCLUDED though the use table implies otherwise', () => {
+    // § 550.1420 allows an ADU accessory to a single- or two-family dwelling and
+    // prohibits it "accessory to all other uses" — while the code's own use table
+    // groups three-family with them. A reader working from the table gets it wrong.
+    const l = aduRulesFor('minneapolis').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /THREE-FAMILY DWELLINGS ARE EXCLUDED/.test(x))!
+    expect(n).toMatch(/use table groups them/)
+  })
+
+  it('⚠️ the Boston trap was tested in all three and fired in NONE — with evidence', () => {
+    // "Additional dwelling unit" is what East Boston turned on. Each researcher
+    // ran it and disposed of it differently: Columbus finds it only INSIDE the
+    // ADU definition as that definition's genus, Milwaukee finds it only in a
+    // building-code chapter, Minneapolis finds eight instances all reading "new
+    // or additional dwelling units" as a counting threshold. A bare zero would
+    // not have been enough (rule 20) — each records what it found, not nothing.
+    for (const c of ['columbus', 'milwaukee', 'minneapolis']) {
+      expect(ADU_VOCABULARY_CHECK[c].competing, c).toContain('Additional dwelling unit — checked and NOT a term here')
+      expect(ADU_VOCABULARY_CHECK[c].distinguishedBy.length, c).toBeGreaterThan(400)
+    }
+    expect(ADU_VOCABULARY_CHECK.minneapolis.distinguishedBy).toMatch(/EIGHT times/)
+    expect(ADU_VOCABULARY_CHECK.columbus.distinguishedBy).toMatch(/genus of that definition/)
+    expect(ADU_VOCABULARY_CHECK.milwaukee.distinguishedBy).toMatch(/BUILDING-code chapter/)
+  })
+
+  it('⚠️ none of the three has a state floor, and the summary must not name one', () => {
+    // Ohio, Wisconsin and Minnesota all decline to preempt. All three cities are
+    // `not-numeric`, a branch whose copy was written for San Francisco — where a
+    // California floor exists. That sentence rendered here would name a floor
+    // that does not exist. Rule 9's corollary: disclosure copy is code.
+    for (const c of ['columbus', 'milwaukee', 'minneapolis']) {
+      const r = aduRulesFor(c)
+      expect(r.state.kind, c).toBe('no-provision')
+      const line = summariseAdu(r)
+      expect(line, c).not.toMatch(/state floor/)
+      expect(line, c).toMatch(/this state imposes no floor beneath it/)
+    }
+    // ⚠️ AND THE CONTRASTING BRANCH IS CONSTRUCTED, NOT NAMED — rule 29. The
+    // floor-bearing half of this copy currently has NO live city: San Francisco
+    // is the only non-numeric city under a state floor, and its BASELINE is the
+    // capped 850 sq ft state-mandated programme, so the branch is never reached
+    // from live data. Naming SF here would have pinned a fixture to a fact that
+    // is already false. The state is built instead, so the assertion cannot pass
+    // by the sentence having been deleted outright (rule 20).
+    const NON_NUMERIC_UNDER_FLOOR: AduRules = {
+      city: 'sf',
+      state: aduRulesFor('sf').state,
+      stateApplies: aduRulesFor('sf').stateApplies,
+      local: {
+        kind: 'read',
+        citation: 'synthetic fixture — a non-numeric baseline under a live state floor',
+        readOn: '2026-08-20',
+        maxSizeSqFt: [{ kind: 'not-numeric', rule: 'a geometric envelope', condition: 'synthetic', cite: '§ 0', baseline: true }],
+        maxHeightFt: [],
+        maxStories: null,
+        heightDefersToBaseZone: null,
+        notes: [],
+        pending: { kind: 'not-checked', detail: 'synthetic fixture' },
+      },
+    }
+    expect(summariseAdu(NON_NUMERIC_UNDER_FLOOR)).toMatch(/TIGHTER than the state floor/)
+    expect(summariseAdu(NON_NUMERIC_UNDER_FLOOR)).toMatch(/still applies as a minimum the city cannot refuse/)
   })
 })

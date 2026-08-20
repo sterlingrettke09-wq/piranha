@@ -210,7 +210,14 @@ export type LocalCap =
    *  exactly the direction rule 18 warns about. Same three-outcomes shape as
    *  rule 5 — a filled slot whose value is not a quantity is neither an absence
    *  nor a gap. */
-  | { kind: 'not-numeric'; rule: string; condition: string; cite: string; baseline?: boolean }
+  /** ⚠️ `measure` is OPTIONAL here for a reason worth stating. A rule can be
+   *  non-numeric and still be expressed in a DEFINED unit — Minneapolis
+   *  § 550.1460(2) is a max-of-a-min with no publishable figure, but every
+   *  limb is in gross floor area as defined by § 565.70. Milwaukee's
+   *  Table 295-505-2.5 is the opposite: the unit CHANGES between limbs of one
+   *  sentence, so it carries no `measure` at all. Absent and known-mixed are
+   *  different facts, and only the second is a defect in the source. */
+  | { kind: 'not-numeric'; rule: string; condition: string; cite: string; measure?: string; baseline?: boolean }
   /** We read the section and located no rule covering this configuration. A gap
    *  in the reading, never a permission. */
   | { kind: 'not-found'; condition: string }
@@ -1774,6 +1781,200 @@ const NASHVILLE_LOCAL: LocalLayer = {
   },
 }
 
+// ── COLUMBUS ────────────────────────────────────────────────────────────────
+//
+// ⚠️ TWO INSTRUMENTS, AND THE NEW ONE PERMITS WITHOUT REGULATING. Columbus is
+// mid-recodification. Title 34 (2024) establishes only six mixed-use districts —
+// its Articles C and D are RESERVED, there is no residential article — and
+// § 3304.01 provides that unrezoned parcels "continue to be governed by" Title
+// 33. So an ordinary Columbus house sits under Title 33.
+//
+// Title 34 marks ADU "Allowed" in every district column it has and states NO
+// size, height or count rule anywhere in the title. A reader who found the newer
+// code first would come away with a permission and no standards.
+const COLUMBUS_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Columbus City Code § 3332.355 (Residential Districts) and § 3333.325 (Apartment Districts), both enacted by Ord. 2526-2025 (2025-11-24), under Title 33; Title 34 (2024 Zoning Code) permits the use but states no standards',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ TWELFTH SHAPE, AND THE MEASURE IS UNRESOLVABLE — the Atlanta SPI-20
+    // outcome, not a mere silence. The rule caps at "65 percent of the MINIMUM
+    // NET FLOOR AREA of the principal dwelling", but Chapter 3303 defines only
+    // "minimum net floor area FOR LIVING QUARTERS", which is a district-required
+    // CONSTANT (R-1 1,500 sq ft, R-2 720 sq ft, and so on) used that way in all
+    // fifteen other Title 33 uses. Under that reading 65% never beats the
+    // 1,000 sq ft limb; under an actual-area reading it often does. The city's
+    // intake form glosses it "living area" — refused, because a form is not the
+    // ordinance (same call as Nashville's "living space").
+    {
+      kind: 'not-numeric',
+      rule:
+        'the GREATER of 65 percent of the "minimum net floor area" of the principal dwelling and 1,000 sq ft, BUT in no case exceeding the size of the principal dwelling — a greater-of pair with a conjunctive cap on top',
+      condition:
+        '⚠️ the denominator is UNRESOLVABLE: "minimum net floor area" is defined in ch. 3303 only as a district-required constant "for living quarters", and the two available readings give different answers. No figure is derived',
+      cite: '§ 3332.355.B.3.a (residential); § 3333.325.B.3.a (apartment) is the same rule with "or apartment house" added',
+      baseline: true,
+    },
+  ],
+  // ⚠️ A DISJUNCTION WITH NO OPERATOR — new in this file. § 3332.355.B.3.b reads
+  // "An ADU must not exceed the height of the principal dwelling, or 25 feet."
+  // The size rule one line ABOVE says "whichever is greater"; this rule's own
+  // Exception one line BELOW says "whichever is greater". This one says neither,
+  // and nothing in the text resolves which way the "or" runs. Recorded as
+  // ambiguous rather than resolved in either direction.
+  maxHeightFt: [],
+  maxStories: null,
+  heightDefersToBaseZone: { cite: '§ 3332.355.B.3.b — "must not exceed the height of the principal dwelling, or 25 feet", with no operator joining the two limbs' },
+  notes: [
+    '⚠️ THE HEIGHT RULE STATES NO OPERATOR, and the omission is conspicuous rather than inferred: § 3332.355.B.3.a immediately above it says "whichever is greater", and § 3332.355.B.3.b\u2019s own Exception immediately below says "whichever is greater" ("shall not exceed 25 feet in height or the height of the existing building ... whichever is greater"). Only the operative height limb omits it. Whether 25 ft is a floor or a ceiling on a tall principal dwelling is not determinable from the text.',
+    '⚠️ TITLE 34 PERMITS ADUs AND REGULATES NOTHING. The 2024 Zoning Code marks the use "Allowed" in all seven of its district columns and carries no size, height or count standard anywhere in the title. Since § 3304.01 leaves unrezoned parcels under Title 33, the standards that actually bind almost every Columbus house are the Title 33 ones recorded here.',
+    'Counts are per-district and are NOT uniformly one (§ 3332.355.B.2): one ADU generally; one in R-2F, where the base dwelling may be single- or two-unit; and TWO in R-4, on a lot containing a single-, two-, three- or four-unit dwelling, subject to a maximum of five dwelling units per lot. ADUs may also be added to any multiple-dwelling development subject to a five percent increase in the units the area district allows.',
+    'No owner-occupancy requirement is imposed on the Title 33 ADU. ⚠️ Contrast the separately defined "ancillary dwelling unit" in the Traditional Neighborhood Development chapter (ch. 3320), an 800 sq ft use with its own rules — a second term in the same code, and the reason the vocabulary check matters here.',
+    'An ADU is exempt from area-district lot width and area requirements (§ 3332.355.B.4), lot coverage on a lot with an ADU may not exceed 65 percent (§ 3332.355.B.5), it must sit on the same parcel as the principal dwelling (§ 3332.355.B.7), and no additional parking is required (§ 3332.355.B.8).',
+    '⚠️ § 3370.07 cross-references a section number, "3333.335", that does not exist in the code. Reported as printed rather than silently corrected to a neighbouring section.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'Municode Columbus (the publisher columbus.gov links to from both its Zoning page and its City Codes page)',
+    codifiedThrough: 'Supplement 85, online content updated 2026-06-30; §§ 3332.355 and 3333.325 both enacted by Ord. 2526-2025, effective 2025-11-24',
+    amendingThisSection: [],
+    note: 'Municode publishes a supplement number and currency date but no pending-ordinance list, so `amendingThisSection: []` records that no list exists to read. ⚠️ Two extraction failures were caught and routed around rather than trusted: `pdftotext -layout` scrambled the InDesign-set Title 34 text and would have produced FALSE ABSENCES, and the use-table permission glyphs do not survive text extraction at all — that table was read from a 200 dpi visual render instead.',
+  },
+}
+
+// ── MILWAUKEE ───────────────────────────────────────────────────────────────
+//
+// ⚠️ THE SAME FORMULA AS MINNEAPOLIS, TO THE CONSTANT. Milwaukee's detached cap
+// is "1,300 sq. ft. ... or 16% of the lot area, whichever is greater, but not to
+// exceed 1,600 sq. ft." — and Minneapolis § 550.1460(2) is 1,300, 16%, 1,600 in
+// the same order with the same operators. Two cities, one formula. Milwaukee's
+// ordinance is the later of the two, and the resemblance is recorded as a fact
+// about the texts rather than as a claim about who copied whom.
+const MILWAUKEE_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Milwaukee Code of Ordinances ch. 295, Table 295-505-2.5 (Accessory Dwelling Unit Design Standards) with §§ 295-201-5, 295-503-2-f and 295-505-2.5; created by Common Council file 240999 (Substitute 4), passed 2025-07-15, effective 2025-08-02',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ AND THE MEASURE CHANGES INSIDE THE SENTENCE. The 1,300 limb is measured
+    // in "habitable and parking areas on all levels" — a term the code does not
+    // define, and which INCLUDES parking — while the 1,600 limb reverts to
+    // "floor area", which § 295-205-7-b defines to EXCLUDE parking. Two different
+    // measures in one provision, so the two limbs are not commensurable and no
+    // single figure is publishable.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the GREATER of 1,300 sq ft "of habitable and parking areas on all levels" and 16% of the lot area, but not exceeding 1,600 sq ft or the floor area of the largest dwelling unit — ⚠️ the first limb is measured in a term the code never defines, which INCLUDES parking, while the cap limb uses the defined "floor area", which EXCLUDES it',
+      condition: 'DETACHED accessory dwelling unit',
+      cite: 'Table 295-505-2.5',
+      baseline: true,
+    },
+    {
+      kind: 'not-numeric',
+      rule: '1,000 sq ft AND not larger than the largest dwelling unit — a conjunctive pair, both limbs binding',
+      condition: 'INTERNAL or ATTACHED accessory dwelling unit. Internal may exceed 1,000 sq ft only where the structure existed as of the 2025-08-02 effective date, and must then sit entirely on one level and not exceed the first-floor area',
+      cite: 'Table 295-505-2.5',
+    },
+  ],
+  maxHeightFt: [],
+  maxStories: null,
+  heightDefersToBaseZone: null,
+  notes: [
+    'Minimum floor area is 300 sq ft for all three ADU types (Table 295-505-2.5).',
+    '⚠️ "LOT AREA" IS RESOLVED HERE, unlike San José or Miami: ch. 295 defines "lot area", and the phrase "net lot area" occurs ZERO times chapter-wide, so the denominator carries no net/gross ambiguity.',
+    'ADUs became legal citywide on 2025-08-02. The use is a LIMITED USE in all nine residential and all eight commercial districts and in IM only; it is prohibited in C9A–C9H, the other industrial districts, PK and TL.',
+    // ⚠️ FOUR UNRESOLVED CONFLICTS IN THE ENACTED TEXT, recorded rather than
+    // adjudicated. Each changes an answer.
+    '⚠️ § 295-201-5 says an ADU must be "smaller in" floor area than the principal — a STRICT comparison — where Table 295-505-2.5 says "not larger than", which is non-strict. On an ADU exactly equal to the principal the two give opposite answers.',
+    '⚠️ § 295-201-607 contemplates a board-approved ADU that fails the standards, while § 295-503-2-f-4 provides that failing them makes the unit a prohibited use. Whether a variance route exists is not resolvable from the text read.',
+    '⚠️ The commercial and IM districts allow internal and attached ADUs on DUPLEX parcels, where every residential district forbids it — so the more permissive rule sits in the commercial districts, which is the reverse of the usual direction.',
+    '⚠️ Subchapter 8 contains no cross-reference to the design-standards table. Recorded as a gap in the code\u2019s internal wiring, not repaired here.',
+    'Chapter 295 cites Wis. Stat. § 62.23 for floodplain regulation, plan-commission referral and BOZA appeals, but never in connection with ADUs. ⚠️ § 62.23 itself was not read, so whether it bears on ADUs is unestablished.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'city.milwaukee.gov — Milwaukee publishes its own code, with no commercial publisher in the chain — cross-checked against the Common Council Legistar API',
+    codifiedThrough: 'Volume 2, supplement #359, 2026-07-14. Every ADU section carries the stamp "240999 7/15/2025 8/2/2025" and none carries any entry dated after 2025-08-02',
+    amendingThisSection: [],
+    // ⚠️ A TRAP THAT WOULD HAVE PUBLISHED A PERMIT REQUIREMENT THAT IS NOT LAW.
+    // Legistar attachment IDs increase monotonically, so "Substitute 6" looks
+    // final. It is not: Substitute 4 was enacted. Sub 6 adds a special-use permit
+    // for internal ADUs in RS1–RS6 districts that neither the enacted text nor
+    // the published code contains.
+    note: 'Milwaukee is the CITY\u2019S OWN publication; Municode\u2019s 192-client Wisconsin list was enumerated and contains no City of Milwaukee entry, so there is no commercial alternative to compare against. ⚠️ THE HIGHEST-NUMBERED SUBSTITUTE IS NOT THE LAW. Legistar carries six substitute texts for file 240999 and attachment IDs increase monotonically, so Substitute 6 looks final — but Substitute 4 was enacted, and Sub 6 contains an RS1–RS6 special-use requirement that is not in the code. Resolved against the action history (one substitution motion PREVAILED, another FAILED) and confirmed independently: the Legistar API returns MatterVersion 4, MatterPassedDate 2025-07-15, MatterDate1 2025-08-02.',
+  },
+}
+
+// ── MINNEAPOLIS ─────────────────────────────────────────────────────────────
+//
+// ⚠️ THE CHAPTER-NUMBER TRAP, AND IT IS QUIETER THAN THE LEDGER'S VERSION. The
+// ledger records a superseded Minneapolis chapter that would have matched ZERO
+// parcels — a loud failure. This is worse: Ord. 2023-032 repealed former Title 20
+// chs. 520–552 effective 2023-07-01, and chapter 550 means "Industrial Districts"
+// in the repealed code and "Development Standards" in the current one. A misdated
+// 550 citation therefore resolves to a real chapter about the wrong subject
+// instead of failing. Municode still serves the repealed code at look-alike URLs.
+const MINNEAPOLIS_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Minneapolis Code of Ordinances Title 20 (Zoning Code) ch. 550 art. IX, §§ 550.1400–550.1460, with the § 565.70 definition of gross floor area; current chapter 550 is "Development Standards", NOT the repealed chapter 550 "Industrial Districts"',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ TWO OPERATORS POINTING OPPOSITE WAYS IN ONE SENTENCE — the most complex
+    // drafting in this file. Allowance is a MAX, the ceiling is a MIN:
+    //   min( max(1,300, 0.16 × lot area), 1,600, principal GFA )
+    // Reporting 1,600 alone is wrong in both directions depending on lot size.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the GREATER of 1,300 sq ft and 16 percent of the lot area, then capped at the LESSER of 1,600 sq ft and the gross floor area of the principal residential structure — a max and a min in the same provision',
+      condition: 'DETACHED accessory dwelling unit, gross floor area including parking areas and habitable floor area on all levels',
+      cite: '§ 550.1460(2)',
+      measure: 'gross floor area, a DEFINED term (§ 565.70) measured from the exterior faces of exterior walls, including qualifying basement area',
+      baseline: true,
+    },
+    {
+      kind: 'capped',
+      sqFt: 800,
+      condition: 'ATTACHED accessory dwelling unit — a single figure with no operator and no ratio',
+      cite: '§ 550.1450(1)',
+      measure: 'gross floor area (§ 565.70)',
+    },
+    {
+      kind: 'not-numeric',
+      rule:
+        '800 sq ft, releasable ONLY where the portion of the principal structure containing the unit existed as of January 1, 2015 — and then bounded instead by the first-floor area of the principal structure, with no upper figure',
+      condition: 'INTERNAL accessory dwelling unit — the release is keyed to a date of existence of the STRUCTURE, not of the unit',
+      cite: '§ 550.1440(1)',
+    },
+  ],
+  maxHeightFt: [
+    { form: 'figure', value: 21, condition: 'detached accessory dwelling unit, except as authorized by variance', cite: '§ 550.1460(1)', baseline: true },
+  ],
+  maxStories: null,
+  heightDefersToBaseZone: null,
+  notes: [
+    'One ADU per zoning lot, and the use is limited by PRINCIPAL USE rather than by district: § 550.1420 allows an ADU accessory to a permitted or conditional single-family or two-family dwelling and provides that ADUs "shall be prohibited accessory to all other uses".',
+    '⚠️ THREE-FAMILY DWELLINGS ARE EXCLUDED, and the code\u2019s own use table groups them with the one- and two-family uses — so the table reads as though they qualify and § 550.1420 says they do not. A reader working from the table alone gets it wrong.',
+    'A separate combined-footprint control applies: the detached ADU together with all other detached accessory structures and any attached parking may not exceed the GREATER of 800 sq ft and 10 percent of the lot area (§ 550.1460(3)).',
+    'Chapter 550 is citywide — § 550.20 applies it to "all structures and all land uses, except as otherwise provided" — and Article IX has no scope section of its own. So unlike Austin and Nashville there is no enclosing-scope trap here; the binding constraint is the use limit in § 550.1420.',
+    '⚠️ The § 565.70 definition of gross floor area excludes detached accessory structures from the LOT\u2019S maximum floor area calculation. That exclusion does not relax the ADU\u2019s own cap in § 550.1460(2) — two different calculations, and reading the exclusion into the ADU cap would enlarge it.',
+    '⚠️ Milwaukee\u2019s detached cap uses the SAME constants in the same order — 1,300 sq ft, 16% of lot area, 1,600 sq ft — with the same two operators. Recorded because the coincidence is exact and a reader comparing the two cities should know the resemblance is in the texts, not an error here.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'Municode Minneapolis — the city states verbatim that it "uses Municipal Code Corporation (Municode) to publish its City Charter and Code"',
+    codifiedThrough: 'Supplement 72, online content updated 2026-08-06',
+    amendingThisSection: [],
+    note: 'Municode publishes a supplement number and currency date but no pending-ordinance list, so `amendingThisSection: []` records that no list exists to read. ⚠️ Both sides of the 2023 repeal were verified rather than assumed: the superseded Municode job still serves former chapter 546, and the current one does not. ⚠️ An instrument correction worth keeping: `grep -c` counts LINES, not matches, and Municode hard-wraps mid-sentence — that hid 9 of 81 ADU mentions until the scan was re-run over whitespace-normalised text.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -1852,9 +2053,9 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   raleigh: { city: 'raleigh', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Raleigh') },
   austin: { city: 'austin', state: NO_PROVISION.tx, stateApplies: NA, local: AUSTIN_LOCAL },
   dallas: { city: 'dallas', state: NO_PROVISION.tx, stateApplies: NA, local: DALLAS_LOCAL },
-  columbus: { city: 'columbus', state: NO_PROVISION.oh, stateApplies: NA, local: NOT_READ_LOCAL('Columbus') },
-  milwaukee: { city: 'milwaukee', state: NO_PROVISION.wi, stateApplies: NA, local: NOT_READ_LOCAL('Milwaukee') },
-  minneapolis: { city: 'minneapolis', state: NO_PROVISION.mn, stateApplies: NA, local: NOT_READ_LOCAL('Minneapolis') },
+  columbus: { city: 'columbus', state: NO_PROVISION.oh, stateApplies: NA, local: COLUMBUS_LOCAL },
+  milwaukee: { city: 'milwaukee', state: NO_PROVISION.wi, stateApplies: NA, local: MILWAUKEE_LOCAL },
+  minneapolis: { city: 'minneapolis', state: NO_PROVISION.mn, stateApplies: NA, local: MINNEAPOLIS_LOCAL },
   dc: { city: 'dc', state: NO_PROVISION.dc, stateApplies: NA, local: NOT_READ_LOCAL('Washington, DC') },
   chicago: { city: 'chicago', state: NO_PROVISION.il, stateApplies: NA, local: NOT_READ_LOCAL('Chicago') },
   nyc: { city: 'nyc', state: NO_PROVISION.ny, stateApplies: NA, local: NOT_READ_LOCAL('New York City') },
@@ -1910,6 +2111,25 @@ export interface VocabularyCheck {
 }
 
 export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = Object.freeze({
+  columbus: {
+    canonical:
+      '"Accessory dwelling unit or ADU" — defined SEPARATELY in each of the two live instruments: Title 33 § 3303.01 and Title 34 § B.40.020.A',
+    competing: ['Ancillary dwelling unit (§ 3320.03)', 'Additional dwelling unit — checked and NOT a term here', 'Carriage house'],
+    distinguishedBy:
+      '⚠️ SEPARATED BY DISTRICT FAMILY, NOT BY THE KITCHEN. "Ancillary dwelling unit" (§ 3320.03) is a genuinely distinct defined term — a flat 800 sq ft cap, an OWNER-OCCUPANCY requirement and a density exclusion, none of which the ADU sections impose — and it lives in ch. 3320 (Traditional Neighborhood Development), whose four districts are mutually exclusive with the ch. 3332/3333 districts the ADU sections govern. Reading it across would import an owner-occupancy condition Columbus does not impose. ⚠️ THE BOSTON TRAP WAS TESTED AND DOES NOT FIRE: "additional dwelling unit" occurs in Title 33 only INSIDE the ADU definition itself ("means an additional dwelling unit which has..."), as the genus of that definition — it has no entry of its own, so treating it as a second term would invent a distinction the code does not draw. ⚠️ AND THE SUBSTANCE SITS IN DIFFERENT PLACES IN THE TWO INSTRUMENTS: Title 33\u2019s definition is thin and its operative sections carry everything, while Title 34\u2019s definition carries the cooking/sanitation requirement that appears in no Title 34 operative section. Reading either instrument\u2019s definitions alone loses a requirement.',
+  },
+  milwaukee: {
+    canonical: 'Accessory dwelling unit — defined twice (general definitions AND use definitions) at § 295-201-5, with three subtypes: Internal, Attached, Detached',
+    competing: ['Additional dwelling unit — checked and NOT a term here', 'Accessory structure (§ 295-201-7)', '2-family dwelling'],
+    distinguishedBy:
+      '⚠️ NO COMPETING DWELLING TERM EXISTS — twelve alternates returned ZERO chapter-wide, and the two non-zero results were disposed of rather than counted: "in-law" (117 documents) is the affinity sense in pension, nepotism and liquor provisions, and "additional dwelling unit" appears only in ch. 257, a BUILDING-code chapter, never in ch. 295. ⚠️ Explicitly contrasted with Boston and Dallas, where that phrase IS a term of art with its own effect. What Milwaukee separates instead: an ADU is NOT an accessory structure (§ 295-201-7 — "An accessory structure does not contain habitable space"), so the accessory-structure design table does not govern it; and a second unit that meets lot-area-per-unit standards in a district permitting duplexes "shall be considered a 2-family dwelling and not an accessory dwelling unit", an express DEEMING RULE rather than a kitchen test. The three subtypes differ by attachment only — cooking facilities are required of all three.',
+  },
+  minneapolis: {
+    canonical: 'Accessory dwelling unit — § 565.50, nested under "Dwelling"; 81 occurrences across Title 20',
+    competing: ['Additional dwelling unit — checked and NOT a term here', 'Cluster development', 'Common lot development'],
+    distinguishedBy:
+      '⚠️ THE BOSTON TRAP WAS TESTED DIRECTLY AND DOES NOT FIRE, with evidence rather than a zero: "additional dwelling unit" occurs EIGHT times, and all eight are ordinary English inside "new or additional dwelling units", a COUNTING THRESHOLD for site plan review and inclusionary housing. None appears in ch. 565 (Definitions). Seventeen other alternates returned zero. The separation that IS real is by attachment, and it is substantive rather than cosmetic — internal (§ 550.1440) carries an owner-occupancy covenant in one case, attached (§ 550.1450) carries none and requires matching exterior materials, detached (§ 550.1460) has a different and larger size formula plus a 21 ft height cap. Not separated by the kitchen: "dwelling unit" is defined once (§ 565.50) with "a single kitchen facility" inside that one definition, so every ADU has one by construction. ⚠️ Cluster and common lot developments are adjacent but distinct — § 550.230 makes them exceptions to one-principal-structure-per-lot and separately provides that an ADU "shall not be considered a separate principal residential structure", i.e. a different mechanism, not a species of one.',
+  },
   phoenix: {
     canonical: 'Dwelling Unit, Accessory (ADU) — the inverted form, defined at Phoenix ZO § 202',
     competing: ['Guesthouse', 'Casita'],
@@ -2138,10 +2358,19 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
       source: 'local-non-numeric',
       why:
         `The city's own limit for this case is not a square-foot figure — ${baseline.rule} (${baseline.cite}). ` +
-        `No maximum size can be published for it, and it is often TIGHTER than the state floor rather than looser.` +
+        // ⚠️ THE COMPARISON SENTENCE IS CONDITIONAL ON THERE BEING SOMETHING TO
+        // COMPARE TO. It was written when San Francisco was the only non-numeric
+        // city, and "often TIGHTER than the state floor rather than looser" is
+        // true of SF's geometric envelope under California's 850 sq ft guarantee.
+        // Columbus, Milwaukee and Minneapolis are non-numeric with NO floor
+        // beneath them — Ohio, Wisconsin and Minnesota all decline to preempt —
+        // and the sentence rendered there names a state floor that does not
+        // exist. Rule 9's corollary: disclosure copy is code, and a claim true in
+        // one branch is false in the branch it is copied to.
         (floor != null
-          ? ` The ${floor.value.toLocaleString()} sq ft state floor (${floor.cite}) still applies as a minimum the city cannot refuse.`
-          : ''),
+          ? `No maximum size can be published for it, and it is often TIGHTER than the state floor rather than looser.` +
+            ` The ${floor.value.toLocaleString()} sq ft state floor (${floor.cite}) still applies as a minimum the city cannot refuse.`
+          : `No maximum size can be published for it. The limit is real — it is simply not a quantity — and this state imposes no floor beneath it, so the city's own rule is the whole of the answer.`),
     }
   }
   if (baseline?.kind === 'capped') {
