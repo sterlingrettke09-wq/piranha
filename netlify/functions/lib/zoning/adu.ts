@@ -436,6 +436,86 @@ const SANJOSE_LOCAL: LocalLayer = {
   },
 }
 
+// ── LOS ANGELES ─────────────────────────────────────────────────────────────
+//
+// ⚠️ FOUND BY FOLLOWING THE CODE'S OWN CROSS-REFERENCE, NOT BY GUESSING. LA runs
+// TWO zoning codes side by side under `lapz`: "CHAPTER I GENERAL PROVISIONS AND
+// ZONING" (the legacy § 12.x code) and "CHAPTER 1A CITY OF LOS ANGELES ZONING
+// CODE". Both are listed current through the same date, so "which instrument
+// governs" had to be settled before any figure was read. The ADU standards are
+// in the legacy chapter. § 12.22's Home-Sharing subdivision points at
+// "Section 12.26 A.3" for ADUs, which is the PERMIT APPLICATION route; the
+// substantive standards are § 12.22 A.33, and both exist.
+const LA_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Los Angeles Municipal Code § 12.22 A.33 (Accessory Dwelling Units (ADU) and Junior Accessory Dwelling Units (JADU)), Ch. I Art. 2; added by Ord. No. 186,481, eff. 12/19/2019',
+  readOn: '2026-08-19',
+  maxSizeSqFt: [
+    {
+      kind: 'capped',
+      sqFt: 1200,
+      condition: 'Floor Area for a DETACHED ADU. Lot-wide Floor Area limits apply separately and may reduce it further',
+      cite: '§ 12.22 A.33(d)(1)',
+      baseline: true,
+    },
+  ],
+  // ⚠️ EMPTY IS THE READING, NOT A GAP. The only height in feet anywhere in the
+  // subdivision is 16 ft at (c)(1)(iii), and that is a FLOOR the city may not
+  // build below — LA restating the state guarantee inside its own ordinance. It
+  // is not a cap, so putting it here would invert its meaning.
+  maxHeightFt: [],
+  maxStories: { value: 2, condition: 'structures containing a detached ADU', cite: '§ 12.22 A.33(d)(2)' },
+  // (c)(1) requires compliance with "provisions stated in the underlying
+  // applicable zone and height district" — an express deferral, same as San
+  // Diego and Seattle.
+  heightDefersToBaseZone: { cite: '§ 12.22 A.33(c)(1)' },
+  notes: [
+    'An ADU complying with this subdivision needs no discretionary planning approval — review is ministerial and limited to objective standards, and the City must act within 60 days of a complete application (§ 12.22 A.33(c)(2)).',
+    'An ADU is permitted in all zones where residential uses are permitted by right (§ 12.22 A.33(c)(3)).',
+    'No minimum lot size applies to an ADU, and no minimum square footage may be imposed that prohibits an efficiency unit (§ 12.22 A.33(c)(1)(i)–(ii)).',
+    '⚠️ No ADU on a lot that is in BOTH a Very High Fire Hazard Severity Zone and a Hillside Area, unless it is in the Northeast LA or Silver Lake–Echo Park–Elysian Valley Community Plan Areas, or it adds sprinklers, one off-street parking space and fronts a 20 ft roadway (§ 12.22 A.33(c)(4)).',
+    'Detached ADUs must also meet LAMC § 12.21 C.5. where it does not conflict, and may not sit between the primary dwelling and the front street except on a through lot or when added to a lawfully existing garage (§ 12.22 A.33(d)(3)).',
+    // ⚠️ THE SAME RATIO AS SAN JOSÉ — BUT LA'S OWN TEXT SETTLES IT.
+    //
+    // San José caps an attached ADU at 50% of the primary and says nothing more,
+    // so whether the 850 sq ft state floor overrides it on a small primary was
+    // left as a question for the city. LA has the identical 50% cap at (e)(1) —
+    // and then (e)(3) says NOTHING IN THIS SUBDIVISION shall prohibit an
+    // attached ADU below 850 (or 1,000 with more than one bedroom). "Nothing in
+    // this subdivision" reaches (e)(1). So the floor is written into the local
+    // ordinance rather than only into the statute, and the resolution is the
+    // source's, not ours.
+    '⚠️ An ATTACHED ADU is capped at 50% of the existing primary dwelling (§ 12.22 A.33(e)(1)) — a ratio, not a figure, so it is not computed here. Unlike San José, LA bounds its own ratio: § 12.22 A.33(e)(3) states nothing in the subdivision shall prohibit an attached ADU of less than 850 sq ft, or less than 1,000 sq ft with more than one bedroom. The 50% cap therefore cannot cut below those.',
+    'Movable Tiny Houses are a third ADU form with their own standards, including one per lot per twelve months (§ 12.22 A.33(f)).',
+    // ⚠️ A STALE DELEGATION IN LIVE TEXT — the recodification hazard, found
+    // inside a city ordinance rather than in our own citation.
+    //
+    // § 12.22 A.33 was added in 2019 and carries no later amendment note. It is
+    // written throughout against Gov. Code §§ 65852.2 and 65852.22, and (b)(4),
+    // (b)(5) and (b)(6) do not merely reference them — they DELEGATE whole
+    // categories of ADU to them wholesale. Chapter 13 (§ 66310 et seq.,
+    // Stats. 2024 Ch. 7) has since replaced § 65852.2. What LA's delegating
+    // paragraphs now point at is a question about the ordinance's operation that
+    // this tool records rather than resolves.
+    '⚠️ This subdivision is written against California Gov. Code §§ 65852.2 and 65852.22 and DELEGATES entire ADU categories to them (§ 12.22 A.33(b)(4)–(6)). ADU law was recodified into Gov. Code ch. 13 (§ 66310 et seq.) by Stats. 2024, Ch. 7. The section carries no amendment note after Ord. 186,481 (2019), so the delegations still name the superseded sections. The state floors encoded here are read from ch. 13; how LA\'s delegating paragraphs now operate is a question for the city.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-19',
+    source: 'American Legal Publishing code library, Los Angeles overview and the § 12.22 section page',
+    codifiedThrough: 'legislation effective March 31, 2026 (Municipal Code; Chapter 1A current through the same date)',
+    amendingThisSection: [],
+    // ⚠️ THE WEAKEST OF THE THREE, and said so rather than levelled up. Seattle
+    // displayed 17 pending ordinances that could be read and found not to touch
+    // the section. San José displayed no list. amlegal displays no pending list
+    // for the legacy chapter at all — the only "Table of Amending Legislation"
+    // is scoped to Chapter 1A, which is a different instrument — AND its
+    // codified-through date is five months before the date of this reading.
+    note: 'amlegal publishes no pending-ordinance list for Chapter I; its only amending-legislation table is scoped to Chapter 1A, a different instrument. So `amendingThisSection: []` here records that NO LIST EXISTS TO READ, which is weaker than San José and much weaker than Seattle. Compounding it, the codified-through date (2026-03-31) is roughly five months before this reading, so any ordinance in that window is invisible on this source.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -445,7 +525,7 @@ const NOT_READ_LOCAL = (city: string): LocalRead => ({
  *  to a default, and a default here is the thing that must not exist: silence
  *  would render as "no state law applies", which is a claim. */
 const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
-  la: { city: 'la', stateFloor: CA, local: NOT_READ_LOCAL('Los Angeles') },
+  la: { city: 'la', stateFloor: CA, local: LA_LOCAL },
   sf: { city: 'sf', stateFloor: CA, local: NOT_READ_LOCAL('San Francisco') },
   sanjose: { city: 'sanjose', stateFloor: CA, local: SANJOSE_LOCAL },
   sandiego: { city: 'sandiego', stateFloor: CA, local: SANDIEGO_LOCAL },

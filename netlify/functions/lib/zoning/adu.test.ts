@@ -36,7 +36,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['sandiego', 'sanjose', 'seattle'])
+    expect([...ADU_LOCAL_READ]).toEqual(['la', 'sandiego', 'sanjose', 'seattle'])
   })
 })
 
@@ -447,5 +447,100 @@ describe('San José, as read from the ordinance', () => {
     expect(local.pending.amendingThisSection).toEqual([])
     expect(local.pending.note).toMatch(/no pending-ordinance list at all/)
     expect(local.pending.note).toMatch(/weaker than Seattle/)
+  })
+})
+
+describe('Los Angeles — LAMC § 12.22 A.33', () => {
+  const rules = aduRulesFor('la')
+  if (rules.local.kind !== 'read') throw new Error('expected a read local layer')
+  const local = rules.local
+
+  it('reads the LEGACY chapter, and the citation says which instrument', () => {
+    // ⚠️ LA runs two zoning codes side by side under `lapz`: Chapter I (the
+    // legacy § 12.x code) and Chapter 1A, both current through the same date.
+    // "Which instrument governs" had to be settled before a figure was read, and
+    // a citation that does not name the chapter cannot be checked by a reader.
+    expect(local.citation).toMatch(/§ 12\.22 A\.33/)
+    expect(local.citation).toMatch(/Ch\. I Art\. 2/)
+    expect(local.citation).toMatch(/Ord\. No\. 186,481/)
+  })
+
+  it('caps a detached ADU at 1,200 sq ft, above the 850 state floor', () => {
+    const size = effectiveMaxSize(rules)
+    expect(size.source).toBe('local')
+    expect(size.value).toBe(1200)
+    expect(size.why).toMatch(/850/)
+  })
+
+  it('carries the two-storey limit as STOREYS, never converted to feet', () => {
+    // rule 12: § 12.22 A.33(d)(2) regulates in stories. Multiplying by an
+    // invented ft/storey is how Miami published 87 stories for an 80-storey
+    // district.
+    expect(local.maxStories).toEqual({
+      value: 2,
+      condition: 'structures containing a detached ADU',
+      cite: '§ 12.22 A.33(d)(2)',
+    })
+    expect(local.maxHeightFt).toEqual([])
+  })
+
+  it('⚠️ an empty maxHeightFt is the READING, not a missing lookup', () => {
+    // The only height in feet in the subdivision is 16 ft at (c)(1)(iii), and it
+    // is a FLOOR the city may not build below — not a cap. Listing it as a cap
+    // would invert its meaning. Height defers to the base zone instead, and that
+    // deferral is cited, so an absence here is answered rather than unresolved
+    // (rule 5).
+    expect(local.heightDefersToBaseZone).toEqual({ cite: '§ 12.22 A.33(c)(1)' })
+    expect(summariseAdu(rules)).toMatch(/defers to the base zone/)
+  })
+
+  it("⚠️ LA's own text bounds its 50% ratio, where San José's did not", () => {
+    // The durable finding of this read. Both cities cap an attached ADU at 50%
+    // of the primary. San José stops there, so whether the 850 sq ft state floor
+    // overrides it on a small primary is left as a question for the city. LA's
+    // § 12.22 A.33(e)(3) says NOTHING IN THIS SUBDIVISION shall prohibit an
+    // attached ADU below 850 (or 1,000 with more than one bedroom) — and
+    // "nothing in this subdivision" reaches (e)(1). The source resolves it, not
+    // us, which is why LA may state the resolution and San José may not.
+    const la = local.notes.find((n) => /50%/.test(n))!
+    expect(la).toMatch(/ratio, not a figure/)
+    expect(la).toMatch(/\(e\)\(3\)/)
+    expect(la).toMatch(/cannot cut below/)
+
+    const sj = aduRulesFor('sanjose')
+    if (sj.local.kind !== 'read') throw new Error('expected a read local layer')
+    const sjNote = sj.local.notes.find((n) => /50%/.test(n))!
+    expect(sjNote).toMatch(/question for the city/)
+    expect(sjNote).not.toMatch(/cannot cut below/)
+  })
+
+  it('⚠️ records that the ordinance delegates to a REPEALED state section', () => {
+    // The recodification hazard, this time inside a city ordinance rather than
+    // in our own citation. § 12.22 A.33 was added in 2019, carries no later
+    // amendment note, and (b)(4)–(6) delegate whole ADU categories to Gov. Code
+    // § 65852.2 — replaced by ch. 13 (§ 66310 et seq., Stats. 2024 Ch. 7).
+    // Recorded, not resolved: how the delegations now operate is the city's
+    // question, and inventing an answer is what rule 1 forbids.
+    const note = local.notes.find((n) => /65852\.2/.test(n))!
+    expect(note).toMatch(/DELEGATES/)
+    expect(note).toMatch(/66310/)
+    expect(note).toMatch(/question for the city/)
+    // And our OWN citation still points at the live chapter.
+    expect(rules.stateFloor!.citation).toMatch(/66321/)
+    expect(rules.stateFloor!.citation).not.toMatch(/65852\.2/)
+  })
+
+  it('⚠️ its pending check is the weakest of the three, and says so', () => {
+    // Seattle: a list of 17 existed and was read. San José: no list displayed.
+    // amlegal: no list EXISTS for Chapter I at all — the only amending table is
+    // scoped to Chapter 1A, a different instrument — and the codified-through
+    // date is five months stale. An empty `amendingThisSection` must not read
+    // the same across all three (rule 20).
+    if (local.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(local.pending.amendingThisSection).toEqual([])
+    expect(local.pending.note).toMatch(/NO LIST EXISTS TO READ/)
+    expect(local.pending.note).toMatch(/Chapter 1A, a different instrument/)
+    expect(local.pending.note).toMatch(/five months/)
+    expect(local.pending.codifiedThrough).toMatch(/March 31, 2026/)
   })
 })
