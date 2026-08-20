@@ -161,7 +161,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -592,7 +592,10 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
         // inventory, and every ADU section carries the stamp for file 240999
         // with nothing dated after it — cross-checked against the Legistar API,
         // which is where the Substitute-6 trap was caught.
-        expect(['seattle', 'phoenix', 'miami', 'charlotte', 'milwaukee'], c).toContain(c)
+                // ⚠️ Chicago is the strong form too, and by the widest margin: all 44
+        // municipal-code amendments with a final action after the codification
+        // cut-off were enumerated, and none touches the ADU provisions.
+        expect(['seattle', 'phoenix', 'miami', 'charlotte', 'milwaukee', 'chicago'], c).toContain(c)
         expect(note, c).not.toMatch(/no (pending[- ]?(ordinance )?)?list/i)
       }
     }
@@ -602,7 +605,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1344,7 +1347,7 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
         ;(m.measure ? withMeasure : without).push(c)
       }
     }
-    expect([...new Set(withMeasure)].sort()).toEqual(['charlotte', 'denver', 'la', 'minneapolis', 'sanjose', 'sf'])
+    expect([...new Set(withMeasure)].sort()).toEqual(['charlotte', 'denver', 'la', 'minneapolis', 'nyc', 'sanjose', 'sf'])
     // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
     // their measure — declared, so the gap is countable rather than invisible.
     expect([...new Set(without)].sort()).toEqual(['austin', 'phoenix', 'sandiego', 'seattle'])
@@ -2188,5 +2191,263 @@ describe('⚠️ Washington, DC: the noun is different and the publisher matters
     const rf = l.notes.find((x) => /RF EXCLUSION WAS ONLY MADE EXPLICIT/.test(x))!
     expect(rf).toMatch(/73 DCR 009999/)
     expect(rf).toMatch(/no stated priority rule/)
+  })
+})
+
+describe('⚠️ New York City: the noun, the definition, and a broken search box', () => {
+  it('⚠️ the canonical term is "ancillary", and the city’s own PDF says otherwise', () => {
+    // "Accessory dwelling unit" occurs ZERO times in the Zoning Resolution, on
+    // two independent instruments. DCP's outreach PDF is titled "Accessory
+    // Dwelling Units" while the text DCP enacted says ancillary — so the city's
+    // own communications point away from its code.
+    expect(ADU_VOCABULARY_CHECK.nyc.canonical).toMatch(/NOT "accessory"/)
+    expect(ADU_VOCABULARY_CHECK.nyc.distinguishedBy).toMatch(/ZERO times in the Zoning Resolution/)
+    expect(ADU_VOCABULARY_CHECK.nyc.distinguishedBy).toMatch(/POINT AWAY FROM ITS CODE/)
+  })
+
+  it('⚠️ the official ZR search box is BROKEN, and every count avoids it', () => {
+    // It returns 4 sections for "ancillary dwelling unit" when there are 7 —
+    // missing § 12-10 ITSELF, the section carrying every figure — and returns
+    // "0 results" for a phrase that occurs 10 times. This is rule 11 at its
+    // sharpest: trusting it would have measured the instrument, and the missing
+    // section is precisely the one that matters.
+    expect(ADU_VOCABULARY_CHECK.nyc.distinguishedBy).toMatch(/OFFICIAL SITE SEARCH IS BROKEN/)
+    expect(ADU_VOCABULARY_CHECK.nyc.distinguishedBy).toMatch(/missing § 12-10 ITSELF/)
+    expect(ADU_VOCABULARY_CHECK.nyc.distinguishedBy).toMatch(/never from that box/)
+  })
+
+  it('⚠️ the substance is in the DEFINITION — the Massachusetts pattern, second time', () => {
+    // There is no section headed "Ancillary Dwelling Units". § 12-10 carries the
+    // 800 sq ft cap, the count rule and every carve-out; the operative sections
+    // carry none of them. Reading the operative section alone finds nothing.
+    const l = aduRulesFor('nyc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.citation).toMatch(/§ 12-10 \(definition of "ancillary dwelling unit"/)
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'capped') throw new Error('unreachable')
+    expect(b.sqFt).toBe(800)
+    expect(b.cite).toMatch(/§ 12-10, definition/)
+    // ⚠️ No operator at all — a single unqualified limb, spelled out in words.
+    expect(b.condition).toMatch(/single unqualified limb/)
+    expect(b.condition).toMatch(/eight hundred square feet/)
+  })
+
+  it('⚠️ the backyard limit is CUMULATIVE, so 800 alone is wrong for a backyard unit', () => {
+    // § 23-341(b)(4)(iii) caps a backyard unit at one-third of the rear yard IN
+    // ADDITION to the 800 sq ft cap. Rule 6 in reverse: these are not programmes
+    // the applicant elects between, so neither may be reported alone. And the ZR
+    // says "size … area" without saying which quantity — not resolved (rule 4).
+    const l = aduRulesFor('nyc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const y = l.maxSizeSqFt.find((m) => m.kind === 'not-numeric')!
+    if (y.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(y.rule).toMatch(/binds JOINTLY with the 800 sq ft cap/)
+    expect(y.rule).toMatch(/does NOT say floor area, footprint or lot coverage/)
+    expect(y.condition).toMatch(/in addition to, not instead of/)
+    expect(y.baseline).toBeUndefined()
+  })
+
+  it('⚠️ two operators in one sentence pair, and 25 ft is not a larger allowance', () => {
+    // "limited to one story, not to exceed 15 feet" — conjunctive, no "whichever".
+    // "two stories or 25 feet … whichever is less" — expressly a lesser-of, and
+    // it applies only where accessory parking sits below. Reporting 25 as the
+    // ceiling would be rule 6: a maximum across alternatives read as a ceiling.
+    const l = aduRulesFor('nyc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const base = l.maxHeightFt.find((h) => h.baseline)!
+    expect(base.form === 'figure' && base.value).toBe(15)
+    const other = l.maxHeightFt.find((h) => !h.baseline)!
+    expect(other.condition).toMatch(/NOT a larger allowance/)
+    expect(other.condition).toMatch(/whichever is less/)
+    expect(l.maxStories?.value).toBe(1)
+    expect(l.maxStories?.condition).toMatch(/CUMULATIVE with the 15 ft limit/)
+  })
+
+  it('⚠️ the Special Coastal Risk total ban is encoded, and DOB omits it', () => {
+    // § 137-21(e) forbids ancillary dwelling units outright in ALL Special
+    // Coastal Risk Districts — not a backyard-only restriction. DOB's guidance
+    // page lists the other carve-outs and omits this one, so a tool built from
+    // the guidance would report ADUs available where the ZR forbids them.
+    const l = aduRulesFor('nyc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /TOTAL BAN THE CITY.S OWN GUIDANCE OMITS/.test(x))!
+    expect(n).toMatch(/§ 137-21\(e\)/)
+    expect(n).toMatch(/complete prohibition, not a backyard-only restriction/)
+  })
+
+  it('⚠️ two enacted instruments count on different units, and neither is chosen', () => {
+    // ZR: one per RESIDENCE on a zoning lot. Building Code Appendix U § U101.3:
+    // one per TAX LOT. A zoning lot is not a tax lot. Both enacted; which
+    // controls is a legal question the documents do not answer between
+    // themselves, so picking one would be an interpretation wearing a citation.
+    const l = aduRulesFor('nyc').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.notes.find((x) => /ONE PER RESIDENCE, NOT PER LOT/.test(x))).toBeTruthy()
+    const c = l.notes.find((x) => /BUILDING CODE COUNTS DIFFERENTLY/.test(x))!
+    expect(c).toMatch(/TAX LOT/)
+    expect(c).toMatch(/NOT resolved here/)
+  })
+
+  it('⚠️ NYC is the only read city whose pending list was NOT checked', () => {
+    // rule 5: "we did not look" and "nothing is pending" must not render the
+    // same. Both instruments exist and neither was enumerated, so this is a gap
+    // — pinned by membership so it cannot quietly become the norm.
+    const unchecked = ADU_LOCAL_READ.filter((c) => {
+      const l = aduRulesFor(c).local
+      return l.kind === 'read' && l.pending.kind !== 'checked'
+    })
+    expect(unchecked).toEqual(['nyc'])
+    const l = aduRulesFor('nyc').local
+    if (l.kind !== 'read' || l.pending.kind !== 'not-checked') throw new Error('expected not-checked')
+    expect(l.pending.detail).toMatch(/NOT CHECKED, AND SAID SO RATHER THAN RECORDED AS EMPTY/)
+    expect(l.pending.detail).toMatch(/This is a GAP/)
+  })
+})
+
+describe('⚠️ Chicago: the pilot is over and the famous number is repealed', () => {
+  it('⚠️ states NO size rule — the thirteenth shape is the absence of a shape', () => {
+    // Twelve cities produced twelve draftings of "whichever is greater / less /
+    // and". Chicago states no size rule at all, so there is no operator to quote
+    // and none may be synthesised. Both use types render as no-maximum.
+    const l = aduRulesFor('chicago').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.maxSizeSqFt.every((m) => m.kind === 'no-maximum')).toBe(true)
+    expect(l.maxSizeSqFt).toHaveLength(2)
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(b.condition).toMatch(/was REPEALED effective 2026-04-01/)
+    // ⚠️ rule 21: this string renders into user-facing copy, so the retraction
+    // DESCRIBES the repealed figure rather than restating it. The number lives
+    // once, in a note, explicitly framed as superseded.
+    expect(b.condition).not.toMatch(/\b700\b/)
+    expect(b.condition).toMatch(/It is not restated here/)
+    if (b.kind !== 'no-maximum') throw new Error('unreachable')
+    // The absence is shown by the code, not merely unfound: two items of the
+    // seventeen read "Reserved" where the cap used to be.
+    expect(b.cite).toMatch(/items 14 and 15 read "Reserved"/)
+    // And no summary line may publish the repealed figure.
+    expect(summariseAdu(aduRulesFor('chicago'))).not.toMatch(/\b700\b/)
+    // ⚠️ But it IS recorded once, framed, so a reader meeting it elsewhere can
+    // identify it — the check cannot pass by the figure having been deleted.
+    const sup = l.notes.find((x) => /SUPERSEDED, DO NOT PUBLISH/.test(x))!
+    expect(sup).toMatch(/700 square feet/)
+    expect(sup).toMatch(/STRUCK by Coun\. J\. 9-25-25/)
+  })
+
+  it('⚠️ 22 feet is not convertible to storeys, and is not measured to the peak', () => {
+    // § 17-17-0311-A measures to "the underside of the top floor's ceiling joist"
+    // on a flat roof, or the mean height between eaves and ridge on a pitched
+    // one. No storey figure is stated for a coach house anywhere in Title 17, so
+    // deriving one would be rule 12's Miami round-trip.
+    const l = aduRulesFor('chicago').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const h = l.maxHeightFt.find((x) => x.baseline)!
+    expect(h.form === 'figure' && h.value).toBe(22)
+    expect(l.maxStories).toBeNull()
+    expect(h.condition).toMatch(/other than a coach house/)
+  })
+
+  it('⚠️ the per-lot coach house count is an EMPTY SLOT, and guidance is refused', () => {
+    // "One coach house" returns zero occurrences, and § 17-1-1300 reaches
+    // principal buildings only. But item 15 formerly carried a per-lot limit and
+    // now reads "Reserved" — so the slot exists and is vacant. The city's
+    // guidance asserts a limit the ordinance does not state; adopting it would be
+    // rule 4. Neither "one" nor "unlimited" is encoded.
+    const l = aduRulesFor('chicago').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /HOW MANY COACH HOUSES PER LOT IS UNRESOLVED/.test(x))!
+    expect(n).toMatch(/EMPTY SLOT rather than a known absence/)
+    expect(n).toMatch(/is NOT adopted here/)
+    expect(n).toMatch(/Neither "one" nor "unlimited" is encoded/)
+  })
+
+  it('⚠️ the density formula is encoded as STATED, never as the derived table', () => {
+    // rule 30: never compute from a stated method, even the source's own. The
+    // city publishes a lookup table derived from the 33% formula; every row is
+    // arithmetically consistent, which corroborates the reading — and the table
+    // is still not what governs.
+    const l = aduRulesFor('chicago').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /DENSITY FORMULA/.test(x))!
+    expect(n).toMatch(/33%/)
+    expect(n).toMatch(/20 or more years/)
+    expect(n).toMatch(/the formula governs and the table is not encoded/)
+  })
+
+  it('⚠️ the umbrella term is defined OUTSIDE the code being searched', () => {
+    // "Additional Dwelling Unit" is defined at § 2-44-106(c) — Title 2, not Title
+    // 17 — so a Title-17-only search reports it undefined. Third distinct shape
+    // of the Boston hazard across this file, and the three are pinned together
+    // so the pattern is visible rather than restated city by city.
+    expect(ADU_VOCABULARY_CHECK.chicago.distinguishedBy).toMatch(/DEFINED IN A DIFFERENT TITLE/)
+    expect(ADU_VOCABULARY_CHECK.chicago.distinguishedBy).toMatch(/§ 2-44-106\(c\)/)
+    expect(ADU_VOCABULARY_CHECK.chicago.distinguishedBy).toMatch(/third shape/)
+    // Boston: a competing use with the opposite effect. Columbus and NYC: the
+    // genus inside the definition. Chicago: defined in another title.
+    expect(ADU_VOCABULARY_CHECK.columbus.distinguishedBy).toMatch(/genus of that definition/)
+    expect(ADU_VOCABULARY_CHECK.nyc.distinguishedBy).toMatch(/GENUS of the § 12-10 definition/)
+  })
+
+  it('⚠️ the geographic restriction survives in RS districts only', () => {
+    // "Pilot" occurs zero times in Title 17 and there is no sunset. Both types
+    // are by-right across RT, RM, B1–B3, C1 and C2; only RS1/RS2/RS3 route
+    // through § 17-7-0570, now ten areas rather than five pilot areas.
+    const l = aduRulesFor('chicago').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /NEAR-CITYWIDE SINCE 2026-04-01/.test(x))!
+    expect(n).toMatch(/ZERO times in Title 17/)
+    expect(n).toMatch(/no sunset provision exists/)
+    expect(l.notes.find((x) => /TEN "ADDITIONAL DWELLING UNIT-ALLOWED RS AREAS"/.test(x))).toBeTruthy()
+    // ⚠️ And the prohibition side is an ANSWER by the slot test, not a gap.
+    expect(l.notes.find((x) => /this is an ANSWER by the slot test/.test(x))).toBeTruthy()
+  })
+})
+
+describe('⚠️ the summary must not name a state floor that does not exist', () => {
+  it('says "floored by state law" only where a floor actually applies', () => {
+    // Twice now the same defect: copy written when the only city reaching a
+    // branch was one with a live state floor, then rendered for a city without
+    // one. The size branch was the first; this height branch was the second,
+    // found the same way — by a new city arriving. The guard is now the state
+    // layer's own kind rather than a comment.
+    for (const c of ADU_LOCAL_READ) {
+      const r = aduRulesFor(c)
+      const line = summariseAdu(r)
+      const floored = r.state.kind === 'preempts' && r.stateApplies.kind === 'qualifies'
+      if (!floored) expect(line, c).not.toMatch(/floored by state law/)
+    }
+    // ⚠️ rule 20: the phrase must still be reachable, or this passes by the
+    // sentence having been deleted. Construct the state rather than name a city
+    // that happens to have it today (rule 29).
+    const FLOORED_DEFERRING: AduRules = {
+      city: 'sandiego',
+      state: aduRulesFor('sandiego').state,
+      stateApplies: aduRulesFor('sandiego').stateApplies,
+      local: {
+        kind: 'read',
+        citation: 'synthetic fixture — defers height to the base zone, under a live state floor',
+        readOn: '2026-08-20',
+        maxSizeSqFt: [{ kind: 'capped', sqFt: 1200, condition: 'synthetic', cite: '§ 0', baseline: true }],
+        maxHeightFt: [],
+        maxStories: null,
+        heightDefersToBaseZone: { cite: '§ 0' },
+        notes: [],
+        pending: { kind: 'not-checked', detail: 'synthetic fixture' },
+      },
+    }
+    expect(aduRulesFor('sandiego').state.kind).toBe('preempts')
+    expect(summariseAdu(FLOORED_DEFERRING)).toMatch(/floored by state law/)
+  })
+
+  it('⚠️ and the no-maximum lead no longer describes one city’s condition', () => {
+    // It used to read "for an ADU built inside an existing structure", which is
+    // San Diego's case — all three of its no-maximum entries are conversions.
+    // Chicago's is the opposite: a purpose-built coach house whose cap was
+    // repealed. The lead now states only what is true of every no-maximum, and
+    // the configuration comes from the entry's own words.
+    const chi = summariseAdu(aduRulesFor('chicago'))
+    expect(chi).toMatch(/no maximum size for this configuration/)
+    expect(chi).not.toMatch(/built inside an existing structure/)
+    // San Diego still carries its own condition, via `why` rather than the lead.
+    expect(summariseAdu(aduRulesFor('sandiego'))).not.toMatch(/no maximum size for an ADU built inside/)
   })
 })

@@ -2052,6 +2052,169 @@ const DC_LOCAL: LocalLayer = {
   },
 }
 
+// ── NEW YORK CITY ───────────────────────────────────────────────────────────
+//
+// ⚠️ THE NOUN IS "ANCILLARY DWELLING UNIT". "Accessory dwelling unit" occurs
+// ZERO times in the Zoning Resolution, on two independent instruments. DCP's own
+// outreach PDF is titled "Accessory Dwelling Units" while the text DCP ENACTED
+// says ancillary — so the city's own communications point away from its code.
+//
+// ⚠️ AND THE SUBSTANCE IS IN THE DEFINITION, NOT AN OPERATIVE SECTION — the
+// Massachusetts pattern, second instance. There is no section headed "Ancillary
+// Dwelling Units". § 12-10 carries the 800 sq ft cap, the count rule, owner
+// occupancy and every flood and district carve-out; the operative sections
+// (23-341, 23-371, 25-222, 25-232) contain no size rule and no count rule.
+const NYC_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'NYC Zoning Resolution § 12-10 (definition of "ancillary dwelling unit", last amended 2024-12-05, by City of Yes for Housing Opportunity) with §§ 23-341, 23-371, 25-222, 25-232, 114-02 and 137-21(e)',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    {
+      kind: 'capped',
+      sqFt: 800,
+      // ⚠️ NO OPERATOR AT ALL — a single unqualified limb. No "whichever is
+      // greater", no share-of-principal alternative, no FAR expression. The
+      // string "eight hundred square feet" occurs ONCE in the entire ZR, in this
+      // definition, and it is spelled out rather than written in digits.
+      condition: 'every ancillary dwelling unit — a single unqualified limb, stated in words as "eight hundred square feet"',
+      cite: '§ 12-10, definition of "ancillary dwelling unit"',
+      measure:
+        'ZR "floor area" (§ 12-10) — GROSS, measured from the exterior faces of exterior walls. ⚠️ Basement space is INCLUDED; cellar space is excluded EXCEPT where used for dwelling purposes, so a cellar ADU counts; attic space counts only at eight feet of headroom or more; floor space in accessory buildings counts, so a detached backyard unit counts',
+      baseline: true,
+    },
+    {
+      kind: 'not-numeric',
+      // ⚠️ CUMULATIVE, NOT AN ALTERNATIVE. Rule 6 in reverse: these are not two
+      // programmes the applicant elects between, so neither may be reported
+      // alone for a backyard unit. And the ZR says "size ... area" without
+      // saying floor area, footprint or lot coverage — picking one would be an
+      // invented conversion (rule 4).
+      rule: 'a SECOND limit that binds JOINTLY with the 800 sq ft cap: "the size shall be limited to an area not exceeding one-third of the rear yard or rear yard equivalent". ⚠️ The section says "size … area" and does NOT say floor area, footprint or lot coverage, so the quantity being limited is not determined and no figure is derived',
+      condition: 'BACKYARD ancillary dwelling unit only — in addition to, not instead of, the 800 sq ft cap',
+      cite: '§ 23-341(b)(4)(iii)',
+    },
+  ],
+  // ⚠️ TWO OPERATORS IN ONE SENTENCE PAIR, AND THEY DIFFER. The base case is
+  // conjunctive — "limited to one story, not to exceed 15 feet", both bind, no
+  // "whichever". The parking-below case is expressly "whichever is less". They
+  // sit adjacent in § 23-341(b)(4)(i) and must not be harmonised.
+  maxHeightFt: [
+    { form: 'figure', value: 15, condition: 'ancillary dwelling unit associated with a detached, zero lot line or semi-detached building — CONJUNCTIVE with a one-storey limit ("limited to one story, not to exceed 15 feet"), both bind', cite: '§ 23-341(b)(4)(i)', baseline: true },
+    { form: 'figure', value: 25, condition: '⚠️ NOT a larger allowance — where an accessory parking space is provided below the building, the limit becomes "two stories or 25 feet … whichever is less", so 25 ft binds only when it is the SMALLER of the two', cite: '§ 23-341(b)(4)(i)' },
+  ],
+  maxStories: { value: 1, condition: 'ancillary dwelling unit in a required rear yard — CUMULATIVE with the 15 ft limit, not an alternative to it. ⚠️ Rises to two storeys only where accessory parking sits below, and there the pair is joined by "whichever is less"', cite: '§ 23-341(b)(4)(i)' },
+  heightDefersToBaseZone: { cite: '⚠️ applies to a BACKYARD unit only. The ZR states no ADU-specific height rule for a unit inside the principal building (attic, basement, cellar or attached) — the ordinary district height regulations govern it' },
+  notes: [
+    '⚠️ ONE PER RESIDENCE, NOT PER LOT: "Only one ancillary dwelling unit shall be permitted per every single- or two-family residence on a zoning lot" (§ 12-10). § 23-10 contemplates two or more such residences on one zoning lot, so a lot with two qualifying residences reads on its face as permitting two units.',
+    // ⚠️ TWO ENACTED INSTRUMENTS THAT COUNT ON DIFFERENT UNITS. Not resolved
+    // here — it is a legal question the two documents do not answer between
+    // themselves, and choosing one would be an interpretation wearing a citation.
+    '⚠️ THE BUILDING CODE COUNTS DIFFERENTLY AND ON A DIFFERENT UNIT. Appendix U § U101.3: "Where permitted by the New York City Zoning Resolution, no more than 1 ADU may be constructed on each TAX LOT." A zoning lot is not a tax lot — where a zoning lot comprises several tax lots, or one tax lot carries several residences, the two rules diverge. Both are enacted law. Which controls is NOT resolved here.',
+    '⚠️ CITYWIDE ACROSS ALL FIVE BOROUGHS, and the scope rides on the RESIDENCE rather than on a district list — § 12-10 permits the unit "on the same zoning lot as a single- or two-family residence", and § 22-121 marks those residences permitted in every Residence District R1 through R12. There is no borough rule and no community-district list in the ZR.',
+    '⚠️ A TOTAL BAN THE CITY\u2019S OWN GUIDANCE OMITS. § 137-21(e): "In all Special Coastal Risk Districts, there shall be no qualifying residential sites, qualifying senior housing or ancillary dwelling units." That is a complete prohibition, not a backyard-only restriction — and DOB\u2019s ADU guidance page lists the other carve-outs and omits this one entirely. A tool built from the guidance page would report ADUs available on parcels where the ZR forbids them outright.',
+    'The other carve-outs, all stated in § 12-10 itself: no unit below the flood-resistant construction elevation in the high-risk flood zone (§ 64-11); no basement/cellar unit and no backyard unit in DEP\u2019s 10-year rainfall and coastal flood risk areas; no BACKYARD unit in R1-2A, R2A and R3A districts beyond the Greater Transit Zone; and no BACKYARD unit in LPC-designated Historic Districts. ⚠️ Special Bay Ridge adds a backyard exclusion west of Ridge Boulevard or south of Marine Avenue (§ 114-02).',
+    '⚠️ THE GREATER TRANSIT ZONE CARVE-OUT IS A PARCEL-LEVEL LOOKUP, not a district-code test — it fires only where an R1-2A/R2A/R3A parcel sits BEYOND a boundary mapped on ZoLa. § 12-10 states its own tie-break: "In the event of a conflict between the textual description of the boundary and that on ZoLa, the text shall control." The four mapped geographies this and the flood carve-outs depend on were NOT read.',
+    '⚠️ THE UNIT\u2019S FLOOR AREA IS NOT EXEMPT FROM FAR, and this is a KNOWN ABSENCE rather than a failed lookup. The § 12-10 floor area definition\u2019s EXCLUSION list was read in full — it holds twelve exclusions including cellar space, bulkheads, uncovered steps, low attics, open porches and accessory parking up to 300 sq ft — and contains no ancillary-dwelling-unit entry. The exclusion list is the slot where such an exemption would sit.',
+    '⚠️ DO NOT EXPRESS THE CAP AS AN FAR. NYC regulates residential size primarily by floor area ratio, and the district cap (§§ 23-21, 23-22) is an FAR — but the ADU cap is stated in square feet of floor area. Two constraints, two units, both binding, and no conversion between them is available (rule 12).',
+    'No minimum size, established by the slot test rather than by not finding one: the ZR does have a minimum-dwelling-unit-size slot at § 15-024 ("no less than 415 square feet" / "no less than 600 square feet"), and that section scopes ITSELF to loft/JLWQA units "in lieu of the stated minimum size, yard, and density requirements of Sections 15-111 and 43-17". The resolving provision exists and does not reach ADUs.',
+    '⚠️ A SYNTACTIC AMBIGUITY IN THE OPERATIVE SENTENCE, recorded as observed. § 12-10 reads "permitted on the same zoning lot as a single- or two-family residence THAT DOES NOT EXCEED eight hundred square feet of floor area" — the relative clause\u2019s nearest antecedent is "residence", not the unit being defined. Every source reads the cap as bounding the ADU, and it is encoded that way; the literal nearest-antecedent reading would instead require the PRINCIPAL residence to be under 800 sq ft, which no source adopts.',
+    '⚠️ "ADDITIONAL DWELLING UNIT" IS THE GENUS OF THE DEFINITION HERE, exactly as in Columbus — "An \u2018ancillary dwelling unit\u2019 is an ADDITIONAL DWELLING UNIT, permitted on the same zoning lot…". It is not a separately defined competing term as it is in Boston. Recorded because the same phrase carries three different statuses across three cities.',
+    'A separation rule sits with the height rule and is not one: where the building is free-standing from other buildings on the zoning lot, "it shall not be closer than five feet to a rear lot line or side lot line" (§ 23-341(b)(4)(iv)).',
+    '⚠️ NEW YORK STATE\u2019S ONLY BINDING EFFECT RUNS AGAINST ADUs, not for them. No enacted statute mandates ADUs; MDL § 4(7) makes a two-family residence plus a unit a "multiple dwelling", and Building Code § U101.1.1 encodes that reclassification. Chapter 56 of 2024 Part S is an AUTHORISATION for the basement pilot — a preemption waiver, the inverse of a floor. See the state layer and scratchpad adu-reports/nyc-state-mdl.md.',
+  ],
+  pending: {
+    kind: 'not-checked',
+    detail:
+      '⚠️ NOT CHECKED, AND SAID SO RATHER THAN RECORDED AS EMPTY. Both instruments exist — DCP\u2019s Zoning Application Portal and the City Council Legistar — and neither was enumerated. This is a GAP, not a finding that nothing is pending (rule 5). ⚠️ Note also that the official ZR site search CANNOT be trusted for this: searching "ancillary dwelling unit" returns 4 sections when there are 7, missing § 12-10 ITSELF, and "backyard ancillary dwelling unit" returns "0 results" though the phrase occurs 10 times. Every count recorded here comes from whole-corpus grep, never from that search box.',
+  },
+}
+
+// ── CHICAGO ─────────────────────────────────────────────────────────────────
+//
+// ⚠️ THE PILOT IS OVER, AND THE 700 SQ FT CAP IS REPEALED. Both premises this
+// module would have been built on are out of date. "Pilot" occurs ZERO times in
+// Title 17 and there is no sunset; the geographic restriction survives only in
+// RS1/RS2/RS3, through ten "Additional Dwelling Unit-Allowed RS Areas". The
+// expansion is Coun. J. 9-25-25 (SO2024-0008918), whose own § 9 reads "This
+// ordinance shall take full force and effect on April 1, 2026".
+//
+// ⚠️ AND THERE ARE TWO USE TYPES, NOT ONE — Coach House (detached) and
+// Conversion Unit (within an existing building). They are separately defined,
+// separately tabled and carry DIFFERENT rules; neither stands for the other.
+const CHICAGO_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Chicago Zoning Ordinance (Title 17) §§ 17-9-0201-F (Coach Houses) and 17-9-0131 (Conversion Units), with §§ 17-7-0570 to 17-7-0574, 17-2-0303-C and 17-3-0309; as amended by Coun. J. 9-25-25 eff. 2026-04-01, 12-10-25 and 2-18-26',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ THE THIRTEENTH SHAPE, AND IT IS THE ABSENCE OF A SHAPE. Twelve cities
+    // produced twelve draftings of "whichever is greater / less / and"; Chicago
+    // states NO size rule at all, so there is no operator to quote and none may
+    // be synthesised. This is a KNOWN ABSENCE PRODUCED BY A REPEAL, and the code
+    // shows the hole: § 17-9-0201-F(9) now reads, in its entirety, "Only one
+    // dwelling unit is permitted per coach house", and items 14 and 15 of the
+    // same list read "Reserved." Verified against the publisher: "700 square
+    // feet" occurs ONCE in all of Title 17, in § 17-17-0249 defining
+    // "Efficiency" — an unrelated use.
+    {
+      kind: 'no-maximum',
+      condition:
+        'COACH HOUSE — the code states no maximum floor area. ⚠️ The detached-unit floor-area figure still in wide circulation was REPEALED effective 2026-04-01 — it was the first sentence of § 17-9-0201-F(9) and was struck, leaving only the one-unit-per-coach-house sentence. It is not restated here, because this string renders into user-facing copy (rule 21); the superseded figure is recorded in the notes below, framed as superseded. What remains is a placement envelope, not an area cap: coach houses are expressly NOT subject to floor area ratio (§ 17-9-0201-F(12)) and NOT subject to minimum lot area per unit (F(10)), and where one sits in a required rear setback the 60% accessory-building coverage limit at § 17-9-0201-D applies collectively to all accessory buildings — a percentage of a SETBACK AREA, not a unit size',
+      cite: '§ 17-9-0201-F, seventeen numbered items, none stating an area; items 14 and 15 read "Reserved"',
+      baseline: true,
+    },
+    {
+      kind: 'no-maximum',
+      condition:
+        'CONVERSION UNIT — never had a size cap. § 17-9-0131 has eight numbered subsections and none concerns floor area; §§ 17-2-0303-C and 17-3-0309 regulate DENSITY (a count of units), not size. ⚠️ Unlike coach houses, conversion units are NOT exempted from floor area ratio — § 17-9-0131 exempts them from minimum lot area per unit and from open space and says nothing about FAR, where § 17-9-0201-F(12) is explicit for coach houses. That asymmetry is in the code as written and is not resolved here',
+      cite: '§ 17-9-0131',
+    },
+  ],
+  // ⚠️ MEASURED TO THE UNDERSIDE OF THE TOP FLOOR'S CEILING JOIST, NOT TO THE
+  // PEAK (§ 17-17-0311-A). And no storey figure is stated for a coach house
+  // anywhere in Title 17, so none may be derived from the 22 ft (rule 12).
+  maxHeightFt: [
+    { form: 'figure', value: 22, condition: 'coach house — and the ordinary 15 ft accessory-building limit in a required rear setback expressly does NOT apply, § 17-9-0201-E carving out "other than a coach house"', cite: '§ 17-9-0201-F(5)', baseline: true },
+  ],
+  maxStories: null,
+  // ⚠️ NOT a defer-to-base-zone city: § 17-9-0201-F(5) states 22 feet outright.
+  // Setting both would have rendered "the ordinance states no height in feet",
+  // which is false — the conversion-unit nuance belongs in the notes instead.
+  heightDefersToBaseZone: null,
+  notes: [
+    // ⚠️ THE SUPERSEDED FIGURE, RECORDED ONCE AND FRAMED (rule 21). It lives
+    // in a note rather than in the size entry because the size entry’s
+    // `condition` renders into user-facing copy, where a bare figure is
+    // indistinguishable from a live claim.
+    '⚠️ SUPERSEDED, DO NOT PUBLISH: the pre-2026 § 17-9-0201-F(9) capped a coach-house dwelling unit at 700 square feet of floor area, exclusive of interior stairs directly accessing the unit. That sentence was STRUCK by Coun. J. 9-25-25 effective 2026-04-01 and no size rule replaced it. Recorded here so the number is identifiable as repealed when a reader meets it elsewhere — it is still what most secondary sources publish. Corpus check: "700 square feet" now occurs exactly ONCE in all of Title 17, at § 17-17-0249 defining "Efficiency", an unrelated use type.',
+    '⚠️ NEAR-CITYWIDE SINCE 2026-04-01, AND THE PILOT IS GONE. "Pilot" occurs ZERO times in Title 17 and no sunset provision exists ("sunset", "expire" and "repeal" all checked). Both types are permitted by right in RT3.5, RT4, RM4.5, RM5–5.5, RM6–6.5 and in B1, B2, B3, C1, C2. The geographic restriction survives ONLY in RS1/RS2/RS3, where § 17-9-0201-F(1) and § 17-9-0131(1) require compliance with § 17-7-0570.',
+    '⚠️ PROHIBITED IN C3, DOWNTOWN, MANUFACTURING AND SPECIAL PURPOSE DISTRICTS — and this is an ANSWER by the slot test, not a failed lookup. C3 carries an express "-" in Table 17-3-0207. Tables 17-4-0207 and 17-5-0207 enumerate Household Living use types row by row, the sibling rows are present and the Coach House and Conversion Unit rows are absent, and both chapters carry the catch-all "Uses that are not listed in the table are also prohibited". Corpus-wide, neither term occurs anywhere in Chapters 17-4, 17-5 or 17-6.',
+    '⚠️ TEN "ADDITIONAL DWELLING UNIT-ALLOWED RS AREAS", not five pilot areas, and each may carry its own limitations under § 17-7-0573: an ANNUAL per-block-face cap (RS1 one, RS2 two, RS3 three, counting conversion units and coach houses combined on the same and opposite block face), an OWNER-OCCUPANCY requirement where the principal building is a detached house, and/or a required administrative adjustment. Which limitations apply is per-zone, set by the § 17-7-0574 table. ⚠️ Figure 17-7-0570, the map those boundaries depend on, was NOT read.',
+    '⚠️ THE CONVERSION-UNIT RULE IS A DENSITY FORMULA, AND IT IS ENCODED AS STATED RATHER THAN AS A TABLE. Density may increase "by 33% of the number of lawfully established dwelling units, other than conversion units, that have been in existence in the residential building for 20 or more years", with the proviso that a building containing a SINGLE dwelling unit may increase by one, and a rounding rule of half-up. The building must have been in lawful existence for 20 or more years. ⚠️ The city publishes a lookup table derived from this; every row is arithmetically consistent, which corroborates the reading — but the formula governs and the table is not encoded (rule 30: never compute from a stated method).',
+    '⚠️ TWO PROVISIONS STATE THE DENSITY FORMULA IN NEARLY IDENTICAL WORDS. § 17-2-0303-C reaches "any zoning district"; § 17-3-0309 is word-for-word identical except it reads "any B, C1, or C2 zoning district" — and § 17-9-0131(2) makes conversion units subject to BOTH simultaneously. In B, C1 and C2 they produce the same number. The overlap is in the code as enacted and which controls is not resolved here.',
+    // ⚠️ AN EMPTY SLOT, NOT A CLEAN ABSENCE — and the city's guidance fills it
+    // with a limit the ordinance does not state. Encoding either answer would be
+    // a guess, so neither is encoded.
+    '⚠️ HOW MANY COACH HOUSES PER LOT IS UNRESOLVED, and it is an EMPTY SLOT rather than a known absence. "One coach house" returns zero occurrences; § 17-1-1300 limits principal detached residential BUILDINGS to one per zoning lot and does not reach accessory buildings. But item 15 of § 17-9-0201-F formerly carried a per-lot restriction and now reads "Reserved", so the drafting has a slot for such a limit and it is vacant. ⚠️ The city\u2019s guidance page asserts "A single coach house is allowed" — that limit was NOT found in the ordinance and is NOT adopted here (rule 4). Neither "one" nor "unlimited" is encoded.',
+    'One dwelling unit per coach house (§ 17-9-0201-F(9)), and a coach house "may not be constructed on a lot before the construction of the principal building to which it is accessory" (F(13)).',
+    '⚠️ AFFORDABILITY ATTACHES AT TWO OR MORE UNITS: § 17-9-0201-F(16) makes coach houses subject to § 2-44-106, under which two or more ADUs trigger a 50% affordable requirement at 60% AMI for 30 years. And the Department of Housing must PRE-CERTIFY before any permit issues (§ 2-44-106(g)(1)) — so the binding process sits in Title 2, outside the zoning code.',
+    'Coach houses established after 2021-05-01 may not be rented for transient occupancy, with a fine of $1,500–$3,000 per offence, each day a separate offence (§ 17-9-0201-F(17)).',
+    'Placement rules that shape the envelope without stating an area: at least three feet of unobstructed open space to one side property line (F(7)), and a 15 ft separation between the rear wall of the principal building and the front wall of the coach house, reducible to 10 ft by administrative adjustment on lots under 125 ft deep (F(8)).',
+    '⚠️ BOTH TYPES ARE EXEMPT FROM MINIMUM LOT AREA PER UNIT (§§ 17-9-0201-F(10), 17-9-0131(3)), so the lot-area-per-unit table does not gate an ADU. The 9-25-25 ordinance BROADENED this: the pre-2026 text read "Coach houses in any RS2, RS3, RT or RM zoning district are not subject to…" and the district qualifier was struck.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'American Legal (codelibrary.amlegal.com), the publisher the city links to — ⚠️ NOTE the zoning code is a SEPARATE product, chicagozoning_il, from the municipal code chicago_il — cross-checked against the City Clerk\u2019s eLMS REST API',
+    codifiedThrough: 'American Legal supplement 2026 S-73, "Current through Council Journal of March 18, 2026"',
+    amendingThisSection: [],
+    // ⚠️ A REAL LIST WAS READ AND CAME BACK EMPTY FOR THIS SECTION — the strong
+    // form. Three ADU matters sit in committee; none has passed.
+    note: '⚠️ CHICAGO IS NO LONGER ON LEGISTAR, so the brief\u2019s premise was out of date: chicago.legistar.com refuses the connection and webapi.legistar.com returns HTTP 500 with "LegistarConnectionString setting is not set up in InSite for client: chicago". The equivalent list is the City Clerk\u2019s eLMS. A real list WAS read: all 44 municipal-code amendments with a final action after the 2026-03-18 codification cut-off were enumerated and none touches §§ 17-7-0570 to 17-7-0574 or Chapter 17-9\u2019s ADU provisions, so `amendingThisSection: []` is the STRONG form here. Three ADU matters are in committee with no final action (O2026-0026329, O2025-0016750, O2024-0014096). ⚠️ Municode is NOT an alternative publisher for Chicago — its 254-entry Illinois client list carries Chicago Heights, Chicago Ridge and Cook County, but no City of Chicago.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -2134,8 +2297,8 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   milwaukee: { city: 'milwaukee', state: NO_PROVISION.wi, stateApplies: NA, local: MILWAUKEE_LOCAL },
   minneapolis: { city: 'minneapolis', state: NO_PROVISION.mn, stateApplies: NA, local: MINNEAPOLIS_LOCAL },
   dc: { city: 'dc', state: NO_PROVISION.dc, stateApplies: NA, local: DC_LOCAL },
-  chicago: { city: 'chicago', state: NO_PROVISION.il, stateApplies: NA, local: NOT_READ_LOCAL('Chicago') },
-  nyc: { city: 'nyc', state: NO_PROVISION.ny, stateApplies: NA, local: NOT_READ_LOCAL('New York City') },
+  chicago: { city: 'chicago', state: NO_PROVISION.il, stateApplies: NA, local: CHICAGO_LOCAL },
+  nyc: { city: 'nyc', state: NO_PROVISION.ny, stateApplies: NA, local: NYC_LOCAL },
   philadelphia: { city: 'philadelphia', state: NO_PROVISION.pa, stateApplies: NA, local: NOT_READ_LOCAL('Philadelphia') },
 
   // ── Georgia and Tennessee: whole-code searches, both clean ──────────────
@@ -2188,6 +2351,18 @@ export interface VocabularyCheck {
 }
 
 export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = Object.freeze({
+  chicago: {
+    canonical: '⚠️ TWO defined terms, not one: "Coach House" (§ 17-17-0234.6) and "Conversion Unit" (§ 17-17-0240.6). Neither is called an accessory dwelling unit',
+    competing: ['Additional Dwelling Unit / ADU — defined in TITLE 2, not Title 17', 'Accessory dwelling unit — ordinary English, one occurrence'],
+    distinguishedBy:
+      '⚠️ THE UMBRELLA TERM IS DEFINED IN A DIFFERENT TITLE. "Additional Dwelling Unit" and "ADU" ARE defined — at § 2-44-106(c), in Title 2 — so a Title-17-only search reports the term undefined, which is wrong. That is the Boston hazard in a third shape: not a competing use with an opposite effect (Boston), and not a genus inside the definition (Columbus and NYC), but a defined term sitting OUTSIDE the code being searched. It matters because § 17-9-0201-F(16) routes the affordability requirement into Title 2, so the binding process is outside the zoning code entirely. "Accessory dwelling unit" occurs ONCE in Title 17, in § 17-6-0400, as ordinary English about artist housing in PMD 8 — with two further ordinary-English traps at § 17-10-0100 and § 16-18-030 (1998). ⚠️ The two defined terms are NOT interchangeable: a coach house is a detached accessory building with its own height limit and an express FAR exemption; a conversion unit is created inside an existing building 20+ years old under a density formula, and has NO FAR exemption.',
+  },
+  nyc: {
+    canonical: '⚠️ "Ancillary dwelling unit" — NOT "accessory". Defined at ZR § 12-10, last amended 2024-12-05 by City of Yes for Housing Opportunity',
+    competing: ['Accessory dwelling unit — ZERO occurrences in the ZR', 'Backyard ancillary dwelling unit — a SECOND defined term', 'Additional dwelling unit — the genus of the definition, not a term'],
+    distinguishedBy:
+      '⚠️ THE OBVIOUS NOUN RETURNS A FALSE ABSENCE. "Accessory dwelling unit" occurs ZERO times in the Zoning Resolution, confirmed on two independent instruments; the abbreviation "ADU" occurs zero times in the ZR and is defined only in Building Code Appendix U. ⚠️ AND THE CITY\u2019S OWN COMMUNICATIONS POINT AWAY FROM ITS CODE: DCP\u2019s outreach PDF is titled "Accessory Dwelling Units" while the text DCP enacted says ancillary. A second defined term, "backyard ancillary dwelling unit", carries carve-outs the general term does not. ⚠️ "Additional dwelling unit" is the GENUS of the § 12-10 definition — "is an additional dwelling unit, permitted on the same zoning lot…" — exactly as in Columbus, and not a separately defined competing term as in Boston. ⚠️ THE OFFICIAL SITE SEARCH IS BROKEN AND WOULD HAVE PRODUCED A WRONG ANSWER: it returns 4 sections for "ancillary dwelling unit" when there are 7 — missing § 12-10 ITSELF, the section that carries every figure — and returns "0 results" for "backyard ancillary dwelling unit" though the phrase occurs 10 times. Counts here come from whole-corpus grep of a 132-page crawl and of the byte-verified official PDF, never from that box.',
+  },
   dc: {
     canonical:
       '⚠️ "Accessory apartment" — NOT "accessory dwelling unit". The official section is captioned "ACCESSORY APARTMENT (R)" (11-U § 253)',
@@ -2578,9 +2753,16 @@ export function summariseAdu(r: AduRules): string {
   // absence of a wrong output is not evidence the code is right, and code that
   // did not run is not code that works. Las Vegas only differs in being
   // exercised by an existing hurdles test.
+  // ⚠️ THIS LEAD SENTENCE USED TO NAME SAN DIEGO'S CONDITION — "for an ADU built
+  // inside an existing structure" — because San Diego's three `no-maximum`
+  // entries are all CONVERSIONS. Chicago's is the opposite case: a purpose-built
+  // coach house whose size cap was REPEALED, and the sentence described it
+  // wrongly. Rule 9's corollary again, and the third instance in this function,
+  // so the lead now says only what is true of every `no-maximum` — the specific
+  // configuration follows from `size.why`, which carries the entry's own words.
   const head =
     size.source === 'local-no-maximum'
-      ? 'The city states no maximum size for an ADU built inside an existing structure.'
+      ? 'The city states no maximum size for this configuration.'
       : size.value == null
         ? 'No maximum size can be published for this city.'
         : `Up to ${size.value.toLocaleString()} sq ft.`
@@ -2588,9 +2770,14 @@ export function summariseAdu(r: AduRules): string {
     r.local.kind === 'read' && r.local.maxStories
       ? ` Detached ADUs may be ${r.local.maxStories.value} storeys (${r.local.maxStories.cite}).`
       : ''
+  // ⚠️ "FLOORED BY STATE LAW" WAS UNCONDITIONAL, AND IT IS FALSE IN TWELVE OF
+  // SIXTEEN JURISDICTIONS. Same defect as the size branch, found the same way —
+  // by a city arriving whose state declines to preempt. Twice now, so the guard
+  // is the state layer's own kind rather than a comment.
+  const floored = r.state.kind === 'preempts' && r.stateApplies.kind === 'qualifies'
   const height =
     r.local.kind === 'read' && r.local.heightDefersToBaseZone
-      ? ` The ordinance states no height in feet for ADUs — it defers to the base zone (${r.local.heightDefersToBaseZone.cite}), floored by state law.`
+      ? ` The ordinance states no height in feet for ADUs — it defers to the base zone (${r.local.heightDefersToBaseZone.cite})${floored ? ', floored by state law' : ''}.`
       : ''
   return `${head} ${size.why}${stories}${height}`
 }
