@@ -187,8 +187,10 @@ export type StateDimension =
  *  is no source for a thing you did not find (rule 14: make the wrong state
  *  uncompilable rather than commenting on it). */
 export type LocalCap =
-  /** The ordinance states a figure. */
-  | { kind: 'capped'; sqFt: number; condition: string; cite: string; baseline?: boolean }
+  /** The ordinance states a figure. `measure` names its unit — see the note on
+   *  `AduFloor`'s figure form; a local cap and a state floor are only comparable
+   *  when both name the same measure. */
+  | { kind: 'capped'; sqFt: number; condition: string; cite: string; measure?: string; baseline?: boolean }
   /** The ordinance affirmatively states NO maximum for this configuration. */
   | { kind: 'no-maximum'; condition: string; cite: string; baseline?: boolean }
   /** ⚠️ THE ORDINANCE BINDS THIS CONFIGURATION, BUT NOT WITH A NUMBER.
@@ -328,8 +330,21 @@ export interface AduRules {
 // cap at 600 — so `band` carries the range AND the unresolved question, and no
 // figure is derived from it (rule 4).
 export type AduFloor =
-  /** The statute states a number. */
-  | { form: 'figure'; value: number; condition: string; cite: string; baseline?: boolean }
+  /** The statute states a number.
+   *
+   *  ⚠️ `measure` NAMES THE UNIT THE FIGURE IS IN, and it exists because two
+   *  states measure the same thing under different labels while local codes use
+   *  a third. California states every floor in "interior livable space"
+   *  (§ 66313(e)–(f): interior habitable area, excluding garages). Washington
+   *  says "gross floor area" — and RCW 36.70A.696(7) DEFINES that phrase to mean
+   *  interior habitable area, i.e. California's measure under Washington's name.
+   *  Meanwhile San Francisco caps in "Gross Floor Area" and Los Angeles in
+   *  "Floor Area", neither of which is established to be either.
+   *
+   *  Comparing 850 against 850 across two such labels is comparing names, not
+   *  quantities (rules 4 and 12). Absent, the comparison is disclosed as
+   *  unverified rather than silently performed. */
+  | { form: 'figure'; value: number; condition: string; cite: string; measure?: string; baseline?: boolean }
   /** The statute states a rule that resolves only against a parcel input. */
   | { form: 'derived'; rule: string; condition: string; cite: string; baseline?: boolean }
   /** The statute forbids excluding a range. NOT a floor — see above. */
@@ -358,14 +373,15 @@ const CA: StatePreempts = {
   size: {
     kind: 'floors',
     floors: [
-      { form: 'figure', value: 850, condition: 'a city may not cap an ADU below this', cite: '§ 66321(b)(2)(A)', baseline: true },
-      { form: 'figure', value: 1000, condition: 'for an ADU with more than one bedroom', cite: '§ 66321(b)(2)(B)' },
+      { form: 'figure', value: 850, condition: 'a city may not cap an ADU below this', cite: '§ 66321(b)(2)(A)', measure: 'interior livable space (§ 66313(e)–(f): interior habitable area, excluding a garage or accessory structure)', baseline: true },
+      { form: 'figure', value: 1000, condition: 'for an ADU with more than one bedroom', cite: '§ 66321(b)(2)(B)', measure: 'interior livable space (§ 66313(e)–(f): interior habitable area, excluding a garage or accessory structure)' },
       {
         form: 'figure',
         value: 800,
         condition:
           'must be buildable with four-foot side and rear setbacks regardless of lot coverage, FAR, open space, front setbacks or minimum lot size',
         cite: '§ 66321(b)(3)',
+        measure: 'interior livable space (§ 66313(e)–(f): interior habitable area, excluding a garage or accessory structure)',
       },
     ],
   },
@@ -391,7 +407,7 @@ const CA: StatePreempts = {
     ],
   },
   count: [
-    { value: '1 ADU + 1 JADU', condition: 'within the existing or proposed space of a single-family dwelling or accessory structure (up to 150 sq ft of expansion, for ingress and egress only)', cite: '§ 66323(a)(1)' },
+    { value: '1 ADU + 1 JADU', condition: 'within the existing or proposed space of a single-family dwelling or accessory structure (up to 150 sq ft of expansion, for ingress and egress only). ⚠️ A JADU is capped at 500 sq ft of interior livable space BY DEFINITION (§ 66313(d)) and must be contained entirely within a single-family residence — a figure that lives in the definitions article, not in the operative sections', cite: '§ 66323(a)(1), § 66313(d)' },
     { value: 1, condition: 'detached new construction, on a single-family lot', cite: '§ 66323(a)(2)' },
     { value: '25% of existing units, at least 1', condition: 'converted from non-livable space inside an existing multifamily building', cite: '§ 66323(a)(3)' },
     { value: 8, condition: 'detached, on a lot with an existing multifamily dwelling — never more than the number of existing units', cite: '§ 66323(a)(4)(A)(ii)' },
@@ -420,7 +436,19 @@ const WA: StatePreempts = {
   size: {
     kind: 'floors',
     floors: [
-      { form: 'figure', value: 1000, condition: 'a city may not cap gross floor area below this', cite: 'RCW 36.70A.681(1)(f)', baseline: true },
+      {
+        form: 'figure',
+        value: 1000,
+        condition: 'a city may not cap gross floor area below this',
+        cite: 'RCW 36.70A.681(1)(f)',
+        // ⚠️ "Gross floor area" here is a STATUTORY TERM OF ART, not the
+        // architectural one. RCW 36.70A.696(7) defines it as interior habitable
+        // area excluding garages — the same substance California calls interior
+        // livable space. A local cap using the ordinary meaning of the same
+        // phrase is measuring something larger.
+        measure: 'gross floor area AS DEFINED BY RCW 36.70A.696(7) — interior habitable area including basements and attics, excluding a garage or accessory structure',
+        baseline: true,
+      },
     ],
   },
   height: {
@@ -925,6 +953,7 @@ const LA_LOCAL: LocalLayer = {
       sqFt: 1200,
       condition: 'Floor Area for a DETACHED ADU. Lot-wide Floor Area limits apply separately and may reduce it further',
       cite: '§ 12.22 A.33(d)(1)',
+      measure: 'Floor Area (LAMC) — NOT established to equal the state\u2019s interior-livable-space measure',
       baseline: true,
     },
   ],
@@ -1015,6 +1044,7 @@ const SF_LOCAL: LocalLayer = {
       condition:
         'STATE-MANDATED programme (§ 207.2): a detached, new-construction Streamlined ADU with one bedroom or less, on a lot with a proposed or existing single-family dwelling',
       cite: '§ 207.2(c)(1)',
+      measure: 'Gross Floor Area (San Francisco Planning Code) — NOT established to equal the state\u2019s interior-livable-space measure',
       baseline: true,
     },
     {
@@ -1405,6 +1435,25 @@ export function stateSizeFloor(r: AduRules): { floor: Extract<AduFloor, { form: 
   return { floor: null, why: `${r.state.state} pegs this to ${b.withUse} rather than to a figure (${b.cite}).` }
 }
 
+/** ⚠️ ARE THE LOCAL CAP AND THE STATE FLOOR EVEN IN THE SAME UNIT?
+ *
+ *  `max(local, floor)` compares two integers, which is only meaningful if they
+ *  measure the same thing. They frequently do not, and the labels actively
+ *  mislead: Washington's statutory "gross floor area" is defined as interior
+ *  habitable area, while a city using the identical phrase usually means the
+ *  architectural measure taken to the exterior walls, which is larger.
+ *
+ *  So this never converts and never assumes. It returns a sentence to append
+ *  wherever a comparison was made on an unestablished equivalence, and null when
+ *  both sides name the same measure. Rule 4 — the honest output is "unpriced,
+ *  disclosed", not a plausible number. */
+function measureCaveat(localMeasure?: string, floorMeasure?: string): string | null {
+  if (localMeasure != null && floorMeasure != null && localMeasure === floorMeasure) return null
+  const named = [localMeasure ? `the city measures in ${localMeasure}` : 'the city\u2019s measure is not recorded',
+                 floorMeasure ? `the state floor is stated in ${floorMeasure}` : 'the state\u2019s measure is not recorded']
+  return ` ⚠️ These two figures may not be in the same unit — ${named.join(', and ')}. The comparison above rests on an equivalence this tool has not established, and no conversion between them is applied.`
+}
+
 export function effectiveMaxSize(r: AduRules): EffectiveSize {
   const { floor, why: floorWhy } = stateSizeFloor(r)
   if (r.local.kind !== 'read') {
@@ -1462,12 +1511,13 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
       floor != null && baseline.sqFt < floor.value
         ? ` But this sits below the state floor of ${floor.value.toLocaleString()} sq ft (${floor.cite}), so it is void to that extent and the floor governs.`
         : ''
+    const caveat = floor != null ? (measureCaveat(baseline.measure, floor.measure) ?? '') : ''
     return floor != null && baseline.sqFt < floor.value
-      ? { value: floor.value, source: 'state-floor', why: `The city's baseline cap is ${baseline.sqFt.toLocaleString()} sq ft (${baseline.cite}).${floorNote}` }
+      ? { value: floor.value, source: 'state-floor', why: `The city's baseline cap is ${baseline.sqFt.toLocaleString()} sq ft (${baseline.cite}).${floorNote}${caveat}` }
       : {
           value: baseline.sqFt,
           source: 'local',
-          why: `${baseline.condition} (${baseline.cite})${floor != null ? `, at or above the ${floor.value.toLocaleString()} sq ft state floor (${floor.cite})` : ''}.${more}`,
+          why: `${baseline.condition} (${baseline.cite})${floor != null ? `, at or above the ${floor.value.toLocaleString()} sq ft state floor (${floor.cite})` : ''}.${more}${caveat}`,
         }
   }
   const stated = r.local.maxSizeSqFt.find((m) => m.kind === 'no-maximum')
@@ -1498,16 +1548,17 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
   if (floor == null) {
     return { value: biggestLocal.sqFt, source: 'local', why: `${r.local.citation}, ${biggestLocal.cite}.` }
   }
+  const caveat2 = measureCaveat(biggestLocal.measure, floor.measure) ?? ''
   return biggestLocal.sqFt >= floor.value
     ? {
         value: biggestLocal.sqFt,
         source: 'local',
-        why: `The city allows more than the state floor requires (${biggestLocal.sqFt.toLocaleString()} sq ft at ${biggestLocal.cite}, against a ${floor.value.toLocaleString()} sq ft floor at ${floor.cite}), so the local figure governs.`,
+        why: `The city allows more than the state floor requires (${biggestLocal.sqFt.toLocaleString()} sq ft at ${biggestLocal.cite}, against a ${floor.value.toLocaleString()} sq ft floor at ${floor.cite}), so the local figure governs.${caveat2}`,
       }
     : {
         value: floor.value,
         source: 'state-floor',
-        why: `The city's cap of ${biggestLocal.sqFt.toLocaleString()} sq ft sits below the state floor of ${floor.value.toLocaleString()} sq ft (${floor.cite}), so it is void to that extent and the floor governs.`,
+        why: `The city's cap of ${biggestLocal.sqFt.toLocaleString()} sq ft sits below the state floor of ${floor.value.toLocaleString()} sq ft (${floor.cite}), so it is void to that extent and the floor governs.${caveat2}`,
       }
 }
 

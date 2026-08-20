@@ -1192,3 +1192,81 @@ describe('⚠️ Massachusetts — the figure is in the DEFINITION, not the oper
     expect(st.size.kind).not.toBe('floors')
   })
 })
+
+describe('⚠️ the definitions article carries substance the operative sections do not', () => {
+  // Generalised from the Massachusetts § 1A miss: § 3 conferred the right and
+  // § 1A defined what the right attached to, so reading only the operative
+  // section produced a confident absence. This sweeps the same question across
+  // every preempting state.
+
+  it('California: the ADU definition adds no size, but the JADU definition does', () => {
+    // § 66313's "accessory dwelling unit" is purely descriptive, so the § 66321
+    // floors stand unqualified. But § 66313(d) caps a JUNIOR ADU at 500 sq ft
+    // by definition — a figure that appears nowhere in the operative sections
+    // the count entry cites.
+    const st = aduRulesFor('sf').state
+    if (st.kind !== 'preempts') throw new Error('expected preempts')
+    const jadu = st.count.find((c) => /JADU/.test(String(c.value)))!
+    expect(jadu.condition).toMatch(/500 sq ft/)
+    expect(jadu.condition).toMatch(/BY DEFINITION/)
+    expect(jadu.cite).toMatch(/66313\(d\)/)
+  })
+
+  it('⚠️ every California size floor names its measure, and it is not "floor area"', () => {
+    // § 66321(b)(2)(A), (B) and (b)(3) each say "interior livable space", not
+    // gross or net floor area. The figure without the measure is half a fact.
+    const st = aduRulesFor('sf').state
+    if (st.kind !== 'preempts' || st.size.kind !== 'floors') throw new Error('expected floors')
+    for (const f of st.size.floors) {
+      expect(f.form).toBe('figure')
+      if (f.form !== 'figure') throw new Error('unreachable')
+      expect(f.measure, String(f.value)).toMatch(/interior livable space/)
+      expect(f.measure, String(f.value)).toMatch(/66313/)
+    }
+  })
+
+  it("⚠️ Washington's \"gross floor area\" is a term of art meaning the opposite of the obvious", () => {
+    // RCW 36.70A.696(7) DEFINES gross floor area as interior habitable area
+    // excluding garages — California's measure under Washington's name. A city
+    // using the identical phrase in its ordinary architectural sense is
+    // measuring something larger, so the label is actively misleading.
+    const st = aduRulesFor('seattle').state
+    if (st.kind !== 'preempts' || st.size.kind !== 'floors') throw new Error('expected floors')
+    const f = st.size.floors.find((x) => x.baseline)!
+    if (f.form !== 'figure') throw new Error('unreachable')
+    expect(f.measure).toMatch(/AS DEFINED BY RCW 36\.70A\.696\(7\)/)
+    expect(f.measure).toMatch(/interior habitable area/)
+    expect(f.measure).toMatch(/excluding a garage/)
+  })
+
+  it('⚠️ a cross-measure comparison is DISCLOSED, never silently performed', () => {
+    // SF caps in Gross Floor Area; California floors in interior livable space.
+    // 850 against 850 is a comparison of labels. No conversion is invented — the
+    // equivalence is simply declared unestablished (rules 4 and 12).
+    const why = effectiveMaxSize(aduRulesFor('sf')).why
+    expect(why).toMatch(/may not be in the same unit/)
+    expect(why).toMatch(/Gross Floor Area/)
+    expect(why).toMatch(/interior livable space/)
+    expect(why).toMatch(/no conversion between them is applied/)
+    // ⚠️ And it must not have quietly picked a winner on the strength of it.
+    expect(why).not.toMatch(/converted|equivalent to|which equals/)
+  })
+
+  it('says nothing where both sides name the same measure', () => {
+    // The caveat must not fire indiscriminately, or it becomes noise that a
+    // reader learns to skip — and then it is not a warning at all.
+    const same = measureCaveatProbe('X', 'X')
+    expect(same).toBeNull()
+    expect(measureCaveatProbe('X', 'Y')).toMatch(/may not be in the same unit/)
+    expect(measureCaveatProbe(undefined, 'Y')).toMatch(/not recorded/)
+  })
+})
+
+/** Mirrors the module-private helper, so the both-known-and-equal case is
+ *  exercised even though no live city currently produces it. */
+function measureCaveatProbe(a: string | undefined, b: string | undefined): string | null {
+  if (a != null && b != null && a === b) return null
+  const named = [a ? `the city measures in ${a}` : 'the city’s measure is not recorded',
+                 b ? `the state floor is stated in ${b}` : 'the state’s measure is not recorded']
+  return ` ⚠️ These two figures may not be in the same unit — ${named.join(', and ')}. The comparison above rests on an equivalence this tool has not established, and no conversion between them is applied.`
+}
