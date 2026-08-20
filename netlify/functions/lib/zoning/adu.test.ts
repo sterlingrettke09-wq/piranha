@@ -161,7 +161,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'denver', 'la', 'lasvegas', 'miami', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['austin', 'boston', 'charlotte', 'dallas', 'denver', 'la', 'lasvegas', 'miami', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -371,18 +371,18 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     // and has no ADU provision; Nevada preempts but states no size; Georgia has
     // not been looked at. Four facts, and only the last is ignorance.
     expect(effectiveMaxSize(STATE_DECLINES).source).toBe('state-declines')
-    expect(effectiveMaxSize(aduRulesFor('charlotte')).source).toBe('unresolved')
+    expect(effectiveMaxSize(aduRulesFor('raleigh')).source).toBe('unresolved')
     expect(effectiveMaxSize(STATE_NO_FIGURE).source).toBe('state-no-figure')
     expect(effectiveMaxSize(NOTHING_ESTABLISHED).source).toBe('unresolved')
     // Every one of them still publishes NO number — the distinction is in the
     // reason, never in a figure invented to fill the gap.
-    for (const r of [STATE_DECLINES, aduRulesFor('charlotte'), STATE_NO_FIGURE, NOTHING_ESTABLISHED]) {
+    for (const r of [STATE_DECLINES, aduRulesFor('raleigh'), STATE_NO_FIGURE, NOTHING_ESTABLISHED]) {
       expect(effectiveMaxSize(r).value, r.city).toBeNull()
     }
 
     // ⚠️ And the two that share a `source` must NOT share a sentence: NC was
     // read within a named scope, the synthetic city was not read at all.
-    const nc = summariseAdu(aduRulesFor('charlotte'))
+    const nc = summariseAdu(aduRulesFor('raleigh'))
     const none = summariseAdu(NOTHING_ESTABLISHED)
     expect(nc).toMatch(/contains no ADU provision/)
     expect(nc).not.toMatch(/nobody has looked/)
@@ -571,7 +571,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
     // Only Seattle earned the strong form. The other four each disclose, in
     // their own wording, that no list was available — so the assertion matches
     // the DISCLOSURE, not one city's phrasing.
-    const weak = ['austin', 'boston', 'denver', 'la', 'lasvegas', 'sandiego', 'sanjose', 'sf']
+    const weak = ['austin', 'boston', 'dallas', 'denver', 'la', 'lasvegas', 'nashville', 'sandiego', 'sanjose', 'sf']
     for (const c of ADU_LOCAL_READ) {
       const l = aduRulesFor(c).local
       if (l.kind !== 'read' || l.pending.kind !== 'checked') continue
@@ -587,7 +587,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
         // ⚠️ Miami joins the strong form: Miami 21 carries its own "Amendments
         // to Miami 21" table, which was read — the ordinance that rewrote the
         // ADU section is in it, and nothing later in it names ADUs.
-        expect(['seattle', 'phoenix', 'miami'], c).toContain(c)
+        expect(['seattle', 'phoenix', 'miami', 'charlotte'], c).toContain(c)
         expect(note, c).not.toMatch(/no (pending[- ]?(ordinance )?)?list/i)
       }
     }
@@ -597,7 +597,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['austin', 'boston', 'denver', 'la', 'lasvegas', 'miami', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['austin', 'boston', 'charlotte', 'dallas', 'denver', 'la', 'lasvegas', 'miami', 'nashville', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1339,7 +1339,7 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
         ;(m.measure ? withMeasure : without).push(c)
       }
     }
-    expect([...new Set(withMeasure)].sort()).toEqual(['denver', 'la', 'sanjose', 'sf'])
+    expect([...new Set(withMeasure)].sort()).toEqual(['charlotte', 'denver', 'la', 'sanjose', 'sf'])
     // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
     // their measure — declared, so the gap is countable rather than invisible.
     expect([...new Set(without)].sort()).toEqual(['austin', 'phoenix', 'sandiego', 'seattle'])
@@ -1793,5 +1793,111 @@ describe('Austin — "Secondary Apartment", and the term shares no acronym', () 
     const scope = local.notes.find((x) => /RECORDED, NOT READ IN FULL/.test(x))!
     expect(scope).toMatch(/Subsection \(C\) design standards were not read/)
     expect(scope).toMatch(/BY RIGHT in each base district was not established/)
+  })
+})
+
+describe('the fan-out three — Charlotte, Dallas, Nashville', () => {
+  it('⚠️ Charlotte: the legacy ordinance still governs some parcels and points OPPOSITE', () => {
+    // § 1.4.C preserves the prior ordinances for conditional/optional/EX districts
+    // approved before 2023-06-01. Legacy § 12.407 caps an INTERIOR ADU (35%/800 sf)
+    // where the UDO caps none, and requires "no taller than the principal dwelling"
+    // where the UDO states no height. Two live instruments, opposite directions.
+    const l = aduRulesFor('charlotte').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /LEGACY 1992 ZONING ORDINANCE STILL GOVERNS/.test(x))!
+    expect(n).toMatch(/§ 1\.4\.C/)
+    expect(n).toMatch(/35%/); expect(n).toMatch(/800 heated square feet/)
+    expect(n).toMatch(/no taller than the principal dwelling/)
+    expect(n).toMatch(/not resolved here/)
+  })
+
+  it('⚠️ Charlotte: the size cap reaches only an accessory-structure ADU', () => {
+    // An ANSWER by the slot test, not a gap: the legacy § 12.407 is the same list
+    // in the same order and its item (5) IS the interior cap; the UDO reproduced
+    // the list and dropped it.
+    const l = aduRulesFor('charlotte').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/GREATER of 600 heated sq ft/)
+    expect(b.condition).toMatch(/No size limit is stated for an ADU inside the principal dwelling/)
+    // ⚠️ And the two limbs of the comparison are not established to share a measure.
+    const cap = l.maxSizeSqFt.find((m) => m.kind === 'capped')!
+    if (cap.kind !== 'capped') throw new Error('unreachable')
+    expect(cap.measure).toMatch(/does NOT qualify/)
+  })
+
+  it('⚠️ Dallas: NO by-right route exists — both require a discretionary act', () => {
+    // The only city read here with no by-right path. Route A needs a
+    // petition-created overlay adopted by Council; Route B needs a Board of
+    // Adjustment special exception.
+    const l = aduRulesFor('dallas').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /NEITHER ROUTE IS BY RIGHT/.test(x))!
+    expect(n).toMatch(/petition/)
+    expect(n).toMatch(/Board of Adjustment special exception/)
+    expect(n).toMatch(/entitlement and a discretionary approval/)
+    // ⚠️ And whether the overlay is mapped anywhere is unestablished, which
+    // decides whether Route A is available to anybody at all.
+    const m = l.notes.find((x) => /WHETHER ANY ADU OVERLAY IS ACTUALLY MAPPED/.test(x))!
+    expect(m).toMatch(/UNESTABLISHED/)
+    expect(m).toMatch(/available to nobody/)
+  })
+
+  it('⚠️ Dallas: Route B is not-found, never a permission', () => {
+    // Route B states no ADU size figure. That is a hole in the ADU provisions,
+    // and `not-found` is the state that cannot be read as headroom.
+    const l = aduRulesFor('dallas').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const nf = l.maxSizeSqFt.find((m) => m.kind === 'not-found')!
+    expect(nf.condition).toMatch(/Board of Adjustment special exception/)
+    expect(nf.condition).toMatch(/25% of the floor area of the main building/)
+    // Two defined terms separated by rentability — the Boston hazard, separated.
+    expect(ADU_VOCABULARY_CHECK.dallas.distinguishedBy).toMatch(/SEPARATED BY RENTABILITY/)
+  })
+
+  it('⚠️ Nashville: the NINTH operator, and the first conjunctive one', () => {
+    // Every other city joins its limbs with "whichever is greater/less".
+    // Nashville uses "and" — both bind simultaneously.
+    const l = aduRulesFor('nashville').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/BOTH limbs bind/)
+    expect(b.rule).toMatch(/not "whichever is greater\/less"/)
+    expect(b.rule).toMatch(/700 sq ft/); expect(b.rule).toMatch(/850 sq ft/)
+  })
+
+  it('⚠️ Nashville: "living space" is undefined and the guidance gloss is REFUSED', () => {
+    // The phrase appears once in all of Title 17 and § 17.04.060 does not define
+    // it. Metro's own guidance page calls it "footprint"; the code does not. A
+    // guidance page is not the ordinance, and the two differ on any multi-storey
+    // unit — adopting the gloss would be an invented conversion (rule 4).
+    const l = aduRulesFor('nashville').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /SIZE UNIT IS "LIVING SPACE"/.test(x))!
+    expect(n).toMatch(/appears exactly once/)
+    expect(n).toMatch(/gloss is not adopted here/)
+    expect(n).toMatch(/guidance page is not the ordinance/)
+  })
+
+  it('⚠️ Nashville carries the ONLY non-empty amendingThisSection in the file', () => {
+    // BL2026-1257 deletes § 17.16.030.G.2 and renumbers everything after it, so
+    // every G-citation recorded is as-published and will shift. Found by querying
+    // the council's legislative API — Municode publishes no pending list.
+    const l = aduRulesFor('nashville').local
+    if (l.kind !== 'read' || l.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(l.pending.amendingThisSection).toEqual(['BL2026-1257, passed 2026-04-21'])
+    expect(l.pending.note).toMatch(/renumbers every subsequent subsection/)
+    expect(l.pending.note).toMatch(/eight-month enactment gap/)
+    expect(l.pending.note).toMatch(/Legistar API/)
+
+    // ⚠️ rule 20: every OTHER read city has an empty list, so this one being
+    // non-empty is the distinction being pinned — not an accident of ordering.
+    const nonEmpty = ADU_LOCAL_READ.filter((c) => {
+      const x = aduRulesFor(c).local
+      return x.kind === 'read' && x.pending.kind === 'checked' && x.pending.amendingThisSection.length > 0
+    })
+    expect(nonEmpty).toEqual(['nashville'])
   })
 })

@@ -1593,6 +1593,187 @@ const AUSTIN_LOCAL: LocalLayer = {
   },
 }
 
+// ── CHARLOTTE ───────────────────────────────────────────────────────────────
+//
+// ⚠️ THE PUBLISHER IS NOT MUNICODE. Charlotte's own page designates
+// charlotteudo.org, which the City operates. Municode's Chapter 24 contains NO
+// UDO text at all — only editor's notes pointing at read.charlotteudo.org, a host
+// that returns NXDOMAIN. A reader who went to Municode by habit would find a
+// chapter that looks like the right place and is empty.
+const CHARLOTTE_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Charlotte Unified Development Ordinance § 15.6.F ("Dwelling – Accessory Unit (ADU)") with the § 15.3 use definition and § 17.1 accessory-structure regulations; UDO adopted 2022-08-22, effective 2023-06-01, as amended 2026-03-23',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ THE CAP REACHES ONLY AN ADU IN AN ACCESSORY STRUCTURE, and that is an
+    // ANSWER rather than a gap. § 15.6.F is a six-item list; item 6 is expressly
+    // conditioned "An ADU located within an accessory structure", and items 1–5
+    // say nothing about size. The legacy ordinance's § 12.407 is the SAME list in
+    // the same order and its item (5) is precisely the interior-ADU size cap. The
+    // UDO reproduced the list and dropped that item — the slot existed in the
+    // predecessor and is empty in the successor.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the GREATER of 600 heated sq ft and 70% of the total floor area of the principal residential use — so 600 sq ft is a FLOOR that a small principal dwelling cannot reduce — subject to an absolute ceiling of 1,000 heated sq ft',
+      condition: 'an ADU located within an ACCESSORY STRUCTURE. No size limit is stated for an ADU inside the principal dwelling',
+      cite: '§ 15.6.F.6.a',
+      baseline: true,
+    },
+    {
+      kind: 'capped',
+      sqFt: 1000,
+      condition: 'absolute ceiling overriding the greater-of comparison — "in no case shall the ADU exceed 1,000 heated square feet"',
+      cite: '§ 15.6.F.6.a',
+      measure: 'heated square feet (UDO usage); ⚠️ the OTHER side of the same comparison is "total floor area", which the UDO does NOT qualify — § 2.3 defines only Gross Floor Area, so the two limbs are not established to be the same measure',
+    },
+  ],
+  // ⚠️ NO ADU HEIGHT RULE EXISTS, established by the slot test in three places:
+  // § 15.6.F has no height item; § 17.1 — which § 15.6.F.6.b expressly
+  // incorporates — states no accessory-structure height cap; and the legacy
+  // ordinance DID state one (§ 12.407(6)(b), "no taller than the principal
+  // dwelling"), which the UDO dropped.
+  maxHeightFt: [],
+  maxStories: null,
+  heightDefersToBaseZone: { cite: 'UDO § 17.1 (accessory structure regulations), incorporated by § 15.6.F.6.b; height appears there only as a setback trigger, never as a cap' },
+  notes: [
+    'Only one ADU is permitted on the lot (§ 15.6.F.3). Permitted with a single-family dwelling in any district allowing one (§ 15.4.HH), and with a duplex where neither unit is on a sublot (§ 15.4.EE).',
+    '⚠️ THE KITCHEN IS CONSTITUTIVE, as in LA, San Diego and Miami. The § 15.3 definition: an ADU "shall include separate cooking and sanitary facilities and is a complete, separate dwelling unit", and is not permitted in manufactured homes, recreational vehicles, travel trailers or campers. The separating criterion lives in the DEFINITION, not in § 15.6.F.',
+    'The ADU is carved OUT of the accessory-structure area budget: § 17.1.F caps cumulative accessory-structure floor area at the heated first-floor area of the principal structure "excluding accessory dwelling units (ADUs)", so building an ADU does not consume the shed/garage allowance.',
+    'Article 15 is genuinely citywide — § 15.1.A imposes no neighbourhood-plan or sub-area gate, and § 1.4.A extends the ordinance to the city plus its ETJ. Checked in the direction the Austin failure runs: enclosing container first.',
+    // ⚠️ A SECOND LIVE INSTRUMENT THAT POINTS THE OTHER WAY.
+    '⚠️ THE LEGACY 1992 ZONING ORDINANCE STILL GOVERNS SOME PARCELS, AND ITS ADU RULE IS THE REVERSE OF THE UDO\u2019S. § 1.4.C preserves the prior development ordinances for conditional, optional and EX zoning districts approved before the UDO\u2019s 2023-06-01 effective date. Legacy § 12.407 caps an INTERIOR ADU at "35% of the total floor area of the principal structure ... in no case ... exceed 800 heated square feet" and requires an accessory-structure ADU to be "no taller than the principal dwelling" — a size cap where the UDO has none, and a height cap where the UDO has none. Which instrument applies is a per-parcel question turning on district type and vesting, and is not resolved here.',
+    '⚠️ The RIO overlay\u2019s building-size limits do NOT reach an ADU: § 14.5.C.1.d is limited by its own words to "All principal residential buildings", and an accessory structure containing an ADU is not one.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'charlotteudo.org — the City-operated publication its own Planning page designates — including its /versions and /text-amendments listings',
+    codifiedThrough: 'UDO as amended 2026-03-23 (petition #2025-118, "Fall 2025 UDO Maintenance Text Amendment"); the PDF read carries "Amended March 23, 2026" and embedded ModDate 2026-03-24',
+    amendingThisSection: [],
+    // ⚠️ STRONG FORM, and unusually so: a real amendment list was read AND the
+    // figures were compared across two independently produced renderings of the
+    // same instrument (the consolidated PDF and the HTML article pages), which is
+    // an external check rather than a re-read of one file.
+    note: 'STRONG form: charlotteudo.org publishes a text-amendment list which was read, and nothing pending touches § 15.6.F. The PDF was verified byte-identical against Content-Length (26,356,549) and its ADU text compared word-for-word with the separate HTML rendering. ⚠️ Municode carries Chapter 24 with NO UDO text — only editor\u2019s notes pointing at read.charlotteudo.org, which returns NXDOMAIN — so the obvious publisher is not merely stale here but empty.',
+  },
+}
+
+// ── DALLAS ──────────────────────────────────────────────────────────────────
+//
+// ⚠️ DALLAS HAS NO BY-RIGHT ADU ROUTE AT ALL, and that is the finding. Both
+// available routes require a discretionary act by someone other than the owner:
+// a petition-created mapped overlay, or a Board of Adjustment special exception.
+// Every other city read in this file permits an ADU by right somewhere.
+const DALLAS_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Dallas City Code § 51A-4.510 (Accessory Dwelling Unit Overlay, Ord. 30931) and § 51A-4.209(b)(6)(E) (single-family use regulations / Board of Adjustment special exception), with the parallel former-code provisions at § 51-4.201(b)(1)(E)',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ TENTH RATIO DRAFTING. "The greater of 700 square feet or 25 percent" —
+    // the ratio points UP, acting as a floor beneath 700 sq ft on a small house
+    // and a ceiling above it on a large one. And the two clauses take DIFFERENT
+    // referents as printed: "the main structure" for detached, "the main use" for
+    // attached. Recorded as drafted and not reconciled.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the GREATER of 700 sq ft and 25 percent of the main structure (detached) or of the main use (attached) — ⚠️ the code prints two different referents for the two cases and this tool does not reconcile them',
+      condition: 'ROUTE A only — a lot inside an adopted Accessory Dwelling Unit Overlay. Minimum floor area is 200 sq ft, stated for the detached case only',
+      cite: '§ 51A-4.510(c)(2)(C)',
+      baseline: true,
+    },
+    // ⚠️ ROUTE B STATES NO ADU SIZE AT ALL — a gap in the ADU provisions, not a
+    // permission. What binds instead is the general accessory-structure cap,
+    // which is a different instrument measuring a different thing.
+    {
+      kind: 'not-found',
+      condition:
+        'ROUTE B — a Board of Adjustment special exception outside any overlay. Neither § 51A-4.209(b)(6)(E)(i)–(iii) nor § 51-4.201(b)(1)(E)(i)–(ii) states any floor-area figure for an additional or accessory dwelling unit. Where the unit sits in an accessory structure the general cap applies instead: 25% of the floor area of the main building for any individual accessory structure, 50% for all of them together (§ 51A-4.209(b)(6)(E)(vii)(dd)–(ee))',
+    },
+  ],
+  maxHeightFt: [],
+  // ⚠️ Route A states a storey count and a RELATIONAL height, in no unit at all.
+  // Nothing is converted; the only figure in feet nearby (15 ft) is a setback
+  // trigger, not a height cap.
+  maxStories: { value: 1, condition: 'ROUTE A: "Maximum number of stories for an accessory dwelling unit is one"', cite: '§ 51A-4.510(c)(2)(G)' },
+  heightDefersToBaseZone: { cite: '§ 51A-4.510(c)(2)(D) — height "cannot exceed the height of the main dwelling unit", except above a detached garage where it is the maximum the zoning overlay allows; Route B likewise pegs it to the main building at § 51A-4.209(b)(6)(E)(vii)(cc)' },
+  notes: [
+    '⚠️ NEITHER ROUTE IS BY RIGHT. Route A requires an Accessory Dwelling Unit Overlay to have been created over the property by petition and adopted by City Council; Route B requires a Board of Adjustment special exception. This is the only city read here with no by-right path, and it is the difference between an entitlement and a discretionary approval.',
+    '⚠️ WHETHER ANY ADU OVERLAY IS ACTUALLY MAPPED IS UNESTABLISHED. The overlay exists in the text; whether Council has adopted one anywhere was not determined, and the zoning map was not read. If none is mapped, Route A is available to nobody and the practical answer for every Dallas parcel is Route B.',
+    '⚠️ TWO DEFINED TERMS SEPARATED BY RENTABILITY, in adjacent subparagraphs of the same section. § 51A-4.510(a)(1) defines an ACCESSORY dwelling unit as "a rentable additional dwelling unit, subordinate to the main unit"; § 51A-4.209(b)(6)(E)(i) lets the Board authorise an ADDITIONAL dwelling unit only where it will not "be used as rental accommodations". Same physical building, opposite rental status — the Boston hazard with a different separator.',
+    '⚠️ The ADU term is defined ONLY inside § 51A-4.510(a)(1). The string does not appear in § 51A-2.102, the code\u2019s general Definitions section — so a reader who checks the definitions chapter first finds nothing and could conclude Dallas has no ADU concept.',
+    '⚠️ NO PER-LOT ADU COUNT IS STATED in either route. The baseline single-family definition is "One dwelling unit located on a lot" (§ 51A-4.209(b)(6)(A)), and both routes authorise a second — but neither says how many. Recorded as a genuine absence rather than assumed to be one.',
+    'Where § 51A-4.510 conflicts with the single-family use regulations, § 51A-4.510(c)(1)(E) provides that § 51A-4.510 controls — which matters because Route A\u2019s "greater of" allowance can exceed Route B\u2019s flat 25% accessory-structure cap on a small house.',
+    'Dallas runs two codes split by rezoning/annexation date (Chapter 51A from 1987, Chapter 51 before it, per § 51A-1.102(a) / § 51-1.102(a)). Both carry the same ADU provisions and Chapter 51\u2019s overlay section incorporates Chapter 51A\u2019s by reference, so the ADU rules do not differ between them.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'American Legal Publishing (codelibrary.amlegal.com/codes/dallas) — the publisher Dallas City Hall\u2019s City Codes page designates for Volumes 1–3',
+    codifiedThrough: 'Volume III (containing chs. 51 and 51A): 1/26 Supplement, current through Ordinance 33288, passed 2025-12-10. § 51A-4.510 carries (Ord. 30931) and shows no later amendment',
+    amendingThisSection: [],
+    note: 'American Legal publishes volume-level currency statements but no pending-ordinance list, so `amendingThisSection: []` records that no list exists to read. ⚠️ The city attaches its own disclaimer to this publisher: the code on the American Legal site "may not reflect the most current legislation adopted by the City of Dallas" and "The official printed copy of a Code of Ordinances should be consulted prior to any action being taken" — a publisher-currency warning from the city about the publisher the city designates.',
+  },
+}
+
+// ── NASHVILLE ───────────────────────────────────────────────────────────────
+//
+// ⚠️ TWO DEFINED USES, AND THE ATTACHED ONE IS THE RESTRICTIVE ONE. Nashville
+// separates "detached accessory dwelling unit" (DADU) from "accessory apartment"
+// at § 17.04.060.B, and they carry different rules — the attached unit is capped
+// by ratio AND limited to family-member occupancy, the detached one is capped by
+// lot size and is not.
+const NASHVILLE_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Metro Nashville Code § 17.16.030.G (detached accessory dwelling unit) and § 17.16.250.A (accessory apartment), with the § 17.04.060.B definitions; Title 17 Zoning Code, Supp. No. 53',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ THE NINTH OPERATOR, AND THE FIRST CONJUNCTIVE ONE. Every other city in
+    // this file joins its two limbs with "whichever is greater" or "whichever is
+    // less". Nashville uses "and": both limbs bind simultaneously, so the answer
+    // is the minimum of a lot-keyed figure and the principal structure's size.
+    {
+      kind: 'not-numeric',
+      rule:
+        'BOTH limbs bind — the code joins them with "and", not "whichever is greater/less": 700 sq ft on a lot under 10,000 sq ft, or 850 sq ft on a lot of 10,000 sq ft or more, AND in no case exceeding the size of the principal structure',
+      condition: 'DETACHED accessory dwelling unit (DADU)',
+      cite: '§ 17.16.030.G.7.a (as published — see the renumbering note)',
+      baseline: true,
+    },
+    {
+      kind: 'not-numeric',
+      rule: 'twenty-five percent of the gross floor area, excluding garage and utility space',
+      condition: 'ACCESSORY APARTMENT — the attached/internal unit, a different defined use from the DADU',
+      cite: '§ 17.16.250.A',
+    },
+  ],
+  maxHeightFt: [],
+  maxStories: null,
+  heightDefersToBaseZone: { cite: '§ 17.16.030.G.7.b — the DADU "shall maintain a proportional mass, size, and height to ensure it is not taller and/or larger than the principal structure on the lot"' },
+  notes: [
+    '⚠️ THE SIZE UNIT IS "LIVING SPACE", WHICH THE CODE NEVER DEFINES. The phrase appears exactly once in the whole of Title 17 — in this very provision — and § 17.04.060 carries no definition of it. Metro Codes\u2019 own guidance page glosses it as "footprint", which the code text does not say. That gloss is not adopted here: a guidance page is not the ordinance, and footprint and floor area differ on any multi-storey unit.',
+    '⚠️ THE DADU IS NOT AVAILABLE COUNTYWIDE, and this is the applicability answer. Title 17 as a whole reaches all land in the Metropolitan Government\u2019s jurisdiction "exclusive of incorporated municipalities" (§ 17.04.020.A) — so both the Urban Services District and the General Services District. But § 17.16.030.G.11 permits a DADU "only ... within the Urban Services District, within a Detached Accessory Dwelling Unit overlay district within the General Services District outside of the Urban Services District, or as otherwise permitted through a Specific Plan". ⚠️ The § 17.04.060 DEFINITION adds an urban-design-overlay path that the operative clause omits — the two do not match, and this tool does not reconcile them.',
+    'One DADU per lot: "No more than one detached accessory dwelling unit shall be permitted on a single lot in conjunction with the principal structure", and it "cannot be divided from the property ownership of the principal dwelling" (§ 17.16.030.G.3).',
+    '⚠️ The ACCESSORY APARTMENT carries an occupancy restriction the DADU does not — it is limited to family-member occupancy (§ 17.16.250.A). Two units that look alike physically are governed by different rules depending on attachment, and the occupancy limit is the sharper difference.',
+    'When a DADU is present, no OTHER accessory structure on the lot may exceed 200 sq ft (§ 17.16.030.G.1.b). DADUs are expressly carved out of the general accessory-structure building-coverage control at § 17.12.050.A, which directs the reader to § 17.16.030.G instead.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'Municode Code of Ordinances Title 17 (the publication Metro designates), checked against the Metro Council Legistar API (webapi.legistar.com/v1/nashville)',
+    codifiedThrough: 'Supp. No. 53, codified through Ordinance No. BL2025-1141, approved 2025-12-17; online content updated 2026-06-23',
+    amendingThisSection: ['BL2026-1257, passed 2026-04-21'],
+    // ⚠️ THE ONLY NON-EMPTY `amendingThisSection` IN THIS FILE, and it was found
+    // by querying the council's legislative API rather than by reading a
+    // publisher's pending list — because Municode publishes none.
+    note: '⚠️ AN ENACTED AMENDMENT IS NOT YET IN THE PUBLISHED TEXT. BL2026-1257, passed 2026-04-21, DELETES § 17.16.030.G.2 and renumbers every subsequent subsection — so the size rule cited here as G.7.a becomes G.6.a. The codified text is current only through 2025-12-17, an eight-month enactment gap, and the gap was found by querying the Metro Council Legistar API, not from any pending list. Every G-numbering recorded here is AS PUBLISHED and will shift; the substance of the size rule is unaffected by the renumbering, but a citation check against the live code will not match.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -1667,10 +1848,10 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
 
   // ── Read, and the state does not preempt ─────────────────────────────────
   miami: { city: 'miami', state: FL, stateApplies: NA, local: MIAMI_LOCAL },
-  charlotte: { city: 'charlotte', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Charlotte') },
+  charlotte: { city: 'charlotte', state: NO_PROVISION.nc, stateApplies: NA, local: CHARLOTTE_LOCAL },
   raleigh: { city: 'raleigh', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Raleigh') },
   austin: { city: 'austin', state: NO_PROVISION.tx, stateApplies: NA, local: AUSTIN_LOCAL },
-  dallas: { city: 'dallas', state: NO_PROVISION.tx, stateApplies: NA, local: NOT_READ_LOCAL('Dallas') },
+  dallas: { city: 'dallas', state: NO_PROVISION.tx, stateApplies: NA, local: DALLAS_LOCAL },
   columbus: { city: 'columbus', state: NO_PROVISION.oh, stateApplies: NA, local: NOT_READ_LOCAL('Columbus') },
   milwaukee: { city: 'milwaukee', state: NO_PROVISION.wi, stateApplies: NA, local: NOT_READ_LOCAL('Milwaukee') },
   minneapolis: { city: 'minneapolis', state: NO_PROVISION.mn, stateApplies: NA, local: NOT_READ_LOCAL('Minneapolis') },
@@ -1681,7 +1862,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
 
   // ── Georgia and Tennessee: whole-code searches, both clean ──────────────
   atlanta: { city: 'atlanta', state: NO_PROVISION.ga, stateApplies: NA, local: NOT_READ_LOCAL('Atlanta') },
-  nashville: { city: 'nashville', state: NO_PROVISION.tn, stateApplies: NA, local: NOT_READ_LOCAL('Nashville') },
+  nashville: { city: 'nashville', state: NO_PROVISION.tn, stateApplies: NA, local: NASHVILLE_LOCAL },
 })
 
 /** ⚠️ The fallback is `not-established`, never `no-provision`. A city absent
@@ -1776,6 +1957,24 @@ export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = O
     competing: ['carriage house', 'granny flat', 'guest house', 'Carriage Lot'],
     distinguishedBy:
       'Nothing to distinguish on the dwelling term: "carriage house", "granny flat" and "guest house" appear ZERO times in DZC Articles 11 and 13. ⚠️ "Carriage Lot" IS a live DZC term (§ 11.8.2.1.D allows an ADU on one even with no primary use, subject to § 12.10.4) — but it names a LOT TYPE, not a dwelling, so it does not compete with the ADU term. Checked in the current code only; Former Chapter 59 was amended by the same measure and its own vocabulary was NOT separately checked.',
+  },
+  charlotte: {
+    canonical: '"Dwelling – Accessory Unit (ADU)" — UDO § 15.6.F, defined at § 15.3',
+    competing: ['accessory dwelling unit (running prose)', 'accessory structure'],
+    distinguishedBy:
+      '⚠️ SEPARATED BY THE KITCHEN, and the criterion lives in the DEFINITION rather than the operative section: § 15.3 provides an ADU "shall include separate cooking and sanitary facilities and is a complete, separate dwelling unit". The canonical string uses an en dash and inverted word order, but the noun is "Accessory" — the different-noun streak ends here. ⚠️ The live hazard is not vocabulary but INSTRUMENT: the legacy 1992 ordinance § 12.407 still governs pre-2023 conditional/optional/EX districts under § 1.4.C and states an interior size cap and a height cap the UDO does not.',
+  },
+  dallas: {
+    canonical: 'ACCESSORY DWELLING UNIT (ADU) — defined ONLY at § 51A-4.510(a)(1), not in the general definitions section',
+    competing: ['additional dwelling unit', 'live unit'],
+    distinguishedBy:
+      '⚠️ SEPARATED BY RENTABILITY, in adjacent subparagraphs of the same section. An ACCESSORY dwelling unit is "a rentable additional dwelling unit" (§ 51A-4.510(a)(1)); an ADDITIONAL dwelling unit may be authorised by the Board only where it will not "be used as rental accommodations" (§ 51A-4.209(b)(6)(E)(i)). Same building, opposite rental status — the Boston hazard with a different separator, and here the code DOES separate them in operative text. A third term, "live unit", is barred from every residential district. ⚠️ "ACCESSORY DWELLING" appears nowhere in § 51A-2.102, so the definitions chapter looks empty.',
+  },
+  nashville: {
+    canonical: 'TWO defined uses — "detached accessory dwelling unit" (DADU) and "accessory apartment", both at § 17.04.060.B',
+    competing: ['accessory apartment', 'detached accessory dwelling unit'],
+    distinguishedBy:
+      '⚠️ SEPARATED BY ATTACHMENT AND BY OCCUPANCY, both in the definitions. An "accessory apartment" is "attached to a single-family residence" and is limited to family-member occupancy (§ 17.16.250.A); a "detached accessory dwelling unit" is "a detached dwelling unit separate" from the principal and carries no such occupancy limit. They also differ in size rule — 25% of gross floor area for the apartment, a lot-keyed 700/850 figure for the DADU. Reading either as "the" Nashville ADU rule would misstate both the cap and who may live there.',
   },
   austin: {
     canonical: 'Secondary Apartment — Austin City Code §§ 25-2-1461 to 25-2-1463',
