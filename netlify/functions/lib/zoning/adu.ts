@@ -1518,10 +1518,29 @@ const MIAMI_LOCAL: LocalLayer = {
 // Source designated by the city: Austin's own City and Land Development Code
 // page links to Municode, so here the standing publisher check confirms the
 // obvious source rather than overturning it — unlike Miami, where it mattered.
+//
+// ⚠️ CORRECTED 2026-08-20, AND THE CORRECTION IS THE SCOPE. A first pass encoded
+// the Secondary Apartment article as Austin's ADU answer. It is not: the article
+// sits inside SUBCHAPTER D, whose own § 25-2-1401 provides that the subchapter
+// "applies to property that is (1) located in a neighborhood plan (NP) combining
+// district". So the rule reaches NP-district property only, not the city.
+//
+// Reading §§ 25-2-1461 to 1463 correctly and stopping produced a citywide claim
+// from a district-scoped rule — the eighth instance here of an operative section
+// read accurately and treated as the whole of it, and this time the qualifying
+// provision sat sixty sections earlier in the same subchapter.
+//
+// ⚠️ AND AUSTIN HAS A SECOND, BROADER INSTRUMENT. Its old citywide mechanism,
+// § 25-2-774 "Two-Family Residential Use", is REPEALED and the section now reads
+// RESERVED. What replaced it is § 25-2-773, "Duplex, Two-Unit, and Three-Unit
+// Residential Uses" (Ord. No. 20231102-028), which states that it "supersedes
+// the base zoning district regulations" to the extent of conflict. Austin's
+// citywide answer to "may I add a unit" is therefore a UNIT-COUNT rule, not an
+// accessory-dwelling rule — a different shape from every other city in this file.
 const AUSTIN_LOCAL: LocalLayer = {
   kind: 'read',
   citation:
-    'Austin City Code §§ 25-2-1461 to 25-2-1463 (Secondary Apartment Special Use), Land Development Code Title 25 ch. 25-2 (Zoning); as amended by Ord. No. 20250227-039 Pt. 3, effective 2025-10-01',
+    'Austin City Code §§ 25-2-1461 to 25-2-1463 (Secondary Apartment Special Use) within Subchapter D (Neighborhood Plan Combining Districts), scoped by § 25-2-1401 and defined at § 25-2-1403(B)(6); as amended by Ord. No. 20250227-039 Pt. 3, effective 2025-10-01. ⚠️ The citywide unit-count instrument is § 25-2-773, recorded but not read in full',
   readOn: '2026-08-20',
   maxSizeSqFt: [
     // ⚠️ EIGHTH RATIO DRAFTING, AND THE FIRST EXPRESSED AS A FAR. § 25-2-1463(C)(5)(a):
@@ -1534,7 +1553,7 @@ const AUSTIN_LOCAL: LocalLayer = {
       kind: 'not-numeric',
       rule:
         'the SMALLER of 1,100 total sq ft and a floor-to-area ratio of 0.15 — the FAR is against LOT area, so it binds below 1,100 sq ft on any lot under roughly 7,333 sq ft',
-      condition: 'total size of the secondary apartment',
+      condition: '⚠️ total size of the secondary apartment — and ONLY on property in a neighborhood plan (NP) combining district, per § 25-2-1401. This is not a citywide cap',
       cite: '§ 25-2-1463(C)(5)(a)',
       baseline: true,
     },
@@ -1556,10 +1575,13 @@ const AUSTIN_LOCAL: LocalLayer = {
   notes: [
     '⚠️ DETACHED ONLY. A secondary apartment "must be located in a structure other than the principal structure" (§ 25-2-1463(B), repeated at (C)(1)) — so unlike most cities read here, Austin permits no attached or interior ADU under this article.',
     'Placement: at least 10 feet to the rear or side of the principal structure, or above a detached garage; it may be connected to the principal structure by a covered walkway (§ 25-2-1463(C)(2)–(3)).',
-    'Permitted in SF-1, SF-2, SF-3, SF-5, SF-6, MF-1 through MF-6, and the MU combining district (§ 25-2-1462). ⚠️ SF-4 is absent from that list, which is the section\u2019s own enumeration and not an omission inferred here.',
+    '⚠️ SCOPE: NP COMBINING DISTRICTS ONLY. § 25-2-1401 provides that Subchapter D "applies to property that is (1) located in a neighborhood plan (NP) combining district; and (2) used or developed as a special use described in Section 25-2-1403". The district list in § 25-2-1462 operates INSIDE that limit, not instead of it — a parcel must satisfy both. A first pass here read the article without the subchapter\u2019s applicability section and stated the rule citywide.',
+    'Within that scope, permitted in SF-1, SF-2, SF-3, SF-5, SF-6, MF-1 through MF-6, and the MU combining district (§ 25-2-1462). ⚠️ SF-4 is absent from that list, which is the section\u2019s own enumeration and not an omission inferred here.',
+    '⚠️ AUSTIN\u2019S CITYWIDE INSTRUMENT IS A UNIT-COUNT RULE, NOT AN ADU RULE. § 25-2-774 "Two-Family Residential Use" is REPEALED and now reads RESERVED; § 25-2-773 "Duplex, Two-Unit, and Three-Unit Residential Uses" (Ord. No. 20231102-028) replaced it and "supersedes the base zoning district regulations" to the extent of conflict. It sets a minimum lot area of 5,750 sq ft, a 15 ft front setback, one street-facing entrance, 40% maximum building coverage and 45% maximum impervious cover. So the citywide answer to "may I add a unit in Austin" runs through unit counts rather than through an accessory-dwelling framework.',
+    '⚠️ § 25-2-773 IS RECORDED, NOT READ IN FULL. Subsection (C) design standards were not read, and whether the two- and three-unit uses are permitted BY RIGHT in each base district was not established. It is named here because omitting it would leave the NP-only Secondary Apartment rule looking like Austin\u2019s whole answer, which is the error this note corrects.',
     'Site-wide limits accompany the unit: impervious cover may not exceed 45 percent and building cover 40 percent (§ 25-2-1463(D)–(E)). These bind the whole site, not the apartment, so they can constrain an otherwise-compliant unit.',
     'Not permitted in combination with a cottage or urban home special use (§ 25-2-1463(A)).',
-    '⚠️ IT IS A "SPECIAL USE", and what that means procedurally was NOT read. § 25-2-1461 states the article "applies to a secondary apartment special use"; whether that is by right, by permit, or by discretionary approval is defined elsewhere in ch. 25-2 and is unestablished here. That distinction is the difference between an entitlement and an obstacle, so it is left open rather than assumed.',
+    '⚠️ "SPECIAL USE" RESOLVED: it is a defined USE CATEGORY, not a discretionary approval track. § 25-2-1403(B)(6) defines the SECONDARY APARTMENT special use as "the use of a developed single-family residential lot for a second dwelling", one of seven special uses the subchapter establishes, and § 25-2-1462 says such a use "is permitted" in the listed districts. § 25-2-1402 adds that these regulations supersede other Title 25 provisions on conflict and disapply §§ 25-2-514, 25-2-775 and 25-2-776. Nothing read imposes a hearing or discretionary finding — though the permitting route itself was not traced, so this resolves the category question and not the procedure end to end.',
   ],
   pending: {
     kind: 'checked',

@@ -1752,19 +1752,46 @@ describe('Austin — "Secondary Apartment", and the term shares no acronym', () 
     expect(n).toMatch(/no attached or interior ADU/)
   })
 
-  it('⚠️ leaves "special use" unresolved rather than assuming it is by right', () => {
-    // The difference between an entitlement and an obstacle. § 25-2-1461 says the
-    // article applies to a "secondary apartment special use"; what that means
-    // procedurally is defined elsewhere and was not read.
-    const n = local.notes.find((x) => /IT IS A "SPECIAL USE"/.test(x))!
-    expect(n).toMatch(/was NOT read/)
-    expect(n).toMatch(/entitlement and an obstacle/)
+  it('⚠️ "special use" is a USE CATEGORY, not a discretionary approval track', () => {
+    // Closed. § 25-2-1403(B)(6) defines it as one of seven special uses the
+    // subchapter establishes, and § 25-2-1462 says it "is permitted" in the
+    // listed districts. Nothing read imposes a hearing or discretionary finding.
+    const n = local.notes.find((x) => /"SPECIAL USE" RESOLVED/.test(x))!
+    expect(n).toMatch(/use of a developed single-family residential lot for a second dwelling/)
+    expect(n).toMatch(/is permitted/)
+    // ⚠️ And it says what it did NOT establish, rather than claiming the whole.
+    expect(n).toMatch(/permitting route itself was not traced/)
   })
 
-  it('records the site-wide covers that can bind an otherwise-compliant unit', () => {
-    const n = local.notes.find((x) => /impervious cover/.test(x))!
-    expect(n).toMatch(/45 percent/)
-    expect(n).toMatch(/40 percent/)
-    expect(n).toMatch(/bind the whole site/)
+  it('⚠️ THE SCOPE CORRECTION — NP combining districts only, not citywide', () => {
+    // The article sits in Subchapter D, whose own § 25-2-1401 limits it to
+    // property in a neighborhood plan (NP) combining district. A first pass read
+    // §§ 25-2-1461 to 1463 correctly and stated the rule citywide — the eighth
+    // instance of an operative section treated as the whole of the rule, with the
+    // qualifying provision sixty sections earlier in the same subchapter.
+    const n = local.notes.find((x) => /NP COMBINING DISTRICTS ONLY/.test(x))!
+    expect(n).toMatch(/§ 25-2-1401/)
+    expect(n).toMatch(/must satisfy both/)
+    // The size entry carries the same limit, so a reader reaching only for the
+    // cap still sees where it applies.
+    const b = local.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(b.kind === 'not-found' ? '' : b.condition).toMatch(/not a citywide cap/i)
+    expect(local.citation).toMatch(/Subchapter D/)
+  })
+
+  it('⚠️ names the citywide instrument, and that it is a UNIT-COUNT rule', () => {
+    // § 25-2-774 "Two-Family Residential Use" is repealed and RESERVED;
+    // § 25-2-773 replaced it and supersedes base district regulations. So
+    // Austin's citywide answer runs through unit counts, not accessory dwellings
+    // — a different shape from every other city here.
+    const n = local.notes.find((x) => /CITYWIDE INSTRUMENT IS A UNIT-COUNT RULE/.test(x))!
+    expect(n).toMatch(/25-2-774/)
+    expect(n).toMatch(/RESERVED/)
+    expect(n).toMatch(/§ 25-2-773/)
+    expect(n).toMatch(/supersedes the base zoning district regulations/)
+    // ⚠️ And it is recorded as not-read-in-full rather than presented as read.
+    const scope = local.notes.find((x) => /RECORDED, NOT READ IN FULL/.test(x))!
+    expect(scope).toMatch(/Subsection \(C\) design standards were not read/)
+    expect(scope).toMatch(/BY RIGHT in each base district was not established/)
   })
 })
