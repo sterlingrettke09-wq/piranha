@@ -407,7 +407,7 @@ const CA: StatePreempts = {
     ],
   },
   count: [
-    { value: '1 ADU + 1 JADU', condition: 'within the existing or proposed space of a single-family dwelling or accessory structure (up to 150 sq ft of expansion, for ingress and egress only). ⚠️ A JADU is capped at 500 sq ft of interior livable space BY DEFINITION (§ 66313(d)) and must be contained entirely within a single-family residence — a figure that lives in the definitions article, not in the operative sections', cite: '§ 66323(a)(1), § 66313(d)' },
+    { value: '1 ADU + 1 JADU', condition: 'within the existing or proposed space of a single-family dwelling or accessory structure (up to 150 sq ft of expansion, for ingress and egress only). ⚠️ TWO conditions on the JADU live in the DEFINITION rather than in this operative section: § 66313(d) caps it at 500 sq ft of interior livable space AND requires it be contained entirely within a single-family residence. It may have separate sanitation facilities or share the existing structure\u2019s. Neither the figure nor the containment requirement appears in § 66323(a)(1)', cite: '§ 66323(a)(1), § 66313(d)' },
     { value: 1, condition: 'detached new construction, on a single-family lot', cite: '§ 66323(a)(2)' },
     { value: '25% of existing units, at least 1', condition: 'converted from non-livable space inside an existing multifamily building', cite: '§ 66323(a)(3)' },
     { value: 8, condition: 'detached, on a lot with an existing multifamily dwelling — never more than the number of existing units', cite: '§ 66323(a)(4)(A)(ii)' },
@@ -895,8 +895,8 @@ const SANJOSE_LOCAL: LocalLayer = {
   citation: 'San José Municipal Code § 20.80.175 (Accessory Dwelling Units — General), Title 20 ch. 20.80 Part 2.75; Ord. 29447',
   readOn: '2026-08-19',
   maxSizeSqFt: [
-    { kind: 'capped', sqFt: 1000, condition: 'An ADU on a lot of up to 9,000 sq ft may be up to 1,000 sq ft', cite: '§ 20.80.175.D.1.b (Table 20-55)', baseline: true },
-    { kind: 'capped', sqFt: 1200, condition: 'on a lot greater than 9,000 sq ft', cite: '§ 20.80.175.D.1.c (Table 20-55)' },
+    { kind: 'capped', sqFt: 1000, condition: 'An ADU on a lot of up to 9,000 sq ft may be up to 1,000 sq ft', cite: '§ 20.80.175.D.1.b (Table 20-55)', measure: 'floor area (SJMC § 20.80.175.D.1, Table 20-55) — ⚠️ the ordinance does NOT qualify this as gross or net, and none is read across from elsewhere', baseline: true },
+    { kind: 'capped', sqFt: 1200, condition: 'on a lot greater than 9,000 sq ft', cite: '§ 20.80.175.D.1.c (Table 20-55)', measure: 'floor area (SJMC § 20.80.175.D.1, Table 20-55) — ⚠️ the ordinance does NOT qualify this as gross or net, and none is read across from elsewhere' },
     { kind: 'no-maximum', condition: 'conversion of an existing DETACHED accessory structure', cite: '§ 20.80.175.D.1.d' },
   ],
   maxHeightFt: [
@@ -916,6 +916,7 @@ const SANJOSE_LOCAL: LocalLayer = {
     // ft, which is BELOW California's 850 sq ft floor. Whether § 66321(b)(2)
     // voids it to that extent is a question about the statute's reach that this
     // tool does not adjudicate; it is flagged so a reader can.
+    '⚠️ THE 9,000 SQ FT LOT THRESHOLD IS UNQUALIFIED, and it decides which cap applies. § 20.80.175.D.1.b–c say "a lot with an area of" and Table 20-55 heads the column "Lot size" — neither says NET nor GROSS. Net and gross lot area differ by easements and rights-of-way, so a lot near 9,000 sq ft can fall either side depending on which is meant. Reading "net" across from another city is the invented conversion rule 4 forbids, so the threshold is carried as the ordinance states it and no denominator is assumed. Same shape as Atlanta SPI-20.',
     '⚠️ An ATTACHED ADU is separately capped at 50% of the existing primary dwelling (§ 20.80.175.D.1.a). That is a ratio, not a figure, so it is not computed here — and on a small primary it can fall below the 850 sq ft state floor. Whether the floor overrides it is a question for the city.',
   ],
   pending: {
@@ -1052,6 +1053,9 @@ const SF_LOCAL: LocalLayer = {
       sqFt: 1000,
       condition: 'STATE-MANDATED programme (§ 207.2): the same, for an ADU with more than one bedroom',
       cite: '§ 207.2(c)(1)',
+      // Same sentence as the 850 entry, so the same measure — read off the
+      // source rather than inferred from the sibling.
+      measure: 'Gross Floor Area (San Francisco Planning Code) — NOT established to equal the state\u2019s interior-livable-space measure',
     },
     // ⚠️ THE GOVERNING RULE OF THE LOCAL PROGRAMME, AND IT IS NOT A NUMBER.
     // Recording this as `no-maximum` would say San Francisco caps nothing, when

@@ -1208,8 +1208,13 @@ describe('⚠️ the definitions article carries substance the operative section
     if (st.kind !== 'preempts') throw new Error('expected preempts')
     const jadu = st.count.find((c) => /JADU/.test(String(c.value)))!
     expect(jadu.condition).toMatch(/500 sq ft/)
-    expect(jadu.condition).toMatch(/BY DEFINITION/)
+    expect(jadu.condition).toMatch(/live in the DEFINITION/)
     expect(jadu.cite).toMatch(/66313\(d\)/)
+    // ⚠️ And it is not only the figure. § 66313(d) also requires containment
+    // entirely within a single-family residence — a locational condition absent
+    // from § 66323(a)(1). Checking whether the definition carried a NUMBER and
+    // stopping there would have missed it.
+    expect(jadu.condition).toMatch(/contained entirely within a single-family residence/)
   })
 
   it('⚠️ every California size floor names its measure, and it is not "floor area"', () => {
@@ -1270,3 +1275,50 @@ function measureCaveatProbe(a: string | undefined, b: string | undefined): strin
                  b ? `the state floor is stated in ${b}` : 'the state’s measure is not recorded']
   return ` ⚠️ These two figures may not be in the same unit — ${named.join(', and ')}. The comparison above rests on an equivalence this tool has not established, and no conversion between them is applied.`
 }
+
+describe('⚠️ lot-area figures name their measure, or say they do not', () => {
+  it('San José\'s 9,000 sq ft threshold is UNQUALIFIED, and that is recorded', () => {
+    // The measure question is not only about the ADU's own size. § 20.80.175.D.1
+    // switches the cap between 1,000 and 1,200 sq ft at a 9,000 sq ft lot, and
+    // says only "a lot with an area of" / "Lot size" — neither net nor gross.
+    // Net and gross differ by easements and rights-of-way, so a lot near the
+    // boundary can fall either side depending which is meant.
+    const l = aduRulesFor('sanjose').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /9,000 SQ FT LOT THRESHOLD IS UNQUALIFIED/.test(x))!
+    expect(n).toMatch(/neither says NET nor GROSS/)
+    expect(n).toMatch(/no denominator is assumed/)
+    // ⚠️ The forbidden repair, named so nobody performs it later.
+    expect(n).toMatch(/Reading "net" across from another city is the invented conversion/)
+  })
+
+  it('Phoenix DOES qualify its lot figures, and the difference is visible', () => {
+    // Phoenix says "net area" and "net lot area" in terms, so its threshold is
+    // resolved where San José's is not. Two cities, same kind of figure,
+    // different evidentiary state — and they must not render alike.
+    const l = aduRulesFor('phoenix').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind === 'not-numeric')!
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/net area/)
+    expect(b.rule).toMatch(/net lot area/)
+  })
+
+  it('every capped local figure either names a measure or is a city not yet swept', () => {
+    // rule 20: pinned by membership so a new city cannot slip in unmeasured.
+    const withMeasure: string[] = []
+    const without: string[] = []
+    for (const c of ADU_LOCAL_READ) {
+      const l = aduRulesFor(c).local
+      if (l.kind !== 'read') continue
+      for (const m of l.maxSizeSqFt) {
+        if (m.kind !== 'capped') continue
+        ;(m.measure ? withMeasure : without).push(c)
+      }
+    }
+    expect([...new Set(withMeasure)].sort()).toEqual(['la', 'sanjose', 'sf'])
+    // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
+    // their measure — declared, so the gap is countable rather than invisible.
+    expect([...new Set(without)].sort()).toEqual(['phoenix', 'sandiego', 'seattle'])
+  })
+})
