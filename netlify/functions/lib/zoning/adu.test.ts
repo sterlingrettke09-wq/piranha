@@ -4,6 +4,8 @@ import {
   ADU_STATE_NOT_ESTABLISHED,
 } from './adu'
 import { CITIES } from '../../../../src/config/cities'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import type { AduRules, AduFloor, StateLayer, StatePreempts } from './adu'
 
 /** Narrowing helpers. The dimension shape is a union now, so a test that wants
@@ -1097,5 +1099,32 @@ describe('⚠️ summariseAdu must survive every city, not just the exercised on
       // numbers. This is the `no-maximum` confusion one level down.
       expect(line, slug).not.toMatch(/states no maximum size for an ADU/)
     }
+  })
+})
+
+describe('⚠️ no live `as number` cast survives in this module', () => {
+  it('because a cast is what hid the summariseAdu crash', () => {
+    // `size.value as number` type-checks against `number | null` and defers the
+    // failure to runtime, so the invariant has to hold in a reader's head. Two
+    // such casts existed: one crashed on the first city to reach it, and the
+    // other was correct only by an invariant enforced 140 lines away. Both are
+    // gone — replaced by a real null guard and a re-derivation.
+    const src = readFileSync(resolve(__dirname, 'adu.ts'), 'utf8')
+    // rule 20: prove the scan actually read the file before trusting a zero.
+    expect(src.length).toBeGreaterThan(20000)
+    expect(src).toMatch(/export function summariseAdu/)
+
+    const live = src
+      .split('\n')
+      .map((l, i) => [i + 1, l] as const)
+      .filter(([, l]) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+      .filter(([, l]) => /\bas number\b/.test(l))
+    expect(live.map(([n, l]) => `${n}: ${l.trim()}`)).toEqual([])
+
+    // ⚠️ And the guard must be able to SEE such a cast — otherwise it passes by
+    // finding nothing whatever the file says (rule 20, and rule 28 on planting).
+    const planted = ['const x = (v as number).toLocaleString()']
+    expect(planted[0]).toMatch(/\bas number\b/)
+    expect(planted.filter((l) => !/^\s*(\/\/|\*)/.test(l) && /\bas number\b/.test(l))).toHaveLength(1)
   })
 })

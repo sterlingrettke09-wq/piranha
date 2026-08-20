@@ -1511,6 +1511,14 @@ export function summariseAdu(r: AduRules): string {
   }
   if (size.source === 'floor-only' && r.state.kind === 'preempts') {
     const f = r.state
+    // ⚠️ RE-DERIVED, NOT CAST. This branch used `size.value as number`, which is
+    // safe only because `floor-only` happens to be produced with a non-null value
+    // 140 lines away. That is precisely the shape that hid the crash below: a
+    // cast type-checks against `number | null` and moves the failure to runtime,
+    // so the invariant has to hold in a reader's head instead of in the type.
+    // `stateSizeFloor` returns a narrowed figure or null, and the guard is real.
+    const fig = stateSizeFloor(r).floor
+    if (fig == null) return `${f.state} state law governs here, and states no publishable ADU size.`
     const hs = f.height
     const h = hs.kind === 'floors' ? (hs.floors.find((x) => x.baseline) ?? hs.floors[0]) : null
     const heightPhrase =
@@ -1528,7 +1536,7 @@ export function summariseAdu(r: AduRules): string {
     return (
       `${f.state} state law sets what this city must allow, and these are FLOORS rather than limits — ` +
       `the city may permit more and its own ordinance has not been read. Unconditionally: a ` +
-      `${(size.value as number).toLocaleString()} sq ft ADU ${heightPhrase} cannot be refused.`
+      `${fig.value.toLocaleString()} sq ft ADU ${heightPhrase} cannot be refused.`
     )
   }
   // ⚠️ THREE WAYS TO HAVE NO NUMBER, AND ONLY ONE OF THEM WAS HANDLED.
