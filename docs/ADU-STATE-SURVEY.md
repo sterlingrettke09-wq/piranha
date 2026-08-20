@@ -379,3 +379,61 @@ an exit code or an HTTP status, and neither required inspecting how curl works �
 only comparing sizes across requests that should have differed. The same check
 confirmed the Illinois success: 19,259 → 64,113 characters is what proved a
 different page had finally been served.
+
+
+---
+
+## ⚠️ 2026-08-20 — a wrong published answer, and what it says about the method
+
+**Boston/East Boston was encoded as "ADUs forbidden" when they are allowed.** The
+error was caught by a person who lives in East Boston, checking a published answer
+against what they knew of their own neighbourhood.
+
+### What produced it
+
+Boston's zoning code uses **two different defined terms with opposite effects**:
+
+| term | where | effect in East Boston |
+|---|---|---|
+| "Accessory Dwelling Unit" | 2 neighbourhood districts | **F** in every column of Tables A–E |
+| "Additional Dwelling Unit" | at least 11 districts | **Allowed** by § 53-5.2 |
+
+A full-text search was run for *accessory dwelling*. It was **controlled first**
+("dwelling" → 450 results), it returned a consistent answer across five tables, and
+every figure quoted from those tables was accurate. The tables really do say F.
+
+The absence of that **phrase** was published as the absence of the **concept**.
+
+### And the override is the recurring shape, at its worst
+
+Even with the right term, Article 53's Table A still marks the use Forbidden.
+§ 53-5.2 is a separate provision reversing it: an Additional Dwelling Unit "shall
+be an Allowed Use **where it may otherwise be Conditional or Forbidden**". Reading
+the table and stopping is the § 1A error again — a section read correctly and
+treated as the whole of the rule. Sixth instance, and the first to reach an answer
+that would have told a real owner their project was illegal.
+
+### What the positive control did not do
+
+The control discipline was applied, and it worked as designed: it proved the
+search engine functioned. **It cannot prove the search TERM is the right one.**
+Every instrument reported healthy — controlled search, correctly read tables,
+accurate quotations, a clean and consistent pattern across ten rows — while the
+published answer was backwards.
+
+That is rule 18 in its sharpest form. A plausible answer gets less scrutiny than a
+gap, and "forbidden in every column of five tables" is *more* convincing than a
+null, not less. The uniformity that made it feel settled was the uniformity of
+asking one wrong question five times.
+
+### The operative lesson
+
+**A term-based absence is only as good as the term.** Before recording that a
+jurisdiction does not provide for something, establish what that jurisdiction
+CALLS it — from its own definitions, not from the phrase used by other
+jurisdictions or by the state statute above it. Massachusetts says "accessory
+dwelling unit"; Boston says "Additional Dwelling Unit"; both are in the same code
+region and mean different things.
+
+Search for the concept under at least two names, or read a definitions section,
+before any absence based on vocabulary is written down.
