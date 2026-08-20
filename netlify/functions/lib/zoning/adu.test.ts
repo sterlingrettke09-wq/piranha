@@ -1361,7 +1361,7 @@ describe('Boston — the only city where NEITHER layer states a size', () => {
     expect(n).toMatch(/Article 8/)
     // The condition on the size entry carries the same scope, so a reader who
     // reaches only for the cap still sees where it applies.
-    expect(b_condition(local)).toMatch(/only in the two neighborhood districts/)
+    expect(b_condition(local)).toMatch(/only where an ADU is permitted at all/)
   })
 
   it('records the count rule, which is what Article 60 actually regulates', () => {
@@ -1373,13 +1373,27 @@ describe('Boston — the only city where NEITHER layer states a size', () => {
     expect(n).toMatch(/§ 60-2\.2/)
   })
 
-  it('⚠️ does not read ADU rights into the subdistricts that lack them', () => {
-    // 2F, 3F and MFR state unit maxima WITHOUT the "exclusive of any ADU"
-    // language R1 and R2 carry. That is the section's own structure; extending
-    // the R1 rule to them would be an inference from silence.
-    const n = local.notes.find((x) => /2F, 3F and Multifamily/.test(x))!
-    expect(n).toMatch(/NOT given ADU allowances/)
-    expect(n).toMatch(/not an inference from silence/)
+  it('⚠️ keeps "mentions ADUs" apart from "allows ADUs" — they differ by district', () => {
+    // THE CORRECTION. The search says where the phrase appears; only the use
+    // table says what it does there. Greater Mattapan allows ADUs in four
+    // subdistricts and forbids them in MFR; East Boston forbids them in every
+    // column of all five tables. Counting districts that MENTION ADUs as
+    // districts that PROVIDE for them was wrong for one of the two.
+    const n = local.notes.find((x) => /THE TWO DISTRICTS POINT OPPOSITE WAYS/.test(x))!
+    expect(n).toMatch(/A A A A F/)
+    expect(n).toMatch(/every entry "F"/)
+    expect(n).toMatch(/Tables A–E/)
+  })
+
+  it('⚠️ § 60-2 counts units; the use table decides permission', () => {
+    // The second half of the same correction, and the same error class as the
+    // Massachusetts § 1A miss one level down: a section was read correctly and
+    // treated as answering a question it does not address. § 60-2 gives R1 and
+    // R2 a bonus-unit formula; whether 2F and 3F may have an ADU at all is
+    // answered by Table A, which says yes.
+    const n = local.notes.find((x) => /ABOUT COUNTING UNITS/.test(x))!
+    expect(n).toMatch(/the use table allows ADUs in 2F and 3F/)
+    expect(n).toMatch(/without being given a bonus-unit formula/)
   })
 
   it('⚠️ records the c. 40A tension without resolving it', () => {
@@ -1393,16 +1407,14 @@ describe('Boston — the only city where NEITHER layer states a size', () => {
     expect(n).toMatch(/records and does not answer/)
   })
 
-  it('⚠️ says East Boston is LOCATED but not READ', () => {
-    // Article 53 carries ADU provisions across Tables A–E and its substantive
-    // text was not opened. A located source and a read one must not render
-    // alike, and the citation names both while the note says which is which.
-    // ⚠️ Matched on the distinguishing phrase, not on "Article 53" — the
-    // coverage note names that article too, so the loose predicate silently
-    // asserted against the wrong string.
-    const n = local.notes.find((x) => /has NOT been read/.test(x))!
-    expect(n).toMatch(/Article 53 \(East Boston\)/)
-    expect(n).toMatch(/located source, not a read one/)
+  it('⚠️ scopes what was read in East Boston to the tables, not the article', () => {
+    // The tables were read and are uniformly "F", which answers the question
+    // that matters. Article 53's narrative sections were not opened, and the
+    // note says so rather than letting a table reading stand for an article
+    // reading.
+    const n = local.notes.find((x) => /East Boston’s Tables A–E were read/.test(x))!
+    expect(n).toMatch(/narrative sections were not read/)
+    expect(n).toMatch(/absence in the tables rather than a reading of the whole article/)
     expect(local.citation).toMatch(/Article 53/)
   })
 

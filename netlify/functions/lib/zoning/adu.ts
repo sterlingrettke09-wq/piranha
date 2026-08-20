@@ -1286,10 +1286,17 @@ const LASVEGAS_LOCAL: LocalLayer = {
 // `pending` — finds "accessory dwelling" in exactly TWO of roughly twenty
 // neighborhood districts. Reading a figure before establishing that would have
 // produced a citywide claim from a two-district rule.
+//
+// ⚠️ AND THE TWO DISTRICTS POINT OPPOSITE WAYS. Mentioning ADUs is not permitting
+// them. Greater Mattapan's use table marks them "A" (allowed) in four
+// subdistricts; East Boston's marks them "F" (forbidden) in every column of all
+// five of its tables. A first pass called both "the districts that provide for
+// ADUs", which was true of one and the reverse of the other — the search told us
+// where the phrase appears, and only the tables say what it does there.
 const BOSTON_LOCAL: LocalLayer = {
   kind: 'read',
   citation:
-    'Boston Zoning Code Article 60 (Greater Mattapan Neighborhood District) §§ 60-2, 60-3 and Article 53 (East Boston Neighborhood District); Text Amd. No. 467 § 3 (2024-02-07), No. 471 § 14g (2024-04-03), No. 474 § 1a (2024-05-30)',
+    'Boston Zoning Code Article 60 (Greater Mattapan Neighborhood District) §§ 60-2, 60-3 and Table A accessory use table, and Article 53 (East Boston Neighborhood District) Tables A–E; Text Amd. No. 467 § 3 (2024-02-07), No. 471 §§ 14c, 14g (2024-04-03), No. 474 § 1a (2024-05-30)',
   readOn: '2026-08-20',
   maxSizeSqFt: [
     {
@@ -1297,8 +1304,8 @@ const BOSTON_LOCAL: LocalLayer = {
       rule:
         'no ADU-specific square-foot cap exists. An ADU is a Dwelling Unit and is bound by the subdistrict\u2019s own dimensional regulations — the same envelope, FAR, height and lot-coverage limits that bind any dwelling there',
       condition:
-        '⚠️ and only in the two neighborhood districts whose articles provide for ADUs at all — Greater Mattapan R1/R2 and East Boston residential subdistricts',
-      cite: 'Boston Zoning Code art. 60 § 60-2; art. 53 Tables A–E',
+        '⚠️ and only where an ADU is permitted at all — Greater Mattapan R1, R2, 2F and 3F. It is forbidden in Greater Mattapan MFR and throughout East Boston, and no other Boston district addresses it',
+      cite: 'Boston Zoning Code art. 60 Table A and § 60-2',
       baseline: true,
     },
   ],
@@ -1308,15 +1315,16 @@ const BOSTON_LOCAL: LocalLayer = {
   // dwelling; the ADU provisions state none of their own.
   heightDefersToBaseZone: { cite: 'Boston Zoning Code art. 60 § 60-3 and the subdistrict dimensional tables' },
   notes: [
-    '⚠️ COVERAGE IS GEOGRAPHIC AND NARROW. A controlled full-text search of the entire Boston Zoning Code returns 18 hits for "accessory dwelling", every one of them inside Article 53 (East Boston) or Article 60 (Greater Mattapan). No citywide article — including Article 8, Regulation of Uses — names accessory dwelling units. For the rest of Boston the zoning code does not provide for them.',
+    '⚠️ COVERAGE IS GEOGRAPHIC AND NARROW. A controlled full-text search of the entire Boston Zoning Code returns 18 hits for "accessory dwelling", every one of them inside Article 53 (East Boston) or Article 60 (Greater Mattapan). No citywide article — including Article 8, Regulation of Uses — names accessory dwelling units. For the rest of Boston the zoning code does not address them.',
+    '⚠️ THE TWO DISTRICTS POINT OPPOSITE WAYS, so the count of districts mentioning ADUs is not a count of districts allowing them. GREATER MATTAPAN allows both Detached and Non-Detached ADUs in Residential-1, Residential-2, Two-Family and Three-Family, and FORBIDS them in Multifamily Residential (art. 60 Table A, accessory use table: A A A A F). EAST BOSTON forbids both forms in every column of all five of its tables — Tables A through E, ten rows, every entry "F" (art. 53 Tables A–E).',
     'Greater Mattapan Residential 1: a lot may have two Dwelling Units exclusive of any ADU, and three including ADUs — so one ADU above the base (art. 60 § 60-2.1). Residential 2: three exclusive, four including — again one ADU (§ 60-2.2).',
-    '⚠️ The 2F, 3F and Multifamily Residential subdistricts of Greater Mattapan are NOT given ADU allowances by § 60-2. Their unit maxima are stated without the "exclusive of any ADU" language the R1 and R2 subdistricts carry, and no ADU provision appears for them. That is the section\u2019s own structure, read — not an inference from silence elsewhere.',
+    '⚠️ § 60-2 IS ABOUT COUNTING UNITS, NOT ABOUT WHETHER ADUs ARE PERMITTED, and the two questions have different answers. Only R1 and R2 carry the "exclusive of any ADU" formula, but the use table allows ADUs in 2F and 3F as well. A district can permit an ADU without being given a bonus-unit formula for it. An earlier reading of this module inferred from § 60-2 alone that 2F and 3F lacked ADU allowances; the use table is the instrument that answers that, and it says otherwise.',
     'The code distinguishes a "Detached Accessory Dwelling Unit" from a "Non-Detached Accessory Dwelling Unit", and both are excluded from the rule applying yard requirements at each actual lot line where several main buildings share a lot (art. 60 § 60-*, Two or More Main Buildings on One Lot).',
     'Where a detached or non-detached ADU sits beside another dwelling on the same lot, the distance between them must be at least twice the minimum side yard depth the article requires for that other dwelling.',
     // ⚠️ A LIVE TENSION BETWEEN THE TWO LAYERS, recorded because it is real and
     // because resolving it is not this tool's job.
     '⚠️ AN UNRESOLVED TENSION BETWEEN THE LAYERS. M.G.L. c. 40A § 3 forbids any zoning ordinance from prohibiting or requiring a special permit for a single ADU "in a single-family residential zoning district", and Boston is subject to c. 40A — the chapter contains no exclusion for it, checked across all 24 sections. Boston\u2019s code provides for ADUs in two neighborhood districts. Whether that is a conflict depends on whether Boston HAS "single-family residential zoning districts" within the statute\u2019s meaning: its residential subdistricts are R1, R2, 2F, 3F and MFR, and Greater Mattapan R1 permits two dwelling units. That is a question of statutory construction this tool records and does not answer.',
-    '⚠️ Article 53 (East Boston) was identified as carrying ADU provisions across its Tables A–E but its substantive text has NOT been read. The figures and conditions above come from Article 60. East Boston is a located source, not a read one.',
+    'East Boston\u2019s Tables A–E were read on 2026-08-20. Its ADU rows are uniformly "F", so no size, height or count question arises there — the use is not permitted. Article 53\u2019s narrative sections were not read; nothing in the tables suggests a countervailing allowance, but that is an absence in the tables rather than a reading of the whole article.',
   ],
   pending: {
     kind: 'checked',
