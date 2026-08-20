@@ -1452,6 +1452,31 @@ describe('⚠️ the vocabulary check — every read city, prompted by East Bost
     expect(ADU_VOCABULARY_CHECK.sandiego.distinguishedBy).toMatch(/O-21254/)
   })
 
+  it('⚠️ LA was checked in BOTH of its zoning codes', () => {
+    // LA runs Chapter I and Chapter 1A side by side and a definition in one does
+    // not bind the other. Chapter 1A is not on amlegal at all — its text is
+    // City-hosted PDFs — so the first pass had never seen it.
+    const la = ADU_VOCABULARY_CHECK.la
+    expect(la.distinguishedBy).toMatch(/CHECKED IN BOTH CODES/)
+    expect(la.distinguishedBy).toMatch(/Chapter 1A Article 5/)
+    expect(la.distinguishedBy).toMatch(/the same noun/)
+    // And the scope gap it exposed is recorded rather than glossed.
+    expect(la.distinguishedBy).toMatch(/13B\.10\.1\.B\.2\(a\)/)
+    expect(la.distinguishedBy).toMatch(/have not been read/)
+  })
+
+  it('⚠️ SF is recorded as NOT CLOSED, because the § 102 read failed', () => {
+    // A partition argument shows the two programmes are exhaustive of ADUs; it
+    // does not show that no differently-named use exists. The attempt to read
+    // § 102 hit amlegal's window and returned zeros that measure the probe.
+    // Saying so beats upgrading the row on a structural argument.
+    const sf = ADU_VOCABULARY_CHECK.sf
+    expect(sf.distinguishedBy).toMatch(/NOT CLOSED/)
+    expect(sf.distinguishedBy).toMatch(/PARTITION IS NOT A VOCABULARY CHECK/)
+    expect(sf.distinguishedBy).toMatch(/measure the probe/)
+    expect(sf.distinguishedBy).toMatch(/GEOMETRIC rather than numeric/)
+  })
+
   it('⚠️ names what is still unread, rather than implying completeness', () => {
     // San José's Guest House content was not opened — only established as not
     // being the ADU instrument. A sweep that hid its own gaps would be the same

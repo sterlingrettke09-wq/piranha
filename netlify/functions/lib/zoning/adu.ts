@@ -1491,16 +1491,16 @@ export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = O
       '⚠️ THE KITCHEN. § 141.0307 guest quarters "do not provide complete, independent living facilities", "shall not contain a kitchen", and "shall not be rented, leased, or sold as a separate dwelling unit" — the exact inverse of an ADU. And "Companion Unit" is the REPEALED former title of § 141.0302 itself, replaced by O-21254 effective 2020-11-29, so citing it would point at dead text.',
   },
   la: {
-    canonical: 'Accessory Dwelling Unit (ADU), defined at LAMC § 12.03',
+    canonical: 'Accessory Dwelling Unit (ADU), defined at LAMC § 12.03 (Chapter I) — and the SAME term in Chapter 1A',
     competing: ['Accessory Living Quarters', 'Guest House'],
     distinguishedBy:
-      '⚠️ THE KITCHEN, stated twice. § 12.03 defines Accessory Living Quarters as "having no kitchen facilities and not rented or otherwise used as a separate dwelling unit", and Guest House as "a dwelling containing not more than five guest rooms or suites of rooms, but with no kitchen facilities". An ADU must include "permanent provisions for living, sleeping, eating, cooking, and sanitation".',
+      '⚠️ THE KITCHEN, stated twice. § 12.03 defines Accessory Living Quarters as "having no kitchen facilities and not rented or otherwise used as a separate dwelling unit", and Guest House as "a dwelling containing not more than five guest rooms or suites of rooms, but with no kitchen facilities". An ADU must include "permanent provisions for living, sleeping, eating, cooking, and sanitation". ⚠️ CHECKED IN BOTH CODES: LA runs Chapter I and Chapter 1A side by side, and a definition in one does not bind the other. Chapter 1A Article 5 (read from the City-hosted PDF, 2,018,320 bytes verified against Content-Length) uses "accessory dwelling unit" — the same noun. ⚠️ BUT SEE THE SCOPE NOTE: Chapter 1A cross-references its own § 13B.10.1.B.2(a) for ADU permits, so Chapter 1A HAS ADU provisions that have not been read, and the LA encoding cites only Chapter I § 12.22 A.33. Article 7 (Alternate Typologies) contains no ADU text; where Chapter 1A\u2019s substantive ADU standards live, and over what geography Chapter 1A governs, are both unestablished.',
   },
   sf: {
-    canonical: 'Accessory Dwelling Unit (SF Planning Code §§ 207.1, 207.2)',
+    canonical: 'Accessory Dwelling Unit — §§ 207.1(a) and 207.2(a) both name their subject "Accessory Dwelling Units (\u201cADUs\u201d), as defined in Section 102 of this Code"',
     competing: ['in-law unit', 'secondary unit'],
     distinguishedBy:
-      'The code partitions the field itself and leaves no room for a third instrument: § 207.1(b) applies "to the construction of ADUs on ALL lots located within the City and County of San Francisco in areas that allow residential use, EXCEPT ADUs regulated by the State-Mandated Program under Section 207.2". Both programmes are read here, so both halves of the partition are covered.',
+      '⚠️ THE WEAKEST ROW IN THIS TABLE, AND IT IS NOT CLOSED. Two things are established: the code names its own canonical term by cross-reference (§§ 207.1(a), 207.2(a) → § 102), and § 207.1(b) partitions the field — it applies "to the construction of ADUs on ALL lots located within the City and County of San Francisco in areas that allow residential use, EXCEPT ADUs regulated by the State-Mandated Program under Section 207.2" — with both programmes read here. But a PARTITION IS NOT A VOCABULARY CHECK: it shows the two programmes are exhaustive of ADUs, not that no differently-named use exists. An attempt to read § 102 failed — amlegal opens its window at § 101 and the 18,810 rendered characters never reach the definitions, so the zero counts obtained there measure the probe, not the code (rule 11). ⚠️ SF matters more than most for this, because its local cap is GEOMETRIC rather than numeric, so a differently-named use could carry a square-foot figure the ADU sections do not.',
   },
   sanjose: {
     canonical: 'Accessory Dwelling Unit (SJMC § 20.80.175)',

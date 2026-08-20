@@ -452,8 +452,8 @@ established from its own definitions.**
 | Seattle | accessory dwelling unit | backyard cottage | appears only in ordinance titles, never in code text |
 | Las Vegas | Residential Accessory Dwelling Unit | guest house / casita | neither is a defined use |
 | San Diego | Accessory Dwelling Units | Guest Quarters (§ 141.0307); Companion Unit | **no kitchen**, no independent living facilities, no separate rental; Companion Unit is the *repealed* former title |
-| LA | Accessory Dwelling Unit | Accessory Living Quarters; Guest House | **no kitchen facilities** in both definitions; an ADU requires cooking |
-| SF | Accessory Dwelling Unit | in-law / secondary unit | § 207.1(b) partitions **all** city ADUs between the local and state programmes; both read |
+| LA | Accessory Dwelling Unit — **same term in BOTH codes** | Accessory Living Quarters; Guest House | **no kitchen facilities** in both definitions; an ADU requires cooking |
+| SF | Accessory Dwelling Unit (§§ 207.1(a), 207.2(a) → § 102) | in-law / secondary unit | ⚠️ **NOT CLOSED** — see below |
 | San José | Accessory Dwelling Unit | Guest House | § 20.80.160 names both and treats them differently |
 
 **Nothing else was wrong.** Six of seven turned up a competing term, and in every
@@ -478,3 +478,37 @@ run. The result is encoded as `ADU_VOCABULARY_CHECK`, pinned by membership
 against the read-city list, so a city read later without a vocabulary check
 fails the build rather than slipping through — which is what slipping through
 looked like.
+
+
+### Two rows that needed more than the first pass gave them
+
+**LA was re-checked in its second zoning code.** Los Angeles runs Chapter I and
+Chapter 1A side by side, and a definition in one does not bind the other — the
+first pass read only Chapter I's § 12.03. Chapter 1A turns out not to be on
+amlegal at all; that page is a stub pointing at City-hosted PDFs. Reading
+Article 5 from `zoning.lacity.gov` (2,018,320 bytes, verified against
+Content-Length) confirms Chapter 1A uses **the same noun**, "accessory dwelling
+unit". The vocabulary answer holds in both codes.
+
+⚠️ **But it exposed a scope gap.** Chapter 1A cross-references its own
+§ 13B.10.1.B.2(a) for ADU permits, so Chapter 1A *has* ADU provisions — and the
+LA encoding cites only Chapter I § 12.22 A.33. Article 7 (Alternate Typologies)
+contains no ADU text, so where Chapter 1A's substantive standards live, and over
+what geography Chapter 1A governs, are both **unestablished**.
+
+**SF is recorded as not closed.** Two things are established: the code names its
+own canonical term by cross-reference (§§ 207.1(a) and 207.2(a) both say
+"Accessory Dwelling Units, as defined in Section 102"), and § 207.1(b) partitions
+the field between the local and state programmes, both of which are read.
+
+⚠️ **A partition is not a vocabulary check.** It shows the two programmes are
+exhaustive *of ADUs* — not that no differently-named use exists. An attempt to
+read § 102 failed: amlegal opens its window at § 101 and the 18,810 rendered
+characters never reach the definitions, so the zero counts obtained there measure
+the probe rather than the code (rule 11). Upgrading the row on the strength of
+the partition argument would have been exactly the move that produced East
+Boston — a structural inference standing in for a reading.
+
+SF matters more than most here, because its local cap is **geometric rather than
+numeric**, so a differently-named use could carry a square-foot figure the ADU
+sections do not.
