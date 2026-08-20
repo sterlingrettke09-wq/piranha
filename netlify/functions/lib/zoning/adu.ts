@@ -1431,6 +1431,79 @@ const DENVER_LOCAL: LocalLayer = {
   },
 }
 
+// ── MIAMI ───────────────────────────────────────────────────────────────────
+//
+// ⚠️ MIAMI SAYS "ANCILLARY", NOT "ACCESSORY" — and the vocabulary check is what
+// found it. Miami 21 § 3.18 is titled "ANCILLARY DWELLING UNIT (ADU) STANDARDS".
+// The noun differs from every other city in this file while the abbreviation is
+// identical, so a term-based search can miss the section and still look healthy.
+// This is the check the East Boston failure forced, working as intended: run it
+// before reading, not after publishing.
+//
+// ⚠️ AND THREE SOURCES OFFER THIS CODE, TWO OF THEM STALE.
+//   • Municode carries "Miami 21 (Zoning Code)" — frozen at 2011-05-29, fifteen
+//     years old, while its Code of Ordinances is current to 2026-05-26.
+//   • miami21.org says of itself that it is "for educational and historical
+//     purposes only".
+//   • The current codification is Gridics CodeHub, and ONLY the City's own
+//     Planning page names it.
+// Reading Municode's copy would have missed the 2025-10-01 amendment that
+// rewrote this very section.
+const MIAMI_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Miami 21 § 3.18 (Ancillary Dwelling Unit (ADU) Standards) with Article 6 Table 13 (unit sizes) and Article 1 (Definitions); as amended by Ord. 14375, 2025-10-01, read from the Gridics CodeHub codification the City of Miami designates as current',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ THE SEVENTH RATIO DRAFTING, AND THE DENOMINATOR CHANGES. Every earlier
+    // one was a percentage of the PRIMARY DWELLING's floor area — SF 50%, AZ and
+    // Phoenix and Denver 75%, Las Vegas 100%, MA 50%. Miami's is a percentage of
+    // the LOT. Both limbs bind, so the answer is their minimum, and no single
+    // figure is publishable without the lot area.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the LESSER of ten percent of the Lot Area and 800 sq ft — ⚠️ a percentage of the LOT, not of the principal dwelling, which is unlike every other city read here',
+      condition: 'maximum size, ADU DETACHED from the Principal Building',
+      cite: 'Article 6, Table 13',
+      baseline: true,
+    },
+    {
+      kind: 'not-numeric',
+      rule: 'the LESSER of ten percent of the Lot Area and 500 sq ft',
+      condition: 'maximum size, ADU WITHIN or ATTACHED to the Principal Building',
+      cite: 'Article 6, Table 13',
+    },
+  ],
+  // ⚠️ Height is stated in STORIES and is NOT converted (rule 12 — the Miami
+  // module already carries the scar of an 80-storey district published as 87).
+  maxHeightFt: [],
+  maxStories: { value: 2, condition: 'Ancillary Buildings generally; ONE storey in T3-R, and in no case taller than the Principal Building', cite: '§ 3.18, Height' },
+  heightDefersToBaseZone: null,
+  notes: [
+    '⚠️ MIAMI STATES MINIMUM UNIT SIZES, which no other city read here does. Article 6 Table 13: an Efficiency Unit at least 275 sq ft, a one-bedroom at least 450 sq ft, a two-bedroom at least 550 sq ft. These are floors on the unit itself, not floors on what the city must allow — a different kind of number from a state-law floor and not comparable to one.',
+    '⚠️ THE SIZE FIGURES ARE NOT IN § 3.18. That section says only "Unit Sizes: See Article 6 ... Table 13". Reading the operative section alone and concluding no size is stated would have been wrong — the seventh instance in this work of a section read correctly not being the whole rule, and here the code itself points onward.',
+    'An ADU is permitted only on Lots containing a Single-Family Residence, in the Transect Zones Article 4 Table 3 allows (§ 3.18, Allowable Locations).',
+    '⚠️ RENTAL IS CONDITIONED ON HOMESTEAD STATUS. "An ADU may only be rented if the property has current proof of Homestead status", and ADUs are subject to registration and annual renewal under the City Code (§ 3.18, Ownership and Use). The Single-Family Residence and the ADU must be under the same ownership.',
+    '⚠️ THE KITCHEN CRITERION AGAIN, and here it is constitutive rather than exclusionary: a set of spaces "shall be deemed an ADU" when a sleeping/living area, a shower/bathroom AND a kitchen with sink, food-preparation countertop and refrigerator are all provided separately from the principal unit (§ 3.18). LA and San Diego use the absence of a kitchen to exclude a use; Miami uses its presence to define one.',
+    'Placement: the ADU sits within the Principal Building or in an Ancillary Building. A one-storey Ancillary Building may be attached or detached and follows Ancillary Building setbacks; a two-storey detached one must stand at least ten feet from the Principal Building, while a two-storey attached one follows Principal Building setbacks (§ 3.18, Placement).',
+    'The ADU requires a separate entrance, which shall not face the street; a Principal Building containing an ADU must read visually as one single-family residence; an Ancillary Building elevation abutting another property may have only clerestory windows no more than 24 inches high on the second storey (§ 3.18, Entrances and Elevations).',
+    '⚠️ "Ten percent of the Lot Area" does not say whether Lot Area is net or gross, and Article 1\u2019s definition of Lot Area was NOT read. That denominator decides the cap on every parcel, so it is carried as the code states it and no reading is assumed — the Atlanta SPI-20 shape (rule 5\u2019s third outcome).',
+    '⚠️ Parking is set by Article 4 Table 4, which was not read. § 3.18 only adds relief where an existing Principal Building blocks the required space: it may then go in the First Layer, is exempt from driveway separation and from First Layer pervious/impervious requirements, and must use parking strips no wider than two feet.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'Gridics CodeHub codification of Miami 21, and its own Amendments to Miami 21 table',
+    codifiedThrough:
+      'Ord. 14375 (2025-10-01), which updated ADU definitions, design standards, allowable zones, parking and unit sizes; the amendment table also lists Ord. 14420 (2025-11-20)',
+    amendingThisSection: [],
+    // ⚠️ The instrument here is an amendment TABLE inside the code, which is a
+    // different and better thing than either a pending queue or nothing.
+    note: 'Miami 21 carries its own "Amendments to Miami 21" table, which was read: Ord. 14375 (2025-10-01) is the amendment that rewrote this section, and it is present in the text used. `amendingThisSection: []` records that nothing LATER in that table names ADUs. ⚠️ THE SOURCE CHOICE IS THE RISK HERE, NOT THE PENDING LIST: Municode publishes a Miami 21 frozen at 2011-05-29 and miami21.org describes itself as historical only. Either would have looked like a normal read and returned a code predating the 2025 ADU amendment entirely.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -1504,7 +1577,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   },
 
   // ── Read, and the state does not preempt ─────────────────────────────────
-  miami: { city: 'miami', state: FL, stateApplies: NA, local: NOT_READ_LOCAL('Miami') },
+  miami: { city: 'miami', state: FL, stateApplies: NA, local: MIAMI_LOCAL },
   charlotte: { city: 'charlotte', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Charlotte') },
   raleigh: { city: 'raleigh', state: NO_PROVISION.nc, stateApplies: NA, local: NOT_READ_LOCAL('Raleigh') },
   austin: { city: 'austin', state: NO_PROVISION.tx, stateApplies: NA, local: NOT_READ_LOCAL('Austin') },
@@ -1614,6 +1687,12 @@ export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = O
     competing: ['carriage house', 'granny flat', 'guest house', 'Carriage Lot'],
     distinguishedBy:
       'Nothing to distinguish on the dwelling term: "carriage house", "granny flat" and "guest house" appear ZERO times in DZC Articles 11 and 13. ⚠️ "Carriage Lot" IS a live DZC term (§ 11.8.2.1.D allows an ADU on one even with no primary use, subject to § 12.10.4) — but it names a LOT TYPE, not a dwelling, so it does not compete with the ADU term. Checked in the current code only; Former Chapter 59 was amended by the same measure and its own vocabulary was NOT separately checked.',
+  },
+  miami: {
+    canonical: 'Ancillary Dwelling Unit (ADU) — Miami 21 § 3.18, defined in Article 1',
+    competing: ['Accessory Dwelling Unit', 'Ancillary Building'],
+    distinguishedBy:
+      '⚠️ MIAMI USES A DIFFERENT NOUN WITH THE SAME ABBREVIATION. The section is "ANCILLARY Dwelling Unit (ADU) Standards"; "accessory dwelling" appears only incidentally (7 hits). The vocabulary check found the section — a term-based search taken from the California statute would have looked healthy and missed it, which is the East Boston failure mode. "Ancillary Building" is a distinct term for the STRUCTURE that may contain an ADU, not for the unit itself.',
   },
   boston: {
     canonical: 'Additional Dwelling Unit (Boston Zoning Code § 53-5.2 and ten other district articles)',

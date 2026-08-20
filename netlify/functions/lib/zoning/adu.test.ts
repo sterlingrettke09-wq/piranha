@@ -62,6 +62,17 @@ const STATE_NO_FIGURE: AduRules = {
   local: { kind: 'not-read', detail: 'synthetic fixture — see the note above' },
 }
 
+// ⚠️ CONSTRUCTED, for the same reason as the others. `state-declines` was
+// exercised through Miami until Miami's ordinance was read. Florida is the only
+// jurisdiction in the set whose statute declines, so there is no second city to
+// repoint at — and repointing is what keeps failing. Built here instead.
+const STATE_DECLINES: AduRules = {
+  city: 'miami',
+  state: aduRulesFor('miami').state,
+  stateApplies: { kind: 'n-a' },
+  local: { kind: 'not-read', detail: 'synthetic fixture — see the note above' },
+}
+
 const FLOOR_ONLY: AduRules = {
   city: 'sf',
   state: aduRulesFor('sf').state,
@@ -150,7 +161,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'miami', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -359,13 +370,13 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     // handed it to the city; North Carolina's planning chapter was read whole
     // and has no ADU provision; Nevada preempts but states no size; Georgia has
     // not been looked at. Four facts, and only the last is ignorance.
-    expect(effectiveMaxSize(aduRulesFor('miami')).source).toBe('state-declines')
+    expect(effectiveMaxSize(STATE_DECLINES).source).toBe('state-declines')
     expect(effectiveMaxSize(aduRulesFor('charlotte')).source).toBe('unresolved')
     expect(effectiveMaxSize(STATE_NO_FIGURE).source).toBe('state-no-figure')
     expect(effectiveMaxSize(NOTHING_ESTABLISHED).source).toBe('unresolved')
     // Every one of them still publishes NO number — the distinction is in the
     // reason, never in a figure invented to fill the gap.
-    for (const r of [aduRulesFor('miami'), aduRulesFor('charlotte'), STATE_NO_FIGURE, NOTHING_ESTABLISHED]) {
+    for (const r of [STATE_DECLINES, aduRulesFor('charlotte'), STATE_NO_FIGURE, NOTHING_ESTABLISHED]) {
       expect(effectiveMaxSize(r).value, r.city).toBeNull()
     }
 
@@ -380,7 +391,7 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
   })
 
   it('⚠️ Florida is an ANSWER about Florida, not a gap in our reading', () => {
-    const s = summariseAdu(aduRulesFor('miami'))
+    const s = summariseAdu(STATE_DECLINES)
     expect(s).toMatch(/163\.31771/)
     expect(s).toMatch(/MAY adopt an ordinance/i)
     expect(s).toMatch(/leaves the decision to the city/)
@@ -573,7 +584,10 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
         // without anything touching the section. Seattle read a list of 17;
         // Phoenix queried a "Pending Codification" view that returned nothing
         // AND controlled that emptiness against an unfiltered view returning 25.
-        expect(['seattle', 'phoenix'], c).toContain(c)
+        // ⚠️ Miami joins the strong form: Miami 21 carries its own "Amendments
+        // to Miami 21" table, which was read — the ordinance that rewrote the
+        // ADU section is in it, and nothing later in it names ADUs.
+        expect(['seattle', 'phoenix', 'miami'], c).toContain(c)
         expect(note, c).not.toMatch(/no (pending[- ]?(ordinance )?)?list/i)
       }
     }
@@ -583,7 +597,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['boston', 'denver', 'la', 'lasvegas', 'miami', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1587,5 +1601,93 @@ describe('Denver — DZC § 11.8.2, citywide since 2024-12-16', () => {
     expect(local.pending.note).toMatch(/2025-03-24/)
     expect(local.pending.note).toMatch(/2026-04-20/)
     expect(local.pending.codifiedThrough).toMatch(/2025-02-25/)
+  })
+})
+
+describe('Miami — Miami 21 § 3.18, and the city that says ANCILLARY', () => {
+  const rules = aduRulesFor('miami')
+  if (rules.local.kind !== 'read') throw new Error('expected a read local layer')
+  const local = rules.local
+
+  it('⚠️ the vocabulary check found the section a term search would miss', () => {
+    // Miami 21 titles it "ANCILLARY Dwelling Unit (ADU) Standards" — a different
+    // noun with an identical abbreviation. Searching the California statute's
+    // term would have looked healthy and missed it. This is the check the East
+    // Boston failure forced, run BEFORE reading rather than after publishing.
+    expect(local.citation).toMatch(/Ancillary Dwelling Unit/)
+    const v = ADU_VOCABULARY_CHECK.miami
+    expect(v.canonical).toMatch(/Ancillary Dwelling Unit/)
+    expect(v.competing).toContain('Accessory Dwelling Unit')
+    expect(v.distinguishedBy).toMatch(/DIFFERENT NOUN WITH THE SAME ABBREVIATION/)
+  })
+
+  it('⚠️ THREE sources offer this code and two are stale — the pick is the risk', () => {
+    // Municode's Miami 21 is frozen at 2011-05-29 while its Code of Ordinances is
+    // current; miami21.org calls itself historical. Only the City's own Planning
+    // page names the current codification. Municode's copy predates the 2025
+    // amendment that rewrote this very section.
+    if (local.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(local.pending.note).toMatch(/THE SOURCE CHOICE IS THE RISK HERE/)
+    expect(local.pending.note).toMatch(/2011-05-29/)
+    expect(local.pending.note).toMatch(/historical/)
+    expect(local.citation).toMatch(/Gridics CodeHub/)
+    expect(local.pending.codifiedThrough).toMatch(/14375/)
+  })
+
+  it('⚠️ the seventh ratio, and the denominator changes to the LOT', () => {
+    // Every earlier ratio was a percentage of the primary dwelling's floor area.
+    // Miami's is a percentage of the lot, and both limbs bind — so no figure is
+    // publishable without the lot area.
+    const b = local.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(b.kind).toBe('not-numeric')
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/ten percent of the Lot Area/)
+    expect(b.rule).toMatch(/800 sq ft/)
+    expect(b.rule).toMatch(/a percentage of the LOT, not of the principal dwelling/)
+    expect(effectiveMaxSize(rules).value).toBeNull()
+    // Both configurations carried, with the attached one tighter.
+    expect(local.maxSizeSqFt).toHaveLength(2)
+  })
+
+  it('⚠️ the size figures are NOT in the operative section', () => {
+    // § 3.18 says only "Unit Sizes: See Article 6 ... Table 13". Seventh instance
+    // of a section read correctly not being the whole rule — and here the code
+    // itself points onward, which is the easy case.
+    const n = local.notes.find((x) => /SIZE FIGURES ARE NOT IN § 3\.18/.test(x))!
+    expect(n).toMatch(/Table 13/)
+    expect(n).toMatch(/seventh instance/)
+    expect(local.citation).toMatch(/Table 13/)
+  })
+
+  it('⚠️ carries MINIMUM unit sizes, which no other city read here states', () => {
+    const n = local.notes.find((x) => /MINIMUM UNIT SIZES/.test(x))!
+    expect(n).toMatch(/275/); expect(n).toMatch(/450/); expect(n).toMatch(/550/)
+    // And says what kind of number they are — not a floor on what must be allowed.
+    expect(n).toMatch(/not floors on what the city must allow/)
+  })
+
+  it('keeps height in STORIES, never converted', () => {
+    // rule 12, and the Miami module already carries the scar: 80 storeys
+    // published as 87 by round-tripping through two different ft/storey values.
+    expect(local.maxHeightFt).toEqual([])
+    expect(local.maxStories?.value).toBe(2)
+    expect(local.maxStories?.condition).toMatch(/T3-R/)
+    expect(local.maxStories?.condition).toMatch(/no case taller than the Principal Building/)
+  })
+
+  it('⚠️ the kitchen criterion, used CONSTITUTIVELY rather than to exclude', () => {
+    // LA and San Diego define a competing use by the ABSENCE of a kitchen.
+    // Miami uses its presence to define the ADU itself.
+    const n = local.notes.find((x) => /KITCHEN CRITERION AGAIN/.test(x))!
+    expect(n).toMatch(/shall be deemed an ADU/)
+    expect(n).toMatch(/Miami uses its presence to define one/)
+  })
+
+  it('⚠️ records the unqualified Lot Area denominator rather than assuming one', () => {
+    // "Ten percent of the Lot Area" — net or gross is not stated and Article 1's
+    // definition was not read. That denominator decides the cap on every parcel.
+    const n = local.notes.find((x) => /does not say whether Lot Area is net or gross/.test(x))!
+    expect(n).toMatch(/was NOT read/)
+    expect(n).toMatch(/no reading is assumed/)
   })
 })
