@@ -568,14 +568,22 @@ describe('Los Angeles — LAMC § 12.22 A.33', () => {
   it('⚠️ records that the ordinance delegates to a REPEALED state section', () => {
     // The recodification hazard, this time inside a city ordinance rather than
     // in our own citation. § 12.22 A.33 was added in 2019, carries no later
-    // amendment note, and (b)(4)–(6) delegate whole ADU categories to Gov. Code
-    // § 65852.2 — replaced by ch. 13 (§ 66310 et seq., Stats. 2024 Ch. 7).
-    // Recorded, not resolved: how the delegations now operate is the city's
-    // question, and inventing an answer is what rule 1 forbids.
+    // amendment note, and (b)(4)–(6) make compliance with Gov. Code § 65852.2 the
+    // approval standard — a section replaced by ch. 13 (§ 66310 et seq., Stats.
+    // 2024 Ch. 7).
+    //
+    // ⚠️ STATED AS A FINDING, and the test enforces that. The first draft called
+    // it "a question for the city", which reads as an open item in OUR reading
+    // when every element is established and cited. A settled finding that is
+    // hedged and a genuine gap render alike, and only one of them is true here.
     const note = local.notes.find((n) => /65852\.2/.test(n))!
-    expect(note).toMatch(/DELEGATES/)
+    expect(note).toMatch(/^⚠️ FINDING:/)
+    expect(note).toMatch(/delegates entire categories/i)
     expect(note).toMatch(/66310/)
-    expect(note).toMatch(/question for the city/)
+    expect(note).toMatch(/established defect in the city's code/)
+    // ⚠️ And it must NOT be hedged into an open question about our own encoding.
+    expect(note).not.toMatch(/question for the city/)
+    expect(note).toMatch(/not an uncertainty in this tool's reading/)
     // And our OWN citation still points at the live chapter.
     expect(rules.stateFloor!.citation).toMatch(/66321/)
     expect(rules.stateFloor!.citation).not.toMatch(/65852\.2/)
@@ -705,7 +713,7 @@ describe('San Francisco — Planning Code §§ 207.1 and 207.2', () => {
 
     const la = aduRulesFor('la')
     if (la.local.kind !== 'read') throw new Error('expected read')
-    expect(la.local.notes.find((x) => /65852\.2/.test(x))!).toMatch(/DELEGATES/)
+    expect(la.local.notes.find((x) => /65852\.2/.test(x))!).toMatch(/delegates entire categories/i)
   })
 
   it('names Director Bulletin No. 3 as a source it did NOT reach', () => {

@@ -530,7 +530,14 @@ time someone will assume it was never run.
 
 LA's § 12.22 A.33 was added by Ord. 186,481 in 2019 and carries no later amendment
 note, which is why it never followed the chapter. How its delegating paragraphs
-now operate is a question for the city; the tool records it and does not resolve it.
+never followed. **This is a finding about LA's code, not an open question about
+the encoding.** Every element is established and citable — the delegating
+paragraphs, the sections they name, the recodification that replaced those
+sections, and the absence of any later amendment note. LA's floors are published
+from live ch. 13 whatever the ordinance points at, so nothing about our reading
+is pending. Hedging it as "a question for the city" is the mirror of rule 1:
+there the error is giving a direction nothing measured, here it is withholding
+one that was.
 
 ### ⚠️ The 50%-of-primary rule, drafted three ways
 

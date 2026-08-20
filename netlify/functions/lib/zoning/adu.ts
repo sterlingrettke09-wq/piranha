@@ -523,14 +523,20 @@ const LA_LOCAL: LocalLayer = {
     // ⚠️ A STALE DELEGATION IN LIVE TEXT — the recodification hazard, found
     // inside a city ordinance rather than in our own citation.
     //
-    // § 12.22 A.33 was added in 2019 and carries no later amendment note. It is
-    // written throughout against Gov. Code §§ 65852.2 and 65852.22, and (b)(4),
-    // (b)(5) and (b)(6) do not merely reference them — they DELEGATE whole
-    // categories of ADU to them wholesale. Chapter 13 (§ 66310 et seq.,
-    // Stats. 2024 Ch. 7) has since replaced § 65852.2. What LA's delegating
-    // paragraphs now point at is a question about the ordinance's operation that
-    // this tool records rather than resolves.
-    '⚠️ This subdivision is written against California Gov. Code §§ 65852.2 and 65852.22 and DELEGATES entire ADU categories to them (§ 12.22 A.33(b)(4)–(6)). ADU law was recodified into Gov. Code ch. 13 (§ 66310 et seq.) by Stats. 2024, Ch. 7. The section carries no amendment note after Ord. 186,481 (2019), so the delegations still name the superseded sections. The state floors encoded here are read from ch. 13; how LA\'s delegating paragraphs now operate is a question for the city.',
+    // ⚠️ THIS IS A FINDING ABOUT LA'S CODE, NOT AN OPEN QUESTION ABOUT OURS, and
+    // the distinction matters because the two render alike if you let them. Every
+    // element is established and citable: the delegating paragraphs (b)(4)–(6),
+    // the sections they name, the recodification that replaced those sections
+    // (Stats. 2024 Ch. 7), and the absence of any amendment note after Ord.
+    // 186,481 (2019) explaining why it never followed. Nothing here is pending
+    // further reading.
+    //
+    // Writing it as "a question for the city" — which it said first — imported an
+    // uncertainty that belongs to nobody. OUR encoding is not uncertain: LA's
+    // floors come from live ch. 13 whatever the ordinance points at. Hedging a
+    // settled finding is the mirror of rule 1: there the error is giving a
+    // direction nothing measured, here it is withholding one that was.
+    '⚠️ FINDING: Los Angeles\'s ADU ordinance delegates entire categories of ADU to a repealed statute. § 12.22 A.33(b)(4)–(6) do not merely cite California Gov. Code §§ 65852.2 and 65852.22 — they make compliance with them the approval standard. ADU law was recodified out of § 65852.2 into Gov. Code ch. 13 (§ 66310 et seq.) by Stats. 2024, Ch. 7. The section carries no amendment note after Ord. 186,481 (2019), so it never followed. This is an established defect in the city\'s code, dated and cited; it is not an uncertainty in this tool\'s reading, and the ADU floors published for LA are read from live ch. 13 regardless of what the ordinance points at.',
   ],
   pending: {
     kind: 'checked',
