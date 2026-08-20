@@ -47,6 +47,19 @@ const NOTHING_ESTABLISHED: AduRules = {
   local: { kind: 'not-read', detail: 'synthetic fixture' },
 }
 
+// ⚠️ CONSTRUCTED, AND PRE-EMPTIVELY SO. The `state-no-figure` case was
+// exercised through Las Vegas until Las Vegas was read, and the obvious
+// replacement was Boston — which is next on the reading list. That is rule 29
+// setting itself up for a fifth time, visible in advance. So it is built here:
+// a live preemption whose statute states no size, with no local reading behind
+// it. Nothing anyone reads can take this fixture away.
+const STATE_NO_FIGURE: AduRules = {
+  city: 'lasvegas',
+  state: aduRulesFor('lasvegas').state,
+  stateApplies: aduRulesFor('lasvegas').stateApplies,
+  local: { kind: 'not-read', detail: 'synthetic fixture — see the note above' },
+}
+
 const FLOOR_ONLY: AduRules = {
   city: 'sf',
   state: aduRulesFor('sf').state,
@@ -132,7 +145,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['la', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -343,11 +356,11 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
     // not been looked at. Four facts, and only the last is ignorance.
     expect(effectiveMaxSize(aduRulesFor('miami')).source).toBe('state-declines')
     expect(effectiveMaxSize(aduRulesFor('charlotte')).source).toBe('unresolved')
-    expect(effectiveMaxSize(aduRulesFor('lasvegas')).source).toBe('state-no-figure')
+    expect(effectiveMaxSize(STATE_NO_FIGURE).source).toBe('state-no-figure')
     expect(effectiveMaxSize(NOTHING_ESTABLISHED).source).toBe('unresolved')
     // Every one of them still publishes NO number — the distinction is in the
     // reason, never in a figure invented to fill the gap.
-    for (const r of [aduRulesFor('miami'), aduRulesFor('charlotte'), aduRulesFor('lasvegas'), NOTHING_ESTABLISHED]) {
+    for (const r of [aduRulesFor('miami'), aduRulesFor('charlotte'), STATE_NO_FIGURE, NOTHING_ESTABLISHED]) {
       expect(effectiveMaxSize(r).value, r.city).toBeNull()
     }
 
@@ -542,7 +555,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
     // Only Seattle earned the strong form. The other four each disclose, in
     // their own wording, that no list was available — so the assertion matches
     // the DISCLOSURE, not one city's phrasing.
-    const weak = ['la', 'sandiego', 'sanjose', 'sf']
+    const weak = ['la', 'lasvegas', 'sandiego', 'sanjose', 'sf']
     for (const c of ADU_LOCAL_READ) {
       const l = aduRulesFor(c).local
       if (l.kind !== 'read' || l.pending.kind !== 'checked') continue
@@ -565,7 +578,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['la', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -971,5 +984,118 @@ describe('Phoenix — Zoning Ordinance § 706.A, under the Arizona floor', () =>
     expect(local.pending.note).toMatch(/G-7524/)
     expect(local.pending.note).not.toMatch(/no list exists to read/i)
     expect(local.pending.codifiedThrough).toMatch(/G-7461/)
+  })
+})
+
+describe('Las Vegas — LVMC 19.12.070, adopted the day the state mandate began', () => {
+  const rules = aduRulesFor('lasvegas')
+  if (rules.local.kind !== 'read') throw new Error('expected a read local layer')
+  const local = rules.local
+
+  it('⚠️ the ordinance and the statute share an effective date', () => {
+    // Ord. 6963 carries 07/01/26 and NRS 278.257 took effect 2026-07-01. The
+    // local rule exists because the statute does, and neither layer read alone
+    // would show it.
+    const st = rules.state
+    if (st.kind !== 'preempts') throw new Error('expected preempts')
+    expect(st.effectiveFrom).toBe('2026-07-01')
+    expect(local.citation).toMatch(/Ord\. 6963/)
+    expect(local.citation).toMatch(/2026-07-01/)
+  })
+
+  it('⚠️ it is a LAND USE, not a section — the TOC scan finds the wrong thing', () => {
+    // Title 19 has no ADU-titled section. A contents scan surfaces 19.12.020
+    // "Accessory Uses and Structures", which regulates garage sales and parking
+    // a car with a For Sale sign. The real provision is a use description in
+    // 19.12.070 plus a definition in 19.18.020, reachable only by full text.
+    expect(local.citation).toMatch(/19\.12\.070/)
+    expect(local.citation).toMatch(/19\.18\.020/)
+    expect(local.citation).not.toMatch(/19\.12\.020/)
+  })
+
+  it('⚠️ the size cap is a 100% ratio — the fourth drafting, the fourth operator', () => {
+    // SF: 50% or 850, whichever GREATER — a ratio floored by a figure.
+    // AZ: 75% or 1,000, whichever LESS — a ratio capped by a figure.
+    // Phoenix: 75% AND a lot figure — both limbs binding.
+    // Las Vegas: 100% — may equal the primary but not exceed it.
+    // Same two ingredients every time; no two jurisdictions combine them alike,
+    // and not one of the four yields a publishable number on its own.
+    const b = local.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(b.kind).toBe('not-numeric')
+    if (b.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(b.rule).toMatch(/total gross floor area of the primary dwelling unit/)
+    expect(b.rule).toMatch(/LESSER/)
+    expect(effectiveMaxSize(rules).value).toBeNull()
+    expect(effectiveMaxSize(rules).source).toBe('local-non-numeric')
+  })
+
+  it('states no height at all and routes it to the district', () => {
+    expect(local.maxHeightFt).toEqual([])
+    expect(local.maxStories).toBeNull()
+    expect(local.heightDefersToBaseZone?.cite).toMatch(/development standards of the zoning district/)
+  })
+
+  it('⚠️ records the parking proviso the local rule does not repeat', () => {
+    // NRS 278.257(2)(b) caps additional parking at one space, but only "provided
+    // that the existing parking ... and street parking satisfy the anticipated
+    // parking needs". Las Vegas requires one space unconditionally. Recorded,
+    // not adjudicated — same class as the San José 50% question.
+    const n = local.notes.find((x) => /PARKING SITS EXACTLY AT THE STATE CEILING/.test(x))!
+    expect(n).toMatch(/proviso the local rule does not repeat|carries a proviso/)
+    expect(n).toMatch(/records rather than resolves/)
+  })
+
+  it('⚠️ says which of the two texts prevails, because they differ', () => {
+    // 19.12.070 calls its own descriptions "for convenience of reference only"
+    // and defers to 19.18.020. They differ on a load-bearing word: "principal
+    // dwelling" against "principal SINGLE FAMILY dwelling".
+    const n = local.notes.find((x) => /THE DEFINITION PREVAILS/.test(x))!
+    expect(n).toMatch(/SINGLE FAMILY/)
+    expect(n).toMatch(/19\.18\.020/)
+  })
+
+  it('⚠️ its pending state is the weakest in the file, and names the risk', () => {
+    // No pending list AND no codified-through date — only a self-declared lag of
+    // up to 60 days. The lag bites here specifically: the governing statute took
+    // effect 50 days before this reading.
+    if (local.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(local.pending.amendingThisSection).toEqual([])
+    expect(local.pending.codifiedThrough).toMatch(/no codified-through date is published/)
+    expect(local.pending.codifiedThrough).toMatch(/60-day lag/)
+    expect(local.pending.note).toMatch(/WEAK form/)
+    expect(local.pending.note).toMatch(/50 days later/)
+  })
+})
+
+describe('⚠️ summariseAdu must survive every city, not just the exercised ones', () => {
+  it('never throws, for any live city', () => {
+    // THE REGRESSION THIS CLOSES. `summariseAdu` cast a possibly-null size to a
+    // number and called toLocaleString on it. `local-non-numeric` yields null,
+    // so it crashed on the first city whose baseline cap is not a figure.
+    //
+    // ⚠️ Phoenix had the identical fault for a full commit and never crashed —
+    // nothing ran summariseAdu on a Phoenix ADU project. Las Vegas differs only
+    // in that an existing hurdles test happened to exercise it. Rule 18's
+    // corollary: code that did not run is not code that works, so this asserts
+    // the whole set rather than the city that happened to fail.
+    const live = CITIES.filter((c) => c.live).map((c) => c.slug)
+    expect(live.length).toBeGreaterThan(20)
+    for (const slug of live) {
+      expect(() => summariseAdu(aduRulesFor(slug)), slug).not.toThrow()
+      const line = summariseAdu(aduRulesFor(slug))
+      expect(line.length, slug).toBeGreaterThan(40)
+      // And no city may render a null, an undefined or a NaN into user-facing copy.
+      expect(line, slug).not.toMatch(/\bnull\b|\bundefined\b|NaN/)
+    }
+  })
+
+  it('says so plainly where no figure can be published', () => {
+    for (const slug of ['phoenix', 'lasvegas']) {
+      const line = summariseAdu(aduRulesFor(slug))
+      expect(line, slug).toMatch(/No maximum size can be published/)
+      // ⚠️ And it must not read as permission — the limits are real, just not
+      // numbers. This is the `no-maximum` confusion one level down.
+      expect(line, slug).not.toMatch(/states no maximum size for an ADU/)
+    }
   })
 })

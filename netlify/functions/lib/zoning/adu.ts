@@ -1149,6 +1149,70 @@ const PHOENIX_LOCAL: LocalLayer = {
   },
 }
 
+// ── LAS VEGAS ───────────────────────────────────────────────────────────────
+//
+// ⚠️ ADOPTED ON THE DAY THE STATE MANDATE TOOK EFFECT. Ord. 6963 §§ 7–8 carry the
+// date 07/01/26, which is exactly the effective date of NRS 278.257. The local
+// rule exists because the statute does, and reading either alone would miss that.
+//
+// ⚠️ AND IT IS NOT A SECTION, IT IS A LAND USE. Las Vegas files this as
+// "Residential, Accessory Dwelling Unit" — a use description inside LVMC
+// 19.12.070 and a definition in 19.18.020, with no ADU-titled section anywhere in
+// Title 19. A table-of-contents scan finds 19.12.020 "Accessory Uses and
+// Structures", which covers garage sales and parking a car with a For Sale sign
+// and has nothing to do with dwellings. The real provision was found only by a
+// full-text search, and only because the search had been proved to work first.
+const LASVEGAS_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'LVMC 19.12.070 "Residential, Accessory Dwelling Unit" (Permissible Use Descriptions and Applicable Conditions and Requirements), with the definition at LVMC 19.18.020; both added by Ord. 6963 §§ 7–8, effective 2026-07-01',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // ⚠️ THE FOURTH DRAFTING OF THE RATIO FAMILY, and the ratio is 100%: the ADU
+    // may equal the primary dwelling but not exceed it. Two limbs again — the
+    // district's own development standards AND the parity cap — so the answer is
+    // their minimum and no figure is publishable.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the LESSER of the zoning district\u2019s own development standards and the total gross floor area of the primary dwelling unit — "in no case shall the unit exceed the total gross floor area of the primary dwelling unit"',
+      condition: 'every ADU; both limbs apply together and neither states a square-foot figure',
+      cite: 'LVMC 19.12.070, Conditional Use Regulations 1',
+      baseline: true,
+    },
+  ],
+  // No height in feet anywhere in the provision — it routes to the district.
+  maxHeightFt: [],
+  maxStories: null,
+  heightDefersToBaseZone: { cite: 'LVMC 19.12.070, Conditional Use Regulations 1 ("subject to the development standards of the zoning district in which it is located")' },
+  notes: [
+    'No more than ONE Residential, Accessory Dwelling Unit is permitted on a single lot (LVMC 19.12.070, Conditional Use Regulations 1). NRS 278.257(1) requires the city to authorise "an accessory dwelling unit" — singular — and NRS 278.257(4)(b) caps the statute\u2019s own reach at two, so one satisfies the mandate.',
+    'The Special Use Permit provisions of LVMC 19.12.040(B) expressly do NOT apply (Conditional Use Regulations 2), so this is a permitted use subject to conditions rather than a discretionary approval.',
+    '⚠️ PARKING SITS EXACTLY AT THE STATE CEILING, AND UNCONDITIONALLY. Las Vegas requires "one additional parking space ... beyond the number of spaces normally required". NRS 278.257(2)(b) forbids requiring more than one additional space — but only "provided that the existing parking for the primary residence and street parking satisfy the anticipated parking needs". The state cap carries a proviso the local rule does not repeat. Whether that gap matters is a legal question this tool records rather than resolves.',
+    '⚠️ TWO TEXTS, AND THE DEFINITION PREVAILS. LVMC 19.12.070 states expressly that its descriptions are "for convenience of reference only" and that the LVMC 19.18.020 definition "shall prevail in the event of conflict". They differ: the description says "principal dwelling", the definition says "principal SINGLE FAMILY dwelling" and requires "full kitchen facilities". The definition governs, which also aligns with NRS 278.257(6)(c) scoping the statute to property zoned single-family residential.',
+    'The ADU may be detached, attached, or built within the primary residence (LVMC 19.18.020).',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'enCodePlus Las Vegas Unified Development Code home page and the section histories',
+    // ⚠️ NO "CURRENT THROUGH" LINE IS PUBLISHED. What the site states instead is a
+    // LAG, verbatim: "This Code may not reflect the most current legislation
+    // adopted by the City of Las Vegas. It can take up to 60 days to update this
+    // document following the adoption of legislation."
+    //
+    // That is a different kind of disclosure from a codified-through date and it
+    // must not be dressed up as one. The concrete lower bound comes from the
+    // sections themselves: Ord. 6963 (2026-07-01) is present, so the code
+    // includes legislation at least that recent — 50 days before this reading,
+    // which is inside the window the site warns about.
+    codifiedThrough:
+      'no codified-through date is published; the site instead warns of up to a 60-day lag. Lower bound established from the text: Ord. 6963 (2026-07-01) is present',
+    amendingThisSection: [],
+    note: 'WEAK form, and weak in a way none of the others are: enCodePlus publishes no pending-ordinance list AND no codified-through date, only a self-declared lag of up to 60 days. `amendingThisSection: []` here records that no list exists to read. ⚠️ The lag matters more here than anywhere else in this file, because the governing state statute took effect 2026-07-01 and this reading is 50 days later — squarely inside the window in which an amendment could exist and not yet appear.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -1181,7 +1245,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
     city: 'lasvegas',
     state: NV,
     stateApplies: QUALIFIES('Las Vegas is far above the 60,000 population threshold for cities in NRS 278.257(1)'),
-    local: NOT_READ_LOCAL('Las Vegas'),
+    local: LASVEGAS_LOCAL,
   },
   boston: {
     city: 'boston',
@@ -1467,10 +1531,24 @@ export function summariseAdu(r: AduRules): string {
       `${(size.value as number).toLocaleString()} sq ft ADU ${heightPhrase} cannot be refused.`
     )
   }
+  // ⚠️ THREE WAYS TO HAVE NO NUMBER, AND ONLY ONE OF THEM WAS HANDLED.
+  //
+  // This crashed on the first city to reach it: `local-non-numeric` yields a
+  // null value, and the fallback branch cast it to a number and called
+  // toLocaleString. The cast is what hid it — `size.value as number` type-checks
+  // against `number | null` and defers the failure to runtime.
+  //
+  // ⚠️ Phoenix had the identical latent fault and never crashed, because no test
+  // ran summariseAdu on a Phoenix ADU project. Rule 18's corollary exactly: the
+  // absence of a wrong output is not evidence the code is right, and code that
+  // did not run is not code that works. Las Vegas only differs in being
+  // exercised by an existing hurdles test.
   const head =
     size.source === 'local-no-maximum'
       ? 'The city states no maximum size for an ADU built inside an existing structure.'
-      : `Up to ${(size.value as number).toLocaleString()} sq ft.`
+      : size.value == null
+        ? 'No maximum size can be published for this city.'
+        : `Up to ${size.value.toLocaleString()} sq ft.`
   const stories =
     r.local.kind === 'read' && r.local.maxStories
       ? ` Detached ADUs may be ${r.local.maxStories.value} storeys (${r.local.maxStories.cite}).`
