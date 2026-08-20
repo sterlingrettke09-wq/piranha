@@ -1554,12 +1554,31 @@ describe('Denver — DZC § 11.8.2, citywide since 2024-12-16', () => {
     expect(n).toMatch(/Blueprint Denver/)
   })
 
-  it('⚠️ flags the sixteen deleted "-1" districts as a staleness hazard', () => {
+  it('⚠️ the sixteen deleted districts, and the one still live in the MAP', () => {
     // The measure deleted 16 DZC districts whose only purpose was permitting
-    // ADUs. A curated table still carrying one would now be wrong — checked.
-    const n = local.notes.find((x) => /Sixteen DZC zone districts were DELETED/.test(x))!
-    expect(n).toMatch(/U-SU-A1/)
-    expect(n).toMatch(/this repo’s Denver table does not/)
+    // ADUs. Denver's zoning SERVICE still returns one parcel coded U-SU-B1,
+    // captured 2026-08-19 — the code and the map disagree by one parcel.
+    const del = local.notes.find((x) => /Sixteen DZC zone districts were DELETED/.test(x))!
+    expect(del).toMatch(/rezoned to the corresponding non-1 district/)
+    const live = local.notes.find((x) => /STILL LIVE IN THE MAP LAYER/.test(x))!
+    expect(live).toMatch(/U-SU-B1/)
+    expect(live).toMatch(/2026-08-19/)
+    expect(live).toMatch(/right by derivation rather than by knowing the mapping/)
+    // ⚠️ And the note must DESCRIBE the resolver call, never write one — the
+    // wiring guard scans for the identifier and counted prose as a production
+    // caller. Rule 21's shape pointed at a different scanner.
+    expect(live).not.toMatch(/resolveDenver\s*\(/)
+  })
+
+  it('⚠️ says why the stale code does NOT produce a stale ADU answer', () => {
+    // The generalisable half. The "-1" suffix signified exactly one thing —
+    // ADU permission — and ADUs are now allowed everywhere, so a parcel still
+    // carrying the deleted code gets the same answer either way. A stale
+    // district code is not automatically a stale answer; it depends on what the
+    // code was carrying.
+    const n = local.notes.find((x) => /the mismatch is INERT/.test(x))!
+    expect(n).toMatch(/only thing the "-1" suffix ever signified/)
+    expect(n).toMatch(/not automatically a stale answer/)
   })
 
   it('⚠️ names two later amendment bundles it did NOT open', () => {
