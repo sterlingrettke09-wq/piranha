@@ -18,7 +18,7 @@ it sets a floor the city may not go below.
 Eighteen cities sit in sixteen jurisdictions: AZ, CO, DC, FL, GA, IL, MA, MN, NC
 (×2 cities), NV, NY, OH, PA, TN, TX (×2 cities), WI.
 
-## Status — 11 of 16 established, 13 of 18 cities have a determined state layer
+## Status — 14 of 16 established, 16 of 18 cities have a determined state layer
 
 | jurisdiction | city | preempts? | instrument | basis |
 |---|---|---|---|---|
@@ -33,11 +33,11 @@ Eighteen cities sit in sixteen jurisdictions: AZ, CO, DC, FL, GA, IL, MA, MN, NC
 | WI | milwaukee | **no, in scope read** | Wis. Stat. ch. 66, titled index | 0 hits |
 | MN | minneapolis | **no, in scope read** | Minn. Stat. ch. 462, titled index | 0 hits |
 | DC | dc | **no — zoning is delegated** | DC Code tit. 6 ch. 6 | index, 0 hits |
-| GA | atlanta | — | — | **not established** |
-| IL | chicago | — | — | **not established** |
-| NY | nyc | — | — | **not established** |
-| PA | philadelphia | — | — | **not established** |
-| TN | nashville | — | — | **not established** |
+| IL | chicago | **no** | 65 ILCS 5/11-13 (Div. 13, Zoning) | rendered text, 0 hits |
+| NY | nyc | **no** | Gen. City Law art. 5-A | 7 sections, 0 hits |
+| PA | philadelphia | **no — and the MPC does not reach Philadelphia** | Act 247 of 1968 | 398 KB, 0 hits |
+| GA | atlanta | — | — | **not established — source blocked** |
+| TN | nashville | — | — | **not established — source blocked** |
 
 **⚠️ "Not established" means nobody has looked, not that the state has no statute.**
 
@@ -56,8 +56,10 @@ where they render correctly. The five zeros described the instrument.
 
 **Illinois — the server ignores query parameters.** A request for Art. 11 Div. 13
 (the zoning division) returned **exactly 232,042 bytes, byte-identical to the
-article-level index** already fetched. Illinois is therefore *not* established, and
-the 0 hits from that fetch mean nothing.
+article-level index** already fetched, so the 0 hits from that fetch meant nothing.
+Illinois was closed the next day by a different route (clicking the index's own
+link), and the length changing 19,259 → 64,113 is what proved a different page had
+finally been served.
 
 Both were caught by the same cheap check: **a suspicious byte count, compared
 across requests that should have differed.** Neither was caught by the exit code,
@@ -72,7 +74,7 @@ Minnesota result in the table above rests on the chapter 462 titled index instea
 
 ---
 
-## The five that preempt
+## The four that preempt
 
 ### AZ — A.R.S. § 9-461.18
 
@@ -183,7 +185,7 @@ rather than a failed search.
 
 ---
 
-## The six that do not
+## The ten that do not
 
 **FL — § 163.31771 "Accessory dwelling units" exists and expressly declines to
 preempt.** Subsection (3): "A local government **may** adopt an ordinance to allow
@@ -256,11 +258,71 @@ The same two ingredients, opposite operator:
 
 Publishing 1,000 for Phoenix overstates on any primary dwelling under 1,333 sq ft.
 
-## Next
+## The three closed on 2026-08-20
 
-Five jurisdictions remain: **GA, IL, NY, PA, TN.** Illinois and New York both
-resisted automated fetching in ways that produced false-looking zeros, so both need
-the browser and careful byte checks. Georgia and Tennessee publish through
-LexisNexis, which has not been attempted. Pennsylvania's Municipalities Planning
-Code text was not reached — and Philadelphia is a first-class city, which may be
-excluded from the MPC entirely, so that question has two parts.
+**IL — 65 ILCS 5/11-13, Division 13 (Zoning) of the Illinois Municipal Code.**
+Reached by clicking the index's own "Division 13 - Zoning" link after the legacy
+`ilcs4.asp` URL scheme proved dead. 64,113 rendered characters, 103 section
+references across §§ 11-13-1 to 11-13-13, **zero** ADU occurrences. The
+length changing from 19,259 to 64,113 is what confirms a different page was
+actually served this time.
+
+**NY — General City Law article 5-A, "Buildings and Use Districts".** General City
+Law is the zoning enabling law for cities, and NYC is a city. The article carries
+seven sections (§§ 81, 81-A, 81-B, 81-C, 81-E, 81-F, 83) and **no ADU provision**;
+none of the chapter's 22 article titles mentions accessory dwellings either.
+Note § 81-E, "Article not applicable to certain cities" — NYC's zoning power runs
+through its own Charter and the Zoning Resolution, which reinforces the answer.
+
+**PA — and this one resolves structurally, on scope rather than content.**
+The Municipalities Planning Code (Act 247 of 1968) was read whole: 398,886
+characters, **zero** ADU occurrences — "accessory" appears twice, as "accessory
+use" in the no-impact-home-based-business definition and as "accessory building".
+
+More decisively, the MPC's own enacting clause empowers **"cities of the second
+class A, and third class"**, boroughs, incorporated towns, townships of the first
+and second classes, and counties of the second through eighth classes. **Cities of
+the first class are absent from that list**, and the phrase "city of the first
+class" appears nowhere in the act — the three "first class" hits are all
+*townships*. Philadelphia is Pennsylvania's only city of the first class, so the
+MPC does not reach it; its zoning authority runs through the First Class City Home
+Rule Act and its Home Rule Charter.
+
+That is the slot test applied to a statute's **scope clause** rather than to its
+contents: the instrument that would carry a Pennsylvania ADU mandate for cities
+excludes Philadelphia by its own terms, so its contents are moot for this city.
+
+## The two that remain, and why
+
+**GA and TN are not established, and the reason is source access rather than
+effort.** Both publish their official codes through LexisNexis behind a session.
+The freely reachable routes failed: `lexisnexis.com/hottopics/gacode/` was denied,
+`ga.elaws.us` returned Service Unavailable, and Justia's Georgia Title 36 index
+did not render a chapter list.
+
+Justia does carry a Georgia Chapter 66 (Zoning Procedures) page — **as a 2022
+snapshot**, with 2023/2024/2025 versions offered separately. **A stale mirror must
+not be used to establish a 2026 absence.** That is precisely the failure Nevada
+demonstrates: NRS 278.257 took effect 2026-07-01, and any source frozen before
+then reports Nevada as non-preempting with complete confidence. A 2022 Georgia
+snapshot has four legislative sessions of the same exposure.
+
+So both are recorded as unlooked-at rather than as absences. Closing them needs a
+current authoritative text — a LexisNexis session, or a state-published
+alternative not yet identified.
+
+## What the survey established about method
+
+**Recall would have failed this survey.** Nevada's mandate is seven weeks old.
+Arizona's sanction turns on a 2025-01-01 deadline. Colorado's obligations began
+2025-06-30. Three of the four preempting statutes post-date any stable mental
+model of this area, and the fourth (MA) was amended in 2024.
+
+**The detection method worth keeping is not auditing the fetcher.** It is noticing
+two things that cannot both be true. Five different Texas chapters cannot all be
+250,874 bytes. A request for one division of a statute cannot return a page
+byte-identical to the article index already on disk. Neither failure was visible in
+an exit code or an HTTP status, and neither required inspecting how curl works —
+only comparing sizes across requests that should have differed. The same check
+confirmed the Illinois success: 19,259 → 64,113 characters is what proved a
+different page had finally been served.

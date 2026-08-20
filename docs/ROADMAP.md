@@ -329,11 +329,14 @@ recorded for each.
 
 **The eighteen remaining cities are started but not done.** The state-preemption
 survey that must precede any encoding lives in
-[`docs/ADU-STATE-SURVEY.md`](./ADU-STATE-SURVEY.md) — **11 of 16 jurisdictions
-established** as of 2026-08-20, giving 13 of the 18 cities a determined state
-layer. Five preempt (AZ, CO, MA, NV — and NV's statute took effect 2026-07-01);
-six do not, of which Florida's is an express legislative "may" rather than an
-absence. GA, IL, NY, PA and TN remain unlooked-at.
+[`docs/ADU-STATE-SURVEY.md`](./ADU-STATE-SURVEY.md) — **14 of 16 jurisdictions
+established** as of 2026-08-20, giving 16 of the 18 cities a determined state
+layer. Four preempt (AZ, CO, MA, NV — and NV's statute took effect 2026-07-01);
+ten do not, of which Florida's is an express legislative "may" rather than an
+absence, and Pennsylvania's resolves on scope: the MPC's enacting clause does not
+reach cities of the first class, so it does not reach Philadelphia at all. Only
+GA and TN remain, both blocked on LexisNexis-only source access — and a stale
+mirror must not be used to establish a 2026 absence.
 
 Nothing from that survey is wired into the engine, deliberately: the resolved
 jurisdictions state their rules in **eight structurally different forms**, and
