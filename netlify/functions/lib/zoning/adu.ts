@@ -1345,6 +1345,90 @@ const BOSTON_LOCAL: LocalLayer = {
   },
 }
 
+// ── DENVER ──────────────────────────────────────────────────────────────────
+//
+// ⚠️ THE INSTRUMENT FORK, SETTLED FIRST — and the answer is BOTH. Denver runs the
+// Denver Zoning Code (2010) and Former Chapter 59 side by side for retained
+// properties, which is the fork rule 27 was written about. The Citywide ADUs
+// measure amended the DZC, the zoning map AND Former Chapter 59 together, so
+// neither code is the whole answer and neither is stale relative to the other.
+//
+// Passed by City Council 2024-11-18, effective 2024-12-16. It allows ADUs in all
+// residential areas — Denver CPD states this took the share of the city's land
+// where an ADU is permitted from 36% to 70%.
+const DENVER_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Denver Zoning Code § 11.8.2 (Accessory Dwelling Units), Article 11 Use Limitations, as republished 2025-02-25; adopted by the Citywide ADUs text amendment, Denver City Council 2024-11-18, effective 2024-12-16, which also amended Former Chapter 59',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    // The § 11.8.2.1.B.2 table, all four rows. The first is the ordinary case —
+    // a single-unit dwelling in an SU district on a typical lot.
+    {
+      kind: 'capped',
+      sqFt: 864,
+      condition: 'Single Unit Dwelling use in an SU zone district, attached or detached, on a zone lot of 7,000 sq ft or less',
+      cite: '§ 11.8.2.1.B.2',
+      measure: 'Gross Floor Area (DZC § 11.8.2.1.B.2 table heading, \u201cMAXIMUM GFA OF ADU USE\u201d)',
+      baseline: true,
+    },
+    {
+      kind: 'capped',
+      sqFt: 1000,
+      condition: 'the same, on a zone lot GREATER than 7,000 sq ft',
+      cite: '§ 11.8.2.1.B.2',
+      measure: 'Gross Floor Area (DZC § 11.8.2.1.B.2 table heading, \u201cMAXIMUM GFA OF ADU USE\u201d)',
+    },
+    // ⚠️ THE RATIO AGAIN — SIXTH DRAFTING, AND THE OPERATOR IS FLIPPED BACK.
+    // Denver uses the SAME 75% as Arizona and Phoenix and joins it to a figure
+    // with "whichever is GREATER", where Arizona says "whichever is LESS". The
+    // effect is opposite: Arizona's caps a small primary's ADU below 1,000,
+    // Denver's guarantees 864 however small the primary. No single number is
+    // publishable, because above a 1,152 sq ft primary the ratio governs.
+    {
+      kind: 'not-numeric',
+      rule:
+        '75% of the primary use\u2019s Gross Floor Area OR 864 sq ft, WHICHEVER IS GREATER — so 864 sq ft is guaranteed regardless of the primary\u2019s size, and above a primary of about 1,152 sq ft the ratio governs instead',
+      condition: 'Single Unit Dwelling use in any zone district EXCEPT an SU district, ATTACHED ADU',
+      cite: '§ 11.8.2.1.B.2',
+    },
+    // ⚠️ AN AFFIRMATIVE "NOT APPLICABLE" IN THE TABLE'S OWN MAX-GFA COLUMN — the
+    // code states no maximum for this configuration rather than omitting one.
+    {
+      kind: 'no-maximum',
+      condition:
+        'Single Unit, Two Unit or Multi-Unit Dwelling use in any zone district EXCEPT an SU district, DETACHED ADU — the table prints "Not applicable" in the maximum-GFA column',
+      cite: '§ 11.8.2.1.B.2',
+    },
+  ],
+  // § 11.8.2 states no height. Height comes from the accessory building form
+  // standards in the neighborhood-context articles (3–9), which vary by context.
+  maxHeightFt: [],
+  maxStories: null,
+  heightDefersToBaseZone: { cite: 'DZC Articles 3–9, accessory building form standards for the applicable neighborhood context; § 11.8.2 states no height of its own' },
+  notes: [
+    'ONE ADU per Primary Dwelling Unit containing a Single Unit, Two Unit or Multi-Unit Dwelling use on a zone lot (§ 11.8.2.1.A.1).',
+    '⚠️ An ADU accessory to a TWO-UNIT or MULTI-UNIT primary must be in a DETACHED accessory structure and may NOT be inside the primary structure — and the primary must take a Duplex, Row House or Town House building form (§ 11.8.2.1.A.2).',
+    'Where § 11.8.2.1 conflicts with the general accessory-use conditions in Division 11.7, § 11.8.2.1 governs (§ 11.8.2.1.A.3). Division 11.7 says the same from its side: ADUs follow § 11.8.2 instead of the general limitations (§ 11.7.1.2.A).',
+    'Mobile homes, recreational vehicles and trailers may not be used as ADUs (§ 11.8.2.1.B.1).',
+    'An ADU may have a Partial Kitchen or a Full Kitchen but only one kitchen, and a Partial Kitchen may later be converted to a Full Kitchen (§ 11.8.2.1.C.3).',
+    'No separate driveway from the one serving the primary use, except to take new access from an Alley (§ 11.8.2.1.C.1). A separate outside stairway is allowed but not on a street-facing façade (§ 11.8.2.1.C.2).',
+    // ⚠️ The state-law-driven change, and the reason it changed.
+    '⚠️ OWNER OCCUPANCY IS NOW ONLY AT PERMIT APPLICATION, and only in SU districts. § 11.8.2.2.B requires that at least one owner occupy the existing primary dwelling as their primary residence AT THE TIME the ADU permit application is submitted — not thereafter. Denver CPD states this change was made to comply with HB24-1152, which limits when a jurisdiction may impose an owner-occupancy requirement; previously an ADU could not be used if the owner moved off the property. Not required where the ADU is built simultaneously with a new primary structure (B.2.b), and Denver Housing Authority properties are exempt (B.1). "Primary residence" requires two of: motor vehicle registration, driver\u2019s license, Colorado ID, voter registration, tax documents, utility bill (B.2.c).',
+    '⚠️ PUD PROHIBITIONS ARE NULLIFIED. A PUD District Plan that permits single-unit dwellings "shall be deemed to allow" an ADU, and the Zoning Administrator "shall not apply" an ADU prohibition in such a plan (§ 11.8.2.3.A). Standards then follow the zone district the PUD is based on, or — if it is based on none — the SU-district ADU standards for the same Blueprint Denver future neighborhood context (§ 11.8.2.3.B).',
+    'ADUs may be established on an existing Carriage Lot even with no primary use on that lot, subject to § 12.10.4 (Development on Carriage Lots), which governs on conflict (§ 11.8.2.1.D).',
+    '⚠️ Sixteen DZC zone districts were DELETED by the same measure — the "-1 districts" (U-SU-A1 and the like) existed solely to permit ADUs and became redundant once ADUs were allowed everywhere. Affected properties were rezoned to the corresponding non-1 district with no change to any other requirement. A curated district table carrying a "-1" code would now be stale; this repo\u2019s Denver table does not (checked 2026-08-20).',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'denvergov.org Community Planning and Development — Denver Zoning Code page and the Citywide ADUs text amendment page',
+    codifiedThrough: 'DZC Article 11 as republished 2025-02-25 (base code June 25, 2010), carrying the Citywide ADUs amendment effective 2024-12-16',
+    amendingThisSection: [],
+    note: 'Denver publishes text amendments as a browsable list rather than a pending-codification queue, and the article PDF carries its own republication date. `amendingThisSection: []` records that no pending list exists to read in the Municode sense. ⚠️ Two later bundles are published and were NOT opened — a 2024 Text Amendment Bundle (2025-03-24) and a 2025 Text Amendment Mini Bundle (2026-04-20) — so whether either touches § 11.8.2 is unestablished. The Article 11 PDF republished 2025-02-25 predates both.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -1395,11 +1479,26 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
     // verified against the statute, and "it is a big city in the Denver metro"
     // is a plausible inference, not a reading. So the statute is recorded and
     // its application to Denver is not claimed.
+    // ⚠️ UPGRADED 2026-08-20, and by an outside source rather than an inference.
+    // This was `not-established` because Colorado's test has two halves —
+    // population and MPO membership — and only the first was obvious. Denver
+    // clears it on the city's OWN statement: its Community Planning and
+    // Development department publishes that the Citywide ADUs measure
+    // "implements state legislation (House Bill 24-1152)" and that the
+    // legislation "requires Denver (along with other jurisdictions) to allow
+    // accessory dwelling units in all residential districts". Denver then
+    // amended its code to comply, including the owner-occupancy change the
+    // statute forced.
+    //
+    // That is the jurisdiction asserting its own status, not this tool inferring
+    // it from population — which is what rule 24 forbade. It is still the city's
+    // characterisation rather than an independent test of DRCOG membership
+    // against § 29-35-103, and the `why` says so.
     stateApplies: {
-      kind: 'not-established',
-      why: 'Colorado binds a "subject jurisdiction" — a municipality of 1,000 or more INSIDE a metropolitan planning organisation. Denver clears the population half plainly. The MPO half has not been checked against the statute\u2019s own test and must not be assumed from size.',
+      kind: 'qualifies',
+      why: 'Denver Community Planning and Development states the Citywide ADUs measure implements HB24-1152 and that the legislation requires Denver to allow ADUs in all residential districts; Denver amended the DZC and Former Chapter 59 accordingly, effective 2024-12-16. ⚠️ This is the city\u2019s own characterisation of its status, published by its planning department — not an independent verification of MPO membership against the statutory test in § 29-35-103.',
     },
-    local: NOT_READ_LOCAL('Denver'),
+    local: DENVER_LOCAL,
   },
 
   // ── Read, and the state does not preempt ─────────────────────────────────
@@ -1507,6 +1606,12 @@ export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = O
     competing: ['Guest House'],
     distinguishedBy:
       'The code names both in one sentence and treats them differently: § 20.80.160 allows Incidental Transient Occupancy in a "Guest House" and provides that it "shall not be allowed in an Accessory Dwelling Unit". Distinct co-existing categories. ⚠️ What a Guest House IS in San José was not read — only that it is not the ADU instrument.',
+  },
+  denver: {
+    canonical: 'accessory dwelling unit — DZC Article 11 uses it 46 times; Article 13 defines "detached accessory dwelling unit"',
+    competing: ['carriage house', 'granny flat', 'guest house', 'Carriage Lot'],
+    distinguishedBy:
+      'Nothing to distinguish on the dwelling term: "carriage house", "granny flat" and "guest house" appear ZERO times in DZC Articles 11 and 13. ⚠️ "Carriage Lot" IS a live DZC term (§ 11.8.2.1.D allows an ADU on one even with no primary use, subject to § 12.10.4) — but it names a LOT TYPE, not a dwelling, so it does not compete with the ADU term. Checked in the current code only; Former Chapter 59 was amended by the same measure and its own vocabulary was NOT separately checked.',
   },
   boston: {
     canonical: 'Additional Dwelling Unit (Boston Zoning Code § 53-5.2 and ten other district articles)',

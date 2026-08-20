@@ -99,19 +99,22 @@ describe('which body of law governs', () => {
     expect(aduRulesFor('atlantis').state.kind).toBe('not-established')
   })
 
-  it('⚠️ Denver has a STATUTE but an unverified applicability, and says which', () => {
-    // rule 24 at the state layer: Colorado's mandate is real and cited, and
-    // whether it reaches Denver turns on an MPO test nobody checked. Claiming
-    // the floor for Denver would be a jurisdiction-level truth applied to a city
-    // that was never tested against it.
+  it('⚠️ Denver now qualifies — by the CITY\'s statement, not an inference', () => {
+    // This was `not-established` because Colorado's test has two halves and only
+    // population was obvious; inferring MPO membership from size is what rule 24
+    // forbids. It is closed by an OUTSIDE source: Denver CPD publishes that the
+    // Citywide ADUs measure implements HB24-1152 and that the statute requires
+    // Denver to allow ADUs in all residential districts — and Denver amended its
+    // code accordingly. The jurisdiction asserting its own status.
     const d = aduRulesFor('denver')
     expect(d.state.kind).toBe('preempts')
-    expect(d.stateApplies.kind).toBe('not-established')
-    if (d.stateApplies.kind !== 'not-established') throw new Error('unreachable')
-    expect(d.stateApplies.why).toMatch(/metropolitan planning organisation/i)
-    expect(d.stateApplies.why).toMatch(/must not be assumed from size/)
-    // And nothing is published for it.
-    expect(effectiveMaxSize(d).value).toBeNull()
+    expect(d.stateApplies.kind).toBe('qualifies')
+    if (d.stateApplies.kind !== 'qualifies') throw new Error('unreachable')
+    expect(d.stateApplies.why).toMatch(/HB24-1152/)
+    expect(d.stateApplies.why).toMatch(/requires Denver/)
+    // ⚠️ And the limit of that evidence is stated rather than rounded up.
+    expect(d.stateApplies.why).toMatch(/city’s own characterisation/)
+    expect(d.stateApplies.why).toMatch(/not an independent verification of MPO membership/)
   })
 
   it('⚠️ the state survey is COMPLETE, and the guard cannot pass by finding nothing', () => {
@@ -147,7 +150,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['boston', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -557,21 +560,21 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
     // Only Seattle earned the strong form. The other four each disclose, in
     // their own wording, that no list was available — so the assertion matches
     // the DISCLOSURE, not one city's phrasing.
-    const weak = ['boston', 'la', 'lasvegas', 'sandiego', 'sanjose', 'sf']
+    const weak = ['boston', 'denver', 'la', 'lasvegas', 'sandiego', 'sanjose', 'sf']
     for (const c of ADU_LOCAL_READ) {
       const l = aduRulesFor(c).local
       if (l.kind !== 'read' || l.pending.kind !== 'checked') continue
       if (l.pending.amendingThisSection.length > 0) continue
       const note = l.pending.note ?? ''
       if (weak.includes(c)) {
-        expect(note, c).toMatch(/no (pending-ordinance )?list/i)
+        expect(note, c).toMatch(/no (pending[- ]?(ordinance )?)?list/i)
       } else {
         // ⚠️ The STRONG form: a real list existed, was queried, and came back
         // without anything touching the section. Seattle read a list of 17;
         // Phoenix queried a "Pending Codification" view that returned nothing
         // AND controlled that emptiness against an unfiltered view returning 25.
         expect(['seattle', 'phoenix'], c).toContain(c)
-        expect(note, c).not.toMatch(/no (pending-ordinance )?list/i)
+        expect(note, c).not.toMatch(/no (pending[- ]?(ordinance )?)?list/i)
       }
     }
     // ⚠️ And the set is non-empty and pinned, so this cannot pass by finding
@@ -580,7 +583,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['boston', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1322,7 +1325,7 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
         ;(m.measure ? withMeasure : without).push(c)
       }
     }
-    expect([...new Set(withMeasure)].sort()).toEqual(['la', 'sanjose', 'sf'])
+    expect([...new Set(withMeasure)].sort()).toEqual(['denver', 'la', 'sanjose', 'sf'])
     // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
     // their measure — declared, so the gap is countable rather than invisible.
     expect([...new Set(without)].sort()).toEqual(['phoenix', 'sandiego', 'seattle'])
@@ -1410,7 +1413,7 @@ describe('⚠️ the vocabulary check — every read city, prompted by East Bost
     // check turns this red instead of slipping through. The East Boston failure
     // is exactly what slipping through looks like.
     expect(Object.keys(ADU_VOCABULARY_CHECK).sort()).toEqual([...ADU_LOCAL_READ].sort())
-    expect(ADU_LOCAL_READ.length).toBeGreaterThanOrEqual(8)
+    expect(ADU_LOCAL_READ.length).toBeGreaterThanOrEqual(9)
   })
 
   it('every entry names a canonical term and what was checked against it', () => {
@@ -1482,5 +1485,88 @@ describe('⚠️ the vocabulary check — every read city, prompted by East Bost
     // being the ADU instrument. A sweep that hid its own gaps would be the same
     // failure one level up.
     expect(ADU_VOCABULARY_CHECK.sanjose.distinguishedBy).toMatch(/was not read/)
+  })
+})
+
+describe('Denver — DZC § 11.8.2, citywide since 2024-12-16', () => {
+  const rules = aduRulesFor('denver')
+  if (rules.local.kind !== 'read') throw new Error('expected a read local layer')
+  const local = rules.local
+
+  it('⚠️ BOTH instruments were amended — the fork resolves to "both"', () => {
+    // Denver runs the DZC and Former Chapter 59 side by side for retained
+    // properties, which is the fork rule 27 was written about. The Citywide ADUs
+    // measure amended the DZC, the zoning map AND FC59 together, so neither code
+    // is the whole answer and neither is stale against the other.
+    expect(local.citation).toMatch(/Former Chapter 59/)
+    expect(local.citation).toMatch(/2024-12-16/)
+  })
+
+  it('⚠️ the SIXTH ratio drafting, and the operator flips back to GREATER', () => {
+    // Denver uses the SAME 75% as Arizona and Phoenix, joined to a figure by
+    // "whichever is GREATER" where Arizona says "LESS". Opposite effect on a
+    // small primary: Arizona's caps below 1,000, Denver's guarantees 864.
+    const r = local.maxSizeSqFt.find((m) => m.kind === 'not-numeric')!
+    if (r.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(r.rule).toMatch(/75%/)
+    expect(r.rule).toMatch(/WHICHEVER IS GREATER/)
+    expect(r.rule).toMatch(/864 sq ft is guaranteed/)
+
+    // Pinned against Arizona so the two cannot be read as the same rule.
+    const az = aduRulesFor('phoenix').state
+    if (az.kind !== 'preempts' || az.size.kind !== 'floors') throw new Error('expected floors')
+    const azf = az.size.floors.find((f) => f.baseline)!
+    if (azf.form !== 'derived') throw new Error('unreachable')
+    expect(azf.rule).toMatch(/75%/)
+    expect(azf.rule).toMatch(/WHICHEVER IS LESS/i)
+  })
+
+  it('carries all four rows of the size table, including an affirmative none', () => {
+    // The table's max-GFA column prints "Not applicable" for a detached ADU
+    // outside SU districts — the code stating no maximum, not omitting one.
+    const caps = local.maxSizeSqFt.filter((m) => m.kind === 'capped')
+    expect(caps.map((c) => (c as Extract<typeof c, { kind: 'capped' }>).sqFt)).toEqual([864, 1000])
+    expect(local.maxSizeSqFt.some((m) => m.kind === 'no-maximum')).toBe(true)
+    const none = local.maxSizeSqFt.find((m) => m.kind === 'no-maximum')!
+    if (none.kind !== 'no-maximum') throw new Error('unreachable')
+    expect(none.condition).toMatch(/Not applicable/)
+    expect(none.condition).toMatch(/DETACHED/)
+    // Baseline is the ordinary case, not the most permissive row.
+    const b = local.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(b.kind).toBe('capped')
+    expect(effectiveMaxSize(rules).value).toBe(864)
+  })
+
+  it('⚠️ owner occupancy is now only at PERMIT APPLICATION, and says why', () => {
+    // The state-law-driven change. Previously an ADU could not be used if the
+    // owner moved off; HB24-1152 limits when owner occupancy may be imposed.
+    const n = local.notes.find((x) => /OWNER OCCUPANCY IS NOW ONLY AT PERMIT APPLICATION/.test(x))!
+    expect(n).toMatch(/not thereafter/)
+    expect(n).toMatch(/HB24-1152/)
+    expect(n).toMatch(/Denver Housing Authority/)
+    expect(n).toMatch(/two of/)
+  })
+
+  it('⚠️ records that PUD ADU prohibitions are nullified', () => {
+    const n = local.notes.find((x) => /PUD PROHIBITIONS ARE NULLIFIED/.test(x))!
+    expect(n).toMatch(/deemed to allow/)
+    expect(n).toMatch(/shall not apply/)
+    expect(n).toMatch(/Blueprint Denver/)
+  })
+
+  it('⚠️ flags the sixteen deleted "-1" districts as a staleness hazard', () => {
+    // The measure deleted 16 DZC districts whose only purpose was permitting
+    // ADUs. A curated table still carrying one would now be wrong — checked.
+    const n = local.notes.find((x) => /Sixteen DZC zone districts were DELETED/.test(x))!
+    expect(n).toMatch(/U-SU-A1/)
+    expect(n).toMatch(/this repo’s Denver table does not/)
+  })
+
+  it('⚠️ names two later amendment bundles it did NOT open', () => {
+    if (local.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(local.pending.note).toMatch(/were NOT opened/)
+    expect(local.pending.note).toMatch(/2025-03-24/)
+    expect(local.pending.note).toMatch(/2026-04-20/)
+    expect(local.pending.codifiedThrough).toMatch(/2025-02-25/)
   })
 })
