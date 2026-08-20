@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   aduRulesFor, summariseAdu, effectiveMaxSize, ADU_LOCAL_READ, ADU_STATE_PREEMPTED,
-  ADU_STATE_NOT_ESTABLISHED, ADU_VOCABULARY_CHECK,
+  ADU_STATE_NOT_ESTABLISHED, ADU_VOCABULARY_CHECK, ADU_ALL_CITIES,
 } from './adu'
 import { CITIES } from '../../../../src/config/cities'
 import { readFileSync } from 'node:fs'
@@ -94,13 +94,15 @@ describe('which body of law governs', () => {
   })
 
   it('⚠️ says nobody has looked, rather than that the city has no rules', () => {
-    // rule 5. "Atlanta has no ADU rules" would be a finding; nobody has looked.
-    // ⚠️ The fixture moved from Denver to Atlanta because DENVER STOPPED
-    // QUALIFYING — Colorado's statute was found on 2026-08-20, so Denver is no
-    // longer a nothing-established city. Rule 29 in action: a fixture chosen for
-    // being unread is drawn from the front of the work queue. Atlanta is a
-    // structurally better example only while Georgia stays blocked, and the
-    // guard below pins that set so this cannot rot silently.
+    // rule 5. "This city has no ADU rules" would be a finding; nobody has looked.
+    // ⚠️ THE HISTORY OF THIS FIXTURE IS THE ARGUMENT FOR CONSTRUCTING IT. It
+    // named Denver, then a city whose state was still unresearched — and the
+    // comment that justified the second choice predicted its own expiry, tied
+    // it to a named condition, and was overtaken anyway. Both live examples
+    // stopped qualifying because the work they were chosen for being ahead of
+    // got done: every jurisdiction in the survey is now closed, and as of this
+    // commit every one of the 23 cities has been read, so NO live example
+    // remains and none can be repointed at. The fixture is a literal.
     const a = NOTHING_ESTABLISHED
     expect(a.state.kind).toBe('not-established')
     expect(a.local.kind).toBe('not-read')
@@ -161,7 +163,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['boston', 'denver', 'la', 'lasvegas', 'phoenix', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect([...ADU_LOCAL_READ]).toEqual(['atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'nyc', 'philadelphia', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -623,7 +625,7 @@ describe('⚠️ the pending-ordinance check is structural, not a habit', () => 
       const l = aduRulesFor(c).local
       return l.kind === 'read' && l.pending.kind === 'checked'
     })
-    expect(checked).toEqual(['atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
+    expect(checked).toEqual(['atlanta', 'austin', 'boston', 'charlotte', 'chicago', 'columbus', 'dallas', 'dc', 'denver', 'la', 'lasvegas', 'miami', 'milwaukee', 'minneapolis', 'nashville', 'philadelphia', 'phoenix', 'raleigh', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -1365,7 +1367,7 @@ describe('⚠️ lot-area figures name their measure, or say they do not', () =>
         ;(m.measure ? withMeasure : without).push(c)
       }
     }
-    expect([...new Set(withMeasure)].sort()).toEqual(['atlanta', 'charlotte', 'denver', 'la', 'minneapolis', 'nyc', 'raleigh', 'sanjose', 'sf'])
+    expect([...new Set(withMeasure)].sort()).toEqual(['atlanta', 'charlotte', 'denver', 'la', 'minneapolis', 'nyc', 'philadelphia', 'raleigh', 'sanjose', 'sf'])
     // Seattle, San Diego and Phoenix's upper-bound entries are not yet swept for
     // their measure — declared, so the gap is countable rather than invisible.
     expect([...new Set(without)].sort()).toEqual(['austin', 'phoenix', 'sandiego', 'seattle'])
@@ -1929,7 +1931,14 @@ describe('the fan-out three — Charlotte, Dallas, Nashville', () => {
     // shift. DC's amends § 253.13 only, swapping a renamed agency — real, and
     // touching no figure, scope or operator. Both are listed; neither is
     // smoothed into "nothing pending", which is what an empty list would say.
-    expect(nonEmpty).toEqual(['dc', 'nashville'])
+    // ⚠️ Philadelphia is the THIRD, and the most consequential: Bill No. 250042
+    // would DELETE the subsection carrying the 800 sq ft cap. The current figure
+    // is what is encoded, and the bill is recorded rather than anticipated.
+    expect(nonEmpty).toEqual(['dc', 'nashville', 'philadelphia'])
+    const ph = aduRulesFor('philadelphia').local
+    if (ph.kind !== 'read' || ph.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(ph.pending.amendingThisSection[0]).toMatch(/would delete § 14-604\(11\)\(i\) entirely/)
+    expect(ph.pending.amendingThisSection[0]).toMatch(/Not enacted; the current figure is encoded/)
     const dc = aduRulesFor('dc').local
     if (dc.kind !== 'read' || dc.pending.kind !== 'checked') throw new Error('expected checked')
     expect(dc.pending.amendingThisSection[0]).toMatch(/Department of Buildings/)
@@ -2687,5 +2696,167 @@ describe('⚠️ Atlanta: the definition carries everything, and a rival use out
     // ⚠️ The positive control that made the original zero a measurement is still
     // there — the addition must not have displaced it (rule 20).
     expect(st.basis).toMatch(/Positive control/)
+  })
+})
+
+describe('⚠️ Philadelphia: permitted after all, and no new-build ADU exists', () => {
+  it('⚠️ the prior going in was that it might permit none — it permits them', () => {
+    // The pathway is narrow enough that secondary sources describe the city as
+    // not allowing ADUs, which is exactly how a plausible false absence forms.
+    // § 14-604(11) states a full regime under that name.
+    const l = aduRulesFor('philadelphia').local
+    expect(l.kind).toBe('read')
+    if (l.kind !== 'read') throw new Error('unreachable')
+    expect(l.citation).toMatch(/§ 14-604\(11\) \(Accessory Dwelling Units\)/)
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'capped') throw new Error('unreachable')
+    expect(b.sqFt).toBe(800)
+  })
+
+  it('⚠️ NO new-build ADU exists, and the constraint hides in "Where Allowed"', () => {
+    // § 14-604(11)(c) requires the ADU to sit inside a principal building or a
+    // detached accessory building "in existence as of the effective date of this
+    // Zoning Code" — 2012-08-22. Every Philadelphia ADU is a conversion of a
+    // structure that already stood. It is not in a subsection about
+    // construction, so a reader collecting size and count would miss it.
+    const l = aduRulesFor('philadelphia').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const n = l.notes.find((x) => /NO NEW-BUILD ADUs AT ALL/.test(x))!
+    expect(n).toMatch(/IN EXISTENCE AS OF THE EFFECTIVE DATE/)
+    expect(n).toMatch(/2012-08-22/)
+    expect(n).toMatch(/describe a project that cannot be built/)
+  })
+
+  it('⚠️ historic structures have NO cap — an exception, not a second figure', () => {
+    // § 14-604(11)(i) excepts historic structures from its own 800 sq ft cap by
+    // name, so the code affirmatively states no square-foot limit applies there.
+    // That is an answer, not a hole — and the other constraints still bind.
+    const l = aduRulesFor('philadelphia').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const h = l.maxSizeSqFt.find((m) => m.kind === 'no-maximum')!
+    expect(h.condition).toMatch(/HISTORIC STRUCTURE/)
+    expect(h.condition).toMatch(/The other § 14-604\(11\) constraints still bind/)
+    // The baseline is the capped case, so the summary leads with 800 rather than
+    // with the unlimited exception (rule 6, and San Diego's lesson).
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    expect(b.kind).toBe('capped')
+    expect(summariseAdu(aduRulesFor('philadelphia'))).toMatch(/Up to 800 sq ft/)
+  })
+
+  it('⚠️ the measure is unqualified, and the resolving referral dead-ends', () => {
+    // § 14-202 defines GROSS Floor Area exhaustively; § 14-604(11)(i) caps bare
+    // "floor area", which Title 14 never defines. § 14-203's referral to Title 4
+    // dead-ends in amendment overlays incorporating the IBC/IRC by reference.
+    // Reading "gross" across from the sibling term is rule 4's invented
+    // conversion — the Atlanta SPI-20 shape.
+    const l = aduRulesFor('philadelphia').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'capped') throw new Error('unreachable')
+    expect(b.measure).toMatch(/UNQUALIFIED THIRD OUTCOME/)
+    expect(b.measure).toMatch(/defined nowhere in Title 14/)
+    expect(b.measure).toMatch(/invented conversion rule 4 forbids/)
+  })
+
+  it('⚠️ the definition is MISSING — the converse of Massachusetts and NYC', () => {
+    // 421 enumerated definitions in § 14-203 and no ADU entry. Everywhere else
+    // in this file the definition carried the substance; here the code permits
+    // and regulates a use it never defines, which is what leaves the measure
+    // unresolvable.
+    expect(ADU_VOCABULARY_CHECK.philadelphia.distinguishedBy).toMatch(/THE HAZARD HERE IS NOT A RIVAL TERM, IT IS THE MISSING ONE/)
+    expect(ADU_VOCABULARY_CHECK.philadelphia.distinguishedBy).toMatch(/421 enumerated/)
+    expect(ADU_VOCABULARY_CHECK.philadelphia.canonical).toMatch(/never defined/)
+    // The contrast is pinned on both sides, so this stays legible if either
+    // city is re-encoded.
+    expect(ADU_VOCABULARY_CHECK.nyc.distinguishedBy).toMatch(/§ 12-10/)
+  })
+
+  it('⚠️ height is an EMPTY slot, established across the section’s siblings', () => {
+    // Six of the fourteen sibling subsections of § 14-604 state heights and (11)
+    // states none — so the slot exists across the section and this subsection
+    // leaves it empty. Not "no slot", and not a failed lookup.
+    const l = aduRulesFor('philadelphia').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.maxHeightFt).toEqual([])
+    expect(l.maxStories).toBeNull()
+    expect(l.heightDefersToBaseZone?.cite).toMatch(/empty slot rather than no slot/)
+  })
+
+  it('⚠️ two instruments failed their control, so no zero is reported from either', () => {
+    // amlegal's search API returns 77 code-wide for a term with 85 Title 14
+    // documents by grep — impossible — and Legistar returned ZERO for the
+    // control term "zoning". The pending list is therefore a declared gap, not
+    // a clean sweep, even though a real bill was found in it (rule 20).
+    const l = aduRulesFor('philadelphia').local
+    if (l.kind !== 'read' || l.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(l.pending.note).toMatch(/FAILED THEIR POSITIVE CONTROL/)
+    expect(l.pending.note).toMatch(/DECLARED GAP, not a clean sweep/)
+    // ⚠️ And the silent-skip defect: a title that never appeared as a zero.
+    expect(l.pending.note).toMatch(/SILENTLY SKIPPED/)
+    expect(l.pending.note).toMatch(/never appeared as a zero/)
+  })
+})
+
+describe('⚠️ all twenty-three cities are read — pin the partition, not the exception', () => {
+  it('every city in the map has a read ordinance, and the count is pinned', () => {
+    // ⚠️ rule 29's corollary. The "not yet read" bucket is now EMPTY, so any
+    // assertion of the form "every unread city discloses why" is vacuously true
+    // and would go green if someone deleted the disclosure — or added a city
+    // with none. So this counts every member of the partition instead: a city
+    // added to the map without a read turns this RED rather than joining an
+    // empty bucket nobody checks.
+    const all = [...ADU_ALL_CITIES]
+    const read = all.filter((c) => aduRulesFor(c).local.kind === 'read')
+    const unread = all.filter((c) => aduRulesFor(c).local.kind !== 'read')
+    expect(read.length + unread.length).toBe(all.length)
+    expect(all.length).toBe(23)
+    expect(unread).toEqual([])
+    expect(read.length).toBe(23)
+    // And ADU_LOCAL_READ is the same set, not a hand-maintained parallel list
+    // that could drift out of agreement with the data.
+    expect([...ADU_LOCAL_READ].sort()).toEqual(read.sort())
+  })
+
+  it('⚠️ the unknown-city fallback still returns not-read, and claims nothing', () => {
+    // The one remaining `not-read` producer is the fallback for a city absent
+    // from the map — which must stay `not-established`, never `no-provision`.
+    // A default must not manufacture a claim about a jurisdiction (rule 5).
+    const unknown = aduRulesFor('a-city-that-does-not-exist')
+    expect(unknown.local.kind).toBe('not-read')
+    expect(unknown.state.kind).toBe('not-established')
+    expect(summariseAdu(unknown)).toMatch(/nobody has looked/)
+  })
+
+  it('⚠️ every read city carries a vocabulary check — no city skipped the step', () => {
+    // The East Boston failure was a vocabulary failure, and the check is the
+    // thing that would have caught it. Pinned by set equality rather than by
+    // count, so a city cannot be added to one and omitted from the other.
+    expect(Object.keys(ADU_VOCABULARY_CHECK).sort()).toEqual([...ADU_LOCAL_READ].sort())
+    for (const c of ADU_LOCAL_READ) {
+      expect(ADU_VOCABULARY_CHECK[c].canonical.length, c).toBeGreaterThan(20)
+      expect(ADU_VOCABULARY_CHECK[c].distinguishedBy.length, c).toBeGreaterThan(80)
+    }
+  })
+
+  it('⚠️ five cities do NOT use the obvious noun, and that set is pinned', () => {
+    // Boston, DC, NYC, Chicago and Atlanta each depart from "accessory dwelling
+    // unit" — by rival term, by different noun, by two terms, or by inversion.
+    // Pinned so the tally cannot quietly drift, and so a sixth departure has to
+    // be recorded deliberately rather than absorbed.
+    // ⚠️ THE FIRST VERSION OF THIS TEST MEASURED THE FORMATTING, NOT THE
+    // PROPERTY (rule 11). It filtered on whether `canonical` contained a warning
+    // marker, which matched Philadelphia (the noun is right; the term is simply
+    // never defined) and Raleigh (whose note says the obvious noun IS correct),
+    // and MISSED Boston — the case the entire vocabulary check exists for. It
+    // returned five elements, which is the right count, from the wrong set.
+    // `departsFromObviousNoun` is now a field, so the property is data.
+    const departs = ADU_LOCAL_READ.filter((c) => ADU_VOCABULARY_CHECK[c].departsFromObviousNoun)
+    expect(departs.sort()).toEqual(['atlanta', 'boston', 'chicago', 'dc', 'nyc'])
+    // And the partition is pinned on both sides, so a city cannot be added
+    // without a deliberate call either way (rule 29's corollary).
+    const same = ADU_LOCAL_READ.filter((c) => !ADU_VOCABULARY_CHECK[c].departsFromObviousNoun)
+    expect(departs.length + same.length).toBe(23)
+    expect(same).toContain('philadelphia')
+    expect(same).toContain('raleigh')
   })
 })

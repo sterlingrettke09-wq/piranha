@@ -2388,6 +2388,76 @@ const ATLANTA_LOCAL: LocalLayer = {
   },
 }
 
+// ── PHILADELPHIA ────────────────────────────────────────────────────────────
+//
+// ⚠️ PHILADELPHIA DOES PERMIT ADUs, under exactly that name, since the 2012
+// code. The prior going in was that it might permit none — and the reason that
+// looked right is that the pathway is narrow enough that secondary sources
+// describe the city as not allowing them. § 14-604(11) states a full regime.
+//
+// ⚠️ AND THE ABSENCE IS REAL, BUT DEFINITIONAL — the converse of Massachusetts
+// and NYC. § 14-203 carries 421 enumerated alphabetical definitions and has NO
+// "Accessory Dwelling Unit" entry. The code permits and regulates a use it
+// never defines. Everywhere else in this file the definition held the
+// substance; here it does not exist.
+const PHILADELPHIA_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'Philadelphia Code § 14-604(11) (Accessory Dwelling Units), as amended by Bill No. 190612 (eff. 2020-01-01) and Bill No. 210078-A; ⚠️ the use is NOT defined in § 14-203',
+  readOn: '2026-08-20',
+  maxSizeSqFt: [
+    {
+      kind: 'capped',
+      sqFt: 800,
+      // ⚠️ A SINGLE LIMB WITH AN EXCEPTION, NOT AN OPERATOR. The exception does
+      // not raise the cap — it removes it entirely for one class of lot.
+      condition:
+        'every ADU EXCEPT one in a historic structure — "The floor area of an accessory dwelling unit may not exceed 800 sq. ft., except in historic structures". A single limb; the "except" carves out a class rather than joining a second figure',
+      cite: '§ 14-604(11)(i)',
+      measure:
+        '⚠️ BARE "floor area", AND IT IS THE UNQUALIFIED THIRD OUTCOME. § 14-202 defines GROSS Floor Area exhaustively; unqualified "floor area" is defined nowhere in Title 14. § 14-203\u2019s referral to Title 4 does not resolve it either — Title 4\u2019s subcodes are amendment overlays ("[Add the following definition]") incorporating the 2021 IBC/IRC by reference, so the codified text supplies no answer. Reading "gross" across from the sibling term is the invented conversion rule 4 forbids',
+      baseline: true,
+    },
+    {
+      kind: 'no-maximum',
+      // ⚠️ AN ANSWER, NOT A HOLE: § 14-604(11)(i) names historic structures as
+      // the exception to its own cap, so the code affirmatively states that no
+      // square-foot limit applies there.
+      condition:
+        'ADU in a HISTORIC STRUCTURE — § 14-604(11)(i) excepts these from the 800 sq ft cap by name, so no square-foot limit applies. ⚠️ The other § 14-604(11) constraints still bind, including the existing-building requirement and owner occupancy',
+      cite: '§ 14-604(11)(i)',
+    },
+  ],
+  // ⚠️ NO HEIGHT RULE, AND IT IS A KNOWN ABSENCE BY THE SLOT TEST: six of the
+  // fourteen sibling subsections of § 14-604 state heights, and (11) states
+  // none. The slot exists across the section and this subsection leaves it
+  // empty. The base district envelope governs.
+  maxHeightFt: [],
+  maxStories: null,
+  heightDefersToBaseZone: { cite: '§ 14-604(11)(b) — "Accessory dwelling units are subject to all applicable regulations of the zoning district in which they are located, except as otherwise expressly stated in this section", and no height is expressly stated. ⚠️ Six of the fourteen sibling subsections DO state heights, so this is an empty slot rather than no slot' },
+  notes: [
+    // ⚠️ THE SHARPEST CONSTRAINT IN THE SECTION, AND THE EASIEST TO MISS — it
+    // sits in "Where Allowed" rather than in any subsection about construction.
+    '⚠️ NO NEW-BUILD ADUs AT ALL. § 14-604(11)(c): "Accessory dwelling units must be located within the interior of the principal building or within the interior of a detached accessory building, such as detached garages, THAT ARE IN EXISTENCE AS OF THE EFFECTIVE DATE OF THIS ZONING CODE" — 2012-08-22. Every Philadelphia ADU is a conversion of a structure that already stood fourteen years ago. A tool that reported the 800 sq ft cap without this would describe a project that cannot be built.',
+    '⚠️ THE NON-HISTORIC PATHWAY IS TWO DISTRICTS. § 14-604(11)(d)(.2) permits an ADU in RSA-5 and CMX-1 only, and only where "The area of the lot is a minimum of 1,600 sq. ft.; AND No more than one dwelling unit is otherwise permitted" — both limbs bind. The other pathway, § 14-604(11)(d)(.1), is any structure designated historic, or contributing to a historic district in the Historical Commission\u2019s opinion.',
+    'The use is allowed only on a lot occupied by a SINGLE-FAMILY use in a detached or semi-detached building — except in historic structures, where an attached building also qualifies (§ 14-604(11)(c)).',
+    '⚠️ SEVEN OVERLAYS SUBTRACT, AND FOUR OF THEM ELIMINATE THE NON-HISTORIC ROUTE ENTIRELY. Absolute ban in /FNE, /NE (Wards 56, 58, 63, 66) and /SIX (District 6). Ban "in RSA-5 and CMX-1 except historic" in /FDO, /VDO, /EDO and /NDO (Districts 4, 5, 8, 9) — and since RSA-5 plus CMX-1 IS the whole non-historic pathway, that leaves only the historic route there.',
+    'Owner occupancy is required AND recorded against the title: "The principal dwelling unit or the accessory dwelling unit must be occupied by the owner of the subject lot", with an affidavit and deed restriction recorded before final occupancy, removable only by Zoning Board approval (§ 14-604(11)(e)).',
+    'One per lot (§ 14-604(11)(f)), and no additional land area is required beyond the district minimum (§ 14-604(11)(g)) — so the ADU does not consume density.',
+    'Only one entrance to a building containing an ADU may face a street, unless the building already had an additional street-facing entrance before the ADU was created (§ 14-604(11)(h)).',
+    '⚠️ THE USE IS NOT DEFINED. § 14-203 enumerates 421 alphabetical definitions and contains no "Accessory Dwelling Unit" entry, so the code permits and regulates a use it never defines. This is the exact converse of Massachusetts and NYC, where the definition carried every figure and the operative sections carried none.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-20',
+    source: 'American Legal (codelibrary.amlegal.com) — ⚠️ Cloudflare-gated to automated fetches, so the corpus was harvested through its JSON API after reading the endpoint table out of its own JS bundle: 4,562 documents / 9.49 MB across all 22 Titles and the Home Rule Charter',
+    codifiedThrough: 'the electronic Philadelphia Code and Home Rule Charter, current through 2026-08-19. ⚠️ An older snapshot banner reading "current through May 25, 2026" is still in circulation and is NOT the live state',
+    // ⚠️ NON-EMPTY, and the pending bill would REMOVE the figure encoded above.
+    amendingThisSection: ['Bill No. 250042 (Gauthier et al.), introduced 2025-01-30, IN COMMITTEE for 19 months — would delete § 14-604(11)(i) entirely, repealing the 800 sq ft cap. Not enacted; the current figure is encoded.'],
+    note: '⚠️ TWO INSTRUMENTS FAILED THEIR POSITIVE CONTROL AND NO ZERO IS REPORTED FROM EITHER. amlegal\u2019s own search API under-reports — "dwelling unit" returns 77 code-wide against 85 Title 14 documents by grep, which is impossible — and Legistar\u2019s search returned ZERO records for the control term "zoning". So the pending-bill list\u2019s completeness is a DECLARED GAP, not a clean sweep (rule 20). ⚠️ Three harvest defects were caught and corrected, two of them invisible to any test: `render-doc` returns only a node\u2019s own heading, so the first Title 14 harvest produced 39 KB and was caught by plausibility alone; and the Home Rule Charter was SILENTLY SKIPPED because its TOC anchor text is the bare word "Philadelphia" and the top-level regex never matched it — it never appeared as a zero, and was caught only by tabulating documents per title afterwards (walked separately: 488 nodes, 0 ADU terms). Four Titles returned zero nodes and were verified as genuinely repealed shells rather than walk failures.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -2472,7 +2542,7 @@ const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   dc: { city: 'dc', state: NO_PROVISION.dc, stateApplies: NA, local: DC_LOCAL },
   chicago: { city: 'chicago', state: NO_PROVISION.il, stateApplies: NA, local: CHICAGO_LOCAL },
   nyc: { city: 'nyc', state: NO_PROVISION.ny, stateApplies: NA, local: NYC_LOCAL },
-  philadelphia: { city: 'philadelphia', state: NO_PROVISION.pa, stateApplies: NA, local: NOT_READ_LOCAL('Philadelphia') },
+  philadelphia: { city: 'philadelphia', state: NO_PROVISION.pa, stateApplies: NA, local: PHILADELPHIA_LOCAL },
 
   // ── Georgia and Tennessee: whole-code searches, both clean ──────────────
   atlanta: { city: 'atlanta', state: NO_PROVISION.ga, stateApplies: NA, local: ATLANTA_LOCAL },
@@ -2521,32 +2591,63 @@ export interface VocabularyCheck {
   competing: string[]
   /** How the code itself keeps them apart — or why there is nothing to keep apart. */
   distinguishedBy: string
+  /** ⚠️ DOES THE CITY'S OWN TERM DIFFER FROM "accessory dwelling unit"?
+   *
+   *  A FIELD, not something inferred from the prose above it. The first attempt
+   *  to count these tested whether `canonical` contained a warning marker — and
+   *  that matched Philadelphia (the noun is right, the term is simply never
+   *  defined) and Raleigh (whose note says the obvious noun IS correct), while
+   *  missing Boston, the case the whole check exists for. The regex measured the
+   *  formatting, not the property (rule 11), and it did so in the direction that
+   *  produced a plausible five-element answer.
+   *
+   *  True for a different noun (DC "accessory apartment", NYC "ancillary"), for
+   *  two terms in place of one (Chicago), for an inverted heading (Atlanta), and
+   *  for a rival term with the OPPOSITE effect (Boston). False where the code's
+   *  own term is the expected one, whatever else is wrong with it. */
+  departsFromObviousNoun: boolean
 }
 
 export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = Object.freeze({
+  philadelphia: {
+    canonical: '"Accessory Dwelling Units" — the section heading at § 14-604(11). ⚠️ The noun is right AND the term is never defined',
+    competing: ['⚠️ none found — but see how the zeros were obtained', 'Gross Floor Area (§ 14-202) — a defined SIBLING of the undefined measure used here'],
+    distinguishedBy:
+      '⚠️ THE HAZARD HERE IS NOT A RIVAL TERM, IT IS THE MISSING ONE. § 14-203 carries 421 enumerated alphabetical definitions and has no "Accessory Dwelling Unit" entry, so the code permits and regulates a use it never defines — the converse of Massachusetts and NYC, where the definition held every figure. The practical consequence is the size measure: § 14-604(11)(i) caps "floor area", § 14-202 defines GROSS Floor Area exhaustively, and bare "floor area" is defined nowhere in Title 14; the referral to Title 4 dead-ends in amendment overlays incorporating the 2021 IBC/IRC by reference. ⚠️ AND THE ZEROS HERE ARE NOT FROM A SEARCH BOX: amlegal\u2019s own search API under-reports impossibly ("dwelling unit" 77 code-wide against 85 Title 14 documents by grep), so every count came from a 4,562-document, 9.49 MB whole-corpus harvest with controls of 1,356 for "zoning" and 801 for "dwelling".',
+    // the section heading is "Accessory Dwelling Units" — the expected noun. What is missing is the DEFINITION, not the term
+    departsFromObviousNoun: false,
+  },
   atlanta: {
     canonical: '⚠️ "Dwelling: Accessory" — the INVERTED form, at § 16-29.001(12)(a)7. The usual noun is otherwise correct here',
     competing: ['Guest house (§ 16-29.001(10)(c))', "Servants' quarters (§ 16-29.001(10)(f))", 'Secondary dwelling unit — used operatively and NEVER defined'],
     distinguishedBy:
       '⚠️ THE KITCHEN, AND THE COMPETING USE IS ALLOWED WHERE THE ADU IS NOT. A "guest house" is "a lodging unit for temporary guests in an accessory building. NO SUCH LODGING UNIT SHALL CONTAIN INDEPENDENT KITCHEN FACILITIES", while an ADU is a dwelling unit "with independent kitchen facilities" — a single criterion, stated on both sides. ⚠️ The danger is directional: guest houses are permitted in EVERY single-family district INCLUDING R-1, where ADUs are not, so reading "guest house permitted" as "ADU permitted" would publish a wrong answer for the nine districts that do not allow ADUs. Servants\u2019 quarters carry the same kitchen bar with a conditional release — "except in districts and on lots where additional dwelling or lodging units are authorized" — and both are expressly excluded from dwelling-unit computations. ⚠️ "Secondary dwelling unit" appears OPERATIVELY inside the FAR definition and is defined nowhere in the code.',
+    // the heading is INVERTED — "Dwelling: Accessory" — so an exact-phrase search for the usual noun misses the definition
+    departsFromObviousNoun: true,
   },
   raleigh: {
     canonical: 'Accessory Dwelling Unit (ADU) — defined at Art. 12.2 and used as the section title in both § 2.6.3 and § 3.6.2. ⚠️ The FIRST city in five where the obvious noun is the right one',
     competing: ['Cottage Court — a distinct UDO building type', 'Tiny House — a principal use here, not an ADU', 'Manufactured Home — a permitted ADU FORM, not a competitor'],
     distinguishedBy:
       '⚠️ Raleigh breaks the run: after Boston, DC, NYC and Chicago each used a different noun, the obvious term is correct here and is the code\u2019s own. What needs separating instead is the FORM from the USE. "Tiny House" is a PRINCIPAL use in Raleigh — § 2.6.3 permits an ADU "on a lot with an existing Detached House or TINY HOUSE", so a tiny house is what the ADU is accessory TO, not the ADU itself. "Manufactured Home" is the reverse: not a competing term but a permitted ADU form, admitted by § 2.6.3.D.6 subject to five construction criteria and its own 600 sq ft cap. "Cottage Court" is a separate building type in the UDO and does not carry ADU standards. ⚠️ Instrument correction worth keeping: `grep -oi "ADU"` returned 74, contaminated by "adult" and "graduate"; the word-bounded count is 50.',
+    // the code’s own term is the expected one; the first city in five for which that is true
+    departsFromObviousNoun: false,
   },
   chicago: {
     canonical: '⚠️ TWO defined terms, not one: "Coach House" (§ 17-17-0234.6) and "Conversion Unit" (§ 17-17-0240.6). Neither is called an accessory dwelling unit',
     competing: ['Additional Dwelling Unit / ADU — defined in TITLE 2, not Title 17', 'Accessory dwelling unit — ordinary English, one occurrence'],
     distinguishedBy:
       '⚠️ THE UMBRELLA TERM IS DEFINED IN A DIFFERENT TITLE. "Additional Dwelling Unit" and "ADU" ARE defined — at § 2-44-106(c), in Title 2 — so a Title-17-only search reports the term undefined, which is wrong. That is the Boston hazard in a third shape: not a competing use with an opposite effect (Boston), and not a genus inside the definition (Columbus and NYC), but a defined term sitting OUTSIDE the code being searched. It matters because § 17-9-0201-F(16) routes the affordability requirement into Title 2, so the binding process is outside the zoning code entirely. "Accessory dwelling unit" occurs ONCE in Title 17, in § 17-6-0400, as ordinary English about artist housing in PMD 8 — with two further ordinary-English traps at § 17-10-0100 and § 16-18-030 (1998). ⚠️ The two defined terms are NOT interchangeable: a coach house is a detached accessory building with its own height limit and an express FAR exemption; a conversion unit is created inside an existing building 20+ years old under a density formula, and has NO FAR exemption.',
+    // TWO terms, "coach house" and "conversion unit", with the umbrella term defined in another Title
+    departsFromObviousNoun: true,
   },
   nyc: {
     canonical: '⚠️ "Ancillary dwelling unit" — NOT "accessory". Defined at ZR § 12-10, last amended 2024-12-05 by City of Yes for Housing Opportunity',
     competing: ['Accessory dwelling unit — ZERO occurrences in the ZR', 'Backyard ancillary dwelling unit — a SECOND defined term', 'Additional dwelling unit — the genus of the definition, not a term'],
     distinguishedBy:
       '⚠️ THE OBVIOUS NOUN RETURNS A FALSE ABSENCE. "Accessory dwelling unit" occurs ZERO times in the Zoning Resolution, confirmed on two independent instruments; the abbreviation "ADU" occurs zero times in the ZR and is defined only in Building Code Appendix U. ⚠️ AND THE CITY\u2019S OWN COMMUNICATIONS POINT AWAY FROM ITS CODE: DCP\u2019s outreach PDF is titled "Accessory Dwelling Units" while the text DCP enacted says ancillary. A second defined term, "backyard ancillary dwelling unit", carries carve-outs the general term does not. ⚠️ "Additional dwelling unit" is the GENUS of the § 12-10 definition — "is an additional dwelling unit, permitted on the same zoning lot…" — exactly as in Columbus, and not a separately defined competing term as in Boston. ⚠️ THE OFFICIAL SITE SEARCH IS BROKEN AND WOULD HAVE PRODUCED A WRONG ANSWER: it returns 4 sections for "ancillary dwelling unit" when there are 7 — missing § 12-10 ITSELF, the section that carries every figure — and returns "0 results" for "backyard ancillary dwelling unit" though the phrase occurs 10 times. Counts here come from whole-corpus grep of a 132-page crawl and of the byte-verified official PDF, never from that box.',
+    // "ancillary dwelling unit"; the usual noun returns ZERO across the Zoning Resolution
+    departsFromObviousNoun: true,
   },
   dc: {
     canonical:
@@ -2554,6 +2655,8 @@ export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = O
     competing: ['Accessory dwelling unit — a defined term in a DIFFERENT statute', 'Additional dwelling unit — checked and NOT a term here', 'English basement'],
     distinguishedBy:
       '⚠️ THE USUAL NOUN RETURNS ZERO. "Accessory dwelling unit" occurs ZERO times in Title 11 DCMR — 1,159 pages, two independent extractions, behind a positive control of 2,833 for "zoning" and 385 for "dwelling" — so searching DC\u2019s zoning code for the standard term returns nothing and reads as "DC has no ADU rule". ⚠️ AND THE TERM IS DEFINED ELSEWHERE IN DC LAW: D.C. Official Code § 42-3401.03, in the Rental Housing Conversion and Sale Act, defines "accessory dwelling unit" in near-identical words but with a different scope and NO size figure. Two defined terms in two bodies of law — the Boston hazard in a shape Boston did not have, since here the competing term lives outside the zoning code entirely. "Additional dwelling unit" occurs once, as ordinary English in an apartment-house density rule, and is NOT a second track as it is in Boston. "English basement" is vernacular with zero occurrences — but it points at the split that decides DC\u2019s archetypal case: GFA includes BASEMENTS (11-B § 304.7) and excludes CELLARS (§ 304.8), separated by a five-foot test.',
+    // "accessory apartment"; the usual noun returns ZERO across Title 11 DCMR
+    departsFromObviousNoun: true,
   },
   columbus: {
     canonical:
@@ -2561,104 +2664,147 @@ export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = O
     competing: ['Ancillary dwelling unit (§ 3320.03)', 'Additional dwelling unit — checked and NOT a term here', 'Carriage house'],
     distinguishedBy:
       '⚠️ SEPARATED BY DISTRICT FAMILY, NOT BY THE KITCHEN. "Ancillary dwelling unit" (§ 3320.03) is a genuinely distinct defined term — a flat 800 sq ft cap, an OWNER-OCCUPANCY requirement and a density exclusion, none of which the ADU sections impose — and it lives in ch. 3320 (Traditional Neighborhood Development), whose four districts are mutually exclusive with the ch. 3332/3333 districts the ADU sections govern. Reading it across would import an owner-occupancy condition Columbus does not impose. ⚠️ THE BOSTON TRAP WAS TESTED AND DOES NOT FIRE: "additional dwelling unit" occurs in Title 33 only INSIDE the ADU definition itself ("means an additional dwelling unit which has..."), as the genus of that definition — it has no entry of its own, so treating it as a second term would invent a distinction the code does not draw. ⚠️ AND THE SUBSTANCE SITS IN DIFFERENT PLACES IN THE TWO INSTRUMENTS: Title 33\u2019s definition is thin and its operative sections carry everything, while Title 34\u2019s definition carries the cooking/sanitation requirement that appears in no Title 34 operative section. Reading either instrument\u2019s definitions alone loses a requirement.',
+    // the code names "Accessory dwelling unit or ADU" in both live instruments
+    departsFromObviousNoun: false,
   },
   milwaukee: {
     canonical: 'Accessory dwelling unit — defined twice (general definitions AND use definitions) at § 295-201-5, with three subtypes: Internal, Attached, Detached',
     competing: ['Additional dwelling unit — checked and NOT a term here', 'Accessory structure (§ 295-201-7)', '2-family dwelling'],
     distinguishedBy:
       '⚠️ NO COMPETING DWELLING TERM EXISTS — twelve alternates returned ZERO chapter-wide, and the two non-zero results were disposed of rather than counted: "in-law" (117 documents) is the affinity sense in pension, nepotism and liquor provisions, and "additional dwelling unit" appears only in ch. 257, a BUILDING-code chapter, never in ch. 295. ⚠️ Explicitly contrasted with Boston and Dallas, where that phrase IS a term of art with its own effect. What Milwaukee separates instead: an ADU is NOT an accessory structure (§ 295-201-7 — "An accessory structure does not contain habitable space"), so the accessory-structure design table does not govern it; and a second unit that meets lot-area-per-unit standards in a district permitting duplexes "shall be considered a 2-family dwelling and not an accessory dwelling unit", an express DEEMING RULE rather than a kitchen test. The three subtypes differ by attachment only — cooking facilities are required of all three.',
+    // the expected noun, defined twice in ch. 295
+    departsFromObviousNoun: false,
   },
   minneapolis: {
     canonical: 'Accessory dwelling unit — § 565.50, nested under "Dwelling"; 81 occurrences across Title 20',
     competing: ['Additional dwelling unit — checked and NOT a term here', 'Cluster development', 'Common lot development'],
     distinguishedBy:
       '⚠️ THE BOSTON TRAP WAS TESTED DIRECTLY AND DOES NOT FIRE, with evidence rather than a zero: "additional dwelling unit" occurs EIGHT times, and all eight are ordinary English inside "new or additional dwelling units", a COUNTING THRESHOLD for site plan review and inclusionary housing. None appears in ch. 565 (Definitions). Seventeen other alternates returned zero. The separation that IS real is by attachment, and it is substantive rather than cosmetic — internal (§ 550.1440) carries an owner-occupancy covenant in one case, attached (§ 550.1450) carries none and requires matching exterior materials, detached (§ 550.1460) has a different and larger size formula plus a 21 ft height cap. Not separated by the kitchen: "dwelling unit" is defined once (§ 565.50) with "a single kitchen facility" inside that one definition, so every ADU has one by construction. ⚠️ Cluster and common lot developments are adjacent but distinct — § 550.230 makes them exceptions to one-principal-structure-per-lot and separately provides that an ADU "shall not be considered a separate principal residential structure", i.e. a different mechanism, not a species of one.',
+    // the expected noun, at § 565.50
+    departsFromObviousNoun: false,
   },
   phoenix: {
     canonical: 'Dwelling Unit, Accessory (ADU) — the inverted form, defined at Phoenix ZO § 202',
     competing: ['Guesthouse', 'Casita'],
     distinguishedBy:
       'Nothing to distinguish: § 202 defines "Guesthouse: See \'Dwelling Unit, Accessory.\'" — an express cross-reference making them the same use. "Casita" is not a defined term.',
+    // the inverted "Dwelling Unit, Accessory" is the DEFINITION heading, but "Guesthouse" cross-references straight to it, so the usual noun still lands
+    departsFromObviousNoun: false,
   },
   seattle: {
     canonical: 'accessory dwelling unit (SMC 23.42.022, and definitions at 23.58B.060, 23.58C.020, 23.60A.934)',
     competing: ['backyard cottage', 'DADU', 'AADU'],
     distinguishedBy:
       '"backyard cottage" returns hits only under Ordinances, never in code text — it is vernacular in legislative titles. The code uses "accessory dwelling unit" throughout, in 27 places.',
+    // the expected noun; "backyard cottage" is vernacular in ordinance titles only
+    departsFromObviousNoun: false,
   },
   lasvegas: {
     canonical: 'Residential Accessory Dwelling Unit (LVMC 19.18.020; use description at 19.12.070)',
     competing: ['guest house', 'casita'],
     distinguishedBy:
       'Neither is a defined use. The sole occurrence of "casita" is inside LVMC 19.10.050, listing what a special-area district\u2019s own design standards may address — not a citywide use permission.',
+    // the expected noun, as "Residential Accessory Dwelling Unit"
+    departsFromObviousNoun: false,
   },
   sandiego: {
     canonical: 'Accessory Dwelling Units (ADUs) and Junior ADUs (SDMC § 141.0302)',
     competing: ['Companion Unit', 'Guest Quarters or Habitable Accessory Buildings (§ 141.0307)'],
     distinguishedBy:
       '⚠️ THE KITCHEN. § 141.0307 guest quarters "do not provide complete, independent living facilities", "shall not contain a kitchen", and "shall not be rented, leased, or sold as a separate dwelling unit" — the exact inverse of an ADU. And "Companion Unit" is the REPEALED former title of § 141.0302 itself, replaced by O-21254 effective 2020-11-29, so citing it would point at dead text.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   la: {
     canonical: 'Accessory Dwelling Unit (ADU), defined at LAMC § 12.03 (Chapter I) — and the SAME term in Chapter 1A',
     competing: ['Accessory Living Quarters', 'Guest House'],
     distinguishedBy:
       '⚠️ THE KITCHEN, stated twice. § 12.03 defines Accessory Living Quarters as "having no kitchen facilities and not rented or otherwise used as a separate dwelling unit", and Guest House as "a dwelling containing not more than five guest rooms or suites of rooms, but with no kitchen facilities". An ADU must include "permanent provisions for living, sleeping, eating, cooking, and sanitation". ⚠️ CHECKED IN BOTH CODES: LA runs Chapter I and Chapter 1A side by side, and a definition in one does not bind the other. Chapter 1A Article 5 (read from the City-hosted PDF, 2,018,320 bytes verified against Content-Length) uses "accessory dwelling unit" — the same noun. ⚠️ BUT SEE THE SCOPE NOTE: Chapter 1A cross-references its own § 13B.10.1.B.2(a) for ADU permits, so Chapter 1A HAS ADU provisions that have not been read, and the LA encoding cites only Chapter I § 12.22 A.33. Article 7 (Alternate Typologies) contains no ADU text; where Chapter 1A\u2019s substantive ADU standards live, and over what geography Chapter 1A governs, are both unestablished.',
+    // the expected noun, defined at LAMC § 12.03 and used in Chapter 1A
+    departsFromObviousNoun: false,
   },
   sf: {
     canonical: 'Accessory Dwelling Unit — §§ 207.1(a) and 207.2(a) both name their subject "Accessory Dwelling Units (\u201cADUs\u201d), as defined in Section 102 of this Code"',
     competing: ['in-law unit', 'secondary unit'],
     distinguishedBy:
       '⚠️ THE WEAKEST ROW IN THIS TABLE, AND IT IS NOT CLOSED. Two things are established: the code names its own canonical term by cross-reference (§§ 207.1(a), 207.2(a) → § 102), and § 207.1(b) partitions the field — it applies "to the construction of ADUs on ALL lots located within the City and County of San Francisco in areas that allow residential use, EXCEPT ADUs regulated by the State-Mandated Program under Section 207.2" — with both programmes read here. But a PARTITION IS NOT A VOCABULARY CHECK: it shows the two programmes are exhaustive of ADUs, not that no differently-named use exists. An attempt to read § 102 failed — amlegal opens its window at § 101 and the 18,810 rendered characters never reach the definitions, so the zero counts obtained there measure the probe, not the code (rule 11). ⚠️ SF matters more than most for this, because its local cap is GEOMETRIC rather than numeric, so a differently-named use could carry a square-foot figure the ADU sections do not.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   sanjose: {
     canonical: 'Accessory Dwelling Unit (SJMC § 20.80.175)',
     competing: ['Guest House'],
     distinguishedBy:
       'The code names both in one sentence and treats them differently: § 20.80.160 allows Incidental Transient Occupancy in a "Guest House" and provides that it "shall not be allowed in an Accessory Dwelling Unit". Distinct co-existing categories. ⚠️ What a Guest House IS in San José was not read — only that it is not the ADU instrument.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   denver: {
     canonical: 'accessory dwelling unit — DZC Article 11 uses it 46 times; Article 13 defines "detached accessory dwelling unit"',
     competing: ['carriage house', 'granny flat', 'guest house', 'Carriage Lot'],
     distinguishedBy:
       'Nothing to distinguish on the dwelling term: "carriage house", "granny flat" and "guest house" appear ZERO times in DZC Articles 11 and 13. ⚠️ "Carriage Lot" IS a live DZC term (§ 11.8.2.1.D allows an ADU on one even with no primary use, subject to § 12.10.4) — but it names a LOT TYPE, not a dwelling, so it does not compete with the ADU term. Checked in the current code only; Former Chapter 59 was amended by the same measure and its own vocabulary was NOT separately checked.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   charlotte: {
     canonical: '"Dwelling – Accessory Unit (ADU)" — UDO § 15.6.F, defined at § 15.3',
     competing: ['accessory dwelling unit (running prose)', 'accessory structure'],
     distinguishedBy:
       '⚠️ SEPARATED BY THE KITCHEN, and the criterion lives in the DEFINITION rather than the operative section: § 15.3 provides an ADU "shall include separate cooking and sanitary facilities and is a complete, separate dwelling unit". The canonical string uses an en dash and inverted word order, but the noun is "Accessory" — the different-noun streak ends here. ⚠️ The live hazard is not vocabulary but INSTRUMENT: the legacy 1992 ordinance § 12.407 still governs pre-2023 conditional/optional/EX districts under § 1.4.C and states an interior size cap and a height cap the UDO does not.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   dallas: {
     canonical: 'ACCESSORY DWELLING UNIT (ADU) — defined ONLY at § 51A-4.510(a)(1), not in the general definitions section',
     competing: ['additional dwelling unit', 'live unit'],
     distinguishedBy:
       '⚠️ SEPARATED BY RENTABILITY, in adjacent subparagraphs of the same section. An ACCESSORY dwelling unit is "a rentable additional dwelling unit" (§ 51A-4.510(a)(1)); an ADDITIONAL dwelling unit may be authorised by the Board only where it will not "be used as rental accommodations" (§ 51A-4.209(b)(6)(E)(i)). Same building, opposite rental status — the Boston hazard with a different separator, and here the code DOES separate them in operative text. A third term, "live unit", is barred from every residential district. ⚠️ "ACCESSORY DWELLING" appears nowhere in § 51A-2.102, so the definitions chapter looks empty.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   nashville: {
     canonical: 'TWO defined uses — "detached accessory dwelling unit" (DADU) and "accessory apartment", both at § 17.04.060.B',
     competing: ['accessory apartment', 'detached accessory dwelling unit'],
     distinguishedBy:
       '⚠️ SEPARATED BY ATTACHMENT AND BY OCCUPANCY, both in the definitions. An "accessory apartment" is "attached to a single-family residence" and is limited to family-member occupancy (§ 17.16.250.A); a "detached accessory dwelling unit" is "a detached dwelling unit separate" from the principal and carries no such occupancy limit. They also differ in size rule — 25% of gross floor area for the apartment, a lot-keyed 700/850 figure for the DADU. Reading either as "the" Nashville ADU rule would misstate both the cap and who may live there.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   austin: {
     canonical: 'Secondary Apartment — Austin City Code §§ 25-2-1461 to 25-2-1463',
     competing: ['accessory dwelling unit', 'garage apartment'],
     distinguishedBy:
       '⚠️ THE OPERATIVE TERM IS NEITHER "ACCESSORY" NOR "ADU". "accessory dwelling unit" returns eight hits, every one inside Chapter 25-3 (Traditional Neighborhood District) — a niche chapter — while the governing article sits in Chapter 25-2, the main zoning chapter, under "Secondary Apartment". Austin does not use the ADU abbreviation for it at all, so unlike Miami there is not even a shared acronym to hint at the match.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   miami: {
     canonical: 'Ancillary Dwelling Unit (ADU) — Miami 21 § 3.18, defined in Article 1',
     competing: ['Accessory Dwelling Unit', 'Ancillary Building'],
     distinguishedBy:
       '⚠️ MIAMI USES A DIFFERENT NOUN WITH THE SAME ABBREVIATION. The section is "ANCILLARY Dwelling Unit (ADU) Standards"; "accessory dwelling" appears only incidentally (7 hits). The vocabulary check found the section — a term-based search taken from the California statute would have looked healthy and missed it, which is the East Boston failure mode. "Ancillary Building" is a distinct term for the STRUCTURE that may contain an ADU, not for the unit itself.',
+    // the expected noun
+    departsFromObviousNoun: false,
   },
   boston: {
     canonical: 'Additional Dwelling Unit (Boston Zoning Code § 53-5.2 and ten other district articles)',
     competing: ['Accessory Dwelling Unit'],
     distinguishedBy:
       '⚠️ NOT distinguished by any definitional test — these are two live routes with OPPOSITE effects, which is why this city produced a wrong published answer. "Accessory Dwelling Unit" is forbidden in East Boston\u2019s tables; "Additional Dwelling Unit" is allowed by § 53-5.2 notwithstanding those tables. Every other city in this sweep separates its terms by a criterion; Boston does not.',
+    // ⚠️ the case this whole check exists for: "Additional Dwelling Unit" is the allowed use and "Accessory Dwelling Unit" is a DIFFERENT, forbidden one
+    departsFromObviousNoun: true,
   },
 })
+
+/** ⚠️ EVERY city in the jurisdiction map, read or not. Exported so the
+ *  partition can be counted rather than the exception asserted over — with all
+ *  23 ordinances now read, the "unread" bucket is EMPTY, and any check of the
+ *  form "every unread city discloses why" is vacuously true from here on
+ *  (rule 20, and rule 29's corollary). A guard that counts members instead goes
+ *  RED when a city is added without a read, rather than green because nothing
+ *  is left to find. */
+export const ADU_ALL_CITIES: readonly string[] = Object.freeze(Object.keys(BY_CITY).sort())
 
 /** Cities whose LOCAL ordinance has been read. Separate from the state list —
  *  conflating them would let one city's reading imply another's (rule 20). */
