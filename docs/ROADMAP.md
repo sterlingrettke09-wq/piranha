@@ -1313,3 +1313,67 @@ One item did change: **Milwaukee now publishes** its 1–2 family pair (single
 *Why this entry stays:* "permit timing needs fixing" was a confident,
 reasonable, and largely incorrect belief. Deleting the row would leave the
 roadmap looking like a list of things that went as planned.
+
+
+---
+
+## ⚠️ Provenance sweep — which resolvers say HOW they answered (2026-08-20)
+
+Prompted by Denver: one parcel still carries `U-SU-B1`, a district deleted from
+the code twenty months ago, and it resolves through pattern derivation rather
+than curation. The generalisation is that **a stale district code is not
+automatically a stale answer — it depends what the code was carrying** — and the
+follow-on question is which cities can even *tell* a derived answer from a
+code-stated one.
+
+Method: run each city's real resolver over its committed live-code enumeration
+and inspect the returned object for a top-level provenance key.
+
+| city | live codes | answered | provenance on the answer |
+|---|---|---|---|
+| denver | 184 | 160 | `heightBasis` |
+| raleigh | 268 | 268 | `source` |
+| charlotte | 218 | 218 | `source`, `basis` |
+| phoenix | 74 | 74 | `farSource`, `densitySource`, `lotCoverageSource`, `source` |
+| nashville | 91 | 89 | `source` |
+| milwaukee | 52 | 52 | `source` |
+| sanjose | 55 | 24 | `source` |
+| **chicago** | 1,528 | 66 | ⚠️ **none at top level** |
+| **nyc** | 203 | 35 | ⚠️ **none at top level** |
+| **seattle** | 285 | 180 | ⚠️ **none at top level** |
+| columbus | 78 | — | ⚠️ **NOT MEASURED — see below** |
+
+**Denver labels its own derivations.** 130 of its 160 answers carry
+`heightBasis: 'derived-estimate'` and 23 carry `'code-stated'`. So the drift the
+U-SU-B1 case exposed is *visible* there rather than silent — the module tells the
+truth about itself. Verified with a positive control: U-SU-B1 must appear in the
+derived-estimate bucket, and does.
+
+**Chicago, NYC and Seattle answer without saying how.** For those three a
+pattern-derived answer and a table-stated one are indistinguishable from the
+returned value, which is the condition under which the map and the code can drift
+with nothing noticing.
+
+### ⚠️ Two instrument failures inside this sweep, both caught before reporting
+
+**Columbus is not measured.** `resolveColumbus` takes a `ColumbusZoneInput`
+object, not a string. The probe passed strings, every call fell through to the
+`UNRESOLVED` sentinel, and the sweep reported "78 answered, no provenance". That
+is *precisely* the `enumerate-parser-domains` defect rule 11 records — a resolver
+called with the wrong shape, reporting the layer instead of the system. Columbus
+in fact carries `heightBasis: 'code-stated'`. Re-measuring it needs a probe that
+builds the real input.
+
+**A first pass counted deliberate translation as uncurated fallback.** Comparing
+resolution against curated-table membership reported 189 of Charlotte's 218 codes
+as "resolving without curation" — but `B-1(CD)`, `B-1SCD`, `B-2(PED-O)` and the
+rest are conditional-district spellings the module deliberately parses to a
+curated base district, and it already labels them `basis: 'udo-translated'`.
+Rule 25 exactly: the number implied a lot of work, and the sweep was wrong.
+
+### Scope
+
+Top-level keys only. Seattle carries a nested `source` on `farAlternatives[]`
+where those exist, which this instrument does not see — so "none at top level" is
+the claim, not "no provenance anywhere". Cities whose resolvers take non-string
+inputs were not measured at all.
