@@ -93,6 +93,24 @@ export type LocalCap =
   | { kind: 'capped'; sqFt: number; condition: string; cite: string; baseline?: boolean }
   /** The ordinance affirmatively states NO maximum for this configuration. */
   | { kind: 'no-maximum'; condition: string; cite: string; baseline?: boolean }
+  /** ⚠️ THE ORDINANCE BINDS THIS CONFIGURATION, BUT NOT WITH A NUMBER.
+   *
+   *  Added for San Francisco, and it is the fourth city forcing the fourth new
+   *  shape. § 207.1 states no square-foot cap at all; instead § 207.1(c)(5)
+   *  requires the ADU be built entirely within the buildable area of the
+   *  existing lot with no vertical addition, or inside the built envelope of an
+   *  existing detached garage or structure. That is a REAL limit and it is
+   *  frequently TIGHTER than 850 sq ft — but it is geometric, so no figure can
+   *  be published for it.
+   *
+   *  The three existing states all mis-describe it. `capped` needs a number we
+   *  do not have. `not-found` asserts a hole in our reading, when we read the
+   *  rule and understood it. And `no-maximum` is the dangerous one: it says the
+   *  city states no maximum, which reads as PERMISSION and would overstate in
+   *  exactly the direction rule 18 warns about. Same three-outcomes shape as
+   *  rule 5 — a filled slot whose value is not a quantity is neither an absence
+   *  nor a gap. */
+  | { kind: 'not-numeric'; rule: string; condition: string; cite: string; baseline?: boolean }
   /** We read the section and located no rule covering this configuration. A gap
    *  in the reading, never a permission. */
   | { kind: 'not-found'; condition: string }
@@ -516,6 +534,95 @@ const LA_LOCAL: LocalLayer = {
   },
 }
 
+// ── SAN FRANCISCO ───────────────────────────────────────────────────────────
+//
+// ⚠️ THE CITY CODIFIES THE TWO-LAYER DISTINCTION ITSELF. Every other city has one
+// ADU section that the state floor sits underneath. San Francisco has TWO
+// parallel sections — § 207.1 "Local Accessory Dwelling Unit Program" and
+// § 207.2 "State Mandated Accessory Dwelling Unit Program" — which is this
+// module's own state/local split written into the Planning Code.
+//
+// They are MUTUALLY EXCLUSIVE, not an applicant's free election: § 207.1(b)
+// applies citywide "except ADUs regulated by the State-Mandated Program under
+// Section 207.2". Which one governs follows from how the unit is built, so
+// reporting the more generous of the two as "what San Francisco allows" would be
+// rule 6 exactly — a maximum across alternatives presented as a ceiling.
+const SF_LOCAL: LocalLayer = {
+  kind: 'read',
+  citation:
+    'San Francisco Planning Code §§ 207.1 (Local Accessory Dwelling Unit Program) and 207.2 (State Mandated Accessory Dwelling Unit Program), Art. 2',
+  readOn: '2026-08-19',
+  maxSizeSqFt: [
+    {
+      kind: 'capped',
+      sqFt: 850,
+      condition:
+        'STATE-MANDATED programme (§ 207.2): a detached, new-construction Streamlined ADU with one bedroom or less, on a lot with a proposed or existing single-family dwelling',
+      cite: '§ 207.2(c)(1)',
+      baseline: true,
+    },
+    {
+      kind: 'capped',
+      sqFt: 1000,
+      condition: 'STATE-MANDATED programme (§ 207.2): the same, for an ADU with more than one bedroom',
+      cite: '§ 207.2(c)(1)',
+    },
+    // ⚠️ THE GOVERNING RULE OF THE LOCAL PROGRAMME, AND IT IS NOT A NUMBER.
+    // Recording this as `no-maximum` would say San Francisco caps nothing, when
+    // the envelope rule is frequently tighter than 850 sq ft.
+    {
+      kind: 'not-numeric',
+      rule:
+        'the ADU must be built entirely within the buildable area of the existing lot with no vertical addition, or within the built envelope of an existing authorised detached garage, storage structure or other detached structure',
+      condition: 'LOCAL programme (§ 207.1), which governs wherever § 207.2 does not',
+      cite: '§ 207.1(c)(5)',
+    },
+  ],
+  maxHeightFt: [
+    { value: 18, condition: 'state-mandated: detached, on a lot with an existing or proposed dwelling', cite: '§ 207.2(d)(9)(A)', baseline: true },
+    {
+      value: 20,
+      condition: 'state-mandated: detached, where the extra two feet accommodate a roof pitch aligned with the primary dwelling\'s',
+      cite: '§ 207.2(d)(9)(A)',
+    },
+    { value: 25, condition: 'state-mandated: attached to the primary dwelling', cite: '§ 207.2(d)(9)(B)' },
+    { value: 16, condition: 'local programme: a detached ADU placed in the required REAR YARD, with four-foot side and rear setbacks', cite: '§ 207.1(c)' },
+  ],
+  maxStories: null,
+  heightDefersToBaseZone: null,
+  notes: [
+    '⚠️ Two programmes, mutually exclusive. § 207.1 (local) applies citywide EXCEPT to ADUs regulated by § 207.2 (state-mandated), per § 207.1(b). Which governs follows from how the unit is built, not from the applicant choosing the better deal — so the two sets of figures must not be merged into one envelope.',
+    '⚠️ The LOCAL programme states no square-foot cap anywhere in its nine subsections. Its binding size limit is geometric (§ 207.1(c)(5)): within the existing lot\'s buildable area with no vertical addition, or inside the built envelope of an existing detached structure. An ADU built entirely within that envelope is exempt from the notification requirements as well.',
+    'LOCAL programme unit COUNT is unusually permissive: one ADU on a lot with four or fewer existing units (or where zoning permits four or fewer), and NO LIMIT on the number of ADUs on a lot with more than four units, or one undergoing seismic retrofitting (§ 207.1(c)(1)).',
+    'LOCAL programme rear-yard exception: a detached ADU may sit in the required rear yard at four feet from side and rear lot lines, no more than sixteen feet tall, with Gross Floor Area not exceeding 850 sq ft (one bedroom or less) or 1,000 sq ft (more than one bedroom) — § 207.1(c).',
+    '⚠️ Neither programme permits Short-Term Residential Rentals (§§ 207.1(d), 207.2(f)). Under the local programme this is recorded as a Notice of Special Restriction on the lot.',
+    'An ADU may not be approved where a tenant on the lot was evicted under specified Administrative Code grounds within the preceding ten years (five for owner move-in) — § 207.1(c)(2).',
+    'State-mandated ADUs need no discretionary review: no discretionary-review requests are accepted, no Planning Commission hearing is held, and Section 311 notification does not apply (§ 207.2(e)).',
+    'A detached, new-construction Streamlined ADU on a MULTIFAMILY lot is bound by the § 207.2(d)(9) height limits but no square-foot cap is stated for it (§ 207.2(c)(2)).',
+    // ⚠️ THE SAME RULE, DRAFTED THREE WAYS ACROSS THREE CITIES — and San
+    // Francisco's is the only one that resolves inside its own sentence.
+    '⚠️ The ATTACHED cap is the 50%-of-primary rule again, and San Francisco is the only one of the three that settles it in the same sentence: an attached ADU may not exceed 50% of the existing primary dwelling\'s Gross Floor Area OR 850 sq ft (1,000 sq ft with more than one bedroom), WHICHEVER IS GREATER. So the ratio can never cut below the floor here. Compare LA, where a separate paragraph does the same job, and San José, where nothing does.',
+    // ⚠️ THE RECODIFICATION CHECK, PASSING — recorded because a clean negative
+    // that is not written down gets re-asked, and next time someone assumes it
+    // was never run.
+    '✓ Recodification check: § 207.2 cites California Gov. Code §§ 66314–66333 — the LIVE chapter 13 sections. San Francisco tracked the 2024 recodification. Los Angeles\'s § 12.22 A.33 did not and still names the superseded § 65852.2, so the same check produces opposite results in two cities of the same state.',
+    'The § 800/16 ft override appears here too: no standard may prevent an ADU of 800 sq ft or less, 16 feet or less in height, with four-foot side and rear setbacks (§ 207.2(d)).',
+    'Planning Director Bulletin No. 3 ("State Accessory Dwelling Unit Program") is named by § 207.2(b) as the comprehensive list of applicable requirements. It has NOT been read — a further source this reading did not reach.',
+  ],
+  pending: {
+    kind: 'checked',
+    on: '2026-08-19',
+    source: 'American Legal Publishing code library, San Francisco overview page',
+    codifiedThrough:
+      'Ordinance 128-26, File No. 260540, approved July 10, 2026, effective August 10, 2026',
+    amendingThisSection: [],
+    // ⚠️ THE STRONGEST OF THE FOUR, and worth saying so for the same reason the
+    // weak ones are flagged: an empty `amendingThisSection` means something
+    // different in each city.
+    note: 'The strongest vintage of the four cities read. amlegal states San Francisco current through an ordinance effective 2026-08-10 — nine days before this reading — against Los Angeles at five months stale. No pending-ordinance list is published here either, so `amendingThisSection: []` still records "no list exists to read" rather than "a list was read and was empty"; the narrow gap between the codified-through date and this reading is what carries the confidence, not a pending check.',
+  },
+}
+
 const NOT_READ_LOCAL = (city: string): LocalRead => ({
   kind: 'not-read',
   detail: `${city}'s own ADU ordinance has not been read into this tool.`,
@@ -526,7 +633,7 @@ const NOT_READ_LOCAL = (city: string): LocalRead => ({
  *  would render as "no state law applies", which is a claim. */
 const BY_CITY: Readonly<Record<string, AduRules>> = Object.freeze({
   la: { city: 'la', stateFloor: CA, local: LA_LOCAL },
-  sf: { city: 'sf', stateFloor: CA, local: NOT_READ_LOCAL('San Francisco') },
+  sf: { city: 'sf', stateFloor: CA, local: SF_LOCAL },
   sanjose: { city: 'sanjose', stateFloor: CA, local: SANJOSE_LOCAL },
   sandiego: { city: 'sandiego', stateFloor: CA, local: SANDIEGO_LOCAL },
   seattle: { city: 'seattle', stateFloor: WA, local: SEATTLE_LOCAL },
@@ -563,7 +670,17 @@ export const ADU_STATE_PREEMPTED: readonly string[] = Object.freeze(
 
 // ── THE EFFECTIVE ANSWER ────────────────────────────────────────────────────
 
-export type EffectiveSource = 'local' | 'state-floor' | 'local-no-maximum' | 'floor-only' | 'unresolved'
+export type EffectiveSource =
+  | 'local'
+  | 'state-floor'
+  | 'local-no-maximum'
+  /** ⚠️ NOT the same as `local-no-maximum`, and collapsing them would invert the
+   *  meaning. There the city states no cap (permission); here the city states a
+   *  binding limit that is not a number, and the state floor is the only figure
+   *  we can honestly publish alongside it. */
+  | 'local-non-numeric'
+  | 'floor-only'
+  | 'unresolved'
 
 export interface EffectiveSize {
   /** Square feet. `null` with source `local-no-maximum` means the ordinance
@@ -603,6 +720,23 @@ export function effectiveMaxSize(r: AduRules): EffectiveSize {
       value: null,
       source: 'local-no-maximum',
       why: `The city states no maximum (${baseline.cite}: ${baseline.condition}).`,
+    }
+  }
+  // ⚠️ A NON-NUMERIC LIMIT STILL REPORTS THE FLOOR, because the floor is the one
+  // figure that survives it: the state guarantee applies whatever geometry the
+  // local programme imposes. Publishing `null` alone would read as "no answer",
+  // and publishing it as `local-no-maximum` would read as "no limit" — the limit
+  // is real, it just is not a quantity.
+  if (baseline?.kind === 'not-numeric') {
+    return {
+      value: floor?.value ?? null,
+      source: 'local-non-numeric',
+      why:
+        `The city's own limit for this case is not a square-foot figure — ${baseline.rule} (${baseline.cite}). ` +
+        `No maximum size can be published for it, and it is often TIGHTER than the state floor rather than looser.` +
+        (floor != null
+          ? ` The ${floor.value.toLocaleString()} sq ft state floor (${floor.cite}) still applies as a minimum the city cannot refuse.`
+          : ''),
     }
   }
   if (baseline?.kind === 'capped') {

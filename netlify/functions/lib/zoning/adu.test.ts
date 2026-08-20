@@ -3,6 +3,20 @@ import {
   aduRulesFor, summariseAdu, effectiveMaxSize, ADU_LOCAL_READ, ADU_STATE_PREEMPTED,
 } from './adu'
 import { CITIES } from '../../../../src/config/cities'
+import type { AduRules } from './adu'
+
+// ⚠️ SYNTHETIC ON PURPOSE (rule 29). Three tests below used San Francisco as the
+// stand-in for "state floor known, local ordinance unread" — and San Francisco was
+// then read, breaking all three for a reason having nothing to do with the
+// invariant. A city is only floor-only until someone reads it, so naming one picks
+// whatever is next off the work queue. Every preempted city is now read, so there
+// is no live example left to name and constructing the state directly is the only
+// stable fixture: it exercises the branch by construction and cannot be read away.
+const FLOOR_ONLY: AduRules = {
+  city: 'sf',
+  stateFloor: aduRulesFor('sf').stateFloor,
+  local: { kind: 'not-read', detail: 'synthetic fixture — see the note above' },
+}
 
 describe('which body of law governs', () => {
   it('routes California cities to state law, not the municipal code', () => {
@@ -36,7 +50,7 @@ describe('which body of law governs', () => {
     // Both sets pinned, and SEPARATELY — conflating them would let one city's
     // reading imply another's.
     expect([...ADU_STATE_PREEMPTED]).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
-    expect([...ADU_LOCAL_READ]).toEqual(['la', 'sandiego', 'sanjose', 'seattle'])
+    expect([...ADU_LOCAL_READ]).toEqual(['la', 'sandiego', 'sanjose', 'seattle', 'sf'])
   })
 })
 
@@ -48,7 +62,7 @@ describe('⚠️ a state floor is a floor, not an envelope', () => {
     // limit. Both are the most conditioned entries in their lists, and leading
     // with them reads as an entitlement when neither is unconditional. Rule 6 in
     // mirror image.
-    const s = summariseAdu(aduRulesFor('sf'))
+    const s = summariseAdu(FLOOR_ONLY)
     expect(s).toMatch(/Unconditionally: a 850 sq ft ADU at 16 ft/)
     expect(s).not.toMatch(/1,000 sq ft ADU at 25 ft/)
   })
@@ -67,7 +81,7 @@ describe('⚠️ a state floor is a floor, not an envelope', () => {
     // city capping an ADU below 850 sq ft; it does not stop the city allowing
     // 1,200. Reporting 850 as "the answer" UNDERSTATES what is buildable, and an
     // understatement in the right units reads as authoritative (rule 18).
-    const s = summariseAdu(aduRulesFor('sf'))
+    const s = summariseAdu(FLOOR_ONLY)
     expect(s).toMatch(/FLOORS rather than limits/)
     expect(s).toMatch(/the city may permit more/)
     expect(s).toMatch(/its own ordinance has not been read/)
@@ -206,7 +220,7 @@ describe('⚠️ two layers, and the buildable figure is max(local, floor)', () 
   })
 
   it('a city with only the floor says so, and calls it a MINIMUM', () => {
-    const e = effectiveMaxSize(aduRulesFor('sf'))
+    const e = effectiveMaxSize(FLOOR_ONLY)
     expect(e.source).toBe('floor-only')
     expect(e.value).toBe(850)
     expect(e.why).toMatch(/MINIMUM the city cannot refuse, not what it allows/)
@@ -542,5 +556,132 @@ describe('Los Angeles — LAMC § 12.22 A.33', () => {
     expect(local.pending.note).toMatch(/Chapter 1A, a different instrument/)
     expect(local.pending.note).toMatch(/five months/)
     expect(local.pending.codifiedThrough).toMatch(/March 31, 2026/)
+  })
+})
+
+describe('San Francisco — Planning Code §§ 207.1 and 207.2', () => {
+  const rules = aduRulesFor('sf')
+  if (rules.local.kind !== 'read') throw new Error('expected a read local layer')
+  const local = rules.local
+
+  it('carries BOTH programmes, because the city codifies the split itself', () => {
+    // Every other city has one ADU section with the state floor underneath it.
+    // SF has two parallel sections — this module's own state/local split written
+    // into the Planning Code.
+    expect(local.citation).toMatch(/§§ 207\.1 .*and 207\.2/)
+    expect(local.maxSizeSqFt.some((m) => /§ 207\.1/.test(m.kind === 'not-found' ? '' : m.cite))).toBe(true)
+    expect(local.maxSizeSqFt.some((m) => m.kind !== 'not-found' && /§ 207\.2/.test(m.cite))).toBe(true)
+  })
+
+  it('⚠️ says the two programmes are mutually exclusive, not a menu', () => {
+    // rule 6. § 207.1(b) applies citywide EXCEPT to ADUs regulated by § 207.2, so
+    // which governs follows from how the unit is built. Merging the two into one
+    // envelope would report a maximum across alternatives as a ceiling.
+    const n = local.notes.find((x) => /mutually exclusive/i.test(x))!
+    expect(n).toMatch(/§ 207\.1\(b\)/)
+    expect(n).toMatch(/not from the applicant choosing/)
+  })
+
+  it("⚠️ the local programme's size rule is not-numeric, never no-maximum", () => {
+    // The trap this state exists for. § 207.1 states no square-foot cap in any of
+    // its nine subsections; the binding limit is geometric and often TIGHTER than
+    // 850 sq ft. `no-maximum` would read as permission and overstate.
+    const localProg = local.maxSizeSqFt.find(
+      (m) => m.kind !== 'not-found' && /207\.1/.test(m.cite),
+    )!
+    expect(localProg.kind).toBe('not-numeric')
+    if (localProg.kind !== 'not-numeric') throw new Error('unreachable')
+    expect(localProg.cite).toBe('§ 207.1(c)(5)')
+    expect(localProg.rule).toMatch(/buildable area of the existing lot/)
+    expect(localProg.rule).toMatch(/no vertical addition/)
+    // And it must not be the thing that gets summarised as the city's allowance.
+    expect(localProg.baseline).toBeUndefined()
+  })
+
+  it('a not-numeric baseline reports the floor and says the limit is not a number', () => {
+    // Exercised directly, because no live city has a not-numeric BASELINE and a
+    // branch nothing reaches is a branch nothing checks (rule 20).
+    const synthetic: AduRules = {
+      city: 'sf',
+      stateFloor: rules.stateFloor,
+      local: {
+        ...local,
+        maxSizeSqFt: [
+          { kind: 'not-numeric', rule: 'it must fit the existing envelope', condition: 'all ADUs', cite: '§ 207.1(c)(5)', baseline: true },
+        ],
+      },
+    }
+    const e = effectiveMaxSize(synthetic)
+    expect(e.source).toBe('local-non-numeric')
+    expect(e.value).toBe(850) // the floor still applies as a minimum
+    expect(e.why).toMatch(/not a square-foot figure/)
+    // ⚠️ The half that matters: it must not read as headroom.
+    expect(e.why).toMatch(/TIGHTER than the state floor rather than looser/)
+    expect(e.why).not.toMatch(/no maximum size for an ADU|states no maximum\./)
+  })
+
+  it('summarises from the state-mandated 850, the least-conditioned case', () => {
+    const e = effectiveMaxSize(rules)
+    expect(e.source).toBe('local')
+    expect(e.value).toBe(850)
+    expect(e.why).toMatch(/single-family dwelling/)
+  })
+
+  it('carries the four heights, with the roof-pitch bonus as its own entry', () => {
+    // 18 + 2 for an aligned roof pitch is a CONDITIONAL 20, not a flat one, and
+    // the 16 ft belongs to the local rear-yard exception rather than to § 207.2.
+    expect(local.maxHeightFt.map((h) => h.value)).toEqual([18, 20, 25, 16])
+    expect(local.maxHeightFt.find((h) => h.baseline)!.value).toBe(18)
+    expect(local.maxHeightFt.find((h) => h.value === 20)!.condition).toMatch(/roof pitch/)
+    expect(local.maxHeightFt.find((h) => h.value === 16)!.cite).toMatch(/207\.1/)
+  })
+
+  it('⚠️ records the local programme allowing UNLIMITED ADUs above four units', () => {
+    const n = local.notes.find((x) => /NO LIMIT on the number/.test(x))!
+    expect(n).toMatch(/§ 207\.1\(c\)\(1\)/)
+    expect(n).toMatch(/seismic retrofitting/)
+  })
+
+  it('⚠️ the 50% rule, drafted three ways — and only SF settles it in-sentence', () => {
+    // The durable comparative finding of these four reads. Same substantive rule,
+    // three degrees of self-resolution: San José silent, LA resolved by a separate
+    // paragraph, SF resolved by "whichever is greater" in the same sentence.
+    const sf = local.notes.find((x) => /WHICHEVER IS GREATER/.test(x))!
+    expect(sf).toMatch(/850 sq ft/)
+    expect(sf).toMatch(/Compare LA.*San José/s)
+
+    const sj = aduRulesFor('sanjose')
+    const la = aduRulesFor('la')
+    if (sj.local.kind !== 'read' || la.local.kind !== 'read') throw new Error('expected read')
+    expect(sj.local.notes.find((x) => /50%/.test(x))!).toMatch(/question for the city/)
+    expect(la.local.notes.find((x) => /50%/.test(x))!).toMatch(/\(e\)\(3\)/)
+  })
+
+  it('⚠️ the recodification check PASSES here and fails in LA — both recorded', () => {
+    // rule 9's corollary about unrecorded negatives: a clean sweep that is not
+    // written down gets re-asked, and next time someone assumes it was never run.
+    // Two cities in the same state, same check, opposite results.
+    const ok = local.notes.find((x) => /Recodification check/.test(x))!
+    expect(ok).toMatch(/66314–66333/)
+    expect(ok).toMatch(/LIVE chapter 13/)
+    expect(ok).toMatch(/Los Angeles.*did not/)
+
+    const la = aduRulesFor('la')
+    if (la.local.kind !== 'read') throw new Error('expected read')
+    expect(la.local.notes.find((x) => /65852\.2/.test(x))!).toMatch(/DELEGATES/)
+  })
+
+  it('names Director Bulletin No. 3 as a source it did NOT reach', () => {
+    // rule 5: an unread source must be visible as unread, not silently absent.
+    expect(local.notes.find((x) => /Bulletin No\. 3/.test(x))!).toMatch(/has NOT been read/)
+  })
+
+  it('⚠️ has the strongest vintage of the four, and still no pending list', () => {
+    if (local.pending.kind !== 'checked') throw new Error('expected checked')
+    expect(local.pending.codifiedThrough).toMatch(/effective August 10, 2026/)
+    expect(local.pending.amendingThisSection).toEqual([])
+    // The empty array means something different in every city, so each says which.
+    expect(local.pending.note).toMatch(/no list exists to read/i)
+    expect(local.pending.note).toMatch(/nine days before this reading/)
   })
 })
