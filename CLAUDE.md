@@ -627,6 +627,35 @@ instrument errors were about whether the pixels ARRIVED; the real defect was
 about whether the sentence was TRUE. No amount of rigour about the first kind
 finds the second.
 
+**33. A green check is only green for what it actually ran — and reading half
+the output is not reading the output.** Two instances in one session, and they
+fail the same way: a signal that looks like verification but is conditional on
+something you did not notice.
+
+**`tsc -b` is incremental.** It passed on a test file it had never rebuilt; the
+errors surfaced only when an unrelated edit forced a rebuild, by which point the
+broken file was committed. A green typecheck is therefore conditional on *what
+changed*, not on *what is correct* — which is exactly the property you were
+relying on it not to have. When a check is cached, "it passed" means "nothing it
+looked at is wrong", and what it looked at is not the same set as what you
+changed.
+
+**And the lint error was on screen.** It printed in the same output as the
+passing test count, and the passing count was the half that got read. That is
+the same class as the three commit-message count errors earlier in this session
+— writing the number before reading it, then reading only the line that confirms
+it. The fix is not more care; it is looking at the failure lines FIRST, because
+a run that ends in a non-zero problem count is a failed run no matter what else
+it printed.
+
+Corollary worth its own line: **the derived value being in scope is not the same
+as the derived value being used.** Red Tape's copy typed "40,000 sq ft" while
+`REFERENCE` — the object carrying that exact figure, with a ready-made label —
+was already imported at the top of the same file. That is not a missing
+capability to be built; it is someone typing a number they already had. Look for
+the existing derivation before concluding a claim cannot be derived, and check
+the file's own imports first.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

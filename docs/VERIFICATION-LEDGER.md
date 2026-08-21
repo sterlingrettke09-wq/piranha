@@ -7891,3 +7891,65 @@ all — it was a claim question.
 Worth keeping as the contrast: the instrument errors were all about *whether the
 pixels arrived*, and the real defect was about *whether the sentence was true*.
 No amount of care with the first kind finds the second.
+
+---
+
+## 2026-08-21 — a claim audit across every user-facing surface
+
+Every sentence on the site is a claim, and the data under it had moved: cities
+23-wired/22-answering, ADU landed for all 23, three permit figures withdrawn, an
+entitlement leg added. Copy edited piecemeal against data that moved repeatedly.
+
+217 claim-shaped lines across 11 surfaces. Eleven findings, all now closed.
+Composition, because the bare count is not the report (rule 26):
+
+| class | n | what it means |
+|---|---|---|
+| backed by nothing | 2 | a number with no derivation behind it |
+| backed but restated | 2 | true today, drifts silently |
+| branch-conditional | 2 | true on the branch it was written for |
+| absolute the model denies | 2 | completeness the product contradicts |
+| cross-surface disagreement | 2 | two pages, one parcel, opposite claims |
+| dead copy | 1 | a state that can no longer occur |
+| **understated** | 1 | a real capability nothing claimed |
+
+### The two that mattered most
+
+**Compare marked permit timing by CITY; the report marked it by TIER.** A Denver
+2–4 unit parcel and a Milwaukee 5+ unit parcel each got a bare, unmarked number
+on one page and "not measured for this size" on the other, in the same session.
+Milwaukee is the worse case: its 5+ tier cannot be separated from the feed AND it
+has no city aggregate, so the number Compare presented as measured had no
+measurement behind it in any form.
+
+Fixed by reading the SAME field the report reads, not by adding a caveat to the
+city-level check. Both city-level helpers became unused and the import was
+deleted — which is the signal the dependency is gone rather than masked. Two
+surfaces that read one field cannot disagree; two surfaces that keep two
+conditions in step can, and eventually do.
+
+**"9 kinds of red tape tracked" could not have been derived when it was written.**
+The categories were a TypeScript union, which is erased at runtime — there was no
+list to count. That is *why* the number was hand-typed, and why correcting 9 to
+10 would have reset the clock rather than fixed anything. The array is now the
+source and the union derives from it.
+
+The guard checks BOTH directions, because the headline can be wrong two ways and
+neither is visible from the number: a declared-but-unemitted category inflates
+the count with a kind we do not track, and an emitted-but-undeclared one
+undercounts the product.
+
+### The one that ran the other way
+
+Ten findings overstated; one understated. All 23 cities' ADU rules had been read
+and no surface said so — `adu` appeared only as a wizard label. Stated now
+against the existing coverage count rather than a second list, because a
+duplicate list is one more thing to keep in step, which is the failure this audit
+found ten times over.
+
+### What the audit says about copy generally
+
+Every fix here replaced a literal with a derivation or deleted a claim. Not one
+was fixed by writing a more accurate sentence, because a more accurate sentence
+is accurate on the day it is written and the data is what moves. **Where a claim
+can be derived, a corrected literal is a defect with a longer fuse.**
