@@ -102,7 +102,12 @@ export default function RedTape() {
               claims the page cannot back, sitting above a ranking whose largest
               input is calibrated rather than measured. */}
           <h1 className="mt-4 max-w-3xl font-serif text-[clamp(2.4rem,6vw,4.2rem)] leading-[1.04] tracking-tight">
-            The same 40,000 sq ft apartment building, priced and timed in {ranked.length} cities.
+            {/* ⚠️ DERIVED. The size was typed here while {ranked.length} beside it
+                was already derived — so one half of the sentence tracked the data
+                and the other half did not. REFERENCE is what the index actually
+                prices; if it changes, this changes with it. */}
+            The same {REFERENCE.gfa.toLocaleString()} sq ft apartment building, priced and timed in{' '}
+            {ranked.length} cities.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-piranha-bone/70">
             Ranked by what it takes to get it built.

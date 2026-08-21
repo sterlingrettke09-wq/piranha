@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { PageContainer } from '../components/PageContainer'
 import { PageHeading } from '../components/PageHeading'
 import { Reveal } from '../components/Reveal'
-import { CITIES, getCity } from '../config/cities'
+import { CITIES, getCity, cityName } from '../config/cities'
 import {
   COVERAGE_DIMENSIONS,
   DIMENSION_LABELS,
@@ -18,6 +18,7 @@ import {
   type EnvelopeSample,
 } from '../config/envelopeSample'
 import { CITY_CLAIMS } from '../config/coverageClaim'
+import { PARKING_RULES } from '../config/parkingRules'
 import { FT_PER_STORY, ftPerStory } from '../config/estimates'
 import { RELIEF_FACTOR_HEIGHT, RELIEF_FACTOR_FAR } from '../config/reliefFactors'
 import {
@@ -252,6 +253,21 @@ function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) 
 export default function Methodology() {
   // All tables below are generated from the live engine constants, so they can
   // never drift from what the analysis actually computes (or from new cities).
+
+  // ⚠️ THE PARKING SENTENCE IS DERIVED FOR THE SAME REASON THE TABLES ARE. It
+  // used to name four cities as having abolished minimums citywide; the data
+  // says six, so a hand-kept list had already fallen a third behind — and it had
+  // been updated by hand for Denver's August 2025 flip, which is exactly the
+  // maintenance that eventually gets missed. The buckets are `status`, so they
+  // are countable and nameable from the same record the Red Tape Index reads.
+  const abolished = Object.keys(PARKING_RULES)
+    .filter((slug) => PARKING_RULES[slug].status === 'abolished')
+    .map(cityName)
+    .sort()
+  const abolishedCount = abolished.length
+  const partialCount = Object.keys(PARKING_RULES).length - abolishedCount
+  const abolishedList =
+    abolished.slice(0, -1).join(', ') + (abolished.length > 1 ? ` and ${abolished[abolished.length - 1]}` : abolished[0] ?? '')
   const cityOrder = Object.keys(cityCostIndex).sort((a, b) => cityCostIndex[b] - cityCostIndex[a])
   const useRows: [string, string, string][] = (
     [
@@ -474,11 +490,11 @@ export default function Methodology() {
             <p>
               <span className="font-semibold text-piranha-charcoal">Parking minimums.</span> For each
               city we surface whether off-street parking is still mandated on new housing, read from
-              that city&rsquo;s own zoning ordinance or reform — for example San Francisco
-              (Ordinance 286-18, 2018), Minneapolis (2040 plan, 2021), Austin (2023), and Denver
-              (effective August 2025) have abolished minimums citywide, while Chicago, New York,
-              Seattle, Los Angeles, Boston, and Washington, DC have removed or reduced them near
-              transit but keep them elsewhere. Each figure carries an as-of date. For now this is
+              that city&rsquo;s own zoning ordinance or reform. {abolishedCount} of the{' '}
+              {abolishedCount + partialCount} cities have abolished minimums citywide —{' '}
+              {abolishedList} — while the remaining {partialCount} have removed or reduced them in
+              part, most often near transit or downtown, and keep them elsewhere. Each city states
+              its own mechanism on the Red Tape Index, and each figure carries an as-of date. For now this is
               shown per parcel as context and is{' '}
               <span className="font-semibold text-piranha-charcoal">not</span> yet priced into the
               cost model.

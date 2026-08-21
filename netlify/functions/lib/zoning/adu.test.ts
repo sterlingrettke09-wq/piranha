@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
+import { CITIES } from '../../../../src/config/cities'
 import {
   aduRulesFor, summariseAdu, effectiveMaxSize, ADU_LOCAL_READ, ADU_STATE_PREEMPTED,
   ADU_STATE_NOT_ESTABLISHED, ADU_VOCABULARY_CHECK, ADU_ALL_CITIES,
 } from './adu'
-import { CITIES } from '../../../../src/config/cities'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { AduRules, AduFloor, StateLayer, StatePreempts } from './adu'
@@ -2888,6 +2888,21 @@ describe('⚠️ all twenty-three cities are read — pin the partition, not the
     // And ADU_LOCAL_READ is the same set, not a hand-maintained parallel list
     // that could drift out of agreement with the data.
     expect([...ADU_LOCAL_READ].sort()).toEqual(read.sort())
+  })
+
+  it('⚠️ covers every city in the SPA registry, which is what About claims', () => {
+    // About states that ADU rules are read for all {coverageFacts().wired}
+    // cities. That sentence is only true while this holds, and it is the one
+    // claim on the site that UNDERSTATED the product before the audit — so it
+    // gets the same guarding as the ones that overstated.
+    //
+    // Tied to the registry rather than duplicated as a second list: a copy would
+    // be one more thing to keep in step, which is the failure the audit found
+    // ten times over.
+    const registry = CITIES.map((c) => c.slug).sort()
+    const read = [...ADU_LOCAL_READ].sort()
+    expect(read).toEqual(registry)
+    expect(registry.length).toBe(23)
   })
 
   it('⚠️ the unknown-city fallback still returns not-read, and claims nothing', () => {

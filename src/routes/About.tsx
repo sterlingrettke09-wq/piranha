@@ -66,6 +66,19 @@ export default function About() {
                 typical months to approval for the path your project lands on.
               </li>
             </ul>
+            {/* ⚠️ THE ONE PLACE THE COPY UNDERSTATED THE PRODUCT. A claim audit
+                found ten surfaces asserting more than the data supports and this
+                one asserting less: every city's accessory-dwelling-unit rules
+                had been read and no surface said so. The number is the coverage
+                count rather than a second list, and a test asserts the ADU
+                engine covers every city in that registry — so if a city is added
+                without its ADU rules read, the suite goes red instead of this
+                sentence quietly becoming false. */}
+            <p>
+              Accessory dwelling units are read separately, from each city&rsquo;s own ordinance
+              rather than a national summary — all {coverageFacts().wired} of them, including the
+              state law that overrides a city where one applies.
+            </p>
             <p>
               Every assumption behind a number is shown on the result and labeled as an estimate.
               Curious about a specific verdict? The{' '}

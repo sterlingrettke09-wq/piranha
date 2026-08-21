@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { PARKING_RULES, citiesWithoutParkingRule, type ParkingRule } from './parkingRules'
 import { CITIES } from './cities'
+import METHODOLOGY_SRC from '../routes/Methodology.tsx?raw'
 
 describe('PARKING_RULES', () => {
   // ⚠️ REFORMULATED 2026-08-08. This used to assert that EVERY city slug has a
@@ -411,6 +412,36 @@ describe('PARKING_RULES', () => {
   it('abolished headlines read as abolished', () => {
     for (const slug of ['minneapolis', 'sf', 'austin', 'denver']) {
       expect(PARKING_RULES[slug].headline).toMatch(/abolished/i)
+    }
+  })
+})
+
+describe('⚠️ the Methodology parking sentence is derived, not hand-listed', () => {
+  it('names every abolished city, and the count matches the data', () => {
+    // The prose named four; `status === 'abolished'` is six. San José and
+    // Raleigh were missing — a hand-kept list already a third behind, on a page
+    // whose every other table is generated. It had even been updated by hand for
+    // Denver's Aug-2025 flip, which is the maintenance that eventually lapses.
+    const abolished = Object.keys(PARKING_RULES).filter((s) => PARKING_RULES[s].status === 'abolished')
+    expect(abolished.length).toBe(6)
+    expect(abolished.sort()).toEqual(['austin', 'denver', 'minneapolis', 'raleigh', 'sanjose', 'sf'])
+    // Every city is in exactly one bucket, so the two counts in the sentence
+    // always sum to the roster (rule 20 — pin the partition, not the exception).
+    const partial = Object.keys(PARKING_RULES).filter((s) => PARKING_RULES[s].status === 'partial')
+    expect(abolished.length + partial.length).toBe(Object.keys(PARKING_RULES).length)
+    expect(Object.keys(PARKING_RULES).length).toBe(23)
+  })
+
+  it('⚠️ the page states no city name or count as a literal', () => {
+    const i = METHODOLOGY_SRC.indexOf('off-street parking is still mandated')
+    expect(i).toBeGreaterThan(-1)
+    const prose = METHODOLOGY_SRC.slice(i, i + 700)
+    expect(prose).toMatch(/\{abolishedCount\}/)
+    expect(prose).toMatch(/\{abolishedList\}/)
+    expect(prose).toMatch(/\{partialCount\}/)
+    // The old sentence's hand-typed roster must not survive anywhere in it.
+    for (const name of ['San Francisco', 'Minneapolis', 'Austin', 'Denver', 'Chicago', 'Seattle']) {
+      expect(prose, `${name} is named as a literal`).not.toMatch(new RegExp(name))
     }
   })
 })
