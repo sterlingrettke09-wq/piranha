@@ -143,20 +143,69 @@ export function seattleBaseHeightFt(
   zone: string | null | undefined,
   center?: SeattleCenter,
 ): number | null {
-  if (!zone) return null
+  return seattleHeight(zone, center).heightFt
+}
+
+/** ⚠️ WHY A SEATTLE HEIGHT IS NULL. This function already made three DIFFERENT
+ *  decisions and returned the same `null` for all of them:
+ *
+ *    · industrial "U/##", where height is unlimited for industrial uses and the
+ *      number caps only non-industrial ones — a deliberate refusal to publish a
+ *      number that would be wrong for the use being tested;
+ *    · LR3 with the urban-centre boundary unresolved, where the answer DIFFERS
+ *      by centre and picking one would be a guess;
+ *    · a base token in none of the tables at all.
+ *
+ *  The first two are answers about the code; the third is a gap in our reading.
+ *  Denver's stale district was caught because Denver labels its derivations —
+ *  Seattle labelled nothing, so the same class of staleness would be invisible
+ *  here. `seattleBaseHeightFt` keeps its old signature so every existing caller
+ *  is unchanged; callers that want the reason use `seattleHeight`. */
+export type SeattleHeightBasis =
+  /** A number read off the base zone token's trailing suffix (NC3-65 → 65). */
+  | 'suffix-stated'
+  /** No suffix; the figure comes from SMC 23.45.514 Table A or B, which depends
+   *  on the MHA suffix and, for LR3, on urban-centre membership. */
+  | 'tier-table'
+  /** Industrial "U/##": unlimited for industrial uses, so no figure is published. */
+  | 'unlimited-for-industrial'
+  /** LR3 with the centre unresolved — the answer differs by centre and neither
+   *  is chosen. A REFUSAL, not a missing table. */
+  | 'centre-unresolved'
+  /** The base token matches no suffix and no tier row. */
+  | 'not-in-tables'
+
+export interface SeattleHeight {
+  heightFt: number | null
+  basis: SeattleHeightBasis
+  /** The token the height was read from, after stripping the MIO prefix and any
+   *  parenthetical — carried so a wrong answer can be traced to the parse rather
+   *  than to the table. */
+  baseToken: string
+}
+
+export function seattleHeight(
+  zone: string | null | undefined,
+  center?: SeattleCenter,
+): SeattleHeight {
+  if (!zone) return { heightFt: null, basis: 'not-in-tables', baseToken: '' }
   const z = String(zone).toUpperCase()
-  if (/\bU\s*\//.test(z)) return null
+  if (/\bU\s*\//.test(z)) {
+    return { heightFt: null, basis: 'unlimited-for-industrial', baseToken: seattleBaseZoneToken(z) }
+  }
   const base = seattleBaseZoneToken(z)
   const nums = (base.match(/\d{2,3}/g) ?? []).map(Number).filter((n) => n >= 25 && n <= 1000)
-  if (nums.length) return nums[nums.length - 1]
+  if (nums.length) return { heightFt: nums[nums.length - 1], basis: 'suffix-stated', baseToken: base }
 
   // The MHA suffix is read off the ORIGINAL string: seattleBaseZoneToken strips
   // parentheticals, which is where it lives.
   const mha = hasMhaSuffix(z)
 
+  const tier = (heightFt: number): SeattleHeight => ({ heightFt, basis: 'tier-table', baseToken: base })
+
   // Table A. Both dwelling-unit-type rows agree everywhere except one cell.
-  if (/\bLR1\b/.test(base)) return 32
-  if (/\bLR2\b/.test(base)) return mha ? 40 : 32
+  if (/\bLR1\b/.test(base)) return tier(32)
+  if (/\bLR2\b/.test(base)) return tier(mha ? 40 : 32)
   if (/\bLR3\b/.test(base)) {
     if (center === 'inside') {
       // ⚠️ THE ONE CELL WHERE DWELLING-UNIT TYPE CHANGES THE ANSWER, and we do
@@ -168,15 +217,16 @@ export function seattleBaseHeightFt(
       // Carrying the LOWER figure, because reporting the higher would assume a
       // stacked-unit program the user has not chosen (CLAUDE.md rule 6). If unit
       // type is ever modelled, THIS is the cell to revisit.
-      return mha ? 50 : 32
+      return tier(mha ? 50 : 32)
     }
-    if (center === 'outside') return mha ? 40 : 32
+    if (center === 'outside') return tier(mha ? 40 : 32)
     // Centre unresolved and the answer differs by centre. Refuse rather than
     // pick one — the same choice the FAR path makes for LR3 (multifamilyFar).
-    return null
+    // ⚠️ Labelled, so this refusal cannot render as "no height limit here".
+    return { heightFt: null, basis: 'centre-unresolved', baseToken: base }
   }
   // Table B.
-  if (/\bMR\b/.test(base)) return mha ? 80 : 60
-  if (/\bHR\b/.test(base)) return 440
-  return null
+  if (/\bMR\b/.test(base)) return tier(mha ? 80 : 60)
+  if (/\bHR\b/.test(base)) return tier(440)
+  return { heightFt: null, basis: 'not-in-tables', baseToken: base }
 }

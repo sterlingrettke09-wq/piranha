@@ -126,7 +126,38 @@ describe('resolveNyc — bare (non-contextual) R districts → null, now a GAP n
 
 describe('resolveNyc — unknown / empty / garbage → null (never fabricated)', () => {
   it.each([null, undefined, '', 'not-a-zone', 'M1-1', 'PARK'])('%s → both null', (zone) => {
-    expect(resolveNyc(zone)).toEqual({ far: null, heightFt: null })
+    expect(resolveNyc(zone)).toMatchObject({ far: null, heightFt: null })
+  })
+
+  it('⚠️ a sky-exposure-plane district is an ANSWER, not the same null as garbage', () => {
+    // NYC's non-contextual districts are governed by a sky exposure plane, so
+    // the ZR states no maximum height — that is what the code says, not a lookup
+    // this module failed. Rendering it identically to an unreadable string is
+    // rule 5's failure, and it was the state before the basis existed.
+    for (const z of ['C4-4', 'M1-5', 'C6-4', 'R6']) {
+      expect(resolveNyc(z).heightBasis, z).toBe('sky-exposure-plane')
+    }
+    for (const z of ['not-a-zone', 'PARK', '']) {
+      expect(resolveNyc(z).heightBasis, z).toBe('unrecognised-district')
+    }
+  })
+
+  it('⚠️ a commercial equivalent is labelled as one', () => {
+    // C4-4A's figure is R7A's, reached through NYC_COMMERCIAL_EQUIVALENT. A
+    // reader checking C4-4A against § 23-432 will not find it there, so the
+    // route has to be on the answer.
+    expect(resolveNyc('C4-4A')).toMatchObject({ heightFt: 85, heightBasis: 'commercial-equivalent' })
+    expect(resolveNyc('R7A').heightBasis).toBe('published')
+  })
+
+  it('⚠️ farBasis says the FAR was never read here, rather than implying none', () => {
+    // Every `far` this module returns is null because it reads no FAR table. For
+    // NYC in particular, letting that null imply "the city imposes no FAR" would
+    // be badly wrong — FAR is the primary residential control there.
+    for (const z of ['R6A', 'C4-4', 'not-a-zone']) {
+      expect(resolveNyc(z).farBasis, z).toBe('not-read-here')
+      expect(resolveNyc(z).far, z).toBeNull()
+    }
   })
   it('is case- and whitespace-insensitive', () => {
     expect(resolveNyc('  r7a  ').heightFt).toBe(85)

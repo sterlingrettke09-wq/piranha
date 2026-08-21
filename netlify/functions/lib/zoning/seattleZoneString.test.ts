@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { seattleBaseHeightFt, seattleBaseZoneToken, stripMioPrefix } from './seattleZoneString'
+import { seattleBaseHeightFt, seattleBaseZoneToken, stripMioPrefix, seattleHeight } from './seattleZoneString'
 
 // THE EXTERNAL ANCHOR.
 //
@@ -264,5 +264,63 @@ describe('SMC 23.45.514 tier heights, sourced 2026-08-16', () => {
     expect(answers.has(85)).toBe(false)
     expect(answers.has(240)).toBe(false)
     expect([...answers].every((a) => [32, 40, 60, 80, 440].includes(a as number))).toBe(true)
+  })
+})
+
+describe('⚠️ seattleHeight — three refusals that used to share one null', () => {
+  it('labels a suffix-stated figure and a tier-table figure differently', () => {
+    // NC3-65's 65 is read off the zone string; LR2's 32 comes from SMC
+    // 23.45.514 Table A. A reader checking 32 against the string will not find
+    // it there, so the route has to be on the answer.
+    expect(seattleHeight('NC3-65')).toMatchObject({ heightFt: 65, basis: 'suffix-stated' })
+    expect(seattleHeight('LR2')).toMatchObject({ heightFt: 32, basis: 'tier-table' })
+    expect(seattleHeight('HR')).toMatchObject({ heightFt: 440, basis: 'tier-table' })
+  })
+
+  it('⚠️ industrial U/## is a REFUSAL about the code, not a missing table', () => {
+    // Height is unlimited for industrial uses there; the number caps only
+    // non-industrial ones. Publishing it would be wrong for the use being
+    // tested, and publishing a bare null reads as "no limit known".
+    expect(seattleHeight('IG1 U/85')).toMatchObject({
+      heightFt: null,
+      basis: 'unlimited-for-industrial',
+    })
+  })
+
+  it('⚠️ LR3 with the centre unresolved is a refusal, not an absence', () => {
+    // The answer DIFFERS by urban-centre membership, so neither is chosen. With
+    // the centre known it resolves — which is what makes the refusal a refusal.
+    expect(seattleHeight('LR3')).toMatchObject({ heightFt: null, basis: 'centre-unresolved' })
+    expect(seattleHeight('LR3', 'inside')).toMatchObject({ heightFt: 32, basis: 'tier-table' })
+    expect(seattleHeight('LR3', 'outside')).toMatchObject({ heightFt: 32, basis: 'tier-table' })
+    expect(seattleHeight('LR3 (M)', 'inside')).toMatchObject({ heightFt: 50, basis: 'tier-table' })
+  })
+
+  it('an unknown token is the only genuine gap', () => {
+    expect(seattleHeight('ZZZ')).toMatchObject({ heightFt: null, basis: 'not-in-tables' })
+    expect(seattleHeight(null)).toMatchObject({ heightFt: null, basis: 'not-in-tables' })
+  })
+
+  it('⚠️ every null carries a basis, and the three causes are distinct', () => {
+    // rule 20: pinned over a non-empty set, and asserting the causes DIFFER —
+    // a single shared reason code would satisfy "always set" and lose the point.
+    const nulls = ['IG1 U/85', 'LR3', 'ZZZ'].map((z) => seattleHeight(z))
+    expect(nulls.every((r) => r.heightFt === null)).toBe(true)
+    expect(new Set(nulls.map((r) => r.basis)).size).toBe(3)
+  })
+
+  it('⚠️ reports the token it actually parsed, so a bad answer is traceable', () => {
+    // The MIO defect this module exists to fix was a PARSE error, not a table
+    // error. Carrying the base token separates the two on any future report.
+    expect(seattleHeight('MIO-160-LR1 (M)')).toMatchObject({ baseToken: 'LR1', heightFt: 32 })
+    expect(seattleHeight('MIO-105-NC3-65')).toMatchObject({ baseToken: 'NC3-65', heightFt: 65 })
+  })
+
+  it('seattleBaseHeightFt is unchanged for every existing caller', () => {
+    // The wrapper keeps the old signature and return type: this change adds a
+    // reason channel, it does not move anyone onto a new one.
+    for (const z of ['NC3-65', 'LR2', 'LR3', 'IG1 U/85', 'HR', 'ZZZ']) {
+      expect(seattleBaseHeightFt(z), z).toBe(seattleHeight(z).heightFt)
+    }
   })
 })

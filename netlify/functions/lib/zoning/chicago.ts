@@ -19,9 +19,42 @@
 // code makes height vary by lot frontage / ground-floor commercial (a "varies"
 // case), we return null rather than guess a representative number.
 
+/** ⚠️ WHY A HEIGHT IS NULL. The residential table already computed this and the
+ *  resolver discarded it, so four distinct facts reached the caller as one bare
+ *  `null`: the code says "None", the code gives two figures selected by a lot
+ *  frontage we do not have, the district has no row, or the district is not one
+ *  this module reads at all.
+ *
+ *  Denver's stale U-SU-B1 was visible only because Denver labels its
+ *  derivations. Chicago answered without saying how, so a pattern-derived
+ *  answer and a table-stated one were indistinguishable — and so was a known
+ *  absence from a failed lookup (rule 5). */
+export type ChicagoHeightBasis =
+  /** A figure read from §17-2-0311-A or the B/C suffix table. */
+  | 'published'
+  /** §17-2-0311-A gives two figures selected by lot frontage, which we do not carry. */
+  | 'varies-by-lot-frontage'
+  /** The table says "None" — a known ABSENCE of a cap, not a failed lookup. */
+  | 'no-limit-in-code'
+  /** The district exists here but has no row in the height table. */
+  | 'not-listed-in-table'
+  /** D and M classes: this module reads their FAR suffix table and not a height. */
+  | 'class-not-read'
+  /** The zone string did not parse as a Chicago district at all. */
+  | 'unrecognised-district'
+
+/** Whether a FAR came from a table or is simply unavailable. Chicago publishes
+ *  every FAR it has by suffix, so there is no derived arm — the distinction that
+ *  matters is a stated ratio versus a district we cannot resolve. */
+export type ChicagoFarBasis = 'published' | 'unrecognised-district' | 'planned-development'
+
 export interface DistrictLimits {
   far: number | null
   heightFt: number | null
+  /** ⚠️ ALWAYS SET. A null height with no basis is the state this type exists to
+   *  make unrepresentable. */
+  heightBasis?: ChicagoHeightBasis
+  farBasis?: ChicagoFarBasis
 }
 
 // ── Residential base FAR + height ─────────────────────────────────────────
@@ -209,28 +242,43 @@ const RESIDENTIAL_BY_UNHYPHENATED: Record<string, ResidentialLimits> = Object.fr
  * unknown or the code publishes no single figure ("varies"). NEVER guesses.
  */
 export function resolveChicago(zone: string | null | undefined): DistrictLimits {
-  if (!zone) return { far: null, heightFt: null }
+  if (!zone) {
+    return { far: null, heightFt: null, heightBasis: 'unrecognised-district', farBasis: 'unrecognised-district' }
+  }
   const z = zone.trim().toUpperCase()
 
   // Residential classes carry the intensity in the class name itself (RM-5,
   // RT-4…), not a separate dash suffix — look them up directly.
   if (z in CHICAGO_RESIDENTIAL) {
     const r = CHICAGO_RESIDENTIAL[z]
-    return { far: r.far, heightFt: r.heightFt }
+    // The table already knows WHY a height is null; carry it rather than drop it.
+    return { far: r.far, heightFt: r.heightFt, heightBasis: r.heightBasis, farBasis: 'published' }
   }
 
   // Same district, different punctuation — see RESIDENTIAL_BY_UNHYPHENATED.
   const unhyphenated = z.replace(/-/g, '')
   if (unhyphenated in RESIDENTIAL_BY_UNHYPHENATED) {
     const r = RESIDENTIAL_BY_UNHYPHENATED[unhyphenated]
-    return { far: r.far, heightFt: r.heightFt }
+    return { far: r.far, heightFt: r.heightFt, heightBasis: r.heightBasis, farBasis: 'published' }
   }
 
   // B/C/D/M classes: split "<prefix><digit?>-<suffix>" → prefix letter + suffix.
   // Examples: "B3-2" → letter B, suffix "2"; "DX-7" → letter D, suffix "7";
   // "M1-2" → letter M, suffix "2"; "C1-5" → letter C, suffix "5".
   const m = z.match(/^([BCDM])[A-Z]?\d*-(\d+(?:\.\d+)?)$/)
-  if (!m) return { far: null, heightFt: null }
+  if (!m) {
+    // ⚠️ Planned Developments are the big population here and they are an
+    // ANSWER, not a gap: a PD's envelope is set by its own approved plan, so no
+    // district table can state one. Distinguished from a string we simply
+    // cannot read.
+    const pd = /^PD[\s-]*\d+$/.test(z) || /PLANNED DEVELOPMENT/.test(z)
+    return {
+      far: null,
+      heightFt: null,
+      heightBasis: pd ? 'class-not-read' : 'unrecognised-district',
+      farBasis: pd ? 'planned-development' : 'unrecognised-district',
+    }
+  }
   const letter = m[1]
   const suffix = m[2]
 
@@ -240,13 +288,29 @@ export function resolveChicago(zone: string | null | undefined): DistrictLimits 
       return {
         far: BC_FAR_BY_SUFFIX[suffix] ?? null,
         heightFt: BC_HEIGHT_BY_SUFFIX[suffix] ?? null,
+        heightBasis: BC_HEIGHT_BY_SUFFIX[suffix] != null ? 'published' : 'not-listed-in-table',
+        farBasis: BC_FAR_BY_SUFFIX[suffix] != null ? 'published' : 'unrecognised-district',
       }
     case 'D':
-      return { far: D_FAR_BY_SUFFIX[suffix] ?? null, heightFt: null }
+      // ⚠️ 'class-not-read' rather than 'not-listed-in-table': this module reads
+      // the D suffix FAR table and does not read a D height at all. Saying the
+      // table has no row would assert something about the ordinance that was
+      // never checked.
+      return {
+        far: D_FAR_BY_SUFFIX[suffix] ?? null,
+        heightFt: null,
+        heightBasis: 'class-not-read',
+        farBasis: D_FAR_BY_SUFFIX[suffix] != null ? 'published' : 'unrecognised-district',
+      }
     case 'M':
-      return { far: M_FAR_BY_SUFFIX[suffix] ?? null, heightFt: null }
+      return {
+        far: M_FAR_BY_SUFFIX[suffix] ?? null,
+        heightFt: null,
+        heightBasis: 'class-not-read',
+        farBasis: M_FAR_BY_SUFFIX[suffix] != null ? 'published' : 'unrecognised-district',
+      }
     default:
-      return { far: null, heightFt: null }
+      return { far: null, heightFt: null, heightBasis: 'unrecognised-district', farBasis: 'unrecognised-district' }
   }
 }
 

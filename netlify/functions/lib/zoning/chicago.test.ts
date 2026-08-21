@@ -198,19 +198,44 @@ describe('CHICAGO_RESIDENTIAL — every district states its height disposition',
 })
 
 describe('resolveChicago — unknown / "varies" → null (never fabricated)', () => {
-  it('unknown district → both null', () => {
-    expect(resolveChicago('PD-1')).toEqual({ far: null, heightFt: null })
-    expect(resolveChicago('POS-1')).toEqual({ far: null, heightFt: null })
+  it('unknown district → both null, WITH a reason', () => {
+    // ⚠️ The numbers still must not be fabricated — but a bare null said nothing
+    // about WHY, so a Planned Development (whose envelope comes from its own
+    // approved plan, an ANSWER) rendered identically to a string we cannot read.
+    expect(resolveChicago('PD-1')).toMatchObject({ far: null, heightFt: null, farBasis: 'planned-development' })
+    expect(resolveChicago('POS-1')).toMatchObject({ far: null, heightFt: null, farBasis: 'unrecognised-district' })
   })
   it('an out-of-range dash suffix (no published row) → null FAR', () => {
     expect(resolveChicago('B3-4').far).toBeNull() // no dash-4 in §17-3-0403-A
     expect(resolveChicago('DX-99').far).toBeNull()
   })
-  it('null / empty / garbage input → null', () => {
-    expect(resolveChicago(null)).toEqual({ far: null, heightFt: null })
-    expect(resolveChicago(undefined)).toEqual({ far: null, heightFt: null })
-    expect(resolveChicago('')).toEqual({ far: null, heightFt: null })
-    expect(resolveChicago('not-a-zone')).toEqual({ far: null, heightFt: null })
+  it('null / empty / garbage input → null, and says the district was unreadable', () => {
+    for (const z of [null, undefined, '', 'not-a-zone']) {
+      expect(resolveChicago(z)).toMatchObject({
+        far: null,
+        heightFt: null,
+        heightBasis: 'unrecognised-district',
+        farBasis: 'unrecognised-district',
+      })
+    }
+  })
+
+  it('⚠️ every result carries a basis — a bare null is unrepresentable', () => {
+    // rule 20: pinned over a NON-EMPTY set that includes each shape the resolver
+    // can take, so this cannot pass by finding nothing.
+    const zones = ['RS-3', 'RT-4', 'B3-2', 'B3-4', 'DX-12', 'M1-1', 'PD 1043', 'POS-1', 'not-a-zone']
+    for (const z of zones) {
+      const r = resolveChicago(z)
+      expect(r.heightBasis, z).toBeDefined()
+      expect(r.farBasis, z).toBeDefined()
+    }
+    // ⚠️ And the four null-height causes are genuinely DISTINCT — the point of
+    // the field. B3-2 has no row; DX is a class this module does not read for
+    // height; a PD is answered by its own plan; garbage is a gap in our reading.
+    expect(resolveChicago('B3-2').heightBasis).toBe('not-listed-in-table')
+    expect(resolveChicago('DX-12').heightBasis).toBe('class-not-read')
+    expect(resolveChicago('RS-3').heightBasis).toBe('published')
+    expect(resolveChicago('not-a-zone').heightBasis).toBe('unrecognised-district')
   })
   it('is case- and whitespace-insensitive', () => {
     expect(resolveChicago('  b3-2  ').far).toBe(2.2)

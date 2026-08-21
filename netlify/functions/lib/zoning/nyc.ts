@@ -48,9 +48,38 @@
 // property of the code. Closing it changes resolved heights for parcels that
 // currently report "unknown" and is left to a scoped follow-up.
 
+/** ⚠️ WHY A HEIGHT IS NULL, AND IT IS USUALLY AN ANSWER RATHER THAN A GAP.
+ *  NYC's non-contextual districts are governed by a SKY EXPOSURE PLANE, not a
+ *  height cap — so "no figure" there is what the Zoning Resolution says, not a
+ *  lookup this module failed. Rendering that identically to an unreadable zone
+ *  string is rule 5's failure, and it was the state before this type existed.
+ *
+ *  ⚠️ AND `far: null` HERE IS ALWAYS A NON-ANSWER. This module reads the § 23-432
+ *  height table and nothing else; NYC's FAR lives in different tables that are
+ *  not read here. `farBasis: 'not-read-here'` says so, rather than letting a
+ *  null imply the city imposes none — which for NYC would be badly wrong. */
+export type NycHeightBasis =
+  /** § 23-432 publishes a maximum building height for this contextual district. */
+  | 'published'
+  /** A commercial district mapped to its contextual residential equivalent. */
+  | 'commercial-equivalent'
+  /** Non-contextual: governed by a sky exposure plane, so the code states no
+   *  maximum height. A known ABSENCE, not a failed lookup. */
+  | 'sky-exposure-plane'
+  /** The zone string did not resolve to a district this module knows. */
+  | 'unrecognised-district'
+
+/** ⚠️ ONE ARM ONLY, DELIBERATELY. Every `far` this module returns is null,
+ *  because it reads no FAR table — a `'published'` arm would be unreachable and
+ *  would suggest a capability that does not exist. */
+export type NycFarBasis = 'not-read-here'
+
 export interface DistrictLimits {
   far: number | null
   heightFt: number | null
+  /** ⚠️ ALWAYS SET, so a sky-exposure-plane answer cannot render as a gap. */
+  heightBasis?: NycHeightBasis
+  farBasis?: NycFarBasis
 }
 
 // ── Contextual R-district max building heights ──────────────────────────────
@@ -158,24 +187,43 @@ export const NYC_COMMERCIAL_EQUIVALENT: Record<string, string> = {
  * which wins in resolveZoningLimits. This table only contributes maxHeightFt.
  */
 export function resolveNyc(zone: string | null | undefined): DistrictLimits {
-  if (!zone) return { far: null, heightFt: null }
+  if (!zone) return { far: null, heightFt: null, heightBasis: 'unrecognised-district', farBasis: 'not-read-here' }
   // Strip optional commercial-overlay tail ("R7A/C2-4" → "R7A") and whitespace;
   // PLUTO ZoneDist1 is the primary district, but be defensive about overlays.
   const z = zone.trim().toUpperCase().split('/')[0].trim()
 
   // Direct contextual R-district hit.
   if (z in NYC_CONTEXTUAL_HEIGHTS) {
-    return { far: null, heightFt: NYC_CONTEXTUAL_HEIGHTS[z] }
+    return { far: null, heightFt: NYC_CONTEXTUAL_HEIGHTS[z], heightBasis: 'published', farBasis: 'not-read-here' }
   }
 
   // Commercial district mapped to a contextual residential equivalent.
   const equiv = NYC_COMMERCIAL_EQUIVALENT[z]
   if (equiv && equiv in NYC_CONTEXTUAL_HEIGHTS) {
-    return { far: null, heightFt: NYC_CONTEXTUAL_HEIGHTS[equiv] }
+    // ⚠️ Distinguished from a direct hit: the figure is the EQUIVALENT
+    // district's, reached through NYC_COMMERCIAL_EQUIVALENT. A reader checking
+    // C4-4A against § 23-432 will not find C4-4A in it.
+    return {
+      far: null,
+      heightFt: NYC_CONTEXTUAL_HEIGHTS[equiv],
+      heightBasis: 'commercial-equivalent',
+      farBasis: 'not-read-here',
+    }
   }
 
-  // Non-contextual district (sky-exposure-plane governed) or unknown → null.
-  return { far: null, heightFt: null }
+  // ⚠️ TWO DIFFERENT FACTS THAT USED TO SHARE ONE `null`. A non-contextual
+  // district IS governed by a sky exposure plane — the ZR states no maximum
+  // height, which is an answer. An unreadable string is a gap. Deciding between
+  // them on the district letter is a reading of the ZR's own scheme: R1–R10
+  // without a contextual letter suffix, and C/M districts, are the
+  // sky-exposure-plane families.
+  const nonContextual = /^(R(?:[1-9]|10)|C[1-8]|M[1-3])\b/.test(z)
+  return {
+    far: null,
+    heightFt: null,
+    heightBasis: nonContextual ? 'sky-exposure-plane' : 'unrecognised-district',
+    farBasis: 'not-read-here',
+  }
 }
 
 // Static documentation snapshot of resolveNyc() output for the common districts,
