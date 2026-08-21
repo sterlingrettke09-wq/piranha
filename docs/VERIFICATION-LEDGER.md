@@ -7847,3 +7847,47 @@ the deployed function inventory — **13 functions against the previous 8**, wit
 `auth-request`, `auth-session`, `auth-verify`, `inverse` and `watchlist` newly
 present and no `*.test` among them. A count and a membership list, checked at the
 destination, where the payload actually exists (rule 22).
+
+---
+
+## 2026-08-21 — three instrument corrections in one verification, all in the same direction
+
+Confirming one card renders on production took five checks, and **three of them
+were wrong about a page that was working**. None was a product defect; each was
+the instrument describing itself.
+
+| what I ran | what it reported | why it was wrong |
+|---|---|---|
+| `innerText.indexOf('Measured entitlement time')` | no cards render at all | the kicker renders through `text-transform: uppercase`, so the DOM text is `MEASURED ENTITLEMENT TIME`. A case-sensitive search over a case-transformed surface. |
+| read the headline figure | `0 mo` on an 18-month card | the Browser pane is `visibilityState: "hidden"`, so `requestAnimationFrame` is paused and the count-up never left its 0 start. |
+| grep the deployed `index-*.js` | the code never shipped | `RealityCheck` is in the lazy-loaded route chunk. I grepped the eager bundle — the wrong artifact, not the wrong content. |
+
+**All three failed in the same direction: they reported a working page as
+broken.** That direction is the mild one — a false alarm costs a round of
+investigation, where the opposite would have shipped a wrong confirmation. But
+the shape is rule 11's, three times in one sitting: *if the answer would change
+depending on which layer you queried, you measured the layer.* Uppercase is a
+layer. rAF scheduling is a layer. Bundle splitting is a layer.
+
+### The right instrument for a rendered surface is a screenshot
+
+What actually resolved it was `computer{action:"screenshot"}` — which forced a
+paint, resumed rAF, and let the count-up complete to `18 mo`. It is also, not
+incidentally, **what a person actually sees**. For anything whose correctness is
+"does this appear on screen", the pixels are the artifact and everything upstream
+of them — innerText, the bundle, the API payload — is a proxy that can be right
+while the screen is wrong, or wrong while the screen is right.
+
+Three proxies said broken; the screenshot said fine; the screenshot was correct.
+
+### What the same session's real defect looked like, by contrast
+
+The one genuine finding came from neither the DOM nor the bundle: a parcel whose
+verdict read **"NOT ALLOWED — This likely can't be built as proposed"** with
+*"Measured entitlement time · 18 mo"* rendered underneath. That was visible in
+plain text, on the first page I loaded, and it was not a rendering question at
+all — it was a claim question.
+
+Worth keeping as the contrast: the instrument errors were all about *whether the
+pixels arrived*, and the real defect was about *whether the sentence was true*.
+No amount of care with the first kind finds the second.

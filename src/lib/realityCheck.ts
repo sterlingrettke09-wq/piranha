@@ -116,7 +116,22 @@ export function buildRealityCards(result: AnalysisResult): RealityCard[] {
   //     permit feed. Rendered as its own card and never merged with the permit
   //     figure: no source bounds their overlap, so a combined number would
   //     double-count it, and neither is the lifecycle.
-  const ent = result.timeline.entitlement
+  //
+  // ⚠️ SUPPRESSED ENTIRELY ON A PROHIBITED VERDICT, and this is the whole card,
+  // not just its so-what. Found live on 1510 Market St (C-3-G), where the page
+  // says "NOT ALLOWED — This likely can't be built as proposed" and this band
+  // then offered "Measured entitlement time · 18 mo". Telling someone approval
+  // takes eighteen months on a project that cannot be built implies a path that
+  // does not exist — a FALSE IMPLICATION, not merely an unhelpful figure.
+  //
+  // The fallback copy made it worse by pointing at "the estimate below", which
+  // on a prohibited path is `months: 0` — there is no estimate below. That
+  // fallback existed for a total of zero legitimate cases: every non-prohibited
+  // timeline has months > 0, so the only branch that ever reached it was the one
+  // where the sentence was false. Rule 9's corollary — copy written for the
+  // normal case, reached by a branch it was never true of.
+  const prohibited = result.timeline.path === 'prohibited'
+  const ent = prohibited ? undefined : result.timeline.entitlement
   if (ent) {
     const totalMonths = result.timeline.months
     cards.push({
@@ -127,12 +142,13 @@ export function buildRealityCards(result: AnalysisResult): RealityCard[] {
       // ⚠️ The so-what states the RELATIONSHIP to the estimate rather than
       // implying the estimate is wrong. This leg sits inside the ~N months
       // shown; it does not add to them and does not replace them.
-      soWhat:
-        totalMonths > 0
-          ? `Getting approved is ${ent.medianMonths} of the ~${totalMonths} months shown below — a leg of that estimate, not an addition to it.`
-          : 'Getting approved is one leg of the estimate below, not an addition to it.',
+      // ⚠️ NO FALLBACK BRANCH. `months` is only 0 on a prohibited path, and that
+      // case now returns before reaching here — so a `totalMonths > 0` ternary
+      // would be dead code whose other half was the false sentence. A test pins
+      // that every card-producing timeline has months > 0.
+      soWhat: `Getting approved is ${ent.medianMonths} of the ~${totalMonths} months shown below — a leg of that estimate, not an addition to it.`,
     })
-  } else if (result.timeline.entitlementAbsent) {
+  } else if (result.timeline.entitlementAbsent && !prohibited) {
     // ⚠️ NEVER A BLANK. A missing entitlement line reads as "no delay here",
     // which is the opposite of what an unmeasured city means — the same failure
     // the permit card above already had to fix once. Each basis gets copy that

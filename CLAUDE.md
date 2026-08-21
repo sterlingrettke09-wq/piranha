@@ -599,6 +599,34 @@ environment, not the deploy, and reports failure forever if trusted. What
 verified it was `state: ready` on the expected commit plus the deployed function
 inventory, 13 against the previous 8 (rules 11 and 22).
 
+**32. For a RENDERED surface, the screenshot is the instrument — everything
+upstream of the pixels is a proxy.** Confirming one card appeared on production
+took five checks and three of them were wrong about a page that was working:
+a case-sensitive `innerText` search against a kicker rendered through
+`text-transform: uppercase`; a headline read as `0 mo` because the browser pane
+was `visibilityState: "hidden"`, so `requestAnimationFrame` was paused and the
+count-up never left zero; and a grep of the eager `index-*.js` for code that
+lives in a lazy-loaded route chunk.
+
+Uppercase is a layer, rAF scheduling is a layer, bundle splitting is a layer —
+rule 11 three times in one sitting. **All three failed in the same direction,
+reporting a working page as broken**, which is the mild direction: a false alarm
+costs an investigation, where the opposite ships a wrong confirmation. Do not
+take the direction as reassurance, though; it was luck of the failure mode, not
+of the method.
+
+What settled it was a screenshot, which forced a paint, resumed rAF and let the
+figure land on 18 — and which is also what a person actually sees. When the
+question is "does this appear on screen", the pixels are the artifact.
+
+⚠️ **And the contrast is the part to keep.** The one genuine defect that session
+was not a rendering question: a parcel whose verdict read "NOT ALLOWED — This
+likely can't be built as proposed", with "Measured entitlement time · 18 mo"
+underneath it. Plain text, first page loaded, no instrument needed. The
+instrument errors were about whether the pixels ARRIVED; the real defect was
+about whether the sentence was TRUE. No amount of rigour about the first kind
+finds the second.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

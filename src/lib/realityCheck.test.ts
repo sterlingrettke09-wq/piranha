@@ -9,6 +9,7 @@ function makeResult(over: {
   months?: number
   measured?: AnalysisResult['timeline']['measured']
   measuredTierWithheld?: AnalysisResult['timeline']['measuredTierWithheld']
+  path?: AnalysisResult['timeline']['path']
   entitlement?: AnalysisResult['timeline']['entitlement']
   entitlementAbsent?: AnalysisResult['timeline']['entitlementAbsent']
   reliefOdds?: AnalysisResult['reliefOdds']
@@ -41,7 +42,7 @@ function makeResult(over: {
     costs: { hard: 0, soft: 0, permit: 0, demolition: 0, impact: 0, total: 0, currency: 'USD' },
     timeline: {
       months: over.months ?? 24,
-      path: 'as_of_right',
+      path: over.path ?? 'as_of_right',
       ...(over.measured ? { measured: over.measured } : {}),
       ...(over.measuredTierWithheld ? { measuredTierWithheld: over.measuredTierWithheld } : {}),
       ...(over.entitlement ? { entitlement: over.entitlement } : {}),
@@ -342,5 +343,81 @@ describe('⚠️ the entitlement card — a second leg, never merged with the fi
     // field. That is different from an unmeasured city, which sets the absence.
     const cards = buildRealityCards(makeResult({ city: 'nowhere' }))
     expect(cards.find((c) => c.id === 'entitlement')).toBeUndefined()
+  })
+})
+
+describe('⚠️ prohibited × months === 0 — the intersection nothing covered', () => {
+  const ENT = {
+    medianMonths: 18,
+    p80Months: 27,
+    n: 90,
+    vintage: '2018–2025 filings, data.ca.gov extract updated 2026-08-14',
+    source: 'California HCD Housing Element Annual Progress Report, Tables A and A2',
+    coverageCaveat: '⚠️ Measured for 3 of the 15 ranked cities.',
+  }
+
+  // Found on production, not by review: 1510 Market St (C-3-G) renders
+  // "NOT ALLOWED — This likely can't be built as proposed" and then offered
+  // "Measured entitlement time · 18 mo" underneath it.
+  const prohibited = () =>
+    makeResult({ city: 'nowhere', months: 0, path: 'prohibited', entitlement: ENT })
+
+  it('⚠️ renders NO entitlement card when the project cannot be built', () => {
+    // The false implication is the number's presence, not its wording: an
+    // approval duration on an unbuildable project implies a path that does not
+    // exist. Suppressing the so-what alone would not have fixed it.
+    const cards = buildRealityCards(prohibited())
+    expect(cards.find((c) => c.id === 'entitlement')).toBeUndefined()
+  })
+
+  it('⚠️ leaks no part of the figure — not the months, not the caveat', () => {
+    // A partial render would be the same claim in smaller type.
+    const blob = buildRealityCards(prohibited())
+      .map((c) => `${c.kicker} ${c.big} ${c.unit ?? ''} ${c.sub} ${c.soWhat}`)
+      .join(' ')
+    expect(blob).not.toMatch(/entitlement/i)
+    expect(blob).not.toMatch(/\b18\b/)
+    expect(blob).not.toMatch(/n=90/)
+  })
+
+  it('⚠️ suppresses the ABSENCE card too, for the same reason', () => {
+    // "Not measured in this city" is irrelevant rather than false — but it still
+    // answers a question nobody asked about a project that cannot proceed, and
+    // an empty slot where a card used to sit reads as a missing measurement.
+    const cards = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        months: 0,
+        path: 'prohibited',
+        entitlementAbsent: { basis: 'no-source', detail: 'x' },
+      }),
+    )
+    expect(cards.find((c) => c.id === 'entitlement')).toBeUndefined()
+  })
+
+  it('⚠️ every entitlement card that DOES render has months > 0', () => {
+    // rule 20: the suppression must not pass by suppressing everything. This
+    // pins the invariant the removed fallback used to paper over — the branch
+    // that produced "one leg of the estimate below" was reachable ONLY when
+    // there was no estimate below.
+    const rendered = (['as_of_right', 'variance'] as const).map((path) =>
+      buildRealityCards(makeResult({ city: 'nowhere', months: 24, path, entitlement: ENT })),
+    )
+    for (const cards of rendered) {
+      const card = cards.find((c) => c.id === 'entitlement')
+      expect(card).toBeDefined()
+      expect(card!.big).toBe('18 mo')
+      expect(card!.soWhat).toMatch(/18 of the ~24 months shown below/)
+      expect(card!.soWhat).not.toMatch(/one leg of the estimate below/)
+    }
+  })
+
+  it('the permit card is unaffected — this fix is about one card', () => {
+    // Scope check: `measured` is a different leg with different semantics, and
+    // nothing here should have changed it.
+    const cards = buildRealityCards(
+      makeResult({ city: 'nowhere', months: 24, path: 'as_of_right', measured: MEASURED }),
+    )
+    expect(cards.find((c) => c.id === 'measured')).toBeDefined()
   })
 })
