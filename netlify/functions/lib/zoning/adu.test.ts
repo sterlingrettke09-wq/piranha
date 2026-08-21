@@ -1505,9 +1505,53 @@ describe('⚠️ the vocabulary check — every read city, prompted by East Bost
     expect(la.distinguishedBy).toMatch(/CHECKED IN BOTH CODES/)
     expect(la.distinguishedBy).toMatch(/Chapter 1A Article 5/)
     expect(la.distinguishedBy).toMatch(/the same noun/)
-    // And the scope gap it exposed is recorded rather than glossed.
-    expect(la.distinguishedBy).toMatch(/13B\.10\.1\.B\.2\(a\)/)
-    expect(la.distinguishedBy).toMatch(/have not been read/)
+    // ⚠️ The scope gap it exposed is now CLOSED, and the retraction describes the
+    // superseded state rather than restating it (rule 21).
+    expect(la.distinguishedBy).toMatch(/CHAPTER 1A QUESTION IS NOW CLOSED/)
+    expect(la.distinguishedBy).toMatch(/STATES NO ADU STANDARDS AT ALL/)
+    expect(la.distinguishedBy).not.toMatch(/have not been read/)
+  })
+
+  it('⚠️ Chapter 1A delegates ADUs back to Chapter I, and says so expressly', () => {
+    // Div. 9.5 is a heading with one sentence of body, pointing at § 12.22 A.33
+    // — the section this module already cites. So citing Chapter I alone is now
+    // established rather than assumed.
+    const l = aduRulesFor('la').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.citation).toMatch(/§ 12\.22 A\.33/)
+    const d = l.notes.find((x) => /CHAPTER 1A STATES NO ADU STANDARDS/.test(x))!
+    expect(d).toMatch(/See Chapter I\./)
+    expect(d).toMatch(/Ord\. 188,418/)
+    // ⚠️ The delegation only operates because Chapter 1A's own scope rule allows
+    // it — the two provisions have to be read together, and both are recorded.
+    const m = l.notes.find((x) => /DELEGATION IS AUTHORISED BY CHAPTER 1A/.test(x))!
+    expect(m).toMatch(/§ 1\.4\.2\.A\.4/)
+    expect(m).toMatch(/UNLESS EXPRESSLY STATED/)
+  })
+
+  it('⚠️ the cross-reference that raised the question is not an ADU rule', () => {
+    // § 13B.10.1.B.2(a) is the citywide vested-rights provision — plans accepted
+    // for complete plan check, fee paid, rights vest — and it reaches every
+    // project because § 1.4.2.A.3 applies Article 13 to ALL land use in the City.
+    // "Accessory dwelling" occurs ZERO times in Article 13, behind live controls.
+    const l = aduRulesFor('la').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const v = l.notes.find((x) => /CITYWIDE VESTED-RIGHTS RULE/.test(x))!
+    expect(v).toMatch(/NOT AN ADU PROVISION/)
+    expect(v).toMatch(/ZERO times in Article 13/)
+    expect(v).toMatch(/controls: "Sec\. 13B" 639/)
+  })
+
+  it('⚠️ Chapter 1A’s geography is stated, and it is not citywide', () => {
+    // § 1.4.2.A.2 confines it to lots already carrying Chapter 1A zone
+    // designations. That matters for this module: the boundary is the Zoning
+    // Map, not a district string, so no parser can decide it from a code alone.
+    const l = aduRulesFor('la').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    const g = l.notes.find((x) => /WHAT GEOGRAPHY CHAPTER 1A GOVERNS/.test(x))!
+    expect(g).toMatch(/§ 1\.4\.2\.A\.2/)
+    expect(g).toMatch(/not a citywide replacement/)
+    expect(g).toMatch(/Zoning Map rather than a district string/)
   })
 
   it('⚠️ SF is now CLOSED by a reading, and the partition argument is retired', () => {
