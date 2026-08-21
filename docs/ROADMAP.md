@@ -1264,7 +1264,28 @@ Application → entitlement, in months:
 | Los Angeles | 8.5 | 19.5 | 1,325 |
 | ~~San Diego~~ | ~~4.4~~ | ~~12.5~~ | ~~15~~ |
 
-### ⚠️ Why it is recorded rather than encoded
+### ⚠️ ENCODED 2026-08-20, as its own metric
+
+The product decision this section was blocked on has been taken: publish the
+application→entitlement figure as a **measured component beside**
+`lifecycleMonths`, never folded into it. `timeline.entitlement` carries the
+figure for the three usable cities; `timeline.entitlementAbsent` carries a
+reason for everyone else, in three distinct bases — `no-source` (a statement
+about our coverage), `thin-sample` (San Diego) and `wrong-tier` (the extract
+covers 5+ unit multifamily only). Absence is never a blank card, because a blank
+entitlement line reads as "no delay here".
+
+The coverage caveat renders **on the card**, not in a vintage string: three of
+fifteen ranked cities carry this leg, so a bare number would sit a measured city
+beside a calibrated one with nothing to separate them.
+
+⚠️ It is a DIFFERENT LEG from `timeline.measured`, which is filing→issuance from
+each city's own permit feed. The two are never summed — no source bounds their
+overlap — and a test asserts the sum appears nowhere on the rendered cards.
+
+The reasoning below is retained because it is why the shape is what it is.
+
+### ⚠️ Why it was recorded rather than encoded, until the decision was made
 
 - **It is ONE LEG, not the lifecycle.** Application to entitlement only —
   excluding pre-application, permit issuance and construction. It is not a

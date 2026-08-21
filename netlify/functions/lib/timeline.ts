@@ -99,6 +99,138 @@ export function buildingTier(project: AnalysisInput): BuildingTier {
   return 'single'
 }
 
+
+// ── ⚠️ THE ENTITLEMENT LEG — A DIFFERENT MEASUREMENT FROM `measured` ─────────
+//
+// `measured` above is filing→ISSUANCE, from each city's own open permit data.
+// This is application→ENTITLEMENT, from California HCD's Housing Element Annual
+// Progress Report. They are DIFFERENT LEGS of the same lifecycle and must never
+// be summed, compared, or substituted for one another — a city could plausibly
+// carry both, and adding them would double-count the overlap neither source
+// bounds.
+//
+// ⚠️ AND NEITHER IS THE LIFECYCLE. Both are subsets of `months`. Swapping either
+// in would replace a calibrated whole with a measured fragment.
+
+/** Application→entitlement timing for 5+ unit multifamily, from the HCD APR. */
+export interface MeasuredEntitlement {
+  medianMonths: number
+  p80Months: number
+  n: number
+  vintage: string
+  /** Named because it is a different instrument from the permit pipeline, and a
+   *  reader comparing the two numbers has to know that. */
+  source: string
+  /** ⚠️ RENDERED WHEREVER THE FIGURE IS. Three of the fifteen ranked cities
+   *  carry this leg and twelve do not, so a bare number would put a measured
+   *  city and a calibrated one side by side with nothing to separate them. */
+  coverageCaveat: string
+}
+
+/** Why a city has no entitlement leg. ⚠️ THREE OUTCOMES, NOT TWO — the same
+ *  distinction `tierBreakdown` draws for the permit pipeline, because a blank
+ *  reads as "fast" in exactly the place it means "unknown" (rule 5):
+ *
+ *    'no-source'     no equivalent dataset has been identified for this
+ *                    jurisdiction. True of every non-California city here. This
+ *                    is an ANSWER about our coverage, not about the city.
+ *    'thin-sample'   the jurisdiction IS in the dataset and its sample is under
+ *                    the publication floor. San Diego: n=15, and 4.4 months
+ *                    against LA's 8.5 fails a known-good comparison on its face.
+ *    'wrong-tier'    the city is measured, but this project is not 5+ unit
+ *                    multifamily, which is the only population the extract
+ *                    covers. A different question, not a weaker answer. */
+export type EntitlementAbsence =
+  | { basis: 'no-source'; detail: string }
+  | { basis: 'thin-sample'; n: number; minPublishableN: number; detail: string }
+  | { basis: 'wrong-tier'; tier: BuildingTier; detail: string }
+
+const HCD_VINTAGE = '2018–2025 filings, data.ca.gov extract updated 2026-08-14'
+const HCD_SOURCE =
+  'California HCD Housing Element Annual Progress Report, Tables A (APP_SUBMIT_DT) and A2 (ENT_APPROVE_DT1), joined on JURIS_NAME + APN'
+const HCD_COVERAGE =
+  '⚠️ Measured for 3 of the 15 ranked cities. The other twelve have no equivalent source, so their timelines are calibrated rather than measured — this figure is not comparable across cities in the ranking.'
+const HCD_MIN_N = 30
+
+/** ⚠️ 5+ UNIT MULTIFAMILY ONLY. The extract covers that population and no other,
+ *  so these figures are not offered for a house or a duplex — see 'wrong-tier'. */
+const ENTITLEMENT_MONTHS: Readonly<Record<string, { medianMonths: number; p80Months: number; n: number }>> =
+  Object.freeze({
+    sf: { medianMonths: 18.0, p80Months: 27.0, n: 90 },
+    sanjose: { medianMonths: 15.3, p80Months: 22.1, n: 52 },
+    la: { medianMonths: 8.5, p80Months: 19.5, n: 1325 },
+  })
+
+/** ⚠️ IN THE DATASET, AND DELIBERATELY NOT PUBLISHED. Kept as data rather than
+ *  dropped, so "we withheld this" stays distinguishable from "we never had it"
+ *  — and so the guard can assert the partition instead of an empty exception
+ *  (rule 29's corollary). */
+const ENTITLEMENT_WITHHELD: Readonly<Record<string, { n: number; detail: string }>> = Object.freeze({
+  sandiego: {
+    n: 15,
+    detail:
+      'San Diego is in the HCD extract with n=15, under the n=30 floor. ⚠️ Its 4.4-month median against Los Angeles\u2019s 8.5 also fails a known-good comparison on its face — the same shape as the Milwaukee and Chicago permit-timing withholdings: a number in the right units that contradicts something already established.',
+  },
+})
+
+/** The application→entitlement leg for a project, or why there is none.
+ *
+ *  ⚠️ Returns a DISCRIMINATED result rather than `MeasuredEntitlement | undefined`
+ *  so a caller cannot render nothing where the answer is "withheld" — which is
+ *  the failure this file already fixed once for the permit tiers. */
+export function entitlementFor(
+  city: string,
+  project: AnalysisInput,
+): { kind: 'measured'; value: MeasuredEntitlement } | { kind: 'absent'; why: EntitlementAbsence } {
+  const tier = buildingTier(project)
+  const row = ENTITLEMENT_MONTHS[city]
+  const withheld = ENTITLEMENT_WITHHELD[city]
+  if (!row && !withheld) {
+    return {
+      kind: 'absent',
+      why: {
+        basis: 'no-source',
+        detail:
+          'No application→entitlement dataset has been identified for this jurisdiction. California publishes one statewide through HCD; no equivalent was found elsewhere. ⚠️ This is a statement about our coverage, not about the city\u2019s speed.',
+      },
+    }
+  }
+  if (withheld) {
+    return {
+      kind: 'absent',
+      why: { basis: 'thin-sample', n: withheld.n, minPublishableN: HCD_MIN_N, detail: withheld.detail },
+    }
+  }
+  // ⚠️ The tier check comes AFTER the city checks, so a house in San Diego
+  // reports the thin sample rather than the tier — the city-level reason is the
+  // one that would still hold if the project changed.
+  if (tier !== 'apartment') {
+    return {
+      kind: 'absent',
+      why: {
+        basis: 'wrong-tier',
+        tier,
+        detail:
+          'The HCD extract covers 5+ unit multifamily only. This project is not in that population, so the measured figure would answer a different question rather than this one less well.',
+      },
+    }
+  }
+  return {
+    kind: 'measured',
+    value: { ...row, vintage: HCD_VINTAGE, source: HCD_SOURCE, coverageCaveat: HCD_COVERAGE },
+  }
+}
+
+/** Cities with a published entitlement leg. Exported so the coverage claim in
+ *  `HCD_COVERAGE` is checkable against the data rather than trusted (rule 20). */
+export const ENTITLEMENT_MEASURED_CITIES: readonly string[] = Object.freeze(
+  Object.keys(ENTITLEMENT_MONTHS).sort(),
+)
+/** Cities in the dataset whose figure is withheld. */
+export const ENTITLEMENT_WITHHELD_CITIES: readonly string[] = Object.freeze(
+  Object.keys(ENTITLEMENT_WITHHELD).sort(),
+)
+
 export interface TimelineResult {
   months: number
   path: Feasibility['path']
@@ -132,6 +264,14 @@ export interface TimelineResult {
          *  n=30 floor" unable to render for a tier that was never counted. */
         reason: string
       }
+  /** ⚠️ A DIFFERENT LEG FROM `measured`, and never summed with it. Application→
+   *  entitlement for 5+ unit multifamily. Present only where HCD publishes a
+   *  usable sample; `entitlementAbsent` says why when it is not. */
+  entitlement?: MeasuredEntitlement
+  /** ⚠️ ALWAYS SET WHEN `entitlement` IS ABSENT, never left blank — a missing
+   *  entitlement line reads as "no delay here", which is the opposite of what
+   *  an unmeasured city means. */
+  entitlementAbsent?: EntitlementAbsence
 }
 
 /** The measured new-construction permit timing for a city, or undefined when the
@@ -223,8 +363,15 @@ export function resolveTimeline(
   const measuredTierWithheld =
     project.projectType === 'new' && !measured ? measuredTierWithheldFor(city, tier) : undefined
 
+  // ⚠️ The entitlement leg is about getting a housing development APPROVED, so
+  // it attaches to new construction only — the same scope rule as `measured`,
+  // for a different reason.
+  const ent = project.projectType === 'new' ? entitlementFor(city, project) : null
+  const entitlement = ent?.kind === 'measured' ? ent.value : undefined
+  const entitlementAbsent = ent?.kind === 'absent' ? ent.why : undefined
+
   if (feasibility.path === 'prohibited') {
-    return { months: 0, path: feasibility.path, tier, includesDemolition, measured, measuredTierWithheld }
+    return { months: 0, path: feasibility.path, tier, includesDemolition, measured, measuredTierWithheld, entitlement, entitlementAbsent }
   }
 
   const table = LIFECYCLE[city] ?? FALLBACK
@@ -255,5 +402,7 @@ export function resolveTimeline(
     includesDemolition,
     measured,
     measuredTierWithheld,
+    entitlement,
+    entitlementAbsent,
   }
 }

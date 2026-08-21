@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { resolveTimeline, buildingTier, measuredFor, measuredTierWithheldFor } from './timeline'
+import {
+  resolveTimeline, buildingTier, measuredFor, measuredTierWithheldFor,
+  entitlementFor, ENTITLEMENT_MEASURED_CITIES, ENTITLEMENT_WITHHELD_CITIES,
+} from './timeline'
 import type { Feasibility } from './feasibility'
 import type { AnalysisInput } from '../../../src/types/analysis'
 import { CITIES_WITH_MEASURED_PERMITS, hasMeasuredPermitTiming } from '../../../src/config/cities'
@@ -632,5 +635,131 @@ describe('suppression records are shaped by their basis', () => {
     // rule 20: an empty suppression inventory would make every assertion above
     // vacuously true, which is exactly how a check goes green by finding nothing.
     expect(checked, 'no suppressed tiers found at all — the scan or the artifact broke').toBeGreaterThanOrEqual(2)
+  })
+})
+
+describe('⚠️ the entitlement leg — measured, and never a substitute', () => {
+  const proj = (o: Partial<AnalysisInput> = {}): AnalysisInput =>
+    ({
+      city: 'sf',
+      projectType: 'new',
+      funding: 'private',
+      parcelId: 'p',
+      lat: 0,
+      lng: 0,
+      use: 'residential',
+      gfa: 40000,
+      units: 40,
+      ...o,
+    }) as AnalysisInput
+
+  it('publishes the three verified cities, and only those', () => {
+    expect([...ENTITLEMENT_MEASURED_CITIES]).toEqual(['la', 'sanjose', 'sf'])
+    for (const [city, med, p80, n] of [
+      ['sf', 18.0, 27.0, 90],
+      ['sanjose', 15.3, 22.1, 52],
+      ['la', 8.5, 19.5, 1325],
+    ] as const) {
+      const r = entitlementFor(city, proj({ city }))
+      expect(r.kind, city).toBe('measured')
+      if (r.kind !== 'measured') throw new Error('unreachable')
+      expect(r.value.medianMonths, city).toBe(med)
+      expect(r.value.p80Months, city).toBe(p80)
+      expect(r.value.n, city).toBe(n)
+    }
+  })
+
+  it('⚠️ San Diego is WITHHELD, not missing — and the reason is the data', () => {
+    // n=15 under the n=30 floor, and 4.4 months against LA's 8.5 fails a
+    // known-good comparison on its face. Both halves are recorded, because the
+    // floor alone would not explain why the number is also implausible.
+    const r = entitlementFor('sandiego', proj({ city: 'sandiego' }))
+    expect(r.kind).toBe('absent')
+    if (r.kind !== 'absent') throw new Error('unreachable')
+    expect(r.why.basis).toBe('thin-sample')
+    if (r.why.basis !== 'thin-sample') throw new Error('unreachable')
+    expect(r.why.n).toBe(15)
+    expect(r.why.minPublishableN).toBe(30)
+    expect(r.why.detail).toMatch(/fails a known-good comparison/)
+    // ⚠️ And it is kept as DATA, so "withheld" stays distinguishable from
+    // "never had it" and the partition can be asserted (rule 29's corollary).
+    expect([...ENTITLEMENT_WITHHELD_CITIES]).toEqual(['sandiego'])
+  })
+
+  it('⚠️ a non-California city reports NO SOURCE, about us and not about them', () => {
+    for (const city of ['boston', 'nyc', 'chicago', 'austin']) {
+      const r = entitlementFor(city, proj({ city }))
+      expect(r.kind, city).toBe('absent')
+      if (r.kind !== 'absent') throw new Error('unreachable')
+      expect(r.why.basis, city).toBe('no-source')
+      expect(r.why.detail, city).toMatch(/statement about our coverage, not about the city/)
+    }
+  })
+
+  it('⚠️ a house in a measured city gets wrong-tier, not a multifamily number', () => {
+    // The extract covers 5+ unit multifamily only. Serving it for a house would
+    // answer a different question — the same failure the permit tiers already
+    // fixed once, where a duplex was shown a single-family median.
+    const r = entitlementFor('sf', proj({ units: 1 }))
+    expect(r.kind).toBe('absent')
+    if (r.kind !== 'absent') throw new Error('unreachable')
+    expect(r.why.basis).toBe('wrong-tier')
+    if (r.why.basis !== 'wrong-tier') throw new Error('unreachable')
+    expect(r.why.tier).toBe('single')
+  })
+
+  it('⚠️ the CITY reason wins over the tier reason where both apply', () => {
+    // A house in San Diego reports the thin sample, not the tier: the
+    // city-level reason is the one that would still hold if the project changed.
+    const r = entitlementFor('sandiego', proj({ city: 'sandiego', units: 1 }))
+    expect(r.kind).toBe('absent')
+    if (r.kind !== 'absent') throw new Error('unreachable')
+    expect(r.why.basis).toBe('thin-sample')
+  })
+
+  it('⚠️ the coverage caveat is on every published figure, and is TRUE', () => {
+    // rule 20: the claim "3 of 15" is checked against the data rather than
+    // trusted, so it cannot drift as cities are added.
+    for (const city of ENTITLEMENT_MEASURED_CITIES) {
+      const r = entitlementFor(city, proj({ city }))
+      if (r.kind !== 'measured') throw new Error('unreachable')
+      expect(r.value.coverageCaveat, city).toMatch(/3 of the 15 ranked cities/)
+      expect(r.value.source, city).toMatch(/HCD Housing Element Annual Progress Report/)
+      expect(r.value.vintage, city).toMatch(/2026-08-14/)
+    }
+    expect(ENTITLEMENT_MEASURED_CITIES).toHaveLength(3)
+  })
+
+  it('⚠️ it is never summed with `measured`, and never replaces `months`', () => {
+    // The two are different legs of one lifecycle and no source bounds their
+    // overlap, so adding them would double-count it. And both are subsets of
+    // `months` — swapping either in would replace a calibrated whole with a
+    // measured fragment.
+    const t = resolveTimeline('sf', proj(), { path: 'as_of_right' } as never, false)
+    expect(t.entitlement?.medianMonths).toBe(18.0)
+    expect(t.months).toBeGreaterThan(0)
+    expect(t.months).not.toBe(18)
+    if (t.measured) expect(t.months).not.toBe(t.measured.medianMonths + t.entitlement!.medianMonths)
+  })
+
+  it('⚠️ absence is ALWAYS explained — never a blank line', () => {
+    // A missing entitlement figure reads as "no delay here", which is the
+    // opposite of what an unmeasured city means. Every timeline carries one or
+    // the other, and exactly one.
+    for (const city of ['sf', 'la', 'sanjose', 'sandiego', 'boston', 'nyc']) {
+      const t = resolveTimeline(city, proj({ city }), { path: 'as_of_right' } as never, false)
+      const hasOne = (t.entitlement != null) !== (t.entitlementAbsent != null)
+      expect(hasOne, city).toBe(true)
+    }
+  })
+
+  it('attaches to new construction only', () => {
+    // Application→entitlement is about getting a development approved, so an
+    // addition or a change of use is outside the population.
+    for (const pt of ['addition', 'change_of_use', 'adu'] as const) {
+      const t = resolveTimeline('sf', proj({ projectType: pt }), { path: 'as_of_right' } as never, false)
+      expect(t.entitlement, pt).toBeUndefined()
+      expect(t.entitlementAbsent, pt).toBeUndefined()
+    }
   })
 })

@@ -215,6 +215,14 @@ export const handler: JsonHandler = async (event) => {
     // Carried so the result page can say "not measured for this size" rather
     // than dropping the measured card without explanation.
     measuredTierWithheld: timelineInfo.measuredTierWithheld,
+    // ⚠️ A DIFFERENT LEG FROM `measured`, and carried alongside it rather than
+    // merged: filing→issuance vs application→entitlement. Never summed — no
+    // source bounds their overlap, so adding them would double-count it.
+    entitlement: timelineInfo.entitlement,
+    // Always carried when the figure is absent, so the page can say WHY. A blank
+    // entitlement line reads as "no delay here", which is the opposite of what
+    // an unmeasured city means.
+    entitlementAbsent: timelineInfo.entitlementAbsent,
   }
 
   // Discretionary/entitlement delay, computed ONCE here to avoid double-counting.

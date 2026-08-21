@@ -253,6 +253,29 @@ export interface AnalysisResult {
           basis: 'unenumerable'
           reason: string
         }
+    /** ⚠️ A DIFFERENT LEG FROM `measured`, NEVER SUMMED WITH IT. `measured` is
+     *  filing→ISSUANCE from the city's own permit data; this is application→
+     *  ENTITLEMENT from California HCD's Annual Progress Report. Both are
+     *  subsets of `months` and neither replaces it. Present only for 5+ unit
+     *  multifamily in the three cities where HCD publishes a usable sample. */
+    entitlement?: {
+      medianMonths: number
+      p80Months: number
+      n: number
+      vintage: string
+      source: string
+      /** ⚠️ MUST RENDER WHEREVER THE FIGURE DOES. Three of fifteen ranked
+       *  cities carry this leg; a bare number would sit a measured city beside
+       *  a calibrated one with nothing to tell them apart. */
+      coverageCaveat: string
+    }
+    /** ⚠️ SET WHENEVER `entitlement` IS ABSENT. A blank entitlement line reads
+     *  as "no delay here", which is the opposite of what an unmeasured city
+     *  means — the same failure `measuredTierWithheld` exists to prevent. */
+    entitlementAbsent?:
+      | { basis: 'no-source'; detail: string }
+      | { basis: 'thin-sample'; n: number; minPublishableN: number; detail: string }
+      | { basis: 'wrong-tier'; tier: 'single' | 'multi' | 'apartment'; detail: string }
   }
   narrative: string
   assumptions: Record<string, string>

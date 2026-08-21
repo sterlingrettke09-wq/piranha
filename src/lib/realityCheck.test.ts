@@ -9,6 +9,8 @@ function makeResult(over: {
   months?: number
   measured?: AnalysisResult['timeline']['measured']
   measuredTierWithheld?: AnalysisResult['timeline']['measuredTierWithheld']
+  entitlement?: AnalysisResult['timeline']['entitlement']
+  entitlementAbsent?: AnalysisResult['timeline']['entitlementAbsent']
   reliefOdds?: AnalysisResult['reliefOdds']
 } = {}): AnalysisResult {
   return {
@@ -42,6 +44,8 @@ function makeResult(over: {
       path: 'as_of_right',
       ...(over.measured ? { measured: over.measured } : {}),
       ...(over.measuredTierWithheld ? { measuredTierWithheld: over.measuredTierWithheld } : {}),
+      ...(over.entitlement ? { entitlement: over.entitlement } : {}),
+      ...(over.entitlementAbsent ? { entitlementAbsent: over.entitlementAbsent } : {}),
     },
     narrative: '',
     assumptions: {},
@@ -249,5 +253,94 @@ describe('buildRealityCards', () => {
       makeResult({ city: 'nowhere', months: 100, measured: { ...MEASURED, medianMonths: 51 } }),
     )
     expect(cards[0].soWhat).toContain('major part of this timeline')
+  })
+})
+
+describe('⚠️ the entitlement card — a second leg, never merged with the first', () => {
+  const ENT = {
+    medianMonths: 18,
+    p80Months: 27,
+    n: 90,
+    vintage: '2018–2025 filings, data.ca.gov extract updated 2026-08-14',
+    source: 'California HCD Housing Element Annual Progress Report, Tables A and A2',
+    coverageCaveat: '⚠️ Measured for 3 of the 15 ranked cities.',
+  }
+
+  it('⚠️ renders the coverage caveat on the card itself', () => {
+    // Three of fifteen cities carry this leg. A bare number would sit a measured
+    // city beside a calibrated one with nothing to tell them apart, so the
+    // caveat has to be on the rendered surface — not in a vintage string
+    // somebody has to go looking for.
+    const cards = buildRealityCards(makeResult({ city: 'nowhere', entitlement: ENT }))
+    const card = cards.find((c) => c.id === 'entitlement')!
+    expect(card.big).toBe('18 mo')
+    expect(card.sub).toMatch(/3 of the 15 ranked cities/)
+    expect(card.sub).toMatch(/p80 27, n=90/)
+  })
+
+  it('⚠️ says the leg is INSIDE the estimate, not added to it', () => {
+    // The failure to avoid is a reader summing 18 measured months onto the ~24
+    // shown. Both permit and entitlement are subsets of the lifecycle.
+    const cards = buildRealityCards(makeResult({ city: 'nowhere', months: 24, entitlement: ENT }))
+    const card = cards.find((c) => c.id === 'entitlement')!
+    expect(card.soWhat).toMatch(/a leg of that estimate, not an addition to it/)
+  })
+
+  it('⚠️ both legs render as SEPARATE cards, and neither is summed', () => {
+    const cards = buildRealityCards(
+      makeResult({ city: 'nowhere', months: 24, measured: MEASURED, entitlement: ENT }),
+    )
+    const ids = cards.map((c) => c.id)
+    expect(ids).toContain('measured')
+    expect(ids).toContain('entitlement')
+    // ⚠️ 8 + 18 = 26 must appear nowhere: the two legs measure different things
+    // from different sources and no source bounds their overlap.
+    for (const c of cards) {
+      expect(c.big).not.toBe('26 mo')
+      expect(`${c.sub} ${c.soWhat}`).not.toMatch(/\b26\b/)
+    }
+  })
+
+  it('⚠️ absence is never a blank card, and each basis gets its own copy', () => {
+    // rule 9's corollary: a sentence true of one basis is false of the next.
+    // "No source" is about our coverage; "thin sample" is about the city's data;
+    // "wrong tier" is about this project.
+    const noSource = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        entitlementAbsent: { basis: 'no-source', detail: 'x' },
+      }),
+    ).find((c) => c.id === 'entitlement')!
+    expect(noSource.big).toBe('Not measured')
+    expect(noSource.soWhat).toMatch(/gap in our sources, not a finding about/)
+
+    const thin = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        entitlementAbsent: { basis: 'thin-sample', n: 15, minPublishableN: 30, detail: 'x' },
+      }),
+    ).find((c) => c.id === 'entitlement')!
+    expect(thin.sub).toMatch(/only n=15, under the n=30 floor/)
+    expect(thin.soWhat).not.toMatch(/gap in our sources/)
+
+    const wrongTier = buildRealityCards(
+      makeResult({
+        city: 'nowhere',
+        entitlementAbsent: { basis: 'wrong-tier', tier: 'single', detail: 'x' },
+      }),
+    ).find((c) => c.id === 'entitlement')!
+    expect(wrongTier.sub).toMatch(/covers 5\+ unit buildings only/)
+    expect(wrongTier.soWhat).toMatch(/answer a different question/)
+    // ⚠️ The three must not share copy — that is how a true sentence gets
+    // carried into a context where it is false.
+    const subs = [noSource.sub, thin.sub, wrongTier.sub]
+    expect(new Set(subs).size).toBe(3)
+  })
+
+  it('renders no entitlement card at all when the field is absent entirely', () => {
+    // e.g. an addition, where the leg does not apply and the engine sets neither
+    // field. That is different from an unmeasured city, which sets the absence.
+    const cards = buildRealityCards(makeResult({ city: 'nowhere' }))
+    expect(cards.find((c) => c.id === 'entitlement')).toBeUndefined()
   })
 })

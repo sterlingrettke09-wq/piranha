@@ -11,7 +11,7 @@ import { PARKING_RULES } from '../config/parkingRules'
 
 export interface RealityCard {
   /** Stable key for React + tests. */
-  id: 'measured' | 'relief' | 'parking'
+  id: 'measured' | 'entitlement' | 'relief' | 'parking'
   /** Small uppercase label above the big number. */
   kicker: string
   /** The headline figure (already formatted, e.g. "8 mo", "72%", "None"). */
@@ -107,6 +107,67 @@ export function buildRealityCards(result: AnalysisResult): RealityCard[] {
         unit: `for ${TIER_LABEL[w.tier]}`,
         sub: `${name} publishes permit timing by building size, but its ${TIER_LABEL[w.tier]} sample is ${sample}.`,
         soWhat: `The city-wide median is a different population — it would answer a question about ${TIER_LABEL[w.tier]} with other buildings' numbers, so it is not shown.`,
+      })
+    }
+  }
+
+  // 1b. Measured entitlement time — a DIFFERENT LEG from the permit card above,
+  //     from California HCD's Annual Progress Report rather than the city's own
+  //     permit feed. Rendered as its own card and never merged with the permit
+  //     figure: no source bounds their overlap, so a combined number would
+  //     double-count it, and neither is the lifecycle.
+  const ent = result.timeline.entitlement
+  if (ent) {
+    const totalMonths = result.timeline.months
+    cards.push({
+      id: 'entitlement',
+      kicker: 'Measured entitlement time',
+      big: `${ent.medianMonths} mo`,
+      sub: `Median application→entitlement for 5+ unit buildings in ${name} (p80 ${ent.p80Months}, n=${ent.n}). ${ent.coverageCaveat}`,
+      // ⚠️ The so-what states the RELATIONSHIP to the estimate rather than
+      // implying the estimate is wrong. This leg sits inside the ~N months
+      // shown; it does not add to them and does not replace them.
+      soWhat:
+        totalMonths > 0
+          ? `Getting approved is ${ent.medianMonths} of the ~${totalMonths} months shown below — a leg of that estimate, not an addition to it.`
+          : 'Getting approved is one leg of the estimate below, not an addition to it.',
+    })
+  } else if (result.timeline.entitlementAbsent) {
+    // ⚠️ NEVER A BLANK. A missing entitlement line reads as "no delay here",
+    // which is the opposite of what an unmeasured city means — the same failure
+    // the permit card above already had to fix once. Each basis gets copy that
+    // is true of IT: "no source" is a statement about our coverage, "thin
+    // sample" is about the city's data, and "wrong tier" is about this project.
+    const a = result.timeline.entitlementAbsent
+    if (a.basis === 'thin-sample') {
+      cards.push({
+        id: 'entitlement',
+        kicker: 'Measured entitlement time',
+        big: 'Not measured',
+        unit: `in ${name}`,
+        sub: `${name} appears in the state dataset with only n=${a.n}, under the n=${a.minPublishableN} floor we publish.`,
+        soWhat:
+          'A figure exists but is too thin to stand behind, so nothing is shown rather than a number that would not survive one more quarter of filings.',
+      })
+    } else if (a.basis === 'no-source') {
+      cards.push({
+        id: 'entitlement',
+        kicker: 'Measured entitlement time',
+        big: 'Not measured',
+        unit: `in ${name}`,
+        // ⚠️ Says whose limitation this is. Without that sentence a reader takes
+        // "not measured" as a fact about the city rather than about us.
+        sub: `California publishes application→entitlement timing statewide; no equivalent dataset has been identified for ${name}.`,
+        soWhat: `This is a gap in our sources, not a finding about ${name} — its timeline below is calibrated rather than measured.`,
+      })
+    } else {
+      cards.push({
+        id: 'entitlement',
+        kicker: 'Measured entitlement time',
+        big: 'Not measured',
+        unit: `for ${TIER_LABEL[a.tier]}`,
+        sub: `${name} is measured, but the state dataset covers 5+ unit buildings only.`,
+        soWhat: `The 5+ unit figure would answer a different question rather than this one less well, so it is not shown for ${TIER_LABEL[a.tier]}.`,
       })
     }
   }
