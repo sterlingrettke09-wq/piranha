@@ -1051,8 +1051,8 @@ const LA_LOCAL: LocalLayer = {
 const SF_LOCAL: LocalLayer = {
   kind: 'read',
   citation:
-    'San Francisco Planning Code §§ 207.1 (Local Accessory Dwelling Unit Program) and 207.2 (State Mandated Accessory Dwelling Unit Program), Art. 2',
-  readOn: '2026-08-19',
+    'San Francisco Planning Code §§ 207.1 (Local Accessory Dwelling Unit Program) and 207.2 (State Mandated Accessory Dwelling Unit Program), Art. 2, WITH the § 102 definitions — which carry a height-measurement rule and the JADU cap that neither operative section states',
+  readOn: '2026-08-20',
   maxSizeSqFt: [
     {
       kind: 'capped',
@@ -1082,6 +1082,19 @@ const SF_LOCAL: LocalLayer = {
       condition: 'LOCAL programme (§ 207.1), which governs wherever § 207.2 does not',
       cite: '§ 207.1(c)(5)',
     },
+    // ⚠️ A STATED FIGURE THAT LIVES ONLY IN THE DEFINITIONS. § 102 defines the
+    // Junior ADU with its own square-foot cap; §§ 207.1 and 207.2 state none.
+    // Found on 2026-08-20 when § 102 was finally read — the Massachusetts
+    // pattern, and the fourth city here where the definition carries a figure
+    // the operative section does not.
+    {
+      kind: 'capped',
+      sqFt: 500,
+      condition:
+        'JUNIOR ADU (JADU) — a DISTINCT use, not a smaller ADU. § 102 requires it to be "contained entirely within an existing or proposed single-family structure", owner-occupied unless the owner resides in the remaining portion (waived for a governmental agency, land trust or housing organization), with a separate entrance and an efficiency kitchen meeting Cal. Gov. Code § 66333(f). It may share sanitation facilities with the existing structure',
+      cite: '§ 102, definition "Dwelling Unit, Junior Accessory, or JADU"; the unit must also meet § 207.2',
+      measure: 'Gross Floor Area — stated as such in the definition itself, unlike the § 207.2 figures whose measure had to be read off the operative text',
+    },
   ],
   maxHeightFt: [
     { form: 'figure', value: 18, condition: 'state-mandated: detached, on a lot with an existing or proposed dwelling', cite: '§ 207.2(d)(9)(A)', baseline: true },
@@ -1097,6 +1110,10 @@ const SF_LOCAL: LocalLayer = {
   maxStories: null,
   heightDefersToBaseZone: null,
   notes: [
+    // ⚠️ A MEASUREMENT RULE AND AN EXPRESS DENIAL OF AN EXEMPTION, both sitting
+    // in the definition rather than in either operative programme.
+    '⚠️ § 102 STATES HOW A DETACHED ADU\u2019S HEIGHT IS MEASURED, and neither § 207.1 nor § 207.2 does: for a detached ADU located OUTSIDE the buildable area, height is "measured from existing grade at any given point to either a) the highest point of a finished roof in the case of a flat roof or b) the average height of a pitched roof or stepped roof, or similarly sculptured roof form". \u26a0\ufe0f And the same sentence DENIES an exemption: such an ADU "shall not be eligible for any exemptions described in Planning Code subsection 260(b)", so the rooftop-feature allowances other buildings get do not apply.',
+    '⚠️ § 102 also states a SUBSTANTIVE rule inside the definition: "A detached ADU shall not share structural walls with the primary structure on the lot."',
     '⚠️ Two programmes, mutually exclusive. § 207.1 (local) applies citywide EXCEPT to ADUs regulated by § 207.2 (state-mandated), per § 207.1(b). Which governs follows from how the unit is built, not from the applicant choosing the better deal — so the two sets of figures must not be merged into one envelope.',
     '⚠️ The LOCAL programme states no square-foot cap anywhere in its nine subsections. Its binding size limit is geometric (§ 207.1(c)(5)): within the existing lot\'s buildable area with no vertical addition, or inside the built envelope of an existing detached structure. An ADU built entirely within that envelope is exempt from the notification requirements as well.',
     'LOCAL programme unit COUNT is unusually permissive: one ADU on a lot with four or fewer existing units (or where zoning permits four or fewer), and NO LIMIT on the number of ADUs on a lot with more than four units, or one undergoing seismic retrofitting (§ 207.1(c)(1)).',
@@ -2724,12 +2741,12 @@ export const ADU_VOCABULARY_CHECK: Readonly<Record<string, VocabularyCheck>> = O
     departsFromObviousNoun: false,
   },
   sf: {
-    canonical: 'Accessory Dwelling Unit — §§ 207.1(a) and 207.2(a) both name their subject "Accessory Dwelling Units (\u201cADUs\u201d), as defined in Section 102 of this Code"',
-    competing: ['in-law unit', 'secondary unit'],
+    canonical:
+      '⚠️ "Dwelling Unit, Accessory, or ADU" — the INVERTED form, defined at Planning Code § 102 (amended by Ord. 4-26). An exact-phrase search for "accessory dwelling unit" does NOT match the definition heading',
+    competing: ['Secondary Unit — an EXPRESS SYNONYM', 'In-Law Unit — an EXPRESS SYNONYM', 'Dwelling Unit, Junior Accessory (JADU) — a genuinely distinct use', 'Guesthouse — a Group Housing form, not a dwelling'],
+    departsFromObviousNoun: true,
     distinguishedBy:
-      '⚠️ THE WEAKEST ROW IN THIS TABLE, AND IT IS NOT CLOSED. Two things are established: the code names its own canonical term by cross-reference (§§ 207.1(a), 207.2(a) → § 102), and § 207.1(b) partitions the field — it applies "to the construction of ADUs on ALL lots located within the City and County of San Francisco in areas that allow residential use, EXCEPT ADUs regulated by the State-Mandated Program under Section 207.2" — with both programmes read here. But a PARTITION IS NOT A VOCABULARY CHECK: it shows the two programmes are exhaustive of ADUs, not that no differently-named use exists. An attempt to read § 102 failed — amlegal opens its window at § 101 and the 18,810 rendered characters never reach the definitions, so the zero counts obtained there measure the probe, not the code (rule 11). ⚠️ SF matters more than most for this, because its local cap is GEOMETRIC rather than numeric, so a differently-named use could carry a square-foot figure the ADU sections do not.',
-    // the expected noun
-    departsFromObviousNoun: false,
+      '⚠️ THE CODE COLLAPSES THE TWO OBVIOUS RIVALS ITSELF, which is the strongest separation answer available: § 102 defines the ADU as "ALSO KNOWN AS a Secondary Unit or In-Law Unit". They are not competing terms to be told apart — the code states they are the same thing. ⚠️ THE ONE GENUINELY DISTINCT USE IS THE JADU, defined separately at § 102 with a 500 sq ft Gross Floor Area cap, containment entirely within an existing or proposed single-family structure, owner-occupancy, a separate entrance and an efficiency kitchen under Cal. Gov. Code § 66333(f) — none of which the ADU definition requires. "Guesthouse" occurs once and only inside the Group Housing definition, alongside boardinghouse and rooming house, so it does not denote a dwelling unit; "cottage" occurs only as "Cottage Food Operation", an accessory USE; "accessory living space" is SRO vocabulary. Zero occurrences for additional/ancillary dwelling unit, granny flat, guest house, garage apartment, carriage house, coach house, backyard cottage, secondary dwelling, accessory apartment and tiny house. ⚠️ HOW THIS ROW WAS CLOSED, AND WHY ITS FIRST VERSION WAS WORTHLESS: it rested on a PARTITION ARGUMENT — § 207.1(b) makes the two programmes exhaustive of ADUs — which shows the programmes cover the field, NOT that no differently-named use exists. The reading had failed because amlegal serves § 102 through a PAGINATED per-ARTICLE endpoint: the § 102 node itself 404s, and the article\u2019s page 1 returns § 101, so the earlier attempt captured 18,810 characters of the wrong section. The tell was a positive control that FAILED — "Dwelling Unit" returned ZERO inside a section titled DEFINITIONS, which is impossible. Paging the article through /api/render-section yields 34 pages and 200,165 characters, in which "Dwelling Unit" returns 29, so every zero above is a measurement rather than a broken instrument (rules 11 and 20).',
   },
   sanjose: {
     canonical: 'Accessory Dwelling Unit (SJMC § 20.80.175)',

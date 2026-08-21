@@ -1510,16 +1510,45 @@ describe('⚠️ the vocabulary check — every read city, prompted by East Bost
     expect(la.distinguishedBy).toMatch(/have not been read/)
   })
 
-  it('⚠️ SF is recorded as NOT CLOSED, because the § 102 read failed', () => {
-    // A partition argument shows the two programmes are exhaustive of ADUs; it
-    // does not show that no differently-named use exists. The attempt to read
-    // § 102 hit amlegal's window and returned zeros that measure the probe.
-    // Saying so beats upgrading the row on a structural argument.
+  it('⚠️ SF is now CLOSED by a reading, and the partition argument is retired', () => {
+    // This row used to rest on a partition — § 207.1(b) makes the two programmes
+    // exhaustive of ADUs — which shows the programmes cover the field, not that
+    // no differently-named use exists. § 102 has now been read, and it collapses
+    // the two obvious rivals itself: the ADU is "also known as a Secondary Unit
+    // or In-Law Unit". A definitional identity beats any structural argument.
     const sf = ADU_VOCABULARY_CHECK.sf
-    expect(sf.distinguishedBy).toMatch(/NOT CLOSED/)
-    expect(sf.distinguishedBy).toMatch(/PARTITION IS NOT A VOCABULARY CHECK/)
-    expect(sf.distinguishedBy).toMatch(/measure the probe/)
-    expect(sf.distinguishedBy).toMatch(/GEOMETRIC rather than numeric/)
+    expect(sf.distinguishedBy).toMatch(/COLLAPSES THE TWO OBVIOUS RIVALS ITSELF/)
+    expect(sf.distinguishedBy).toMatch(/ALSO KNOWN AS a Secondary Unit or In-Law Unit/)
+    // ⚠️ The retraction DESCRIBES the superseded reasoning rather than leaving it
+    // standing (rule 21), and records why the first attempt failed.
+    expect(sf.distinguishedBy).toMatch(/WHY ITS FIRST VERSION WAS WORTHLESS/)
+    expect(sf.distinguishedBy).toMatch(/PAGINATED per-ARTICLE endpoint/)
+    // ⚠️ And the zeros are behind a control that FAILED first and then passed —
+    // the whole reason the earlier row could not be trusted (rules 11 and 20).
+    expect(sf.distinguishedBy).toMatch(/positive control that FAILED/)
+    expect(sf.distinguishedBy).toMatch(/34 pages and 200,165 characters/)
+  })
+
+  it('⚠️ reading § 102 surfaced two rules neither operative section states', () => {
+    // The Massachusetts pattern, fourth city in this file. § 102 carries the
+    // JADU's 500 sq ft cap and the height-measurement rule for a detached ADU
+    // outside the buildable area — plus an express denial of the § 260(b)
+    // rooftop exemptions. §§ 207.1 and 207.2 state none of it.
+    const l = aduRulesFor('sf').local
+    if (l.kind !== 'read') throw new Error('expected read')
+    expect(l.citation).toMatch(/WITH the § 102 definitions/)
+    const jadu = l.maxSizeSqFt.find((m) => m.kind === 'capped' && m.sqFt === 500)!
+    if (jadu.kind !== 'capped') throw new Error('unreachable')
+    expect(jadu.condition).toMatch(/a DISTINCT use, not a smaller ADU/)
+    expect(jadu.baseline).toBeUndefined()
+    const h = l.notes.find((x) => /§ 102 STATES HOW A DETACHED ADU/.test(x))!
+    expect(h).toMatch(/260\(b\)/)
+    expect(h).toMatch(/average height of a pitched roof/)
+    // The baseline is unchanged — the JADU is an additional configuration, not
+    // a new headline figure.
+    const b = l.maxSizeSqFt.find((m) => m.kind !== 'not-found' && m.baseline)!
+    if (b.kind !== 'capped') throw new Error('unreachable')
+    expect(b.sqFt).toBe(850)
   })
 
   it('⚠️ names what is still unread, rather than implying completeness', () => {
@@ -2851,7 +2880,7 @@ describe('⚠️ all twenty-three cities are read — pin the partition, not the
     // returned five elements, which is the right count, from the wrong set.
     // `departsFromObviousNoun` is now a field, so the property is data.
     const departs = ADU_LOCAL_READ.filter((c) => ADU_VOCABULARY_CHECK[c].departsFromObviousNoun)
-    expect(departs.sort()).toEqual(['atlanta', 'boston', 'chicago', 'dc', 'nyc'])
+    expect(departs.sort()).toEqual(['atlanta', 'boston', 'chicago', 'dc', 'nyc', 'sf'])
     // And the partition is pinned on both sides, so a city cannot be added
     // without a deliberate call either way (rule 29's corollary).
     const same = ADU_LOCAL_READ.filter((c) => !ADU_VOCABULARY_CHECK[c].departsFromObviousNoun)
