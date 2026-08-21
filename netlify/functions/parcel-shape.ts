@@ -10,7 +10,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 const RATE = { name: 'parcel-shape', windowMs: 60_000, max: 60 } as const
 
 // Per-city PARCELS endpoint + its id field, copied verbatim from each provider
-// (see netlify/functions/lib/providers/*.ts and _endpoints.ts). The selected-
+// (see netlify/functions/lib/providers/*.ts and lib/_endpoints.ts). The selected-
 // parcel highlight only needs the polygon + a parcel id; the full attribute
 // fan-out lives in /api/parcel. Every endpoint here was probed 2026-06-10 and
 // returns rings reprojected to outSR=4326 from a 4326 point query.

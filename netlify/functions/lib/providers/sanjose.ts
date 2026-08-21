@@ -15,7 +15,7 @@
 //   • Owner    → unavailable, so the government-owner gate CANNOT work here. San
 //     Jose leans entirely on the curated civic hard-block list in siteFlags.ts.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'

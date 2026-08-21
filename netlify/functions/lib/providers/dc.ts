@@ -2,7 +2,7 @@
 // DC Office of Zoning "Specific Zone" + Historic District. Verified live
 // 2026-06-01. All three layers accept inSR=4326 point queries.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'

@@ -560,6 +560,45 @@ method**, even the source's own — a derivation instruction is an assertion abo
 the table, subject to the same doubt as any other figure in it, and it is not
 checked by anyone before publication.
 
+**31. A green local suite says nothing about a stage it cannot see.** A push
+failed the production build because Netlify names every top-level file in the
+functions directory as a function and rejects a dot — so a colocated
+`foo.test.ts` there errors the whole deploy. Typecheck, lint, 4,701 tests and
+`npm run build` all passed, because the build compiles the SPA and never
+enumerates that directory the way the deploy step does.
+
+Two things about it are worth more than the fix.
+
+**The file that failed was not the file that broke it.** `watchlistEndpoint.test.ts`
+had sat at the functions root since the watchlist feature landed, and the last
+good deploy predated it — so `main` was already in a state where the next deploy
+would fail, for a reason unrelated to whoever pushed. The new test collected a
+failure it did not cause. Same shape as the Phoenix `as number` cast that sat
+latent for a full commit: **the absence of a failure is not evidence the code is
+right** (rule 18's corollary), and what changes is only who arrives next.
+
+**The error's own suggestion was the dangerous fix.** It names a character rule,
+so it points at a rename — and `logSearchEndpointTest.ts` passes the name check
+and then deploys a test file as a LIVE PUBLIC ENDPOINT. Following the message
+precisely turns a failed build into a shipped one that is worse. Placement was
+the fix; the name never was. Where an error names a constraint, check whether
+satisfying that constraint actually addresses the hazard, or only silences the
+report.
+
+The guard that resulted asserts three properties, because the name rule could
+not see the third: no illegal name, no test file at the root whatever it is
+called, and every top-level file actually EXPORTS a handler. That last arm caught
+`_endpoints.ts` — a shared constants module with a legal name, deployed as a
+function for months, answering every request with a 502 and a public stack
+trace. Nothing called the URL, which is why nobody noticed.
+
+**And the obvious destination check was the wrong instrument.** Comparing the
+deployed bundle hash to a local build cannot work when the platform bakes a
+build-time variable the local build lacks — the mismatch measures the
+environment, not the deploy, and reports failure forever if trusted. What
+verified it was `state: ready` on the expected commit plus the deployed function
+inventory, 13 against the previous 8 (rules 11 and 22).
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

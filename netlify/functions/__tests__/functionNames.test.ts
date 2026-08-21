@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readdirSync, statSync } from 'node:fs'
+import { readdirSync, statSync, readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 
 // ⚠️ THIS GUARD EXISTS BECAUSE A PUSH TO MAIN FAILED THE PRODUCTION BUILD.
@@ -66,6 +66,32 @@ describe('⚠️ every deployable function name is legal for Netlify', () => {
     expect(LEGAL_FUNCTION_NAME.test('watchlistEndpoint.test')).toBe(false)
     expect(LEGAL_FUNCTION_NAME.test('log-search')).toBe(true)
     expect(LEGAL_FUNCTION_NAME.test('auth_request')).toBe(true)
+  })
+
+  it('⚠️ every top-level file actually EXPORTS a handler', () => {
+    // The third failure mode, and the one the name rule cannot see. `_endpoints`
+    // is a shared constants module — ENDPOINTS and FIELDS, imported by the
+    // parcel lookup and twenty-one providers — that sat at the functions root
+    // for months. Its name is perfectly legal, so it deployed as a function and
+    // answered every request with a 502 and a PUBLIC STACK TRACE:
+    //   {"errorType":"Runtime.HandlerNotFound",
+    //    "errorMessage":"_endpoints.handler is undefined or not exported"}
+    //
+    // ⚠️ It was in the last good deploy too, so this had been live for months.
+    // Nothing called the URL, which is exactly why nobody noticed — the absence
+    // of a complaint is not evidence the endpoint works (rule 18's corollary).
+    // A legal name and a real handler are different properties, and only the
+    // first was being checked.
+    const missing = topLevelFunctionFiles().filter((f) => {
+      const src = readFileSync(join(FUNCTIONS_DIR, f), 'utf8')
+      return !/export\s+(const|function|async function)\s+handler\b/.test(src)
+    })
+    expect(
+      missing,
+      'Every top-level file in netlify/functions is deployed as a function and must export ' +
+        'a `handler`. A shared module belongs in netlify/functions/lib/ — at the root it ships ' +
+        'as an endpoint that 502s with a public stack trace.',
+    ).toEqual([])
   })
 
   it('no top-level file is a test file, whatever it is named', () => {

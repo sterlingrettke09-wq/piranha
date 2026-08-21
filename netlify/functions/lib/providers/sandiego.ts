@@ -10,7 +10,7 @@
 // county, state, federal, port, or school-district land, so the curated civic
 // hard-block list in src/lib/siteFlags.ts carries more weight in San Diego.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt } from '../geo'

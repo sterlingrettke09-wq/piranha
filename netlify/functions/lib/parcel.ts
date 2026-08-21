@@ -26,7 +26,7 @@ import {
   type Bbox,
   type ParcelInfo,
 } from '../../../src/types/parcel'
-import { ENDPOINTS, FIELDS } from '../_endpoints'
+import { ENDPOINTS, FIELDS } from './_endpoints'
 import { mapZoningUse } from './zoningUse'
 import { isGovernmentOwner } from '../../../src/lib/developability'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from './arcgis'

@@ -7,7 +7,7 @@
 // connections time out — using it produces a city that silently fails 100% on
 // zoning and historic. Verified 2026-08-03: .gov = HTTP 200, .com = timeout.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'

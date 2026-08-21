@@ -49,7 +49,7 @@
 // likewise city-scoped — 171,077 of its 171,156 rows carry SITECITY='ATLANTA'.
 // The two cover the same ground. A point outside both simply returns no parcel.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'

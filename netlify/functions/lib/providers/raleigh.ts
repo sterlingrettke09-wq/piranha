@@ -48,7 +48,7 @@
 // different state and refuses with UPSTREAM_ERROR; the two used to produce the
 // identical 'Unknown'. See ../requiredUpstream.ts.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'

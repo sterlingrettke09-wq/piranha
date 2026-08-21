@@ -12,7 +12,7 @@
 // joined on `pin`. A distance query against OPA returns nothing, so the join is
 // required rather than optional.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import {
   fetchFeatures,
   fetchParcelSnap,

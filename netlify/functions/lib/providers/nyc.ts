@@ -2,7 +2,7 @@
 // tax-lot layer (~856k lots) carrying zoning district, per-use FAR, lot area,
 // and address. Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'

@@ -1,7 +1,7 @@
 // Chicago provider — city zoning (ZONE_CLASS) + Cook County parcel geometry
 // (lot area) + Mapbox reverse-geocoded address. Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'

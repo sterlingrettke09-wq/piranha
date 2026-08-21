@@ -4,7 +4,7 @@
 // geometry returned in State Plane feet (EPSG:2229), since the layer has no
 // plain lot-area attribute.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt } from '../geo'

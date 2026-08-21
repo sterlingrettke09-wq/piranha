@@ -66,7 +66,7 @@
 // (was R-5) reads N1-C(HDO) with RezoneDate 2023-06-01, the UDO's effective
 // date; UNC Charlotte (was INST) reads IC-1, same date.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { isGovernmentOwner } from '../../../../src/lib/developability'

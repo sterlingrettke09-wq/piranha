@@ -21,7 +21,7 @@
 // lot above ~6,700 sf (7,000 sf lot: 7,000 claimed vs 2,800 actual
 // single-family). Fixed below via the Subchapter F two-branch resolution.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { reverseGeocode } from '../geo'

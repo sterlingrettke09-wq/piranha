@@ -110,7 +110,7 @@
 //      It must not be inferred from the description string: "100+" is not a
 //      count, and a parsed 100 would flow straight into the no-net-loss check.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import {
   fetchFeatures,
   fetchParcelSnap,

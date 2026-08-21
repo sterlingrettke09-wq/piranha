@@ -7769,3 +7769,81 @@ ran its entire live sweep as a side effect of being imported, and under vite-nod
 the entry filename is absent from `process.argv`, so no guard can distinguish
 "imported" from "invoked". The definitions now live in modules with nothing to
 run — rule 14, a structure rather than a comment.
+
+---
+
+## 2026-08-21 — the first deploy failure, and what it was evidence of
+
+The push that shipped the ADU sweep, the search-log wiring, the HCD entitlement
+leg and the three provenance modules **failed the production build**. The live
+site was never affected — Netlify kept serving the 2026-08-19 build — but
+nothing reached production on the first attempt.
+
+Cause: `netlify.toml` sets `functions = "netlify/functions"`, and Netlify turns
+every TOP-LEVEL file there into a deployed function named after its basename,
+rejecting any name that is not alphanumerics, hyphens or underscores. A
+colocated `logSearchEndpoint.test.ts` becomes the function name
+`logSearchEndpoint.test`, and the dot errors the whole deploy.
+
+### ⚠️ The failing file was not the one that broke it
+
+`watchlistEndpoint.test.ts` had been sitting at the functions root since the
+watchlist feature landed, and the last successful deploy predates it. So `main`
+was **already** in a state where the next deploy would fail — for a reason
+unrelated to whatever that push happened to contain. The new test file did not
+introduce the breakage; it was the first thing to push afterwards, and so it
+collected the failure.
+
+This is the Phoenix `as number` crash one level up. That cast sat latent for a
+full commit and surfaced on the next city to exercise it; this sat latent for two
+days and surfaced on the next person to deploy. **The absence of a failure is not
+evidence the code is right** — in both cases the defect was complete and waiting,
+and what changed was only who arrived next.
+
+### ⚠️ The obvious fix was the dangerous one
+
+The error names a character rule, so the fix it suggests is a rename.
+`logSearchEndpointTest.ts` passes the name check — and then deploys a test file
+as a **live public endpoint**. The error message points at the symptom, and
+following it precisely converts a failed build into a shipped one that is worse.
+Placement is the fix; the name never was.
+
+The guard therefore asserts three things, not one: no illegal name, no test file
+at the root whatever it is called, and — added the same day — that every
+top-level file actually **exports a handler**.
+
+### The third arm, which the name rule could not see
+
+`_endpoints.ts` is a shared constants module (`ENDPOINTS`, `FIELDS`) imported by
+the parcel lookup and twenty-one providers. Its name is perfectly legal, so it
+deployed as a function and answered every request with a 502 and a public stack
+trace: `"_endpoints.handler is undefined or not exported"`. It was in the last
+good deploy too, so it had been live for months.
+
+Nothing called the URL, which is exactly why nobody noticed. A legal name and a
+real handler are different properties and only the first was being checked.
+
+### ⚠️ Nothing local could have caught any of it
+
+Typecheck, lint, 4,701 tests and `npm run build` all passed. The build compiles
+the SPA and never enumerates the functions directory the way the deploy step
+does, so the entire class was invisible to every local check. The first signal
+was a failed deploy.
+
+Rule 9 again, and the cheapest possible instance of it: the check that found
+this compared the system to something outside it, and the outside thing was the
+deploy itself.
+
+### Destination verification, and an instrument that measured the wrong thing
+
+The obvious confirmation — compare the deployed `index-*.js` hash to the local
+build — **cannot work here**, and quietly reports failure forever if trusted.
+Netlify bakes `VITE_MAPBOX_TOKEN` in at build time; that variable is absent
+locally, so the two bundles differ by construction. The mismatch measures the
+environment, not the deploy (rule 11).
+
+What actually verifies it: deploy `state: ready` on the expected commit SHA, and
+the deployed function inventory — **13 functions against the previous 8**, with
+`auth-request`, `auth-session`, `auth-verify`, `inverse` and `watchlist` newly
+present and no `*.test` among them. A count and a membership list, checked at the
+destination, where the payload actually exists (rule 22).

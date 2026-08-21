@@ -1,7 +1,7 @@
 // San Francisco provider — SF Planning zoning + parcels (address fields +
 // geometry for lot area). Verified 2026-05-29.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { fetchFeatures, fetchParcelSnap, firstAttrs, firstFeature, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
 import { polygonAreaSqFt, reverseGeocode } from '../geo'

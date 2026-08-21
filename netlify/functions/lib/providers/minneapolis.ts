@@ -7,7 +7,7 @@
 // UTM zone 15N (EPSG:26915). Zoning + historic are ArcGIS Online layers and
 // reproject 4326 normally.
 import type { ParcelInfo } from '../../../../src/types/parcel'
-import { ENDPOINTS } from '../../_endpoints'
+import { ENDPOINTS } from '../_endpoints'
 import { resolveMinneapolisFar } from '../zoning/minneapolis'
 import { fetchFeatures, fetchFeaturesXYSnap, fetchParcelSnap, firstAttrs, warnIfMissing, type ParcelResult } from '../arcgis'
 import { readFailed, unresolvedOverlays } from '../unresolvedOverlays'
