@@ -6,7 +6,6 @@ import type { AnalysisInput, AnalysisResult, CheckStatus } from '../types/analys
 import { decodeJsonB64 } from '../lib/b64'
 import { VERDICT } from '../lib/verdictLabels'
 import { formatEstimate } from '../lib/format'
-import { hasCitySpecificHurdles, hasMeasuredPermitTiming } from '../config/cities'
 import { summarizeUnchecked } from '../lib/uncheckedHurdles'
 
 function decode<T>(s: string | null): T | null {
@@ -21,6 +20,39 @@ const VERDICT_CLS: Record<CheckStatus, string> = {
   NEEDS_RELIEF: 'text-amber-700',
   PROHIBITED: 'text-rose-700',
   INDETERMINATE: 'text-piranha-charcoal/60',
+}
+
+/** ⚠️ WHY A TIMELINE IS ESTIMATED RATHER THAN MEASURED — derived from the
+ *  reason code the engine already produced, not from a hand-written list.
+ *
+ *  The old copy named exactly two causes and joined them with "either … or":
+ *  "the data carries no application date, or a figure was measured and
+ *  withdrawn". That is a CLOSED disjunction, and it was already wrong —
+ *  Milwaukee's 5+ unit tier is absent because the permit feed cannot separate
+ *  that tier at all, which is neither. A closed list of causes is a completeness
+ *  claim about our own pipeline, and it goes stale the first time a new
+ *  withholding reason is added.
+ *
+ *  So the specific arms below are the ones the engine can actually report, and
+ *  the fallback stays OPEN — it says a figure is not published without
+ *  enumerating why. */
+export function estimatedWhy(d: AnalysisResult): string {
+  const w = d.timeline.measuredTierWithheld
+  const TIER: Record<string, string> = {
+    single: 'single-family homes',
+    multi: '2–4 unit buildings',
+    apartment: '5+ unit buildings',
+  }
+  const tail =
+    ' The figure shown is a full-lifecycle estimate, not a filing-to-issuance measurement, so it is not comparable to a city showing a measured figure.'
+  if (w?.basis === 'thin-sample') {
+    const n = w.n == null ? 'too small a sample' : `only n=${w.n}`
+    return `Estimated, not measured. This city publishes permit timing by building size, but its ${TIER[w.tier] ?? w.tier} sample is ${n} — under the n=${w.minPublishableN} floor we publish. The city-wide median is a different population and is not substituted.${tail}`
+  }
+  if (w?.basis === 'unenumerable') {
+    return `Estimated, not measured. This city publishes permit timing only for the building sizes its permit feed can separate, and ${TIER[w.tier] ?? w.tier} cannot be separated at all: ${w.reason}${tail}`
+  }
+  return `Estimated, not measured. No filing-to-issuance figure is published for this city and this building size.${tail}`
 }
 
 const usd = (n: number) => formatEstimate(n)
@@ -148,12 +180,23 @@ export default function Compare() {
               {d.timeline.months} mo<span className="ml-1 align-super text-[0.65em]">unchecked</span>
             </span>
           )
-        return hasMeasuredPermitTiming(d.project.city) ? (
-          <span className="tabular-nums">{d.timeline.months} mo</span>
-        ) : (
+        // ⚠️ READ THE PROJECT, NOT THE CITY. This asked
+        // `hasMeasuredPermitTiming(d.project.city)` — a city-level flag — while
+        // the report page marks the same parcel by its BUILDING TIER. Two live
+        // parcels got opposite answers in one session: a Denver 2–4 unit project,
+        // whose tier is withheld for a thin sample, and a Milwaukee 5+ unit
+        // project, whose tier cannot be separated from the feed at all AND which
+        // has no city aggregate either. Both showed a bare number here and "not
+        // measured" on the report.
+        //
+        // `timeline.measured` is the SAME field the report reads, so the two
+        // surfaces can no longer disagree by construction rather than by
+        // remembering to keep two conditions in step (rule 9's boundary problem).
+        if (d.timeline.measured) return <span className="tabular-nums">{d.timeline.months} mo</span>
+        return (
           <span
             className="tabular-nums text-piranha-charcoal/70"
-            title="Estimated, not measured. No filing-to-issuance figure is published for this city: either the data carries no application date, or a figure was measured and withdrawn. Not comparable to a city showing a measured figure."
+            title={estimatedWhy(d)}
           >
             {d.timeline.months} mo<span className="ml-1 align-super text-[0.65em]">est</span>
           </span>
@@ -189,16 +232,15 @@ export default function Compare() {
               {n}+<span className="ml-1 align-super text-[0.65em]">unchecked</span>
             </span>
           )
-        return hasCitySpecificHurdles(d.project.city) ? (
-          <span className="tabular-nums">{n}</span>
-        ) : (
-          <span
-            className="tabular-nums text-piranha-charcoal/70"
-            title="At least this many. City-specific requirements (inclusionary housing, large-project review) are not yet encoded for this city, so this is a floor — not a complete list."
-          >
-            {n}+<span className="ml-1 align-super text-[0.65em]">partial</span>
-          </span>
-        )
+        // ⚠️ THE 'partial' BRANCH IS GONE, NOT DISABLED. It rendered "not yet
+        // encoded for this city" for a city outside CITIES_WITH_SPECIFIC_HURDLES
+        // — and every one of the 23 registry cities is now in that list, so it
+        // could not fire for any real parcel. An unreachable branch is a claim
+        // nobody will re-check: it reads as a supported state on inspection and
+        // is never exercised, so it cannot be caught by using the product. A
+        // test pins the partition, so if a city is ever added WITHOUT hurdles
+        // the suite goes red rather than this branch quietly coming back to life.
+        return <span className="tabular-nums">{n}</span>
       },
     },
     {
