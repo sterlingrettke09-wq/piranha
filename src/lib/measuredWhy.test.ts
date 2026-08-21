@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estimatedWhy } from './Compare'
+import { estimatedWhy } from '../lib/measuredWhy'
 import { CITIES, hasCitySpecificHurdles } from '../config/cities'
 import type { AnalysisResult } from '../types/analysis'
 
