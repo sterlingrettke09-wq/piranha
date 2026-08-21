@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { HandlerEvent } from '@netlify/functions'
 
 const mem = new Map<string, unknown>()
-vi.mock('./lib/store', () => ({
+vi.mock('../lib/store', () => ({
   blobStore: (name: string) => ({
     get: async (k: string) => mem.get(`${name}/${k}`) ?? null,
     setJSON: async (k: string, v: unknown) => void mem.set(`${name}/${k}`, v),
@@ -11,9 +11,9 @@ vi.mock('./lib/store', () => ({
   }),
 }))
 
-import { handler } from './watchlist'
-import { handler as session } from './auth-session'
-import { issueLoginToken, redeemLoginToken, SESSION_COOKIE } from './lib/auth'
+import { handler } from '../watchlist'
+import { handler as session } from '../auth-session'
+import { issueLoginToken, redeemLoginToken, SESSION_COOKIE } from '../lib/auth'
 
 const ev = (o: Partial<HandlerEvent> & { cookie?: string }): HandlerEvent =>
   ({

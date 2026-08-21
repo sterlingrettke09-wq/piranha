@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { HandlerEvent } from '@netlify/functions'
-import type { SearchEntry } from './lib/searchLog'
+import type { SearchEntry } from '../lib/searchLog'
 
 // Capture what the handler actually WRITES. The point of this suite is the
 // shape of the stored row, not the HTTP response — every row said `lookup` and
 // six of the ten fields had no writer at all, and neither fact was visible from
 // a 204.
 const written: SearchEntry[] = []
-vi.mock('./lib/searchLog', () => ({
+vi.mock('../lib/searchLog', () => ({
   logSearch: async (e: SearchEntry) => void written.push(e),
 }))
 
-import { handler } from './log-search'
+import { handler } from '../log-search'
 
 const ev = (q: Record<string, string>): HandlerEvent =>
   ({
