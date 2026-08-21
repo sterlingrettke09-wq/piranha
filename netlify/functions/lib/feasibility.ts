@@ -11,18 +11,14 @@ const SEVERITY: Record<CheckStatus, number> = {
   PROHIBITED: 3,
 }
 
-// A dimensional variance can bridge a modest overage; beyond it, relief isn't
-// realistically grantable (it takes a rezoning). Height and FAR differ: a height
-// variance is the classic, routinely-granted dimensional relief (~1.5×), but a
-// FAR/density increase above ~1.2× crosses into rezoning territory — density is
-// generally excluded from area-variance consideration. Source: variance-practice
-// doctrine (NY ZR §72-21; area- vs use-variance literature).
-// EXPORTED so the inverse query (`whatWouldItTake`) classifies overages with the
-// SAME thresholds this pass does. A second copy would let the two directions
-// disagree — the report saying a project needs a variance while the inverse says
-// it needs a rezoning, off the same numbers.
-export const RELIEF_FACTOR_HEIGHT = 1.5
-export const RELIEF_FACTOR_FAR = 1.2
+// ⚠️ MOVED TO src/config/reliefFactors.ts, and re-exported here so every existing
+// importer is unchanged. The move happened because a THIRD reader appeared: the
+// Methodology page describes these thresholds in prose and said "up to 1.5× over"
+// for both dimensions — true of height, false of FAR. The SPA cannot import from
+// netlify/, so the definition had to sit where all three readers can reach it.
+// See that file for the doctrine and the sourcing.
+export { RELIEF_FACTOR_HEIGHT, RELIEF_FACTOR_FAR } from '../../../src/config/reliefFactors'
+import { RELIEF_FACTOR_HEIGHT, RELIEF_FACTOR_FAR } from '../../../src/config/reliefFactors'
 
 // A proposal taller than this on a parcel whose district carries NO height
 // limit in public data can't honestly be called "as-of-right" — outside

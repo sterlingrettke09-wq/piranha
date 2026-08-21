@@ -18,6 +18,8 @@ import {
   type EnvelopeSample,
 } from '../config/envelopeSample'
 import { CITY_CLAIMS } from '../config/coverageClaim'
+import { FT_PER_STORY, ftPerStory } from '../config/estimates'
+import { RELIEF_FACTOR_HEIGHT, RELIEF_FACTOR_FAR } from '../config/reliefFactors'
 import {
   costPerSqFtByProduct,
   type CostProduct,
@@ -323,7 +325,10 @@ export default function Methodology() {
               </li>
               <li>
                 <span className="font-semibold text-piranha-charcoal">Height.</span> Your proposed
-                height (feet, or stories &times; 11 ft) against the district limit.
+                height against the district limit. Given a storey count instead of feet, we convert
+                at {FT_PER_STORY} ft per storey for residential and{' '}
+                {ftPerStory('commercial')} ft for commercial, mixed and institutional — the figure
+                the code states is always used in preference to a conversion.
               </li>
               <li>
                 <span className="font-semibold text-piranha-charcoal">Existing housing.</span>{' '}
@@ -331,10 +336,11 @@ export default function Methodology() {
               </li>
             </ul>
             <p>
-              For FAR and height, anything within the limit needs no special permission. Up to
-              1.5&times; over is treated as needing the city&rsquo;s permission (an exception).
-              Beyond 1.5&times; we call it not allowed, because that overage takes a full rezoning,
-              not a one-off exception. Where a city&rsquo;s public
+              For FAR and height, anything within the limit needs no special permission. Over the
+              limit, the threshold differs by dimension: up to {RELIEF_FACTOR_HEIGHT}&times; on
+              height and {RELIEF_FACTOR_FAR}&times; on floor-area ratio is treated as needing the
+              city&rsquo;s permission (an exception). Beyond that we call it not allowed, because
+              the overage takes a full rezoning, not a one-off exception. Where a city&rsquo;s public
               data doesn&rsquo;t carry a FAR or height limit, that line reads &ldquo;not in public
               data&rdquo; and doesn&rsquo;t decide the verdict.
             </p>
