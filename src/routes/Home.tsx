@@ -5,6 +5,7 @@ import { Reveal } from '../components/Reveal'
 import { ArrowLink } from '../components/ArrowLink'
 import { cityName } from '../config/cities'
 import { CITY_CLAIMS, coverageFacts } from '../config/coverageClaim'
+import { HURDLE_CATEGORIES } from '../types/analysis'
 import { listReports, removeReport, clearAll, type RecentReport } from '../lib/recentReports'
 import { VERDICT } from '../lib/verdictLabels'
 import { formatEstimate } from '../lib/format'
@@ -106,8 +107,14 @@ const DARK = 'bg-[#1a1412]'
 const FEATURES = [
   {
     n: '01',
-    title: 'Every hurdle',
-    body: 'Historic review, affordability mandates, environmental review, parking, prevailing wage, private covenants — for your exact parcel.',
+    // ⚠️ WAS "Every hurdle", AND THE PRODUCT DISAGREED WITH IT. `uncheckedHurdles`
+    // exists because a city layer can fail to answer, and it documents the count
+    // as a FLOOR — the report page renders "At least — N checks unavailable" on
+    // the same visit. A completeness claim on the way in, contradicted on the way
+    // out. The named categories stay (they are what we do check); the absolute
+    // does not.
+    title: 'The hurdles, named',
+    body: 'Historic review, affordability mandates, environmental review, parking, prevailing wage, private covenants — for your exact parcel, with anything we could not check named rather than left out.',
   },
   {
     n: '02',
@@ -138,7 +145,11 @@ const STATS = [
   // for three of them. `wired` is what this number actually counts, and the
   // rate each city delivers is one click away rather than asserted here.
   { figure: String(coverageFacts().wired), label: 'Cities wired to their own public records' },
-  { figure: '9', label: 'Kinds of red tape tracked' },
+  // ⚠️ DERIVED, because the literal drifted. This read '9'; the code emits TEN
+  // categories, and the last person to check it recalled eleven or twelve — three
+  // numbers for one claim. Hardcoding a corrected number resets the clock, so the
+  // count comes from the same list the engine assigns from (rule 14).
+  { figure: String(HURDLE_CATEGORIES.length), label: 'Kinds of red tape tracked' },
   // A third stat was '100% built from public records', which is a tautology
   // dressed as a metric — it measures nothing and sat beside two figures that
   // do. Dropped rather than replaced: the honest third number is the per-city

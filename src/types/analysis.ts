@@ -70,18 +70,32 @@ export type HurdleStatus = 'required' | 'likely' | 'info' | 'unchecked'
 
 // A non-zoning regulatory hurdle — historic review, affordability mandates,
 // environmental review, fees, private governance, etc.
+/** ⚠️ THE ARRAY IS THE SOURCE, AND THE UNION IS DERIVED FROM IT. A TypeScript
+ *  union is erased at runtime, so nothing could count these — and the Home page
+ *  stated the count as a literal, which drifted: the page said 9, the code says
+ *  10. Anything that must be COUNTED on a rendered surface needs a runtime list,
+ *  not a type (rule 14 — a structure, not a comment).
+ *
+ *  A test asserts this list and the categories `hurdles.ts` actually emits are
+ *  the same set, in both directions, so the number cannot describe a category
+ *  nobody produces or miss one that exists. */
+export const HURDLE_CATEGORIES = [
+  'historic',
+  'affordability',
+  'review',
+  'environmental',
+  'fees',
+  'private',
+  'flood',
+  'labor',
+  'parking',
+  'demolition',
+] as const
+
+export type HurdleCategory = (typeof HURDLE_CATEGORIES)[number]
+
 export interface Hurdle {
-  category:
-    | 'historic'
-    | 'affordability'
-    | 'review'
-    | 'environmental'
-    | 'fees'
-    | 'private'
-    | 'flood'
-    | 'labor'
-    | 'parking'
-    | 'demolition'
+  category: HurdleCategory
   label: string
   status: HurdleStatus
   note: string

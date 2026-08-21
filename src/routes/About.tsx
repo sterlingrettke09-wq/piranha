@@ -33,7 +33,8 @@ export default function About() {
           <span className="font-semibold text-piranha-charcoal">
             “Can I build this here, and what will it take?”
           </span>{' '}
-          It draws on each city’s own public data, so you can see every hurdle there is.
+          It draws on each city’s own public data, and names the approvals it finds — including
+          the ones it could not check, rather than leaving them out.
         </PageHeading>
 
         <div className="space-y-14">
