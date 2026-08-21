@@ -24,13 +24,13 @@ plan instead of to a figure.
 
 Sequence set **2026-08-17**, reordered by Sterling from the version proposed.
 
-| # | Item | Kind | State (2026-08-18) |
+| # | Item | Kind | State (2026-08-21) |
 |---|------|------|--------------------|
 | 1 | ~~Atlanta SPI~~ | DECIDED 2026-08-17 | **DONE 2026-08-19** |
 | 1 | ~~San Diego~~ | DECIDED 2026-08-17 | **DONE 2026-08-19** |
-| 2 | **Cost-data access** | **OPEN — blocked on Sterling** | BLOCKED |
+| 2 | **Cost-data access** | DECIDED 2026-08-19 — free stack | **PARTLY DONE** — point estimates ship; RANGES still open, no second endpoint exists for detached |
 | 3 | ~~Permit timing~~ | DECIDED 2026-08-17 | **DONE 2026-08-18** — see Superseded |
-| 4 | **Parcel-weighted coverage** | DECIDED 2026-08-17 | NOT STARTED |
+| 4 | ~~Parcel-weighted coverage~~ | DECIDED 2026-08-17 | **DONE 2026-08-19** |
 | 5 | **Map-layer asks** | DECIDED 2026-08-17 | NOT STARTED |
 | 6 | **More cities** | DECIDED 2026-08-17, deliberately last | NOT STARTED |
 
@@ -441,7 +441,7 @@ A state-floor city gets `info`, not `likely`: where the state mandates
 entitlement rather than an obstacle. An unread city keeps `likely` and says nobody
 has looked.
 
-### The local layer — STARTED 2026-08-19, 1 of 5 read
+### The local layer — DONE 2026-08-20, all 23 cities read
 
 **⚠️ The first shape was wrong and could not express the real case.** It carried
 one authority per city — state OR local OR unread — when all five preempted cities
@@ -668,10 +668,19 @@ Now a union, with the asymmetry enforced by the shape rather than by care:
 back to the state floor labelled a MINIMUM — never rendering as "the city sets no
 maximum", which is the most permissive statement this tool can make.
 
-### Next for ADU — and how to reach the sources
+### How the ADU sources were reached — kept because the access notes cost real time
 
-Four local ordinances (LA, SF, San José, Seattle), then the eighteen unread
-cities. Ordinary reading work, but the access notes are worth not rediscovering:
+⚠️ Nothing is outstanding here: all 23 cities are read. This section previously
+framed itself as a queue, naming four remaining local ordinances and a count of
+still-unread cities — both of which were finished by 2026-08-20. The table below
+is retained as REFERENCE, not as a queue: the access notes are worth not
+rediscovering, and later reads confirmed and extended them.
+
+(The superseded framing is DESCRIBED rather than quoted, per rule 21 — a verbatim
+quote of a retracted claim is indistinguishable from a live one to any scanner,
+and to most readers, who see the sentence before the frame around it. The guard
+in `roadmapFreshness.test.ts` caught the first draft of this very paragraph doing
+exactly that.)
 
 | source | state |
 |---|---|
@@ -862,18 +871,24 @@ code imposes none — an answer) · `unknown` (a gap).
 
 Ranking set **2026-08-18**. Sterling's own weighting, quoted.
 
-| # | Feature | Weight given | Kind |
-|---|---------|--------------|------|
-| 1 | **Change alerts** | *"extremely important"* | DECIDED 2026-08-18 |
-| 2 | **Inverse query** | *"very important"* | DECIDED 2026-08-18 |
-| 3 | **Pro forma** | *"important"* | DECIDED 2026-08-18 |
-| 4 | **ADU** | *"yes, not first"* | DECIDED 2026-08-18 |
-| 5 | **Account + favorites** | — | DECIDED 2026-08-18 |
-| 5.1 | **Assemblage** | — | **RANKING, NOT A COMMITMENT** |
+| # | Feature | Weight given | State (2026-08-21) |
+|---|---------|--------------|--------------------|
+| 1 | **Change alerts** | *"extremely important"* | **STARTED 2026-08-19** — checker + watchlist done; stability re-observation due 2026-08-26 |
+| 2 | ~~Inverse query~~ | *"very important"* | **DONE 2026-08-19** |
+| 3 | ~~Pro forma~~ | *"important"* | **DONE 2026-08-19**, revenue-free by decision |
+| 4 | ~~ADU~~ | *"yes, not first"* | **DONE 2026-08-20** — all 23 cities read |
+| 5 | ~~Account + favorites~~ | — | **DONE 2026-08-19** — sign-in and `/watchlist` |
+| 5.1 | **Assemblage** | — | **RANKING, NOT A COMMITMENT** — not started |
 
-None started. Assemblage's "5.1" was a position in a list, not a decision to
-build it; it is recorded that way so a later reader does not promote it by
-finding it on a roadmap.
+⚠️ **This table said "None started" until 2026-08-21, by which point five of its
+six rows were done or under way** — contradicted by this document's own section
+headings, which is the worst place for a summary to be wrong (rule 17: headers
+and summaries are read FIRST, so a reader who opens the roadmap to learn the
+state of the work takes the stale claim and never reaches the detail).
+
+Assemblage's "5.1" was a position in a list, not a decision to build it; it is
+recorded that way so a later reader does not promote it by finding it on a
+roadmap.
 
 ---
 
@@ -909,7 +924,7 @@ point with no range is hard to sell as a feasibility figure.
 
 | Question | Since | Consequence while open |
 |----------|-------|------------------------|
-| **Cost-data access** — which source | before 2026-08-17 | blocks monetization entirely |
+| **Cost-data ranges** — a second endpoint for detached | before 2026-08-17 | ⚠️ narrowed 2026-08-21: the free stack shipped 2026-08-19 and point estimates are live, so this no longer blocks monetization *entirely*. What is open is RANGES — no second endpoint exists for detached, so a range cannot be derived without inventing one |
 | `plannedDevelopmentSource` — copy decision | 2026-08-15 | the PD citation sentence is computed and discarded; the panel shows a generic paragraph. Dallas's runs 400+ chars incl. a quoted excerpt, so it is a copy call, not a wiring fix |
 | **RSMeans credential rotation** | 2026-08-18 | a password was pasted into a transcript. Never used, never entered anywhere. Still needs rotating |
 | **Photos** — Dallas, Las Vegas, Phoenix | 2026-08-18 | three city cards have no image |
@@ -918,12 +933,24 @@ point with no range is hard to sell as a feasibility figure.
 
 ## Smaller open work
 
-- **Minneapolis story paragraph** — must be produced by `cityStories.ts` through
-  interpolation, not hand-written: `parkingClause` is guarded so every word except
-  the city name must appear in the verified parking headline.
+- ~~**Minneapolis story paragraph**~~ — **DONE.** `parkingClause()` supplies every
+  word of the claim from the city's own verified headline, and
+  `cityStories.test.ts` asserts the story contains
+  `PARKING_RULES.minneapolis.headline` VERBATIM alongside the interpolated
+  lifecycle figures. ⚠️ This entry sat here after the work was finished, and it is
+  the one that started this sweep — found by accident while answering "what is
+  next", which is exactly how the other five surfaced.
 - **#15 LA recodification** — make the bracketed-format count dynamic. The
   151-vs-169 discrepancy is to be resolved BY the dynamic count, not investigated
-  first. LA is 440 of the 731 sweep gaps.
+  first. LA is **440 of the 653** unexplained values — re-measured 2026-08-21
+  against a live sweep, and the 440 held while the DENOMINATOR was stale: this
+  bullet said 731, which is where the sweep opened on 2026-08-19 and not where it
+  closed the same day, in this document's own later section.
+  ⚠️ **And rule 26 says what to expect from doing it.** LA is deliberately
+  unencoded mid-recodification, so closing this most likely moves the COUNT
+  rather than the system. That is legitimate work, but it is instrument work on a
+  metric nobody outside this project reads, and the report has to say which of
+  the two moved.
 - **Prose FAR** — Atlanta SPI-6 states a ratio in prose with no table. The grid
   parser is structurally blind to it. No live zone code carries SPI-6, which is
   the only reason it is not urgent.
