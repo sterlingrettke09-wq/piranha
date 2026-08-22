@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { computeEnvelope } from './envelope'
+import { assessFeasibility } from './feasibility'
+import type { AnalysisInput } from '../../../src/types/analysis'
 import type { ParcelInfo } from '../../../src/types/parcel'
 
 const ROOT = resolve(__dirname, '../../..')
@@ -17,6 +19,7 @@ const parcel = (
 ): ParcelInfo =>
   ({
     lot: { sizeSqFt: 10_000 },
+    overlays: {},
     zoning: {
       districtCode: 'TEST-1',
       districtName: 'Constructed',
@@ -121,5 +124,54 @@ describe('the elective disclosure never borrows the unresolved sentence', () => 
     const found = [...feas.matchAll(elective)].map((m) => m[1])
     expect(found.join(' ')).toMatch(/publishe?s?/i)
     expect(found.join(' ')).not.toMatch(/not published for this district/i)
+  })
+})
+
+// ── THE VERDICT ───────────────────────────────────────────────────────────────
+// Withholding the envelope's product did NOT reach this consumer: the FAR
+// dimension check reads `farByUse` directly and compares `gfa / lot.sizeSqFt`
+// against it — the NET denominator — so an elective district was being judged on
+// the smaller of the two areas its code offers. Measured on production before
+// the fix, an SPI-11 SA2 parcel returned `far PROHIBITED`, "isn't buildable as
+// proposed", against a ratio the applicant may apply to gross lot area instead.
+describe('an elective denominator cannot produce a not-buildable verdict', () => {
+  const project = (gfa: number): AnalysisInput =>
+    ({ use: 'residential', gfa, units: 20, heightFt: null, stories: null, city: 'atlanta' }) as unknown as AnalysisInput
+
+  const electiveParcel = parcel({
+    farByUse: { residential: 2.0 },
+    farElectiveByUse: { residential: true },
+    allowedUses: null,
+    maxHeightFt: null,
+  })
+
+  it('does not report PROHIBITED on a proposal that overshoots the NET reading', () => {
+    // 36,000 sf on a 10,000 sf lot is FAR 3.6 against a stated 2.0 — 1.8×, the
+    // exact overshoot that returned PROHIBITED on production.
+    const f = assessFeasibility(electiveParcel, project(36_000))
+    const far = f.checks.filter((c) => c.dimension === 'far')
+    expect(far.map((c) => c.status)).not.toContain('PROHIBITED')
+    expect(f.overall).not.toBe('PROHIBITED')
+  })
+
+  it('emits exactly ONE far check, not a pair that contradict each other', () => {
+    // Production showed `far AS_OF_RIGHT · max FAR 0.70` directly above
+    // `far INDETERMINATE · you choose which lot area`, on the same parcel.
+    for (const gfa of [5_000, 36_000]) {
+      const far = assessFeasibility(electiveParcel, project(gfa)).checks.filter((c) => c.dimension === 'far')
+      expect(far.length, `gfa ${gfa}`).toBe(1)
+      expect(far[0].status).toBe('INDETERMINATE')
+      expect(far[0].allowed).not.toMatch(/^max FAR/)
+      expect(far[0].allowed).not.toMatch(/not derivable/)
+    }
+  })
+
+  it('still judges a NON-elective district normally', () => {
+    // The control that keeps the guard from being a blanket suppression: the
+    // same overshoot on a district that states its denominator must still bite.
+    const stated = parcel({ farByUse: { residential: 2.0 }, allowedUses: null, maxHeightFt: null })
+    const far = assessFeasibility(stated, project(36_000)).checks.filter((c) => c.dimension === 'far')
+    expect(far.length).toBe(1)
+    expect(far[0].status).toBe('PROHIBITED')
   })
 })

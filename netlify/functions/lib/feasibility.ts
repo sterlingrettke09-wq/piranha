@@ -79,9 +79,34 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
   }
 
   // FAR — prefer a use-specific limit (e.g. NYC Resid/Comm/Facil FAR) when present.
-  const farForUse = parcel.zoning.farByUse?.[project.use] ?? limits.maxFAR
+  //
+  // ⚠️ A RATIO WHOSE DENOMINATOR IS THE APPLICANT'S CANNOT BE COMPARED AGAINST,
+  // and this check was doing it. `proposedFAR` is `gfa / lot.sizeSqFt` — the NET
+  // denominator — so on an elective district the comparison silently picks the
+  // smaller of the two areas the code offers and calls the result the district
+  // limit. Measured on production before the fix: an SPI-11 SA2 parcel returned
+  // `far PROHIBITED`, "far beyond what a variance can grant … it isn't buildable
+  // as proposed", against a ratio the applicant may apply to gross lot area
+  // instead. A hard not-buildable verdict, on the flattering-to-us reading and
+  // the punishing-to-the-user one.
+  //
+  // Suppressing the envelope's product (see `farBasis: 'basis-elective'`) did
+  // NOT reach here: this reads `farByUse` directly, so the two consumers of the
+  // same ratio disagreed — the report withheld a ceiling while the verdict
+  // enforced one. Fixing the field's home layer and not its readers is rule 35's
+  // "the fix reproduces the bug one layer up", exactly.
+  const farElective = parcel.zoning.farElectiveByUse?.[project.use] === true
+  const farForUse = farElective ? null : (parcel.zoning.farByUse?.[project.use] ?? limits.maxFAR)
   if (farForUse == null || parcel.lot.sizeSqFt == null) {
-    checks.push({ dimension: 'far', status: 'INDETERMINATE', proposed: `${project.gfa.toLocaleString()} sf`, allowed: 'not derivable', note: 'FAR cannot be evaluated without lot size and a district FAR limit.' })
+    // 'not derivable' is true of a missing lot size or an unresolved district
+    // and FALSE here — the ratio is published and cited; only its denominator is
+    // the reader's to pick. Same distinction the assumptions copy draws, and it
+    // has to be drawn again because this string is a different surface.
+    checks.push(
+      farElective
+        ? { dimension: 'far', status: 'INDETERMINATE', proposed: `${project.gfa.toLocaleString()} sf`, allowed: 'published — but you choose which lot area it multiplies', note: 'This district publishes a floor-area ratio and the code lets you apply it to either net lot area or gross lot area, which includes a credited half-width of the adjoining street. Both are permitted and they give different answers, so this proposal cannot be measured against a single limit here. Applying the smaller of the two would report a shortfall the code may not impose.' }
+        : { dimension: 'far', status: 'INDETERMINATE', proposed: `${project.gfa.toLocaleString()} sf`, allowed: 'not derivable', note: 'FAR cannot be evaluated without lot size and a district FAR limit.' },
+    )
   } else {
     const proposedFAR = project.gfa / parcel.lot.sizeSqFt
     const status = classifyOverage(proposedFAR, farForUse, RELIEF_FACTOR_FAR)
@@ -364,7 +389,14 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
     project.gfaBasis === 'assumed-basis-elective'
   if (farUncheckable && (overall === 'AS_OF_RIGHT' || overall === 'NEEDS_RELIEF')) {
     overall = 'INDETERMINATE'
-    checks.push({
+    // ⚠️ ONE FAR CHECK, NOT TWO. The dimension check above already emits the
+    // elective explanation, so pushing again rendered a pair that contradicted
+    // each other on the same parcel — measured on production, SPI-20 SA1 showed
+    // `far AS_OF_RIGHT · max FAR 0.70` immediately above `far INDETERMINATE ·
+    // you choose which lot area`. The overall override still stands; only the
+    // duplicate narration is suppressed.
+    if (!farElective) {
+      checks.push({
       dimension: 'far',
       status: 'INDETERMINATE',
       proposed: `${project.gfa.toLocaleString()} sf (assumed)`,
@@ -392,7 +424,8 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
           : project.gfaBasis === 'assumed-basis-elective'
             ? 'This district publishes a floor-area ratio and the code lets you apply it to either net lot area or gross lot area, which includes a credited half-width of the adjoining street. Both are permitted and they give different answers, so the size above is a placeholder (lot area) rather than a code limit. Using the smaller of the two would put a floor on a page where every other figure is a ceiling — the ratio and its two denominators are in the zoning notes, and the choice of program is yours.'
             : 'No floor-area limit could be resolved for this district, so the size above is a placeholder (lot area), not a code limit. A permitted/not-permitted verdict would be a claim about the law derived from a number the code never states.',
-    })
+      })
+    }
   }
   const path: ApprovalPath = overall === 'PROHIBITED' ? 'prohibited' : overall === 'NEEDS_RELIEF' ? 'variance' : 'as_of_right'
   // The envelope is "known" when the city's DATA gives us a FAR or height limit —
