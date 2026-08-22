@@ -274,6 +274,8 @@ export const handler: JsonHandler = async (event) => {
       lotSqFt: parcel.lot.sizeSqFt,
       allowedUses: parcel.zoning.allowedUses,
       maxFAR: parcel.zoning.maxFAR,
+      farByUse: parcel.zoning.farByUse,
+      farElectiveByUse: parcel.zoning.farElectiveByUse,
       maxHeightFt: parcel.zoning.maxHeightFt,
       floodZone: parcel.overlays.floodZone,
       historicDistrict: parcel.overlays.historicDistrict,

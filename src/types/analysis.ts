@@ -148,6 +148,19 @@ export interface AnalysisResult {
     lotSqFt: number | null
     allowedUses: string[] | null
     maxFAR: number | null
+    /** ⚠️ THE RATIOS THEMSELVES, which used to stop at this boundary. `maxFAR`
+     *  is set only where a district states ONE ratio for every use; Atlanta's
+     *  SPI chapters state them per use, so `maxFAR` is null there and the client
+     *  had nothing to render but the fallback — "Not in public data" on a
+     *  district publishing FAR 25 with a citation (§16-18A.008).
+     *
+     *  Derived from `ParcelInfo['zoning']`, never restated, for the reason the
+     *  envelope comment below gives at length. */
+    farByUse?: ParcelInfo['zoning']['farByUse']
+    /** Which of those ratios the applicant picks the denominator for. Without
+     *  it the client can print a ratio it cannot qualify, which is worse than
+     *  printing nothing: an elective ratio shown bare reads as a ceiling. */
+    farElectiveByUse?: ParcelInfo['zoning']['farElectiveByUse']
     maxHeightFt: number | null
     floodZone: string | null
     historicDistrict: string | null

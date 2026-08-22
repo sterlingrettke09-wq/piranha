@@ -1,5 +1,10 @@
 import type { AnalysisResult } from '../../../types/analysis'
 import { PARKING_RULES } from '../../../config/parkingRules'
+// ⚠️ PURE FUNCTIONS IN THEIR OWN MODULE, not exported from this component file.
+// They need to be unit-testable — a source-grep asserting a ternary's SHAPE is
+// what pinned the previous structure and had to be argued past to improve it
+// (rule 15). Exporting them from a .tsx would also trip react-refresh.
+import { maxFarValue, maxHeightValue, maxFloorAreaRows } from './siteFactValues'
 
 type Parcel = AnalysisResult['parcel']
 
@@ -26,36 +31,7 @@ function Fact({
   )
 }
 
-// Labels which FAR drove the envelope's headline floor area, so the figure reads
-// as use-specific rather than a single use-agnostic cap (WO-5.5).
-function farBasisLabel(
-  // Derived from the type rather than restated, so adding a basis is a compile
-  // error here instead of a silent `default: null`.
-  basis: NonNullable<Parcel['envelope']>['farBasis'] | undefined,
-): string | null {
-  switch (basis) {
-    case 'residential':
-      return '(residential FAR)'
-    case 'mixed':
-      return '(mixed-use FAR)'
-    case 'district':
-      return '(district FAR)'
-    case 'planned-development':
-      // Not a resolved figure and not a missing one — the binding number is in
-      // the ordinance that created this district.
-      return '(set by PD ordinance)'
-    case 'basis-unavailable':
-      // Unreachable in practice: this basis always carries a null floor area,
-      // so the row that calls this never renders. Present so the switch stays
-      // exhaustive and a future basis has to be decided rather than defaulted.
-      return null
-    default:
-      return null
-  }
-}
-
 export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
-  const env = parcel.envelope
   const parking = PARKING_RULES[city]
   const facts: { label: string; value: string; note?: string | null; accent?: 'positive' }[] = [
     { label: 'Zoning district', value: parcel.districtCode || '—' },
@@ -63,60 +39,8 @@ export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
       label: 'Lot size',
       value: parcel.lotSqFt ? `${parcel.lotSqFt.toLocaleString()} sq ft` : 'Not on file',
     },
-    ...(env && env.maxFloorAreaSqFt != null
-      ? [
-          {
-            label: 'Max floor area',
-            value: `${env.maxFloorAreaSqFt.toLocaleString()} sq ft`,
-            note: farBasisLabel(env.farBasis),
-          },
-        ]
-      : env?.farBasis === 'unconstrained'
-        ? [
-            {
-              label: 'Max floor area',
-              value: 'No FAR limit',
-              note: 'governed by height, setbacks and lot coverage',
-            },
-          ]
-        : env?.farBasis === 'planned-development'
-          ? [
-              {
-                label: 'Max floor area',
-                value: 'Set by PD ordinance',
-                note: 'this district\u2019s limits are in its own ordinance, not a district table',
-              },
-            ]
-          : env?.farBasis === 'basis-unavailable'
-            ? [
-                {
-                  // The FAR itself still prints in the row below \u2014 it is known.
-                  // What cannot be produced is the PRODUCT, because the code
-                  // multiplies the ratio by buildable area rather than by the
-                  // lot, and buildable area depends on the setbacks of
-                  // neighbouring built lots. Saying "not in public data" here
-                  // would be false: the limit is public and we have it.
-                  label: 'Max floor area',
-                  value: 'Not derivable from lot size',
-                  note: 'the FAR applies to buildable area \u2014 the lot minus required yards \u2014 which depends on neighbouring setbacks and is not in any public layer',
-                },
-              ]
-            : []),
-    {
-      label: 'Max FAR',
-      // "The code imposes no FAR here" is an ANSWER; "Not in public data" is a
-      // GAP. Printing the gap wording for an unconstrained district states the
-      // wrong thing — it tells the reader we failed to look something up when
-      // in fact we established the limit does not exist.
-      value:
-        parcel.maxFAR != null
-          ? parcel.maxFAR.toFixed(2)
-          : env?.farBasis === 'unconstrained'
-            ? 'No FAR limit applies'
-            : env?.farBasis === 'planned-development'
-              ? 'Set by PD ordinance'
-              : 'Not in public data',
-    },
+    ...maxFloorAreaRows(parcel),
+    { label: 'Max FAR', ...maxFarValue(parcel) },
     {
       // ⚠️ FOUR STATES, THE SAME FOUR AS FAR ABOVE. This read
       // `maxHeightFt != null ? ... : 'Not in public data'` — two states — while
@@ -129,14 +53,7 @@ export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
       // exactly this and reached the client without a render path. The field
       // existing is not the same as the distinction arriving on screen.
       label: 'Max height',
-      value:
-        parcel.maxHeightFt != null
-          ? `${parcel.maxHeightFt} ft`
-          : env?.heightBasis === 'unconstrained'
-            ? 'No height limit applies'
-            : env?.heightBasis === 'planned-development'
-              ? 'Set by PD ordinance'
-              : 'Not in public data',
+      ...maxHeightValue(parcel),
     },
     { label: 'Allowed uses', value: parcel.allowedUses?.join(', ') ?? 'Not derivable' },
     { label: 'Flood zone', value: parcel.floodZone || 'None mapped' },
