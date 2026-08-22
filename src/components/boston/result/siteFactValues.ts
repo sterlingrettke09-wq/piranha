@@ -78,9 +78,15 @@ export function maxFarValue(parcel: Parcel): { value: string; note?: string | nu
   const byUse = parcel.farByUse
   const elective = parcel.farElectiveByUse
   if (byUse) {
+    // Spelled out rather than truncated. Taking the first four characters of the
+    // use name produced non-words for two of the four uses, and a cell that looks
+    // like a data error is read as one. Described rather than quoted, because the
+    // guard below scans this file for the pattern and cannot tell a live
+    // occurrence from a retracted one (rule 21).
+    const USE_LABEL = { residential: 'res', commercial: 'comm', mixed: 'mixed', institutional: 'civic' } as const
     const parts = (['residential', 'commercial', 'mixed', 'institutional'] as const)
       .filter((u) => byUse[u] != null)
-      .map((u) => `${u.slice(0, 4)} ${byUse[u]!.toFixed(2)}${elective?.[u] ? '*' : ''}`)
+      .map((u) => `${USE_LABEL[u]} ${byUse[u]!.toFixed(2)}${elective?.[u] ? '*' : ''}`)
     if (parts.length > 0) {
       return {
         value: parts.join(' · '),

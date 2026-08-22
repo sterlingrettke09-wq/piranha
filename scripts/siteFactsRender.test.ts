@@ -3,6 +3,11 @@ import { readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 
 const ROOT = resolve(__dirname, '..')
+// ⚠️ COMMENTS ARE NOT CODE, and this file has now matched its own prose twice.
+// Every assertion about what the component RENDERS must run against stripped
+// source; an explanatory comment naming a defect is indistinguishable from the
+// defect to a regex.
+const noComments = (t: string) => t.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
 const SRC = readFileSync(join(ROOT, 'src/components/boston/result/siteFactValues.ts'), 'utf8')
 const TYPES = readFileSync(join(ROOT, 'src/types/parcel.ts'), 'utf8')
 
@@ -22,10 +27,17 @@ describe('the Max FAR and Max height cells are exhaustive over their unions', ()
   })
 
   it('routes both cells through a switch with no default', () => {
-    for (const fn of ['function maxFarValue', 'function maxHeightValue', 'function maxFloorAreaRows']) {
+    // ⚠️ Bounded by the NEXT declaration, not by a character count. A fixed-size
+    // window is a probe that silently stops covering the thing it measures the
+    // moment a comment grows — which it did, one commit after this was written.
+    const bodyOf = (fn: string) => {
       const i = SRC.indexOf(fn)
       expect(i, `${fn} is missing`).toBeGreaterThan(-1)
-      const body = SRC.slice(i, i + 2600)
+      const next = SRC.indexOf('\nexport function ', i + fn.length)
+      return SRC.slice(i, next === -1 ? SRC.length : next)
+    }
+    for (const fn of ['function maxFarValue', 'function maxHeightValue', 'function maxFloorAreaRows']) {
+      const body = bodyOf(fn)
       expect(body).toMatch(/switch \(basis\)/)
       // `assertNever` is the only permitted default — it is a compile error, not
       // a fallback. A plain `default:` returning a string is the defect.
@@ -49,7 +61,6 @@ describe('the Max FAR and Max height cells are exhaustive over their unions', ()
     // ⚠️ COMMENTS STRIPPED FIRST. The previous version of this assertion matched
     // the word "Not in public data" inside an explanatory comment and reported a
     // defect in prose rather than in output — measuring the probe, not the page.
-    const noComments = (t: string) => t.replace(/\/\/[^\n]*/g, '')
     const far = noComments(SRC.slice(SRC.indexOf('function maxFarValue'), SRC.indexOf('function maxHeightValue')))
     // The three states where the code DOES publish a figure must not reach the
     // gap sentence. 'Not in public data' is reserved for an actual gap.
@@ -70,5 +81,14 @@ describe('the Max FAR and Max height cells are exhaustive over their unions', ()
     const fn = readFileSync(join(ROOT, 'netlify/functions/analyze.ts'), 'utf8')
     expect(fn).toMatch(/farByUse: parcel\.zoning\.farByUse/)
     expect(fn).toMatch(/farElectiveByUse: parcel\.zoning\.farElectiveByUse/)
+  })
+
+  it('does not truncate a use label into a non-word', () => {
+    // 'mixe' and 'inst' shipped for one commit. A cell that looks like a data
+    // error is read as one, which costs more trust than the abbreviation saves.
+    const far = noComments(SRC.slice(SRC.indexOf('function maxFarValue'), SRC.indexOf('function maxFloorAreaRows')))
+    expect(far).not.toMatch(/\.slice\(0, ?4\)/)
+    expect(far).toMatch(/USE_LABEL/)
+    for (const w of ['res', 'comm', 'mixed', 'civic']) expect(far).toContain(`'${w}'`)
   })
 })
