@@ -656,6 +656,36 @@ capability to be built; it is someone typing a number they already had. Look for
 the existing derivation before concluding a claim cannot be derived, and check
 the file's own imports first.
 
+**34. A field with two audiences will eventually be written for one of them.**
+`costUnavailable.reason` is read straight into the report page, so it is USER
+copy — and it is also the natural place to record WHY a cost is unavailable. When
+the 2–4 unit source search was encoded, the provenance went into that field:
+"Searched 2026-08-22", table counts, "$53.6M per project". 660 characters of
+engineering notes shipped to users on 24% of parcels.
+
+⚠️ **The failure was invisible because both readings looked correct in their own
+context.** Reading the module, the long string is exactly right — it is the
+record of a search, sourced and specific, and a reviewer would approve it.
+Reading the page, it is obviously wrong. Neither reader sees the other's view,
+and nothing in the type says which one the field serves. It was found only
+because someone asked for a copy change on that surface.
+
+Same shape as disclosure copy that is true in one branch and false in another
+(rule 9's corollary), one level up: there the sentence moved between contexts,
+here the field spans two at once and no sentence can be right in both.
+
+**The fix is not shorter prose, it is separating the audiences.** The search
+record moved to the module comment where it already belonged; the field is now
+one sentence aimed at a reader looking at a blank where a price should be. When a
+value is both stored reasoning and rendered copy, split it before writing either.
+
+*Two properties of good disclosure copy came out of that rewrite and generalise.*
+Say what is true of the WORLD, not of your data — "no published source prices
+this" rather than "not estimated", because the number is not missing from your
+copy of something, it is unpublished by anyone. And **name the alternative you
+refused**: "no estimate" reads as a gap until the reader learns an estimate was
+available and rejected, at which point it reads as a standard.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
