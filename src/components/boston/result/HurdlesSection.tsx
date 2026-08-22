@@ -1,4 +1,5 @@
 import type { Hurdle, HurdleStatus } from '../../../types/analysis'
+import { rankHurdles } from './hurdleRank'
 
 const STATUS: Record<HurdleStatus, { label: string; dot: string; chip: string }> = {
   required: {
@@ -39,7 +40,7 @@ export function HurdlesSection({ hurdles }: { hurdles: Hurdle[] }) {
   }
   return (
     <ol className="space-y-3">
-      {hurdles.map((h, i) => {
+      {rankHurdles(hurdles).map((h, i) => {
         const s = STATUS[h.status]
         return (
           <li
