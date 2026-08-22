@@ -84,6 +84,37 @@ export default function BostonResult() {
   // The URL this report lives at — also the dedupe/pin key in recentReports.
   const reportUrl = window.location.pathname + window.location.search
 
+  const identityBlock = state.status === 'loaded' && (
+    <div className="mt-8">
+      <p className="text-sm text-piranha-charcoal/55">
+        Parcel {state.data.parcel.parcelId} · District {state.data.parcel.districtCode} ·{' '}
+        {state.data.parcel.lotSqFt != null
+          ? `${state.data.parcel.lotSqFt.toLocaleString()} sq ft lot`
+          : 'lot size not on file'}
+      </p>
+      <div className="mt-5">
+        <WatchParcelButton
+          city={state.data.project.city}
+          parcelId={state.data.parcel.parcelId}
+          address={state.data.parcel.address}
+          districtCode={state.data.parcel.districtCode}
+          maxHeightFt={state.data.parcel.maxHeightFt}
+          maxFAR={state.data.parcel.maxFAR}
+          lotSqFt={state.data.parcel.lotSqFt}
+          developable={state.data.developable ?? null}
+        />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Pill>{PROJECT_TYPE_LABEL[state.data.project.projectType]}</Pill>
+        <Pill>{state.data.project.use}</Pill>
+        <Pill>{state.data.project.gfa.toLocaleString()} sq ft</Pill>
+        {state.data.project.units ? <Pill>{state.data.project.units} units</Pill> : null}
+        {state.data.project.funding === 'public' ? <Pill>Publicly funded</Pill> : null}
+      </div>
+    </div>
+  )
+
+
   // The wizard link for the instant-report "refine" banner: the same params the
   // report was built from, minus the auto flag (the wizard shouldn't re-trigger
   // anything from it). parseInput ignores `auto` entirely, so dropping it here
@@ -252,48 +283,41 @@ export default function BostonResult() {
               top of the page blank until the observer fires). The MiniMap now
               sits BELOW the verdict band (see further down), so the verdict
               headline is the first substantial thing a visitor reads. */}
+          {/* ⚠️ IDENTITY ABOVE THE ANSWER, TRIMMED TO ONE LINE. This block used to
+              run kicker → display-serif address → parcel/district/lot → watch
+              button → project pills before the verdict appeared, which put the
+              answer 510px down a 720px viewport. Every one of those items is
+              something the READER SUPPLIED: they typed the address, they chose
+              the use and the size. Restating a person's own input above the
+              thing they asked for is the same ordering defect as burying a
+              headline under its own explanation.
+
+              The address STAYS above, at body size rather than display size, and
+              that is a deliberate exception rather than an oversight. Geocoding
+              can resolve to the wrong lot, and a NOT ALLOWED verdict read
+              against a parcel the reader never meant is worse than a verdict one
+              scroll further down. One line is what it takes to make that
+              checkable; the display treatment was not carrying that weight. */}
+          {/* ⚠️ RENDERED AFTER THE ANSWER ON BOTH BRANCHES, never conditionally.
+              The lot area, the watch control and the project pills all moved
+              below the verdict; what the previous comment here protected was
+              that NO SIZE TEST decides whether a reader sees the size of the
+              thing being priced, and that is still true — it is unconditional,
+              and it is still above the cost section on every branch. The part of
+              that note claiming this sits above the verdict no longer holds, so
+              it is restated rather than left to rot beside code that contradicts
+              it.
+
+              Watching is offered on EVERY branch, including blocked and
+              no-coverage. A parcel that cannot be built on today is exactly the
+              one someone wants to hear about when its zoning moves. */}
           <header className="mt-8">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-piranha-burgundy">
               Feasibility report
             </p>
-            <h1 className="mt-4 font-serif text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.05] tracking-tight text-piranha-charcoal">
+            <h1 className="mt-3 font-serif text-[clamp(1.35rem,2.6vw,1.9rem)] leading-tight tracking-tight text-piranha-charcoal">
               {state.data.parcel.address}
             </h1>
-            {/* The lot area rides the identity line, so it is on screen before
-                the verdict and long before the cost — on every branch, including
-                the blocked / no-coverage one where KeyMetrics never mounts. It
-                is unconditional: no size test decides whether a reader gets to
-                see the size of the thing being priced. */}
-            <p className="mt-3 text-sm text-piranha-charcoal/55">
-              Parcel {state.data.parcel.parcelId} · District {state.data.parcel.districtCode} ·{' '}
-              {state.data.parcel.lotSqFt != null
-                ? `${state.data.parcel.lotSqFt.toLocaleString()} sq ft lot`
-                : 'lot size not on file'}
-            </p>
-            {/* Watching is offered on EVERY branch, including the blocked and
-                no-coverage ones. A parcel that is not developable today is
-                exactly the kind someone wants to hear about when its zoning
-                moves, and hiding the control there would make the feature
-                useless for the case it is most useful for. */}
-            <div className="mt-5">
-              <WatchParcelButton
-                city={state.data.project.city}
-                parcelId={state.data.parcel.parcelId}
-                address={state.data.parcel.address}
-                districtCode={state.data.parcel.districtCode}
-                maxHeightFt={state.data.parcel.maxHeightFt}
-                maxFAR={state.data.parcel.maxFAR}
-                lotSqFt={state.data.parcel.lotSqFt}
-                developable={state.data.developable ?? null}
-              />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Pill>{PROJECT_TYPE_LABEL[state.data.project.projectType]}</Pill>
-              <Pill>{state.data.project.use}</Pill>
-              <Pill>{state.data.project.gfa.toLocaleString()} sq ft</Pill>
-              {state.data.project.units ? <Pill>{state.data.project.units} units</Pill> : null}
-              {state.data.project.funding === 'public' ? <Pill>Publicly funded</Pill> : null}
-            </div>
           </header>
 
           {state.data.developable === false ? (
@@ -324,6 +348,8 @@ export default function BostonResult() {
                   </Link>
                 </div>
               </div>
+
+              {identityBlock}
 
               <div className="print-hide mt-6">
                 <MiniMap lat={state.data.project.lat} lng={state.data.project.lng} />
@@ -389,6 +415,8 @@ export default function BostonResult() {
                   city={state.data.project.city}
                 />
               </div>
+
+              {identityBlock}
 
               {/* The parcel map now sits BELOW the verdict — context, not the
                   opener. */}
