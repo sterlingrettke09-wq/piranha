@@ -721,6 +721,45 @@ Corollary on the sweep itself: **when a candidate list survives reconciliation a
 translates rather than forwards — which is the fact that tells you where to look
 next time.
 
+**36. Rule 35 has a mirror, and it is the one that hides longer: a state nothing
+PRODUCES looks exactly like a state that cannot occur.** `farBasis:
+'basis-elective'` was recorded as un-produced — no city sets it, so nothing to
+check. The state has forty live limbs. Atlanta's zoning module records every
+ratio as `{ far, basis, source }`, forty of them carry `basis: 'net-or-gross'`
+(the applicant elects the denominator), and the provider read `.far` off each
+limb and dropped `.basis` at its own boundary. So the case occurred constantly
+and arrived as its own default.
+
+Rule 35 asks whether a field's distinction reaches a SURFACE. This asks whether
+anything ever sets it, and the two failures are not symmetrical in how they feel.
+An unrendered field is at least present in the data and greppable downstream. An
+unset one is absent everywhere, so every search for it agrees it does not happen
+— and *"unreachable"* is the conclusion that search hands you. **Trace to the
+producer, not from it.** The question is not "who reads this state" but "what
+would have to be true for it to be written", asked against the module that owns
+the fact.
+
+⚠️ **A complete, well-tested downstream chain is what made it invisible, and that
+generalises past this bug.** `basis-elective` had a type member, a gfaBasis
+mapping, disclosure copy, a feasibility branch and four tests — everything except
+a writer. All of it passed. A feature reads as SHIPPED when its consumers are
+built, because that is where the work and the tests visibly are, and nothing in a
+green suite distinguishes "handles this case" from "would handle this case".
+
+And the copy in the unreached branch had rotted while nobody could see it:
+`feasibility.ts` picked its text with a two-way ternary, so the elective state
+fell through to "no floor-area limit could be resolved for this district" — false
+of a district that publishes one and cites it. The correct sentence already
+existed in `assumptionsSummary`, one file over, with a comment explaining exactly
+why the two must differ. **Dead branches do not stay correct**; they were written
+once against an understanding that has since moved, and the fix that revives them
+ships their staleness in the same commit.
+
+The tell that separates the two cases is cheap. Grep the state's own name and
+sort the hits into readers and writers. All-readers-no-writers is not evidence of
+an impossible case; it is an unfinished seam, and the value it should carry is
+sitting one layer up being discarded.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
