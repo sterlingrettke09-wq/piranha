@@ -13,7 +13,12 @@ import { useState } from 'react'
 // the same block as the recommendation, in the same weight, and the block is not
 // styled as a success even when the binding constraint is mild.
 
-export type ReliefKind = 'none' | 'dimensional-variance' | 'beyond-variance' | 'no-limit' | 'unknown'
+// ⚠️ IMPORTED, NOT RESTATED. This was a hand-written copy of the union that
+// `inverse.ts` produces, and adding a member to the producer left the consumer
+// compiling happily against the old five. Two `Record<ReliefKind, …>` maps here
+// only became exhaustiveness checks once they were checking the same union.
+import type { ReliefKind } from '../types/parcel'
+export type { ReliefKind }
 
 export interface Constraint {
   dimension: 'use' | 'far' | 'height' | 'units'
@@ -46,6 +51,9 @@ const RELIEF_LABEL: Record<ReliefKind, string> = {
   'beyond-variance': 'Rezoning',
   'no-limit': 'No limit here',
   unknown: 'Not known',
+  // Not 'Not known'. The limit is known; the basis is the reader's to pick, and
+  // the chip is the only place a skimmer learns there is a decision to make.
+  'elective-basis': 'You choose',
 }
 
 // `unknown` deliberately does NOT get a calm grey that reads as "fine". It is
@@ -57,6 +65,9 @@ const RELIEF_CLS: Record<ReliefKind, string> = {
   'beyond-variance': 'bg-piranha-burgundy/[0.07] text-piranha-burgundy border-piranha-burgundy/25',
   'no-limit': 'bg-emerald-50 text-emerald-900 border-emerald-600/20',
   unknown: 'bg-piranha-charcoal/[0.06] text-piranha-charcoal border-piranha-charcoal/25',
+  // Distinct from both: not the emerald that reads "fine" and not the grey that
+  // reads "we failed to look". Something is required of the reader here.
+  'elective-basis': 'bg-sky-50 text-sky-900 border-sky-600/25',
 }
 
 const inputCls =

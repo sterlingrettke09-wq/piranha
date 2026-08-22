@@ -30,7 +30,7 @@
 // the user supplied the project. Here the user is asking what to do next, and an
 // answer that omits the binding constraint sends them to the wrong hearing.
 
-import type { ParcelInfo } from '../../../src/types/parcel'
+import type { ParcelInfo, ReliefKind } from '../../../src/types/parcel'
 import type { Use } from '../../../src/types/analysis'
 import { resolveZoningLimits } from './zoningLimits'
 import { RELIEF_FACTOR_HEIGHT, RELIEF_FACTOR_FAR } from './feasibility'
@@ -38,21 +38,6 @@ import { avgUnitGrossSqFt } from '../../../src/config/estimates'
 
 export type InverseDimension = 'use' | 'far' | 'height' | 'units'
 
-export type ReliefKind =
-  /** The target fits within what the district allows. Nothing to ask for. */
-  | 'none'
-  /** Over the limit, within the factor doctrine treats as grantable dimensional
-   *  relief. A variance is the instrument. */
-  | 'dimensional-variance'
-  /** Over the limit by more than a variance realistically bridges. Rezoning,
-   *  planned development or a special district — not a board hearing. */
-  | 'beyond-variance'
-  /** The code imposes NO limit on this dimension here. An ANSWER: this dimension
-   *  is not what stops you, and something else (setbacks, coverage) governs. */
-  | 'no-limit'
-  /** ⚠️ The limit could not be resolved. NOT 'none'. Nobody knows whether this
-   *  binds, and an answer that leaves it out is incomplete. */
-  | 'unknown'
 
 export interface Constraint {
   dimension: InverseDimension
@@ -92,10 +77,16 @@ export interface InverseResult {
   empty: boolean
 }
 
+export type { ReliefKind }
+
 const RANK: Record<ReliefKind, number> = {
   none: 0,
   'no-limit': 0,
   unknown: 1,
+  // Ranks WITH 'unknown', not below it: both leave the headline answer
+  // incomplete, and an elective basis is no more "fine" than a missing lookup —
+  // it just has a different person able to resolve it.
+  'elective-basis': 1,
   'dimensional-variance': 2,
   'beyond-variance': 3,
 }
@@ -167,9 +158,22 @@ export function whatWouldItTake(parcel: ParcelInfo, city: string, target: Target
   }
 
   // ── FAR ──────────────────────────────────────────────────────────────────
-  const farLimit = parcel.zoning.farByUse?.[target.use] ?? limits.maxFAR
+  // ⚠️ Elective FIRST, because `farLimit` resolves to a real number here and
+  // every branch below would consume it. `needFar` is `gfa / lot` — the NET
+  // denominator — so classifying against it would tell the reader they need a
+  // rezoning to reach a floor area the code may already permit them, on the
+  // strength of a lot area they never chose. Same defect this file's sibling
+  // `feasibility.ts` was shipping as a PROHIBITED verdict.
+  const farElective = parcel.zoning.farElectiveByUse?.[target.use] === true
+  const farLimit = farElective ? null : (parcel.zoning.farByUse?.[target.use] ?? limits.maxFAR)
   if (gfa != null) {
-    if (parcel.zoning.farUnconstrained === true) {
+    if (farElective) {
+      constraints.push({
+        dimension: 'far', required: null, allowed: null, ratio: null, relief: 'elective-basis',
+        note: 'This district publishes a floor-area ratio, and the code lets you apply it to either net lot area or gross lot area — gross credits a half-width of the adjoining street, so it is the larger of the two. Both are permitted and they give different answers, so whether your floor area fits is a question only your own choice of basis settles. Measuring it against the smaller one would report a shortfall the code may not impose.',
+      })
+      unresolved.push('far')
+    } else if (parcel.zoning.farUnconstrained === true) {
       constraints.push({
         dimension: 'far', required: null, allowed: null, ratio: null, relief: 'no-limit',
         note: 'This district imposes no floor-area ratio, so floor area is not what limits you here — height, setbacks and coverage are.',

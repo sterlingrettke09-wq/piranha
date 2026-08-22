@@ -3,6 +3,33 @@
  *  member is the moment to decide what the consuming code should do with a gap. */
 export type UnresolvedOverlay = 'historic' | 'feeArea' | 'coastal' | 'flood'
 
+export type ReliefKind =
+  /** The target fits within what the district allows. Nothing to ask for. */
+  | 'none'
+  /** Over the limit, within the factor doctrine treats as grantable dimensional
+   *  relief. A variance is the instrument. */
+  | 'dimensional-variance'
+  /** Over the limit by more than a variance realistically bridges. Rezoning,
+   *  planned development or a special district — not a board hearing. */
+  | 'beyond-variance'
+  /** The code imposes NO limit on this dimension here. An ANSWER: this dimension
+   *  is not what stops you, and something else (setbacks, coverage) governs. */
+  | 'no-limit'
+  /** ⚠️ The limit could not be resolved. NOT 'none'. Nobody knows whether this
+   *  binds, and an answer that leaves it out is incomplete. */
+  | 'unknown'
+  /** ⚠️ The limit IS resolved and the code lets the APPLICANT choose the area it
+   *  applies to — Atlanta's SPI chapters, "may use net lot area or gross lot
+   *  area". Deliberately not folded into 'unknown', whose own doc line says the
+   *  limit could not be resolved: that is false here and would be the third
+   *  place this exact sentence has appeared about a district that publishes a
+   *  ratio and cites it.
+   *
+   *  The distinction is the reader's to act on, not a pedantic one. 'unknown'
+   *  means nobody can answer this; 'elective-basis' means YOU can, and the
+   *  answer changes with a decision you have not made yet. */
+  | 'elective-basis'
+
 /** The uses a district can state a separate floor-area ratio for. Named rather
  *  than inlined so `farByUse` and `farElectiveByUse` cannot drift apart. */
 export type FarUse = 'residential' | 'commercial' | 'mixed' | 'institutional'

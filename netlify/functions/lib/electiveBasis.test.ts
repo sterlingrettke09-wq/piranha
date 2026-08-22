@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { computeEnvelope } from './envelope'
 import { assessFeasibility } from './feasibility'
+import { whatWouldItTake } from './inverse'
 import type { AnalysisInput } from '../../../src/types/analysis'
 import type { ParcelInfo } from '../../../src/types/parcel'
 
@@ -173,5 +174,63 @@ describe('an elective denominator cannot produce a not-buildable verdict', () =>
     const far = assessFeasibility(stated, project(36_000)).checks.filter((c) => c.dimension === 'far')
     expect(far.length).toBe(1)
     expect(far[0].status).toBe('PROHIBITED')
+  })
+})
+
+// ── THE THIRD CONSUMER ────────────────────────────────────────────────────────
+// `inverse.ts` powers "what would it take", and it read `farByUse` the same way
+// the feasibility check did — `gfa / lot` against the net denominator, then
+// classified the gap into a relief instrument. On an elective district that
+// tells the reader they need a REZONING to reach a floor area the code may
+// already allow them.
+describe('what-would-it-take does not prescribe relief against a basis you have not chosen', () => {
+  const elective = parcel({
+    farByUse: { residential: 2.0 },
+    farElectiveByUse: { residential: true },
+    allowedUses: null,
+    maxHeightFt: null,
+  })
+
+  it('names the choice instead of the instrument', () => {
+    const r = whatWouldItTake(elective, 'atlanta', { use: 'residential', gfaSqFt: 36_000 })
+    const far = r.constraints.filter((c) => c.dimension === 'far')
+    expect(far.length).toBe(1)
+    expect(far[0].relief).toBe('elective-basis')
+    // The two verdicts it must never reach: a relief prescription, and the
+    // "could not be resolved" sentence that is false of a published ratio.
+    expect(['beyond-variance', 'dimensional-variance']).not.toContain(far[0].relief)
+    expect(far[0].note).not.toMatch(/could not be resolved/i)
+    expect(r.unresolved).toContain('far')
+  })
+
+  it('does not put a derivation on the page for a ratio it did not apply', () => {
+    const r = whatWouldItTake(elective, 'atlanta', { use: 'residential', gfaSqFt: 36_000 })
+    // "36,000 sq ft on a 10,000 sq ft lot → FAR 3.60; the district allows 2.00"
+    // is exactly the sentence that must not appear: the district allows 2.00
+    // times an area the reader has not picked.
+    expect(r.derivation.join(' ')).not.toMatch(/the district allows/i)
+  })
+
+  it('still prescribes relief for a district that states its denominator', () => {
+    const stated = parcel({ farByUse: { residential: 2.0 }, allowedUses: null, maxHeightFt: null })
+    const far = whatWouldItTake(stated, 'atlanta', { use: 'residential', gfaSqFt: 36_000 })
+      .constraints.filter((c) => c.dimension === 'far')
+    expect(far[0].relief).toBe('beyond-variance')
+  })
+})
+
+// ── THE UNION HAS ONE HOME ────────────────────────────────────────────────────
+describe('ReliefKind is imported by its consumers, never restated', () => {
+  it('is declared exactly once in the repo', () => {
+    const files = [
+      'src/types/parcel.ts',
+      'netlify/functions/lib/inverse.ts',
+      'src/components/WhatWouldItTake.tsx',
+    ]
+    const decls = files.filter((f) => /export type ReliefKind =/.test(read(f)))
+    // A restated copy compiles fine and silently stops being an exhaustiveness
+    // check — which is how `elective-basis` reached two `Record<ReliefKind, …>`
+    // maps in the client without either failing.
+    expect(decls).toEqual(['src/types/parcel.ts'])
   })
 })
