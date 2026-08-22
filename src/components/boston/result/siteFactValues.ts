@@ -196,3 +196,92 @@ export function maxHeightValue(parcel: Parcel): { value: string; note?: string |
       return assertNever(basis)
   }
 }
+
+// ⚠️ DOES THIS BASIS STATE SOMETHING, or merely record that nothing resolved?
+//
+// The map panel gated its whole "what you can build" block on three numbers
+// being non-null. On SPI-1 SA1 all three are null and the code is explicit in
+// both directions — no height limit (§16-18A.008) and FAR 25 — so the panel
+// hid two cited facts because it had no number to print them next to.
+//
+// That is the failure worth naming: refusing to state what cannot be
+// established, and then hiding what can, is worse than either alone. A gate
+// written on VALUES cannot tell an unanswered question from an answered one; it
+// has to be written on the reason.
+//
+// Exhaustive with no `default`, so a new basis has to be classified rather than
+// silently counted as "nothing to say".
+export function farBasisIsAnswer(b: FarBasis | undefined): boolean {
+  switch (b) {
+    case 'unconstrained':
+    case 'planned-development':
+    case 'basis-unavailable':
+    case 'basis-elective':
+      return true
+    case 'residential':
+    case 'mixed':
+    case 'district':
+    case null:
+    case undefined:
+      // These mean a ratio resolved; if there is still no floor area the reason
+      // is a missing lot size, which is a genuine gap and not an answer.
+      return false
+    default:
+      return assertNever(b)
+  }
+}
+
+export function heightBasisIsAnswer(b: HeightBasis | undefined): boolean {
+  switch (b) {
+    case 'unconstrained':
+    case 'planned-development':
+      return true
+    case 'district':
+    case null:
+    case undefined:
+      return false
+    default:
+      return assertNever(b)
+  }
+}
+
+/** Panel-length wording. Deliberately NOT the SiteFacts strings: that surface is
+ *  a labelled definition list where the label supplies the subject, and this one
+ *  is loose prose in a map popover. Same exhaustive switch so a new state cannot
+ *  skip either, different sentences because a sentence true in one context is
+ *  not automatically true in the other (rule 9's corollary). */
+export function farBasisSentence(b: FarBasis | undefined): string | null {
+  switch (b) {
+    case 'unconstrained':
+      return 'The code sets no floor-area ratio here — height, setbacks and lot coverage govern size instead.'
+    case 'planned-development':
+      return 'Floor area here is set by the ordinance that created this planned development district, not by a district table.'
+    case 'basis-unavailable':
+      return 'This district publishes a floor-area ratio, but the code applies it to buildable area rather than the lot, so it cannot be turned into a floor area here.'
+    case 'basis-elective':
+      return 'This district publishes a floor-area ratio and lets you apply it to net or gross lot area — the choice is yours and it changes the answer.'
+    case 'residential':
+    case 'mixed':
+    case 'district':
+    case null:
+    case undefined:
+      return null
+    default:
+      return assertNever(b)
+  }
+}
+
+export function heightBasisSentence(b: HeightBasis | undefined): string | null {
+  switch (b) {
+    case 'unconstrained':
+      return 'The code sets no maximum building height in this district.'
+    case 'planned-development':
+      return 'Maximum height here is set by this district’s own ordinance, not by a district table.'
+    case 'district':
+    case null:
+    case undefined:
+      return null
+    default:
+      return assertNever(b)
+  }
+}

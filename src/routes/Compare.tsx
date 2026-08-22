@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { maxFloorAreaRows, maxHeightValue } from '../components/boston/result/siteFactValues'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
@@ -219,6 +220,21 @@ export default function Compare() {
           return <span className="tabular-nums">{e.maxFloorAreaSqFt.toLocaleString()} sq ft</span>
         if (e?.maxStories != null) return <span className="tabular-nums">{e.maxStories} stories</span>
         if (e?.maxHeightFt != null) return <span className="tabular-nums">{e.maxHeightFt} ft</span>
+        // ⚠️ AN EM-DASH IS A GAP, and three of the states that land here are
+        // ANSWERS. A district that imposes no FAR, one whose figure lives in its
+        // own PD ordinance, and one whose denominator is the applicant's each
+        // reach this line with a null floor area — and rendering "—" tells the
+        // reader we could not find something, on parcels where the code is
+        // explicit and cited. Rule 5 at the comparison table.
+        //
+        // Reuses the SiteFacts cells rather than restating their wording: two
+        // surfaces describing the same fact in two hand-written sentences is how
+        // one of them goes stale, and the vocabulary is now shared by
+        // construction instead of by discipline.
+        const reason = maxFloorAreaRows(d.parcel)[0]
+        if (reason) return <span className="text-piranha-charcoal/45">{reason.value}</span>
+        const h = maxHeightValue(d.parcel)
+        if (h.value !== 'Not in public data') return <span className="text-piranha-charcoal/45">{h.value}</span>
         return <span className="text-piranha-charcoal/45">—</span>
       },
     },

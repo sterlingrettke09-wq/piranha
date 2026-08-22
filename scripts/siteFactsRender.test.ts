@@ -92,3 +92,45 @@ describe('the Max FAR and Max height cells are exhaustive over their unions', ()
     for (const w of ['res', 'comm', 'mixed', 'civic']) expect(far).toContain(`'${w}'`)
   })
 })
+
+// ── THE GATE ──────────────────────────────────────────────────────────────────
+// The map panel hid its entire "what you can build" block whenever three numbers
+// were null — including on SPI-1 SA1, whose code states no height limit AND
+// publishes FAR 25, both cited. Refusing to state what cannot be established and
+// then hiding what can is worse than either alone.
+describe('a stated absence keeps the panel open', () => {
+  const PANEL = readFileSync(join(ROOT, 'src/components/boston/ParcelPanelContent.tsx'), 'utf8')
+
+  it('gates on the reason, not only on the three values', () => {
+    expect(PANEL).toMatch(/farBasisIsAnswer\(env\.farBasis\)/)
+    expect(PANEL).toMatch(/heightBasisIsAnswer\(env\.heightBasis\)/)
+  })
+
+  it('no longer hand-writes a single basis sentence', () => {
+    // It named 'planned-development' alone, so the other three rendered nothing.
+    expect(noComments(PANEL)).not.toMatch(/farBasis === 'planned-development'/)
+    expect(PANEL).toMatch(/farBasisSentence\(env\.farBasis\)/)
+    expect(PANEL).toMatch(/heightBasisSentence\(env\.heightBasis\)/)
+  })
+
+  it('every predicate and sentence is exhaustive with no string default', () => {
+    for (const fn of [
+      'function farBasisIsAnswer',
+      'function heightBasisIsAnswer',
+      'function farBasisSentence',
+      'function heightBasisSentence',
+    ]) {
+      const i = SRC.indexOf(fn)
+      expect(i, `${fn} is missing`).toBeGreaterThan(-1)
+      const next = SRC.indexOf('\nexport function ', i + fn.length)
+      const body = SRC.slice(i, next === -1 ? SRC.length : next)
+      expect(body, fn).toMatch(/assertNever\(b\)/)
+    }
+  })
+
+  it('the comparison table stops rendering an answer as an em-dash', () => {
+    const CMP = readFileSync(join(ROOT, 'src/routes/Compare.tsx'), 'utf8')
+    expect(CMP).toMatch(/maxFloorAreaRows\(d\.parcel\)/)
+    expect(CMP).toMatch(/maxHeightValue\(d\.parcel\)/)
+  })
+})

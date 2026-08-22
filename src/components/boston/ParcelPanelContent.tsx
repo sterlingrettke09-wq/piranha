@@ -1,4 +1,10 @@
 import { Link } from 'react-router-dom'
+import {
+  farBasisIsAnswer,
+  heightBasisIsAnswer,
+  farBasisSentence,
+  heightBasisSentence,
+} from './result/siteFactValues'
 import type { ReactNode } from 'react'
 import type { ParcelInfo, ParcelError, UnresolvedOverlay } from '../../types/parcel'
 import type { AnalysisInput } from '../../types/analysis'
@@ -187,7 +193,17 @@ export function ParcelPanelContent(props: Props) {
   })
   const blocked = !dev.developable
   const hasEnvelope =
-    !blocked && !!env && (env.maxFloorAreaSqFt != null || env.maxHeightFt != null || env.maxUnits != null)
+    !blocked &&
+    !!env &&
+    // ⚠️ THE GATE WAS WRITTEN ON VALUES AND HAD TO BE WRITTEN ON REASONS. Three
+    // nulls hid the entire block on SPI-1 SA1, a district whose code states no
+    // height limit AND publishes FAR 25, both cited. A gate on numbers cannot
+    // tell an unanswered question from an answered one.
+    (env.maxFloorAreaSqFt != null ||
+      env.maxHeightFt != null ||
+      env.maxUnits != null ||
+      farBasisIsAnswer(env.farBasis) ||
+      heightBasisIsAnswer(env.heightBasis))
   // Default spec for the instant-report CTA — null when the parcel offers no
   // size basis, in which case we keep the old single "Start full analysis" CTA.
   const instantSpec = blocked ? null : buildDefaultSpec(data, props.city)
@@ -278,14 +294,16 @@ export function ParcelPanelContent(props: Props) {
                 setbacks and lot coverage instead.
               </p>
             )}
-            {env.maxFloorAreaSqFt == null && env.farBasis === 'planned-development' && (
-              // A third state: the limit exists and is elsewhere. Falling through
-              // to the gap wording would say we could not find a figure that is
-              // not in a district table to begin with.
-              <p className="text-sm text-piranha-charcoal/70">
-                Floor area here is set by the ordinance that created this planned
-                development district, not by a district table.
-              </p>
+            {/* ⚠️ WAS A SINGLE HAND-WRITTEN 'planned-development' SENTENCE. It was
+                right, and it was one of four states the engine distinguishes —
+                so 'unconstrained', 'basis-unavailable' and 'basis-elective' fell
+                through to nothing at all. Sourced from an exhaustive switch now,
+                so a new basis cannot silently render as silence. */}
+            {env.maxFloorAreaSqFt == null && farBasisSentence(env.farBasis) && (
+              <p className="text-sm text-piranha-charcoal/70">{farBasisSentence(env.farBasis)}</p>
+            )}
+            {env.maxHeightFt == null && heightBasisSentence(env.heightBasis) && (
+              <p className="text-sm text-piranha-charcoal/70">{heightBasisSentence(env.heightBasis)}</p>
             )}
             {(() => {
               const bits = [
