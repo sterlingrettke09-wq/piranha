@@ -59,3 +59,41 @@ describe('the report answers before it restates the question', () => {
     expect(live).not.toMatch(/on screen before\s*\n?\s*(the )?verdict/)
   })
 })
+
+// ── THE INVERSE QUERY ─────────────────────────────────────────────────────────
+// It sat at 14,479px of a 15,366px page on desktop, and near the bottom of
+// 27,557px on mobile. "After the report" in source order meant "past the end of
+// the session" in practice — the page answered the question and then stopped
+// exactly where the reader's next one begins.
+describe('what-would-it-take is reachable', () => {
+  it('renders inside the report body, not after it', () => {
+    const wwit = at('<WhatWouldItTake')
+    // ⚠️ Anchored on TITLES, not on `n="01"`. The blocked branch has its own
+    // 01/02 pair earlier in the file, so the ordinal matched the wrong branch
+    // and the first draft of this test compared against it.
+    // Section 01 here is the feasibility checklist — the thing this inverts.
+    expect(wwit).toBeGreaterThan(at('title="The reasoning"'))
+    // and BEFORE the 6,000px red-tape section, which is what buried it.
+    expect(wwit).toBeLessThan(at('title="Beyond zoning, the red tape"'))
+  })
+
+  it('appears exactly once', () => {
+    expect([...SRC.matchAll(/<WhatWouldItTake/g)].length).toBe(1)
+  })
+
+  it('stays out of print, and therefore out of the numbered spine', () => {
+    // Numbering a print-hidden section leaves a printed report reading
+    // 01, 03, 04, 05. The spine already has two problems without a hole in it.
+    const around = SRC.slice(at('<WhatWouldItTake') - 400, at('<WhatWouldItTake'))
+    expect(around).toMatch(/print-hide/)
+    expect(around).not.toMatch(/<ReportSection/)
+  })
+
+  it('is offered on the blocked branch too', () => {
+    // A parcel whose current answer is "no" is exactly where someone wants to
+    // know what changes it. The blocked branch renders its own section list, so
+    // this asserts the component is not gated behind the developable check.
+    const gate = SRC.indexOf('state.data.developable === false')
+    expect(at('<WhatWouldItTake')).toBeGreaterThan(gate)
+  })
+})

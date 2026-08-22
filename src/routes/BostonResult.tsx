@@ -464,6 +464,36 @@ export default function BostonResult() {
                   <FeasibilityChecklist checks={state.data.feasibility.checks} />
                 </ReportSection>
 
+                {/* ⚠️ THE INVERSE QUERY, MOVED UP FROM THE FOOT OF THE PAGE.
+                    Its original note argued it belongs after the report because
+                    it answers a question the report provokes — which is right
+                    about the ORDER and was wrong about the distance. Measured on
+                    production it sat at 14,479px of a 15,366px page, and near
+                    the bottom of 27,557px on mobile: after the report in source
+                    order, past the end of the session in practice.
+
+                    It now follows section 01 directly, which is the same
+                    argument honoured properly. The reader has just seen which
+                    limit binds; "what would it take" is the literal inverse of
+                    that checklist, and this is the moment the question forms
+                    rather than twenty screens later.
+
+                    Deliberately NOT given a section number. It is `print-hide`,
+                    so numbering it would leave a printed report reading 01, 03,
+                    04, 05 — and the numbered spine is already carrying two
+                    problems without adding a hole to it.
+
+                    Offered on every branch: a parcel whose current answer is
+                    "no" is exactly where someone wants to know what changes
+                    it. */}
+                <div className="print-hide">
+                  <WhatWouldItTake
+                    city={state.data.project.city}
+                    lat={state.data.project.lat}
+                    lng={state.data.project.lng}
+                  />
+                </div>
+
                 <ReportSection
                   n="02"
                   title="Beyond zoning, the red tape"
@@ -566,20 +596,6 @@ export default function BostonResult() {
               estimate={{ costs: state.data.costs, timeline: { months: state.data.timeline.months } }}
               units={state.data.project.units ?? null}
               gfaSqFt={state.data.project.gfa}
-            />
-          </div>
-
-          {/* The inverse query. Placed AFTER the report rather than beside the
-              inputs, because it answers a question the report provokes: the
-              reader has just been told what their project needs, and the natural
-              next one is "what would it take to get what I actually want".
-              Offered on every branch — a parcel whose current answer is "no"
-              is exactly where someone wants to know what changes it. */}
-          <div className="print-hide mt-12">
-            <WhatWouldItTake
-              city={state.data.project.city}
-              lat={state.data.project.lat}
-              lng={state.data.project.lng}
             />
           </div>
 
