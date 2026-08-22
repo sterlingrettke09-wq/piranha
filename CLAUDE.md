@@ -143,6 +143,24 @@ three consecutive isolated re-probes — reporting the first result would have
 cost a session chasing a regression that did not exist. **Re-probe in isolation
 before recording any live failure.**
 
+**10b. Repeating an identical request is not re-probing — vary the INPUT, not the
+attempt.** Rule 10 says re-probe in isolation before recording a live failure.
+Done exactly as written, three times, it still produced a false defect: a Denver
+2–4-unit analysis returned no measured figure AND no withheld-reason, while
+Milwaukee returned a full one, and three consecutive isolated probes agreed. The
+conclusion drawn — "Denver's suppressed tier has no explanation" — was wrong.
+
+The parcel was `path: 'prohibited'`, which suppresses the whole timeline by
+design. Every other Denver parcel tried returns
+`{tier: 'multi', basis: 'thin-sample', n: 18, minPublishableN: 30}`. Identical
+requests only rule out transient load; they cannot rule out a confounded fixture,
+because the confound is in the input and the input never changed.
+
+What separated them was one command varying the coordinate. **A repeat tests the
+system's stability; a VARIATION tests your hypothesis.** When a probe implies a
+defect, change the thing you believe is irrelevant before believing the result —
+here, "which parcel" was assumed not to matter and was the entire cause.
+
 **11. Measure the pipeline, not your probe.** Four times now a measurement has
 described the instrument rather than the system: a grep that matched only
 literal nulls (missing Philadelphia's 17 and Boston entirely); a resolver called
