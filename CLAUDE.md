@@ -760,6 +760,17 @@ sort the hits into readers and writers. All-readers-no-writers is not evidence o
 an impossible case; it is an unfinished seam, and the value it should carry is
 sitting one layer up being discarded.
 
+⚠️ **Search for the LITERAL, never for `field = 'literal'` — the obvious form of
+this grep is wrong and it fails in the direction that invents work.** Run over
+the three unions this rule came from, the assignment pattern reported no writer
+for `basis-unavailable`, for all three `heightBasis` states and for
+`dimensional-variance`. Every one of them is written from a ternary branch —
+`? 'district' : …`, `return a <= b ? 'x' : 'y'` — where the literal never sits
+next to an `=`. Five findings, five phantoms, and they have exactly the shape of
+the real one this rule is named for. Rule 25's hit rate holds even inside the
+instrument the rule prescribes: reconcile one known-good writer before believing
+any zero.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in
