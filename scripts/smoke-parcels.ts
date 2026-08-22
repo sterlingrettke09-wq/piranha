@@ -79,7 +79,7 @@ import { join } from 'node:path'
 // registry is what the artifact must be complete against.
 import { CITIES as REGISTRY_CITIES } from '../src/config/cities'
 
-import type { AnalysisInput, AnalysisResult, Funding, ProjectType } from '../src/types/analysis'
+import type { AnalysisInput, AnalysisResult, Funding, ProjectType, Use } from '../src/types/analysis'
 import { getParcelInfo } from '../netlify/functions/lib/parcel'
 import { buildDefaultSpec } from '../src/lib/defaultSpec'
 import { deriveGfaBasis } from '../src/lib/gfaBasis'
@@ -348,6 +348,19 @@ export interface RunRow {
   gfa?: number
   units?: number | null
   use?: string
+  // ⚠️ THE SPEC DIMENSIONS, recorded because the run now varies them. Before
+  // 2026-08-22 every parcel used one reference project, so these were constants
+  // and there was nothing to record — which is exactly why whole branches never
+  // executed and no report could say so.
+  projectType?: string
+  funding?: string
+  tier?: string
+  heightBasis?: string | null
+  costProduct?: string | null
+  costUnavailableKind?: string | null
+  entitlementBasis?: string | null
+  measuredTierWithheld?: string | null
+  hurdleCategories?: string[]
   // NULL, not undefined: the sampler must be able to tell "this parcel produced
   // no construction cost because no rate covers its product" from "this field
   // was never populated". Collapsing them would make a coverage gap look like a
@@ -366,12 +379,120 @@ export interface RunRow {
 
 /** One parcel through the real composition. Throws are allowed to escape so the
  *  caller can retry in isolation and record the stack. */
+// ─────────────────────────────────────────────────────────────────────────────
+// SPEC RANDOMIZATION (added 2026-08-22)
+//
+// ⚠️ EVERY RUN BEFORE THIS USED ONE PROJECT SHAPE. `buildDefaultSpec` produces a
+// sensible new-construction residential project sized to the envelope, and 2,233
+// parcels all went through it — so the sampler varied the PARCEL and held the
+// PROJECT fixed. Whole branches had therefore never executed in any smoke run:
+// no addition, no change of use, no ADU; no commercial, institutional or
+// mixed-use cost product; no deliberate crossing of the 1 / 2–4 / 5+ tier
+// boundaries; and heights only ever expressed the way the default spec
+// expresses them.
+//
+// A sample that never reaches a branch cannot report anything about it — and it
+// reports a clean run, which reads as coverage. That is rule 18's asymmetry
+// applied to the instrument rather than the output.
+//
+// DETERMINISTIC, keyed on the parcel id. `Math.random()` would make a failure
+// unreproducible: the run that found it could not be re-run, and re-probing a
+// failure in isolation (rule 10) is the first thing this script's own exception
+// path does. Same seed, same spec, every time.
+function hash32(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+/** A tiny deterministic PRNG so successive draws for one parcel differ. */
+function rng(seed: string): () => number {
+  let x = hash32(seed) || 1
+  return () => {
+    x ^= x << 13
+    x ^= x >>> 17
+    x ^= x << 5
+    x >>>= 0
+    return x / 0x100000000
+  }
+}
+
+/** --fixed-spec restores the pre-2026-08-22 behaviour: one reference project
+ *  for every parcel. Kept so a run can be compared against the old artifact. */
+const RANDOMIZE_SPEC = !process.argv.includes('--fixed-spec')
+
+const RAND_USES: Use[] = ['residential', 'commercial', 'mixed', 'institutional']
+const RAND_PROJECT_TYPES: ProjectType[] = ['new', 'addition', 'change_of_use', 'adu']
+
+/**
+ * A randomized-but-reproducible spec for one parcel.
+ *
+ * ⚠️ THE ENVELOPE STILL BOUNDS IT. The point is to exercise branches, not to
+ * manufacture impossible projects — a 400,000 sq ft institutional building on a
+ * 2,000 sq ft lot would produce PROHIBITED for a reason that tells us nothing.
+ * So GFA is drawn as a MULTIPLE of the default, which keeps it in the same order
+ * of magnitude as the parcel while deliberately crossing above and below the
+ * envelope so the relief thresholds (1.2× FAR, 1.5× height) actually fire.
+ */
+function randomizeSpec(
+  base: { use: Use; gfa: number; units?: number | null; stories?: number | null; heightFt?: number | null },
+  parcelId: string,
+): {
+  use: Use
+  gfa: number
+  units: number | null
+  stories: number | null
+  heightFt: number | null
+  projectType: ProjectType
+  funding: Funding
+} {
+  const r = rng(parcelId)
+  const use = RAND_USES[Math.floor(r() * RAND_USES.length)]
+  const projectType = RAND_PROJECT_TYPES[Math.floor(r() * RAND_PROJECT_TYPES.length)]
+  const funding: Funding = r() < 0.25 ? 'public' : 'private'
+
+  // Multipliers straddle the relief thresholds on purpose: under the limit, into
+  // variance range, and past the point where the code calls it a rezoning.
+  const SCALE = [0.35, 0.8, 1.0, 1.3, 1.8, 3.0]
+  const gfa = Math.max(200, Math.round(base.gfa * SCALE[Math.floor(r() * SCALE.length)]))
+
+  // ⚠️ UNITS COVER ALL THREE TIERS, and the tier is what selects the cost
+  // product and the measured-permit stratum. Residential/mixed only — a unit
+  // count on an office building is not a thing the product models.
+  const UNIT_BANDS: Array<[number, number]> = [
+    [1, 1], // single
+    [2, 4], // small-multi — the unsourced tier
+    [5, 60], // apartment
+  ]
+  const band = UNIT_BANDS[Math.floor(r() * UNIT_BANDS.length)]
+  const units =
+    use === 'residential' || use === 'mixed'
+      ? band[0] + Math.floor(r() * (band[1] - band[0] + 1))
+      : null
+
+  // ⚠️ HEIGHT IN BOTH FORMS, because the engine converts a storey count through
+  // ftPerStory(use) — 11 ft residential, 13 ft otherwise — and a spec that only
+  // ever carries feet never exercises that conversion (rule 12's territory).
+  const heightForm = r()
+  const stories = heightForm < 0.4 ? 1 + Math.floor(r() * 12) : (base.stories ?? null)
+  const heightFt =
+    heightForm < 0.4 ? null : heightForm < 0.8 ? 12 + Math.floor(r() * 140) : (base.heightFt ?? null)
+
+  return { use, gfa, units, stories, heightFt, projectType, funding }
+}
+
 async function runOne(city: string, latRaw: number, lngRaw: number): Promise<RunRow> {
   const t0 = Date.now()
   const lat = quantizeCoord(latRaw)
   const lng = quantizeCoord(lngRaw)
-  const projectType: ProjectType = 'new'
-  const funding: Funding = 'private'
+  // ⚠️ Set from the randomizer below once the spec exists — held here only so the
+  // early-return rows (NO_SPEC, out-of-bbox) still compile. The default run is
+  // now RANDOMIZED; pass --fixed-spec to restore the single reference project.
+  let projectType: ProjectType = 'new'
+  let funding: Funding = 'private'
 
   const parcelResult = await getParcelInfo(city, lat, lng)
   if (!parcelResult.ok) {
@@ -402,6 +523,13 @@ async function runOne(city: string, latRaw: number, lngRaw: number): Promise<Run
   // reimplementation of the pipeline measures the reimplementation (rule 11).
   const gfaBasis: AnalysisInput['gfaBasis'] = deriveGfaBasis(env)
 
+  // The randomized spec, or the reference project under --fixed-spec.
+  const shaped = RANDOMIZE_SPEC ? randomizeSpec(spec, parcel.parcelId) : null
+  if (shaped) {
+    projectType = shaped.projectType
+    funding = shaped.funding
+  }
+
   const project: AnalysisInput = {
     parcelId: parcel.parcelId,
     city,
@@ -409,12 +537,14 @@ async function runOne(city: string, latRaw: number, lngRaw: number): Promise<Run
     funding,
     lat,
     lng,
-    use: spec.use,
-    gfa: spec.gfa,
+    use: shaped?.use ?? spec.use,
+    gfa: shaped?.gfa ?? spec.gfa,
     gfaBasis,
-    units: spec.units,
-    stories: spec.stories,
-    heightFt: spec.heightFt,
+    // AnalysisInput uses `undefined` for absent, not null — the randomizer works
+    // in null so its bands read clearly, and the boundary converts once here.
+    units: (shaped ? shaped.units : spec.units) ?? undefined,
+    stories: (shaped ? shaped.stories : spec.stories) ?? undefined,
+    heightFt: (shaped ? shaped.heightFt : spec.heightFt) ?? undefined,
   }
 
   let developability = assessDevelopability({
@@ -526,6 +656,17 @@ async function runOne(city: string, latRaw: number, lngRaw: number): Promise<Run
     gfa: project.gfa,
     units: project.units ?? null,
     use: project.use,
+    projectType: project.projectType,
+    funding: project.funding,
+    tier: timelineInfo.tier,
+    heightBasis: env?.heightBasis ?? null,
+    costProduct: estimate.costUnavailable?.product ?? null,
+    costUnavailableKind: estimate.costUnavailable?.kind ?? null,
+    entitlementBasis: timelineInfo.entitlement
+      ? 'measured'
+      : (timelineInfo.entitlementAbsent?.basis ?? null),
+    measuredTierWithheld: timelineInfo.measuredTierWithheld?.basis ?? null,
+    hurdleCategories: [...new Set(result.hurdles.map((h) => h.category))],
     costTotal: result.costs.total,
     costHard: result.costs.hard,
     costImpact: result.costs.impact,
@@ -703,6 +844,73 @@ function report(rows: RunRow[], samples: Sample[]): string {
   }
 
   // ── 3. Per city ──
+  // ── BRANCH COVERAGE ────────────────────────────────────────────────────────
+  //
+  // ⚠️ THE EXPECTED SET IS PINNED, so a branch that never executes is REPORTED
+  // rather than simply absent from a tally. A coverage table built only from
+  // what was observed cannot say what was missed — it renders a run that touched
+  // four of twelve branches identically to one that touched all four that exist
+  // (rule 20: a check that can pass by finding nothing is not a check).
+  //
+  // A branch that does not fire in a large randomized run is either unreachable
+  // or gated by something the sampler cannot produce. Both are findings; neither
+  // is visible without the expected list written down.
+  const EXPECTED: Array<[string, string[], (r: RunRow) => string | string[] | null | undefined]> = [
+    ['verdict', ['AS_OF_RIGHT', 'NEEDS_RELIEF', 'PROHIBITED', 'INDETERMINATE'], (r) => r.verdict],
+    ['path', ['as_of_right', 'variance', 'prohibited'], (r) => r.path],
+    ['projectType', ['new', 'addition', 'change_of_use', 'adu'], (r) => r.projectType],
+    ['funding', ['private', 'public'], (r) => r.funding],
+    ['use', ['residential', 'commercial', 'mixed', 'institutional'], (r) => r.use],
+    ['tier', ['single', 'multi', 'apartment'], (r) => r.tier],
+    [
+      'farBasis',
+      ['residential', 'mixed', 'district', 'planned-development', 'unconstrained', 'basis-unavailable', 'basis-elective'],
+      (r) => r.farBasis,
+    ],
+    ['heightBasis', ['district', 'planned-development', 'unconstrained'], (r) => r.heightBasis],
+    ['costProduct (unavailable)', ['small-multi', 'mixed'], (r) => r.costProduct],
+    ['costUnavailable.kind', ['unsourced', 'unpriced'], (r) => r.costUnavailableKind],
+    ['entitlement', ['measured', 'no-source', 'thin-sample', 'wrong-tier'], (r) => r.entitlementBasis],
+    ['measuredTierWithheld', ['thin-sample', 'unenumerable'], (r) => r.measuredTierWithheld],
+    [
+      'hurdle category',
+      ['historic', 'affordability', 'review', 'environmental', 'fees', 'private', 'flood', 'labor', 'parking', 'demolition'],
+      (r) => r.hurdleCategories,
+    ],
+  ]
+
+  L.push('## 2b. Branch coverage')
+  L.push('')
+  L.push(
+    'Every branch the pipeline can take, against the ones this run actually executed. ' +
+      'The expected column is PINNED in the script — a branch that never fires is listed as ' +
+      'NEVER, not omitted.',
+  )
+  L.push('')
+  L.push('| dimension | fired | of | never fired |')
+  L.push('|---|--:|--:|---|')
+  const neverAll: string[] = []
+  for (const [name, expected, pick] of EXPECTED) {
+    const seen = new Set<string>()
+    for (const r of rows) {
+      const v = pick(r)
+      if (v == null) continue
+      for (const one of Array.isArray(v) ? v : [v]) seen.add(one)
+    }
+    const never = expected.filter((e) => !seen.has(e))
+    neverAll.push(...never.map((n) => `${name}=${n}`))
+    L.push(`| ${name} | ${expected.length - never.length} | ${expected.length} | ${never.length ? never.join(', ') : '—'} |`)
+  }
+  L.push('')
+  L.push(
+    neverAll.length === 0
+      ? '**Every pinned branch executed.**'
+      : `⚠️ **${neverAll.length} pinned branches never executed.** Each is either unreachable or ` +
+          'gated by something the sampler cannot produce, and both are worth knowing: ' +
+          neverAll.join(' · '),
+  )
+  L.push('')
+
   L.push('## 3. Per city')
   L.push('')
   L.push('| city | n | RESOLVED | UNCONSTR | GAP | NO_SPEC | parcel-err | EXC | INDET | as-of-right | median ms | p90 ms | max ms |')

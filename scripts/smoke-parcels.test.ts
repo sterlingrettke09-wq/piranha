@@ -253,3 +253,62 @@ describe('⚠️ --rates is opt-in, because it is the only phase that writes the
     expect(SRC).toMatch(/# sample \+ run \+ report/)
   })
 })
+
+describe('⚠️ spec randomization — deterministic, and bounded by the envelope', () => {
+  const SRC2 = readFileSync(resolve(__dirname, 'smoke-parcels.ts'), 'utf8')
+
+  it('⚠️ is seeded on the parcel id, not Math.random', () => {
+    // A failure found by a randomized run has to be re-runnable. This script's
+    // own exception path re-probes in isolation three times before recording
+    // anything (rule 10) — which is impossible if the spec that triggered the
+    // failure cannot be reproduced. Same seed, same spec, every time.
+    expect(SRC2).toMatch(/function rng\(seed: string\)/)
+    expect(SRC2).toMatch(/rng\(parcelId\)/)
+    const randBlock = SRC2.slice(SRC2.indexOf('function randomizeSpec'), SRC2.indexOf('async function runOne'))
+    expect(randBlock).not.toMatch(/Math\.random/)
+  })
+
+  it('covers every use, project type and unit tier', () => {
+    expect(SRC2).toMatch(/RAND_USES: Use\[\] = \['residential', 'commercial', 'mixed', 'institutional'\]/)
+    expect(SRC2).toMatch(/RAND_PROJECT_TYPES: ProjectType\[\] = \['new', 'addition', 'change_of_use', 'adu'\]/)
+    // 1 / 2–4 / 5+ — the boundaries that select the cost product and the
+    // measured-permit stratum.
+    expect(SRC2).toMatch(/\[1, 1\], \/\/ single/)
+    expect(SRC2).toMatch(/\[2, 4\], \/\/ small-multi/)
+    expect(SRC2).toMatch(/\[5, 60\], \/\/ apartment/)
+  })
+
+  it('⚠️ draws height in BOTH forms, so the ft-per-storey conversion executes', () => {
+    // The engine converts a storey count through ftPerStory(use) — 11 ft
+    // residential, 13 ft otherwise. A spec that only ever carries feet never
+    // exercises that path, and it is the one rule 12 exists for.
+    const randBlock = SRC2.slice(SRC2.indexOf('function randomizeSpec'), SRC2.indexOf('async function runOne'))
+    expect(randBlock).toMatch(/const stories =/)
+    expect(randBlock).toMatch(/const heightFt =/)
+    expect(randBlock).toMatch(/heightForm/)
+  })
+
+  it('⚠️ scales GFA rather than drawing it absolutely', () => {
+    // The point is exercising branches, not manufacturing impossible projects:
+    // 400,000 sq ft on a 2,000 sq ft lot yields PROHIBITED for a reason that
+    // tells us nothing. Multipliers straddle the relief thresholds instead.
+    expect(SRC2).toMatch(/const SCALE = \[0\.35, 0\.8, 1\.0, 1\.3, 1\.8, 3\.0\]/)
+    expect(SRC2).toMatch(/base\.gfa \* SCALE/)
+  })
+
+  it('⚠️ the branch-coverage table pins its expected set', () => {
+    // A coverage table built only from what was OBSERVED cannot say what was
+    // missed — it renders a run that touched four of twelve branches identically
+    // to one that touched all four that exist. The expected list is written down
+    // so "never fired" is reportable (rule 20).
+    expect(SRC2).toMatch(/const EXPECTED: Array<\[string, string\[\]/)
+    expect(SRC2).toMatch(/## 2b\. Branch coverage/)
+    expect(SRC2).toMatch(/pinned branches never executed/)
+  })
+
+  it('--fixed-spec restores the single reference project', () => {
+    // Kept so a run can still be compared against the pre-randomization
+    // artifact; the committed envelopeSample was drawn that way.
+    expect(SRC2).toMatch(/const RANDOMIZE_SPEC = !process\.argv\.includes\('--fixed-spec'\)/)
+  })
+})
