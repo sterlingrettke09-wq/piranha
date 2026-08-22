@@ -951,6 +951,14 @@ point with no range is hard to sell as a feasibility figure.
   rather than the system. That is legitimate work, but it is instrument work on a
   metric nobody outside this project reads, and the report has to say which of
   the two moved.
+- **`small-multi` disclosure copy** — QUEUED 2026-08-22, not done. The report
+  renders "Construction cost not estimated" where the tier is unsourced. That was
+  adequate while the gap was abstract; the live smoke sample makes it 24% of
+  answered parcels and **45% in Atlanta**, so the sentence now needs to say WHY in
+  terms a reader can act on: not that data is missing, but that no published
+  source measures 2–4 unit construction separately from detached or apartment.
+  ⚠️ The reason string already exists on the tier — this is a copy call about how
+  to say it on the surface, not a wiring fix.
 - **Prose FAR** — Atlanta SPI-6 states a ratio in prose with no table. The grid
   parser is structurally blind to it. No live zone code carries SPI-6, which is
   the only reason it is not urgent.
@@ -1128,6 +1136,16 @@ here, not conclude nobody looked.
 | San Diego | Figure H | |
 | Phoenix | § 1202.B/C | |
 | Charlotte | site-plan basis | |
+| **NAHB** (not a city) | a 2–4 unit stratum from the Cost of Constructing a Home survey | ⚠️ the `small-multi` cost tier — 24% of answered parcels, 45% in Atlanta |
+
+⚠️ **NAHB is the strongest instance of this pattern, and it is not a city.** The
+2026-08-22 search established that no published source prices 2–4 unit
+construction (see `small-multi` in `estimates.ts`). But the NAHB/NMHC study's
+questionnaire ASKS the structure-type question — "2-4 Units" is a checkbox on it
+— and the published report never reports by that stratum. **The data exists and
+nobody publishes it**, which is a materially stronger case than the data not
+existing, and it is exactly the map-layer shape: the thing we need is collected,
+and the question is whether the holder will share a cut of it.
 
 *Re-open this section only if a city answers.* No code change can move it.
 
