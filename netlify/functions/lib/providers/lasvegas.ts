@@ -444,6 +444,33 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
   // ── Lot area ─────────────────────────────────────────────────────────────
   // SHAPE_Area, in EPSG:3421 US survey feet — i.e. already square feet, measured
   // against the geometry (see header note 2). NOT LOTSQFT (header note 1).
+  //
+  // ⚠️ THE SOURCE PUBLISHES DEGENERATE GEOMETRY, MEASURED 2026-08-22, and it is
+  // left alone deliberately. A randomized smoke run surfaced 1, 2 and 12 sq ft
+  // "parcels" carrying $328k, $1.1M and $1.07M. Measured against the live layer:
+  //
+  //     834,987 records total
+  //       3,671 with SHAPE_Area < 100 sq ft   (0.44%)
+  //         187 with SHAPE_Area < 10 sq ft    (0.02%)
+  //
+  // They are empty shells — blank OWNER and LANDUSE = 0 on 7 of the 8 sampled —
+  // so they are not parcels anyone could build on. NOT filtered, for two reasons
+  // that both had to be measured before they could be trusted:
+  //
+  //   · A SIZE CUTOFF is already a decided question, against this exact case.
+  //     KeyMetrics carries the ruling: "the fix is disclosure, not refusal — a
+  //     cutoff would have to say where absurdity begins, and nothing here can
+  //     defend a number for that." The lot renders first, full weight, above the
+  //     cost, so a reader sees 1 sq ft before they see $328k.
+  //   · `LANDUSE = 0` LOOKS like the substantive-record test and is far too
+  //     blunt: it catches 3,440 of the 3,671 tiny records (94%), but it matches
+  //     129,583 records overall — 15.5% of the layer, most of them normal-sized
+  //     parcels. Rejecting on it would drop real parcels to remove slivers.
+  //
+  // ⚠️ Recorded rather than fixed because the honest state is that no available
+  // field separates a sliver from a parcel without collateral. The smoke script's
+  // LOT_TINY flag keeps counting them, which is the right place for it — a
+  // measurement, not a suppression.
   const shapeArea = Number(parcel.SHAPE_Area)
   const lotSqFt = Number.isFinite(shapeArea) && shapeArea > 0 ? Math.round(shapeArea) : null
 
