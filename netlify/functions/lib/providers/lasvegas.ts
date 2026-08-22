@@ -467,10 +467,35 @@ export async function getLasVegasParcelInfo(lat: number, lng: number): Promise<P
   //     129,583 records overall — 15.5% of the layer, most of them normal-sized
   //     parcels. Rejecting on it would drop real parcels to remove slivers.
   //
-  // ⚠️ Recorded rather than fixed because the honest state is that no available
-  // field separates a sliver from a parcel without collateral. The smoke script's
-  // LOT_TINY flag keeps counting them, which is the right place for it — a
-  // measurement, not a suppression.
+  // ⚠️ AND THE CONCLUSION ABOVE WAS TOO QUICK — corrected 2026-08-22, same day.
+  // It read that no available field separates a sliver from a parcel without
+  // collateral. That is true of each signal ALONE and false of the three
+  // together, which is a different test and was never measured:
+  //
+  //     OWNER blank alone                     84,718   (10.1%)
+  //     LANDUSE = 0 alone                    129,583   (15.5%)
+  //     SHAPE_Area < 100 alone                 3,671   (0.44%)
+  //     ── all three together ──────────────── 3,359   (0.40%)
+  //
+  // The composite is TIGHTER than any component rather than a compromise between
+  // them, and the collateral it avoids is measurable: 81,358 records carry a
+  // blank owner AND LANDUSE = 0 at normal size, and none of them is touched.
+  // Of the 3,671 tiny records it leaves 312 alone — 81 that have an owner and
+  // 231 that carry a land use.
+  //
+  // ⚠️ It also escapes the objection that sank the size cutoff. "Nothing can
+  // defend where absurdity begins" is fatal to a threshold carrying the claim by
+  // itself; here size is one of three independent signals, and a record with no
+  // owner, no land use AND no meaningful geometry is not a small parcel — it is
+  // not a parcel.
+  //
+  // STILL NOT IMPLEMENTED, and that is now a product call rather than a
+  // measurement gap: rejecting a record changes what a user sees on a parcel the
+  // layer publishes, and it interacts with the disclosure ruling above. The
+  // numbers are here so the decision is made against them.
+  //
+  // Meanwhile the smoke script's LOT_TINY flag keeps counting them, which is the
+  // right place for it — a measurement, not a suppression.
   const shapeArea = Number(parcel.SHAPE_Area)
   const lotSqFt = Number.isFinite(shapeArea) && shapeArea > 0 ? Math.round(shapeArea) : null
 
