@@ -474,8 +474,19 @@ export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Obj
   // invented conversion factor, not a measurement.
   'small-multi': {
     kind: 'unsourced',
+    // ⚠️ THIS STRING RENDERS ON THE REPORT PAGE. `costUnavailable.reason` is read
+    // straight into CostBreakdown, so it is USER copy, not a ledger note — and it
+    // was briefly 660 characters of provenance ("Searched 2026-08-22", table
+    // counts, "$53.6M per project") because the same field was serving both
+    // audiences. The search record belongs in the comment block above; this
+    // sentence belongs to the reader looking at a blank where a price should be.
+    //
+    // It says what is true of the WORLD rather than of our data: the number is
+    // not missing from our copy of something, it is unpublished by anyone. And it
+    // names the alternative we refused, because "no estimate" reads as a gap
+    // unless the reader knows an estimate was available and rejected.
     reason:
-      'No published source prices 2–4 unit construction at this scope. Searched 2026-08-22: the Census Survey of Construction publishes the 2-unit and 3-to-4-unit structure split but no cost for multifamily (its multifamily section has eleven tables and none is cost); the Census multifamily price deflator is an index rather than a rate, is not split by structure type, and covers only majority-rental projects; and the NAHB/NMHC regulation study reports a percentage of development cost rather than a rate, on a population averaging $53.6M per project. NAHB measures detached and Cumming measures apartment; a figure between them would be interpolated, not sourced.',
+      'No published source prices 2–4 unit buildings separately from single-family houses or apartment buildings. The two rates we can stand behind measure those other products, and a figure between them would be interpolated rather than measured — so this shows nothing rather than a number we could not defend.',
   },
 
   // Was 365, described in-file as a "blend of residential + ground-floor

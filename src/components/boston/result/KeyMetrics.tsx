@@ -5,6 +5,7 @@ import { summarizeUnchecked } from '../../../lib/uncheckedHurdles'
 
 interface Props {
   costs: AnalysisResult['costs']
+  costUnavailable?: AnalysisResult['costUnavailable']
   timeline: AnalysisResult['timeline']
   hurdles: AnalysisResult['hurdles']
   /** The parcel's own area. Rendered ABOVE the estimates, always — see the
@@ -16,7 +17,7 @@ interface Props {
 
 /** Three headline figures, editorial register — the first thing the eye lands on,
  *  under the lot the whole estimate stands on. */
-export function KeyMetrics({ costs, timeline, hurdles, lotSqFt, indeterminate }: Props) {
+export function KeyMetrics({ costs, timeline, hurdles, lotSqFt, indeterminate, costUnavailable }: Props) {
   // An `unchecked` row is a disclosure, not an approval. `summarizeUnchecked`
   // holds that rule for both surfaces that publish a count — see the module for
   // why it is not two inline filters.
@@ -49,7 +50,23 @@ export function KeyMetrics({ costs, timeline, hurdles, lotSqFt, indeterminate }:
   const metrics = [
     {
       figure: hasCost ? formatEstimate(costValue) : 'N/A',
-      label: hasCost ? 'Construction cost, excludes land' : 'Construction cost not estimated',
+      // ⚠️ "Construction cost not estimated" said WHAT and never WHY, and it is
+      // not a rare state: the live smoke sample puts it at 24% of answered
+      // parcels and 45% in Atlanta. A bare "not estimated" beside three
+      // populated tiles reads as a failure on this parcel — something we could
+      // not work out here — when the truth is a gap in what anyone publishes,
+      // identical for every 2–4 unit project in every city.
+      //
+      // Two causes exist and they must not share a sentence (rule 5, and the
+      // reason the CostUnavailable type carries `kind` at all): 'unsourced' is a
+      // product nobody prices, 'unpriced' is a quantity nobody publishes.
+      label: hasCost
+        ? 'Construction cost, excludes land'
+        : costUnavailable?.kind === 'unsourced'
+          ? 'No published rate for this building type'
+          : costUnavailable?.kind === 'unpriced'
+            ? 'Not priced — the figure this needs is unpublished'
+            : 'Construction cost not estimated',
     },
     {
       figure: hasMonths ? `${Math.round(monthsValue)}` : 'N/A',

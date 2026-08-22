@@ -405,6 +405,7 @@ export default function BostonResult() {
               <Reveal className="mt-8">
                 <KeyMetrics
                   costs={state.data.costs}
+                  costUnavailable={state.data.costUnavailable}
                   timeline={state.data.timeline}
                   hurdles={state.data.hurdles}
                   lotSqFt={state.data.parcel.lotSqFt}
