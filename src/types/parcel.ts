@@ -3,6 +3,10 @@
  *  member is the moment to decide what the consuming code should do with a gap. */
 export type UnresolvedOverlay = 'historic' | 'feeArea' | 'coastal' | 'flood'
 
+/** The uses a district can state a separate floor-area ratio for. Named rather
+ *  than inlined so `farByUse` and `farElectiveByUse` cannot drift apart. */
+export type FarUse = 'residential' | 'commercial' | 'mixed' | 'institutional'
+
 export interface ParcelInfo {
   address: string
   /** Where `address` came from. REQUIRED, and set only by the two helpers in
@@ -31,12 +35,25 @@ export interface ParcelInfo {
     allowedUses: string[] | null
     /** Max FAR that varies by use (e.g. NYC Resid/Comm/Facil FAR). When set, the
      *  feasibility check prefers the entry matching the proposed use. */
-    farByUse?: {
-      residential?: number
-      commercial?: number
-      mixed?: number
-      institutional?: number
-    }
+    farByUse?: Partial<Record<FarUse, number>>
+    /** Which of `farByUse`'s limbs the code lets the APPLICANT choose the
+     *  denominator for. Keyed off the SAME `FarUse` union rather than restated,
+     *  so a use cannot acquire a ratio without a slot for its basis.
+     *
+     *  ⚠️ THE DENOMINATOR HAS TO TRAVEL WITH THE RATIO, and this field exists
+     *  because it did not. Atlanta's zoning module records each limb as
+     *  `{ far, basis, source }` — forty of them carry `basis: 'net-or-gross'`,
+     *  the applicant's election under e.g. §16-18T.010(2) — and the provider
+     *  read `.far` off each and dropped `.basis` on the floor. So SPI-1 SA1's
+     *  residential FAR of 25 reached the envelope indistinguishable from a
+     *  ratio stated against the lot, and published `25 × measured parcel` as a
+     *  by-right CEILING when the code permits a larger denominator.
+     *
+     *  The arithmetic erred low, which is why nothing looked wrong: the product
+     *  is one of the two figures the code allows, and it is the smaller. But the
+     *  surface calls it a maximum, and a floor rendered as a ceiling is rule 5 —
+     *  the reader cannot tell it apart from a limit that actually binds. */
+    farElectiveByUse?: Partial<Record<FarUse, boolean>>
     /** Floor-area ALLOWANCE in square feet, for codes that cap floor area at
      *  "the greater of the ratio or a fixed floor value" — e.g. Austin's HOME
      *  FAR gradient, "0.65 or 4,350 SF". Small lots are governed by the floor

@@ -325,6 +325,24 @@ export async function getAtlantaParcelInfo(lat: number, lng: number): Promise<Pa
   }
   const hasFarByUse = Object.keys(farByUse).length > 0
 
+  // The denominator, carried alongside the ratio it belongs to. `far()` records
+  // every limb's basis and this function used to read `.far` and drop `.basis`,
+  // so the applicant's election vanished at the provider boundary — see
+  // `farElectiveByUse` in the shared type for what that published.
+  //
+  // Guarded on `!smallLot` in lockstep with `farByUse` above: the small-lot
+  // branch replaces all three limbs with the R-district "lesser of" figure,
+  // which is a district ratio with no election attached. Reading the limbs'
+  // bases while the branch has overridden their VALUES would attach a
+  // denominator to a number the limb did not produce.
+  const farElectiveByUse: NonNullable<ParcelInfo['zoning']['farElectiveByUse']> = {}
+  if (!smallLot) {
+    if (limits.farResidential?.basis === 'net-or-gross') farElectiveByUse.residential = true
+    if (limits.farNonresidential?.basis === 'net-or-gross') farElectiveByUse.commercial = true
+    if (limits.farCombined?.basis === 'net-or-gross') farElectiveByUse.mixed = true
+  }
+  const hasFarElective = Object.keys(farElectiveByUse).length > 0
+
   const maxFAR = smallLot ? smallLot.far : singleRatio ? nonres : null
 
   // ── Overlays ─────────────────────────────────────────────────────────────
@@ -403,6 +421,7 @@ export async function getAtlantaParcelInfo(lat: number, lng: number): Promise<Pa
       maxFAR,
       allowedUses: usesForZone(code),
       ...(hasFarByUse ? { farByUse } : {}),
+      ...(hasFarElective ? { farElectiveByUse } : {}),
       // R-5's "if the floor area ratio does not allow at least 1,800 square
       // feet, a dwelling … of such size may be built" — a greater-of floor under
       // the cap, which is exactly what farFloorSqFt means.

@@ -16,6 +16,14 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   // or mixed project would see (WO-5.5).
   const residFar = info.zoning.farByUse?.residential
   const mixedFar = info.zoning.farByUse?.mixed
+  // WHICH LIMB'S DENOMINATOR IS THE APPLICANT'S TO CHOOSE. Read per-limb rather
+  // than as one district-level flag on purpose: Atlanta states the election on
+  // ONE limb at a time — SPI-20 makes residential elective while its
+  // nonresidential ratio is unqualified and its combined ratio is net — so a
+  // district-level boolean would assert the election over limbs the code states
+  // flatly. That is rule 24's shape: a claim true of the district and false of
+  // the figure actually being published.
+  const elective = info.zoning.farElectiveByUse
   let far: number | null
   // Derived from the published type rather than restated. The two had to be
   // edited in lockstep, and a local annotation that silently narrows is exactly
@@ -75,14 +83,45 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
         ? 'planned-development'
         : 'basis-unavailable'
   } else if (residFar != null) {
-    far = residFar
-    farBasis = 'residential'
+    // ⚠️ THE ELECTION SUPPRESSES THE PRODUCT, and it has to, for the reason the
+    // ratio being KNOWN makes easy to miss. Multiplying by the measured parcel
+    // computes the NET option — a real figure, code-permitted, and the smaller
+    // of the two the code offers. But every surface downstream labels this
+    // number a maximum, so publishing it renders a floor as a ceiling and the
+    // reader has no way to tell which they are looking at (rule 5).
+    //
+    // Distinct from 'basis-unavailable' in the only way that matters to the
+    // person reading it: there, nobody can obtain the area, and the answer ends.
+    // Here THEY know it and we do not, so the disclosure hands them the ratio
+    // and the two denominators and they finish the calculation. The two must
+    // never share a sentence — see `assumptionsSummary`, where they don't.
+    if (elective?.residential) {
+      far = null
+      farBasis = 'basis-elective'
+    } else {
+      far = residFar
+      farBasis = 'residential'
+    }
   } else if (mixedFar != null) {
-    far = mixedFar
-    farBasis = 'mixed'
+    if (elective?.mixed) {
+      far = null
+      farBasis = 'basis-elective'
+    } else {
+      far = mixedFar
+      farBasis = 'mixed'
+    }
   } else if (limits.maxFAR != null) {
-    far = limits.maxFAR
-    farBasis = 'district'
+    // `maxFAR` is the single ratio a district states for ALL uses — Atlanta
+    // populates it only where the three limbs are the same number — so it is
+    // elective exactly when any contributing limb is. There is no more specific
+    // key to consult: the limbs have collapsed into one figure by this point.
+    if (elective?.residential || elective?.commercial || elective?.mixed) {
+      far = null
+      farBasis = 'basis-elective'
+    } else {
+      far = limits.maxFAR
+      farBasis = 'district'
+    }
   } else if (info.zoning.planGoverned || isPlannedDevelopment(city, info.zoning.districtCode)) {
     // A limit EXISTS for this parcel; it is in the ordinance that created this
     // specific district rather than in any district table (Dallas § 51A-4.702

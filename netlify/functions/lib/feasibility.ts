@@ -368,14 +368,30 @@ export function assessFeasibility(parcel: ParcelInfo, project: AnalysisInput): F
       dimension: 'far',
       status: 'INDETERMINATE',
       proposed: `${project.gfa.toLocaleString()} sf (assumed)`,
+      // ⚠️ THREE REASONS REACH THIS CHECK AND EACH NEEDS ITS OWN SENTENCE. This
+      // read as a two-way ternary, so 'assumed-basis-elective' fell through to
+      // the unresolved copy and would have told the reader "no floor-area limit
+      // could be resolved for this district" about a district that publishes
+      // one, cites it, and merely lets them pick its denominator. False on both
+      // halves — `allowed` and `note` — and unreachable only until the Atlanta
+      // producer landed in the same commit as this fix.
+      //
+      // Exactly the failure the parallel copy in `assumptionsSummary` was
+      // written to avoid, one file over and with no test spanning the two: a
+      // sentence true of one branch and false of the branch it was copied to
+      // (rule 9's corollary — disclosure copy is code).
       allowed:
         project.gfaBasis === 'assumed-basis-unavailable'
           ? 'published, but stated against buildable area rather than the lot'
-          : 'not published for this district',
+          : project.gfaBasis === 'assumed-basis-elective'
+            ? 'published — but you choose which lot area it multiplies'
+            : 'not published for this district',
       note:
         project.gfaBasis === 'assumed-basis-unavailable'
           ? 'This district publishes a floor-area ratio, but the code applies it to buildable area — the lot minus its required yards — and those yards depend on the setbacks of neighbouring built lots, which no public layer carries. The limit therefore cannot be computed for this parcel, and the size above is a placeholder (lot area). A permitted/not-permitted verdict would be a claim about a limit we can state but cannot measure.'
-          : 'No floor-area limit could be resolved for this district, so the size above is a placeholder (lot area), not a code limit. A permitted/not-permitted verdict would be a claim about the law derived from a number the code never states.',
+          : project.gfaBasis === 'assumed-basis-elective'
+            ? 'This district publishes a floor-area ratio and the code lets you apply it to either net lot area or gross lot area, which includes a credited half-width of the adjoining street. Both are permitted and they give different answers, so the size above is a placeholder (lot area) rather than a code limit. Using the smaller of the two would put a floor on a page where every other figure is a ceiling — the ratio and its two denominators are in the zoning notes, and the choice of program is yours.'
+            : 'No floor-area limit could be resolved for this district, so the size above is a placeholder (lot area), not a code limit. A permitted/not-permitted verdict would be a claim about the law derived from a number the code never states.',
     })
   }
   const path: ApprovalPath = overall === 'PROHIBITED' ? 'prohibited' : overall === 'NEEDS_RELIEF' ? 'variance' : 'as_of_right'
