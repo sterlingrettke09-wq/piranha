@@ -686,6 +686,41 @@ copy of something, it is unpublished by anyone. And **name the alternative you
 refused**: "no estimate" reads as a gap until the reader learns an estimate was
 available and rejected, at which point it reads as a standard.
 
+**35. A field is only wired when the DISTINCTION it carries reaches a surface —
+and grep cannot tell you that.** Sweeping for "fields the engine populates that no
+surface reads" returned 22 candidates and exactly ONE was real. Rule 25's hit rate
+again, and the reason the other 21 were false is worth more than the count: the
+SPA reads through TRANSLATED fields. `farUnconstrained` and `planGoverned` appear
+nowhere in `src`, yet their distinction renders correctly, because the envelope
+converts them into `farBasis` and SiteFacts branches on that.
+
+So the question a grep answers — does this name appear downstream — is not the
+question that matters. **Ask whether the fact the field encodes can be told apart
+on screen from the fact it is NOT.** The two diverge in both directions: a name
+absent downstream can be fully rendered through a translation, and a name present
+downstream can be carried to the very last step and then collapsed.
+
+The one real instance was the second kind, and it was a FALSE CLAIM rather than a
+missing feature. `heightUnconstrained` was added 2026-08-19 to express "the code
+imposes no maximum height here" — a fact Atlanta, Dallas and Charlotte each
+resolve WITH A CITATION. It reached the client and stopped: SiteFacts rendered
+every null height as "Not in public data", so on sixteen Atlanta subareas alone
+the tool disclaimed knowledge it demonstrably has. FAR had four rendered states
+sitting directly above height's two, in the same list, and the asymmetry survived
+because nothing compares a field against its own companion.
+
+⚠️ **Adding the fix reproduced the bug one layer up.** `heightBasis` was computed
+in the envelope and would have been dropped silently at the API boundary, because
+`AnalysisResult`'s envelope lists its fields explicitly and had no slot for it.
+The typechecker caught that only because the shape is derived from `ParcelInfo`
+rather than restated — the same reason recorded beside `farBasis`. A mirror would
+have compiled and shipped nothing.
+
+Corollary on the sweep itself: **when a candidate list survives reconciliation at
+1 in 22, the value was never the list.** It was learning that the codebase
+translates rather than forwards — which is the fact that tells you where to look
+next time.
+
 **What is safe to automate, and what is not.** Bounded, machine-verifiable work
 (endpoint/field-drift checks, cross-city audits of a known defect class, porting
 a verified pattern, test-until-green) is good loop material. **Cost constants in

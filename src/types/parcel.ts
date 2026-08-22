@@ -182,6 +182,23 @@ export interface ParcelInfo {
        *  obtain the area — here the developer knows it and we do not. */
       | 'basis-elective'
       | null
+    /** WHY there is no height figure — the exact companion to `farBasis`, and it
+     *  exists because the absence of one was a live false claim.
+     *
+     *  ⚠️ `heightUnconstrained` was added 2026-08-19 to express "the code imposes
+     *  no maximum height here", a fact Atlanta, Dallas and Charlotte each resolve
+     *  WITH A CITATION. It reached the client and stopped: SiteFacts rendered
+     *  `maxHeightFt: null` as "Not in public data" whatever the reason, so on
+     *  sixteen Atlanta subareas alone the tool disclaimed knowledge it
+     *  demonstrably has. FAR had four rendered states and height had two.
+     *
+     *  The four states mirror `farBasis`, and the collapse is the same rule 5
+     *  failure one dimension over:
+     *    'district'           — a figure the district states.
+     *    'planned-development'— a height exists, in this parcel's own ordinance.
+     *    'unconstrained'      — no height limit applies; FAR/setbacks govern.
+     *    null                 — nobody has looked, or the lookup failed. */
+    heightBasis?: 'district' | 'planned-development' | 'unconstrained' | null
     /** Set when the headline floor area came from the code's fixed floor
      *  allowance rather than the ratio (small-lot case). Lets the UI cite the
      *  right half of a "greater of X or Y SF" rule. */

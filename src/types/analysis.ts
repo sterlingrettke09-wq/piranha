@@ -173,6 +173,13 @@ export interface AnalysisResult {
        *  here while being set upstream. Same defect gfaBasis.ts was built to
        *  remove, one field over. */
       farBasis: NonNullable<ParcelInfo['envelope']>['farBasis']
+      /** ⚠️ DERIVED FROM ParcelInfo FOR THE REASON THE COMMENT ABOVE GIVES —
+       *  restating the union here would be a mirror, and a mirror is a claim
+       *  nobody checks. Adding this field caught its own instance of the defect
+       *  it exists to fix: `heightBasis` was computed in the envelope and would
+       *  have been dropped silently at this boundary, exactly as
+       *  `heightUnconstrained` was dropped at the render layer. */
+      heightBasis?: NonNullable<ParcelInfo['envelope']>['heightBasis']
       floorAreaFromAllowance?: boolean
       /** Other programs the code allows — alternatives to the headline, not a
        *  range around it. */

@@ -143,6 +143,24 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
       : undefined
 
   const maxHeightFt = limits.maxHeightFt
+  // ⚠️ WHY there is no height, mirroring farBasis. `heightUnconstrained` already
+  // reached this layer and died here: the envelope published `maxHeightFt: null`
+  // with no reason, and SiteFacts rendered every null as "Not in public data" —
+  // so a district whose code states NO height limit, resolved with a citation in
+  // Atlanta, Dallas and Charlotte, was reported as a gap in our data. FAR had
+  // four rendered states; height had two.
+  //
+  // Order matches the farBasis branch above deliberately: the plan flag wins,
+  // because a parcel governed by its own ordinance HAS a height and it is simply
+  // not in the district table. No city currently asserts both.
+  const heightBasis: NonNullable<ParcelInfo['envelope']>['heightBasis'] =
+    maxHeightFt != null
+      ? 'district'
+      : info.zoning.planGoverned
+        ? 'planned-development'
+        : info.zoning.heightUnconstrained
+          ? 'unconstrained'
+          : null
   // Floor-to-floor height is use-aware: residential/mixed envelopes pack ~11 ft
   // floors, a district (commercial-style) envelope ~13 ft. With no FAR basis but
   // a known height, default to residential 11 ft — the conservative (taller
@@ -181,6 +199,7 @@ export function computeEnvelope(info: ParcelInfo, city: string): NonNullable<Par
   return {
     maxFloorAreaSqFt,
     maxHeightFt,
+    heightBasis,
     maxStories,
     ...(storiesBasis ? { storiesBasis } : {}),
     maxUnits,

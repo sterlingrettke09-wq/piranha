@@ -118,8 +118,25 @@ export function SiteFacts({ parcel, city }: { parcel: Parcel; city: string }) {
               : 'Not in public data',
     },
     {
+      // ⚠️ FOUR STATES, THE SAME FOUR AS FAR ABOVE. This read
+      // `maxHeightFt != null ? ... : 'Not in public data'` — two states — while
+      // FAR next to it had four. So a district whose code imposes NO height
+      // limit, a fact Atlanta, Dallas and Charlotte each resolve with a
+      // citation, rendered as "Not in public data": the tool disclaiming
+      // knowledge it demonstrably has, on sixteen Atlanta subareas alone.
+      //
+      // `heightUnconstrained` was added to the type on 2026-08-19 to express
+      // exactly this and reached the client without a render path. The field
+      // existing is not the same as the distinction arriving on screen.
       label: 'Max height',
-      value: parcel.maxHeightFt != null ? `${parcel.maxHeightFt} ft` : 'Not in public data',
+      value:
+        parcel.maxHeightFt != null
+          ? `${parcel.maxHeightFt} ft`
+          : env?.heightBasis === 'unconstrained'
+            ? 'No height limit applies'
+            : env?.heightBasis === 'planned-development'
+              ? 'Set by PD ordinance'
+              : 'Not in public data',
     },
     { label: 'Allowed uses', value: parcel.allowedUses?.join(', ') ?? 'Not derivable' },
     { label: 'Flood zone', value: parcel.floodZone || 'None mapped' },
