@@ -422,10 +422,60 @@ export const costPerSqFtByProduct: Readonly<Record<CostProduct, CostRate>> = Obj
   // interpolation between two sources that each measure a different product is
   // an invented conversion factor (rule 4) — so this stays empty rather than
   // being filled with the arithmetic mean of two things neither of which is it.
+  // ⚠️ SEARCHED 2026-08-22, THREE NAMED SOURCES, AND THE ABSENCE IS NOW
+  // ESTABLISHED RATHER THAN ASSUMED (rule 23 — an absence is only an answer once
+  // someone has looked, and the scope has to be stated). This tier is 24% of
+  // answered parcels in the live smoke sample and 45% in Atlanta, so it is the
+  // largest single blank in the cost model and worth the search.
+  //
+  //  1. CENSUS SURVEY OF CONSTRUCTION / Characteristics of New Housing.
+  //     ⚠️ HAS THE STRUCTURE SPLIT, PUBLISHES NO COST FOR IT. Its "Units per
+  //     Building" table carries exactly the categories we need — "2 units" and
+  //     "3 to 4 units" — but it is a COUNT table. The slot test settles the rest
+  //     from the publication's own contents: "Characteristics of New Multifamily
+  //     Buildings Completed" enumerates ELEVEN tables (air conditioning,
+  //     construction method, fireplaces, floors, framing, heating fuel, heat
+  //     system, laundry, parking, units per building) and NONE is cost — while
+  //     both sibling sections that have a cost table show it plainly
+  //     ("Contract Price per Square Foot" under Contractor-Built Houses, "Sales
+  //     Price per Square Foot" under Houses Sold). The string "construction
+  //     cost" occurs zero times in 5.4 MB of extracted text. Cost is collected
+  //     for single-family only.
+  //
+  //  2. CENSUS PRICE DEFLATOR FOR NEW MULTIFAMILY HOUSING UNDER CONSTRUCTION.
+  //     Out on three independent grounds. It is an INDEX, not a level —
+  //     "designed for use in deriving a constant dollar series from the current
+  //     dollar series" — so producing $/sf from it would need a base-year level
+  //     we do not have, which is the invented conversion rule 4 forbids. It has
+  //     no structure-type stratification (unit counts enter as regression
+  //     inputs, not as published strata). And its scope is projects "in which
+  //     the majority of units are for rent", which excludes the owner-occupied
+  //     duplex and triplex that dominate this tier — a different population even
+  //     if it gave a level.
+  //
+  //  3. NAHB/NMHC, Regulation: 40.6 Percent of the Cost of Multifamily
+  //     Development (June 2022). It reports regulation as a PERCENTAGE of total
+  //     development cost and never publishes a rate: "per square foot" occurs
+  //     ZERO times in the report. ⚠️ And "2-4 Units" appears in it exactly once
+  //     — as a checkbox in the survey questionnaire ("How many units does your
+  //     typical multifamily project have?"), never as a published result
+  //     stratum. The question was asked and the answer is not published. The
+  //     population settles it anyway: 49 developers, average total development
+  //     cost $53.6 million per project.
+  //
+  // ⚠️ AND THE ONE SOURCE THAT WOULD FIT IS REFUSED ON CATEGORY GROUNDS.
+  // RSMeans "Apartment 1-3 Story" is a walk-up apartment BUILDING, not a
+  // two-family house. Using it here would be the same error as pricing a
+  // detached house at the apartment rate — the error the 2026-08-19 re-key
+  // existed to remove, pointed at a different tier.
+  //
+  // So this stays empty. NAHB measures detached, Cumming measures apartment, and
+  // a figure between two sources that each measure a different product is an
+  // invented conversion factor, not a measurement.
   'small-multi': {
     kind: 'unsourced',
     reason:
-      'No published source covers 2–4 unit construction at this scope. NAHB measures detached single-family and Cumming measures apartment; a figure between them would be interpolated, not sourced.',
+      'No published source prices 2–4 unit construction at this scope. Searched 2026-08-22: the Census Survey of Construction publishes the 2-unit and 3-to-4-unit structure split but no cost for multifamily (its multifamily section has eleven tables and none is cost); the Census multifamily price deflator is an index rather than a rate, is not split by structure type, and covers only majority-rental projects; and the NAHB/NMHC regulation study reports a percentage of development cost rather than a rate, on a population averaging $53.6M per project. NAHB measures detached and Cumming measures apartment; a figure between them would be interpolated, not sourced.',
   },
 
   // Was 365, described in-file as a "blend of residential + ground-floor

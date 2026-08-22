@@ -29,7 +29,11 @@
 //   npx vite-node scripts/smoke-parcels.ts --sample   # phase 1 only
 //   npx vite-node scripts/smoke-parcels.ts --run      # phase 2 only (reuses samples)
 //   npx vite-node scripts/smoke-parcels.ts --rates    # phase 4 only (reuses rows)
-//   npx vite-node scripts/smoke-parcels.ts            # all four
+//   npx vite-node scripts/smoke-parcels.ts            # sample + run + report
+//
+// ⚠️ --rates IS NEVER IMPLIED. The bare command runs the three READ-ONLY phases;
+// phase 4 is the only one that writes a committed artifact and must be asked for
+// by name. See the doRates assignment for what that default cost once.
 //
 // Flags: --per=N (parcels per city, default 25) --cities=a,b --out=DIR
 //
@@ -969,10 +973,42 @@ async function main() {
   const only = flag('cities')?.split(',').filter(Boolean)
   const cities = only?.length ? only : CITIES
   const phases = ['--sample', '--run', '--report', '--rates'].filter((p) => argv.includes(p))
+  // ⚠️ A PARTIAL DRAW MUST NOT REWRITE THE COMMITTED SAMPLE. --rates merges
+  // per-city, so `--cities=x --rates` replaces x's committed row with whatever
+  // this run drew — fine at full sample size, silently corrupting at --per=8.
+  // The committed rows are ~100 parcels each; refuse to overwrite one with a
+  // draw too small to stand for the city.
+  const MIN_RATES_PER = 50
+  if (argv.includes('--rates') && per < MIN_RATES_PER) {
+    console.error(
+      `[rates] REFUSED: --per=${per} is below the ${MIN_RATES_PER}-parcel floor for writing ` +
+        `${ENVELOPE_SAMPLE_PATH}. The committed rows are ~100-parcel draws; merging a smaller ` +
+        `one replaces a city's measured rate with a sample too thin to stand for it. ` +
+        `Re-run without --rates to measure, or at --per=${MIN_RATES_PER}+ to publish.`,
+    )
+    process.exit(1)
+  }
   const doSample = phases.length === 0 || phases.includes('--sample')
   const doRun = phases.length === 0 || phases.includes('--run')
   const doReport = phases.length === 0 || phases.includes('--report')
-  const doRates = phases.length === 0 || phases.includes('--rates')
+  // ⚠️ --rates IS OPT-IN, AND EVERY OTHER PHASE IS NOT. It is the only phase that
+  // WRITES A COMMITTED ARTIFACT (envelopeSample.json, which the coverage matrix
+  // and the null inventory both derive from). It used to run by default with the
+  // rest, which made the innocuous-looking command below destructive:
+  //
+  //     npx vite-node scripts/smoke-parcels.ts --cities=boston --per=8
+  //
+  // A timing gauge run on 2026-08-22 did exactly that. It merged an 8-parcel
+  // Boston draw into the committed 100-parcel baseline — reducing Boston's
+  // `attempted` from 85 to 8 — and it did so while the operator was measuring
+  // how long a run takes BEFORE doing the real one. The baseline destroyed was
+  // the comparison point the real run existed to be measured against, and it was
+  // caught by accident rather than by anything in the script.
+  //
+  // The asymmetry is the point: --sample, --run and --report write only inside
+  // --out (a scratch dir by default), so defaulting them on costs nothing. Only
+  // this phase can damage the repo, so only this phase must be asked for.
+  const doRates = phases.includes('--rates')
   mkdirSync(outDir, { recursive: true })
   const samplePath = join(outDir, 'samples.json')
   const rowsPath = join(outDir, 'rows.json')

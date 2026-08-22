@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   aggregateEnvelopeSample,
   mergeEnvelopeSample,
@@ -208,5 +210,46 @@ describe('merging a partial re-run', () => {
     expect(merged.denver.sampledOn).toBe('2026-08-12')
     expect(merged.denver.gap).toBe(1)
     expect(merged.chicago.sampledOn).toBe('2026-08-01')
+  })
+})
+
+describe('⚠️ --rates is opt-in, because it is the only phase that writes the repo', () => {
+  const SRC = readFileSync(resolve(__dirname, 'smoke-parcels.ts'), 'utf8')
+
+  it('does not run by default', () => {
+    // It used to be `phases.length === 0 || phases.includes('--rates')`, which
+    // made a bare gauge run destructive: `--cities=boston --per=8` merged an
+    // 8-parcel draw into the committed 100-parcel baseline, reducing Boston's
+    // `attempted` from 85 to 8 — while the operator was measuring how long a run
+    // takes BEFORE doing the real one. The baseline destroyed was the comparison
+    // point the real run existed to be measured against.
+    expect(SRC).toMatch(/const doRates = phases\.includes\('--rates'\)/)
+    expect(SRC).not.toMatch(/const doRates = phases\.length === 0/)
+  })
+
+  it('⚠️ the READ-ONLY phases still default on — the asymmetry is the point', () => {
+    // --sample, --run and --report write only inside --out, so defaulting them
+    // costs nothing. Making everything opt-in would be the wrong lesson: the
+    // hazard is writing the REPO, not writing at all.
+    for (const phase of ['doSample', 'doRun', 'doReport']) {
+      expect(SRC, phase).toMatch(new RegExp(`const ${phase} = phases\\.length === 0`))
+    }
+  })
+
+  it('⚠️ refuses to publish a draw too thin to stand for a city', () => {
+    // --rates merges PER CITY, so even an explicit `--cities=x --rates` at a
+    // small --per replaces x's measured rate with a sample that cannot support
+    // it. The committed rows are ~100-parcel draws.
+    expect(SRC).toMatch(/MIN_RATES_PER = 50/)
+    expect(SRC).toMatch(/\[rates\] REFUSED/)
+    expect(SRC).toMatch(/process\.exit\(1\)/)
+  })
+
+  it('the usage header does not still promise all four phases', () => {
+    // The header said "# all four" after the behaviour changed — a doc
+    // contradicting its own code, which is the defect class the claim audit
+    // just swept the product for.
+    expect(SRC).not.toMatch(/# all four/)
+    expect(SRC).toMatch(/# sample \+ run \+ report/)
   })
 })
